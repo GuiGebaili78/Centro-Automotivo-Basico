@@ -1,0 +1,17 @@
+# Usa uma imagem base Node.js
+FROM node:20-alpine
+
+# Define o diretório de trabalho dentro do contêiner
+WORKDIR /app/server
+
+# Copia os arquivos de configuração de dependências
+COPY package*.json ./
+
+# Instala as dependências (incluindo o Prisma, express, etc.)
+RUN npm install
+
+# Copia o restante do código para o diretório de trabalho
+COPY . .
+
+# Comando de inicialização não é o principal, pois o Docker Compose o sobrescreve
+CMD [ "npm", "run", "dev" ]

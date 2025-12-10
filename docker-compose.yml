@@ -1,0 +1,37 @@
+
+
+services:
+  # 1. Serviço do Banco de Dados PostgreSQL
+  centroautomotivo_db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: automotivo_db
+    ports:
+      - "5434:5432" # Expõe a porta 5432 para o host
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persistência de dados
+
+  # 2. Serviço da API (Seu Backend Node/Express)
+  api:
+    build:
+      context: ./server # O Dockerfile está dentro da pasta 'server'
+      dockerfile: Dockerfile
+    image: automotivo-api
+    command: npm run dev # Roda o script de dev que configuramos no server/package.json
+    ports:
+      - "3000:3000" # Expõe a porta 3000 (onde o Express roda) para o host
+    environment:
+      # URL que o Prisma usará para conectar. Note que o 'host' é o nome do serviço 'postgres'
+      DATABASE_URL: postgres://user:password@centroautomotivo_db:5432/automotivo_db
+      PORT: 3000
+    depends_on:
+      - centroautomotivo_db # Garante que o banco suba primeiro
+    # Mapeia sua pasta de código para dentro do contêiner para ter Hot-Reload
+    volumes:
+      - ./server:/app/server 
+
+volumes:
+  postgres_data:
