@@ -1,0 +1,57 @@
+import { Request, Response } from 'express';
+import { OrdemDeServicoRepository } from '../repositories/ordemDeServico.repository.js';
+
+const repository = new OrdemDeServicoRepository();
+
+export class OrdemDeServicoController {
+  async create(req: Request, res: Response) {
+    try {
+      const os = await repository.create(req.body);
+      res.status(201).json(os);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create OS', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const oss = await repository.findAll();
+      res.json(oss);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch OSs' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const os = await repository.findById(id);
+      if (!os) {
+        return res.status(404).json({ error: 'OS not found' });
+      }
+      res.json(os);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch OS' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const os = await repository.update(id, req.body);
+      res.json(os);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update OS' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete OS' });
+    }
+  }
+}

@@ -1,0 +1,4809 @@
+PROJECT DUMP GENERATED ON 12/11/2025 11:56:07
+ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
+EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
+
+
+================================================================================
+FILE PATH: docker-compose.yml
+================================================================================
+
+
+services:
+  # 1. Serviço do Banco de Dados PostgreSQL
+  centroautomotivo_db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: automotivo_db
+    ports:
+      - "5434:5432" # Expõe a porta 5432 para o host
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d automotivo_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persistência de dados
+
+  # 2. Serviço da API (Seu Backend Node/Express)
+  api:
+    build:
+      context: ./server # O Dockerfile está dentro da pasta 'server'
+      dockerfile: Dockerfile
+    image: automotivo-api
+    command: npm run dev # Roda o script de dev que configuramos no server/package.json
+    ports:
+      - "3000:3000" # Expõe a porta 3000 (onde o Express roda) para o host
+    environment:
+      # URL que o Prisma usará para conectar. Note que o 'host' é o nome do serviço 'postgres'
+      DATABASE_URL: postgres://user:password@centroautomotivo_db:5432/automotivo_db
+      PORT: 3000
+    depends_on:
+      centroautomotivo_db:
+        condition: service_healthy # Só inicia a API quando o banco estiver pronto
+    # Mapeia sua pasta de código para dentro do contêiner para ter Hot-Reload
+    volumes:
+      - ./server:/app/server 
+
+  # 3. Serviço do Frontend (React + Vite)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    image: automotivo-client
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app/client
+      - /app/client/node_modules # Evita sobreescrever modules do container com os locais
+    depends_on:
+      - api # O front espera a API (opcional, mas bom pra ordem de boot)
+
+
+volumes:
+  postgres_data:
+
+
+================================================================================
+FILE PATH: README.md
+================================================================================
+# Centro-Automotivo-Basico
+
+
+
+
+================================================================================
+FILE PATH: client\Dockerfile
+================================================================================
+# Usa uma imagem leve do Node
+FROM node:20-alpine
+
+# Define o diretório de trabalho
+WORKDIR /app/client
+
+# Copia os arquivos de dependências
+COPY package*.json ./
+
+# Instala as dependências
+RUN npm install
+
+# Copia o restante do código
+COPY . .
+
+# Expõe a porta padrão do Vite
+EXPOSE 5173
+
+# Inicia o servidor de desenvolvimento com host 0.0.0.0 para acesso externo
+CMD ["npm", "run", "dev", "--", "--host"]
+
+
+
+================================================================================
+FILE PATH: client\eslint.config.js
+================================================================================
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import tseslint from 'typescript-eslint'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommended,
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+    },
+  },
+])
+
+
+
+================================================================================
+FILE PATH: client\index.html
+================================================================================
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Centro Automotivo APP</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
+
+
+================================================================================
+FILE PATH: client\package.json
+================================================================================
+{
+  "name": "client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.17",
+    "axios": "^1.13.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.10.1",
+    "tailwindcss": "^4.1.17"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vite": "^7.2.4"
+  }
+}
+
+
+
+================================================================================
+FILE PATH: client\README.md
+================================================================================
+# React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+
+
+
+================================================================================
+FILE PATH: client\tsconfig.app.json
+================================================================================
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "types": ["vite/client"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["src"]
+}
+
+
+
+================================================================================
+FILE PATH: client\tsconfig.json
+================================================================================
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
+
+
+
+================================================================================
+FILE PATH: client\tsconfig.node.json
+================================================================================
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["vite.config.ts"]
+}
+
+
+
+================================================================================
+FILE PATH: client\vite.config.ts
+================================================================================
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+})
+
+
+
+================================================================================
+FILE PATH: client\src\App.css
+================================================================================
+@import "tailwindcss";
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+
+================================================================================
+FILE PATH: client\src\App.tsx
+================================================================================
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { PessoaTestPage } from './pages/PessoaTestPage';
+import { TipoTestPage } from './pages/TipoTestPage';
+import { PessoaFisicaTestPage } from './pages/PessoaFisicaTestPage';
+import { PessoaJuridicaTestPage } from './pages/PessoaJuridicaTestPage';
+import { ClienteTestPage } from './pages/ClienteTestPage';
+import { FuncionarioTestPage } from './pages/FuncionarioTestPage';
+import { PecasEstoqueTestPage } from './pages/PecasEstoqueTestPage';
+import { VeiculoTestPage } from './pages/VeiculoTestPage';
+import { OrdemDeServicoTestPage } from './pages/OrdemDeServicoTestPage';
+import { ItensOsTestPage } from './pages/ItensOsTestPage';
+import { FinalizacaoTestPage } from './pages/FinalizacaoTestPage';
+import './App.css';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <div className="container mx-auto p-4">
+        <nav className="mb-4 text-center">
+            <h1 className="text-3xl font-bold mb-4">Centro Automotivo - Teste CRUD</h1>
+            <div className="flex flex-wrap justify-center gap-2">
+                <Link to="/pessoa" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Pessoa</Link>
+                <Link to="/tipo" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Tipo</Link>
+                <Link to="/pessoa-fisica" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Pessoa Física</Link>
+                <Link to="/pessoa-juridica" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Pessoa Jurídica</Link>
+                <Link to="/cliente" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Cliente</Link>
+                <Link to="/funcionario" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Funcionário</Link>
+                <Link to="/pecas-estoque" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Peças</Link>
+                <Link to="/veiculo" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Veículo</Link>
+                <Link to="/ordem-de-servico" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">OS</Link>
+                <Link to="/itens-os" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Itens OS</Link>
+                <Link to="/finalizacao" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Finalização</Link>
+                {/* Other links will go here */}
+            </div>
+        </nav>
+
+        <Routes>
+            <Route path="/" element={<div className="text-center">Selecione uma entidade no menu acima.</div>} />
+            <Route path="/pessoa" element={<PessoaTestPage />} />
+            <Route path="/tipo" element={<TipoTestPage />} />
+            <Route path="/pessoa-fisica" element={<PessoaFisicaTestPage />} />
+            <Route path="/pessoa-juridica" element={<PessoaJuridicaTestPage />} />
+            <Route path="/cliente" element={<ClienteTestPage />} />
+            <Route path="/funcionario" element={<FuncionarioTestPage />} />
+            <Route path="/pecas-estoque" element={<PecasEstoqueTestPage />} />
+            <Route path="/veiculo" element={<VeiculoTestPage />} />
+            <Route path="/ordem-de-servico" element={<OrdemDeServicoTestPage />} />
+            <Route path="/itens-os" element={<ItensOsTestPage />} />
+            <Route path="/finalizacao" element={<FinalizacaoTestPage />} />
+        </Routes>
+      </div>
+    </BrowserRouter>
+  );
+}
+
+export default App;
+
+
+
+================================================================================
+FILE PATH: client\src\index.css
+================================================================================
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+
+
+================================================================================
+FILE PATH: client\src\main.tsx
+================================================================================
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.tsx'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+
+
+
+================================================================================
+FILE PATH: client\src\pages\ClienteTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { ICliente } from '../types/backend';
+
+export const ClienteTestPage = () => {
+    const [clientes, setClientes] = useState<ICliente[]>([]);
+    const [formData, setFormData] = useState<{
+        id_pessoa_fisica: string;
+        id_pessoa_juridica: string;
+        tipo_pessoa: string;
+        telefone_1: string;
+        telefone_2: string;
+        telefone_3: string;
+        email: string;
+        logradouro: string;
+        nr_logradouro: string;
+        compl_logradouro: string;
+        bairro: string;
+        cidade: string;
+        estado: string;
+    }>({
+        id_pessoa_fisica: '',
+        id_pessoa_juridica: '',
+        tipo_pessoa: '',
+        telefone_1: '',
+        telefone_2: '',
+        telefone_3: '',
+        email: '',
+        logradouro: '',
+        nr_logradouro: '',
+        compl_logradouro: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<ICliente | null>(null);
+
+    useEffect(() => {
+        loadClientes();
+    }, []);
+
+    const loadClientes = async () => {
+        try {
+            const response = await api.get('/cliente');
+            setClientes(response.data);
+        } catch (error) {
+            alert('Erro ao carregar clientes');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                id_pessoa_fisica: formData.id_pessoa_fisica ? Number(formData.id_pessoa_fisica) : null,
+                id_pessoa_juridica: formData.id_pessoa_juridica ? Number(formData.id_pessoa_juridica) : null,
+                tipo_pessoa: Number(formData.tipo_pessoa)
+            };
+            await api.post('/cliente', payload);
+            alert('Cliente criado!');
+            loadClientes();
+            setFormData({
+                id_pessoa_fisica: '',
+                id_pessoa_juridica: '',
+                tipo_pessoa: '',
+                telefone_1: '',
+                telefone_2: '',
+                telefone_3: '',
+                email: '',
+                logradouro: '',
+                nr_logradouro: '',
+                compl_logradouro: '',
+                bairro: '',
+                cidade: '',
+                estado: '',
+            });
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao criar cliente. Verifique os IDs (PF/PJ/Tipo).');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/cliente/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Cliente não encontrado');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/cliente/${editData.id_cliente}`, editData);
+            alert('Cliente atualizado!');
+            loadClientes();
+        } catch (error) {
+            alert('Erro ao atualizar cliente');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/cliente/${searchId}`);
+            alert('Cliente deletado!');
+            loadClientes();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar cliente');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Clientes</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Novo Cliente</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2 grid grid-cols-2 gap-2">
+                    <input type="number" name="id_pessoa_fisica" value={formData.id_pessoa_fisica} onChange={handleCreateChange} placeholder="ID PF (Opcional)" className="border p-1 w-full" />
+                    <input type="number" name="id_pessoa_juridica" value={formData.id_pessoa_juridica} onChange={handleCreateChange} placeholder="ID PJ (Opcional)" className="border p-1 w-full" />
+                    <input type="number" name="tipo_pessoa" value={formData.tipo_pessoa} onChange={handleCreateChange} placeholder="ID Tipo (Obrigatório)" className="border p-1 w-full" required />
+                    
+                    <input name="telefone_1" value={formData.telefone_1} onChange={handleCreateChange} placeholder="Telefone 1" className="border p-1 w-full" required />
+                    <input name="telefone_2" value={formData.telefone_2} onChange={handleCreateChange} placeholder="Telefone 2" className="border p-1 w-full" />
+                    <input name="email" value={formData.email} onChange={handleCreateChange} placeholder="Email" className="border p-1 w-full" />
+                    
+                    <input name="logradouro" value={formData.logradouro} onChange={handleCreateChange} placeholder="Logradouro" className="border p-1 w-full" required />
+                    <input name="nr_logradouro" value={formData.nr_logradouro} onChange={handleCreateChange} placeholder="Número" className="border p-1 w-full" required />
+                    <input name="bairro" value={formData.bairro} onChange={handleCreateChange} placeholder="Bairro" className="border p-1 w-full" required />
+                    <input name="cidade" value={formData.cidade} onChange={handleCreateChange} placeholder="Cidade" className="border p-1 w-full" required />
+                    <input name="estado" value={formData.estado} onChange={handleCreateChange} placeholder="Estado (UF)" className="border p-1 w-full" required maxLength={2} />
+                    
+                    <div className="col-span-2">
+                        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded w-full">Salvar Cliente</button>
+                    </div>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar Cliente (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID Cliente" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.email || ''} 
+                            onChange={(e) => setEditData({...editData, email: e.target.value})} 
+                            placeholder="Email" 
+                            className="border p-1 w-full" 
+                        />
+                         <input 
+                            value={editData.telefone_1} 
+                            onChange={(e) => setEditData({...editData, telefone_1: e.target.value})} 
+                            placeholder="Telefone 1" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de Clientes</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID</th>
+                            <th className="p-2 border">Email</th>
+                            <th className="p-2 border">Cidade/UF</th>
+                            <th className="p-2 border">Cadastro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {clientes.map((c) => (
+                            <tr key={c.id_cliente} className="border-t">
+                                <td className="p-2 border">{c.id_cliente}</td>
+                                <td className="p-2 border">{c.email}</td>
+                                <td className="p-2 border">{c.cidade}/{c.estado}</td>
+                                <td className="p-2 border">{new Date(c.dt_cadastro).toLocaleDateString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\FinalizacaoTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { IFinalizacao } from '../types/backend';
+
+export const FinalizacaoTestPage = () => {
+    const [finalizacoes, setFinalizacoes] = useState<IFinalizacao[]>([]);
+    const [formData, setFormData] = useState<{
+        id_os: string;
+        valor_peca_entrada: string;
+        valor_peca_saida: string;
+        valor_pago_funcionario: string;
+        obs: string;
+    }>({
+        id_os: '',
+        valor_peca_entrada: '',
+        valor_peca_saida: '',
+        valor_pago_funcionario: '',
+        obs: '',
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IFinalizacao | null>(null);
+
+    useEffect(() => {
+        loadFinalizacoes();
+    }, []);
+
+    const loadFinalizacoes = async () => {
+        try {
+            const response = await api.get('/finalizacao');
+            setFinalizacoes(response.data);
+        } catch (error) {
+            alert('Erro ao carregar finalizações');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                id_os: Number(formData.id_os),
+                valor_peca_entrada: formData.valor_peca_entrada ? Number(formData.valor_peca_entrada) : null,
+                valor_peca_saida: formData.valor_peca_saida ? Number(formData.valor_peca_saida) : null,
+                valor_pago_funcionario: formData.valor_pago_funcionario ? Number(formData.valor_pago_funcionario) : null
+            };
+            await api.post('/finalizacao', payload);
+            alert('Finalização criada!');
+            loadFinalizacoes();
+            setFormData({
+                id_os: '',
+                valor_peca_entrada: '',
+                valor_peca_saida: '',
+                valor_pago_funcionario: '',
+                obs: '',
+            });
+        } catch (error) {
+            alert('Erro ao criar finalização. Verifique se ID OS existe e é 1:1.');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/finalizacao/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Finalização não encontrada');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            const payload = {
+                ...editData,
+                valor_peca_entrada: editData.valor_peca_entrada ? Number(editData.valor_peca_entrada) : null,
+                valor_peca_saida: editData.valor_peca_saida ? Number(editData.valor_peca_saida) : null,
+                valor_pago_funcionario: editData.valor_pago_funcionario ? Number(editData.valor_pago_funcionario) : null
+            }
+            await api.put(`/finalizacao/${editData.id_finalizacao}`, payload);
+            alert('Finalização atualizada!');
+            loadFinalizacoes();
+        } catch (error) {
+            alert('Erro ao atualizar finalização');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/finalizacao/${searchId}`);
+            alert('Finalização deletada!');
+            loadFinalizacoes();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar finalização');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Finalização</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Nova Finalização</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2 grid grid-cols-2 gap-2">
+                    <input type="number" name="id_os" value={formData.id_os} onChange={handleCreateChange} placeholder="ID OS (Único)" className="col-span-2 border p-1 w-full" required />
+                    <input type="number" step="0.01" name="valor_peca_entrada" value={formData.valor_peca_entrada} onChange={handleCreateChange} placeholder="Valor Peça Entrada" className="border p-1 w-full" />
+                    <input type="number" step="0.01" name="valor_peca_saida" value={formData.valor_peca_saida} onChange={handleCreateChange} placeholder="Valor Peça Saída" className="border p-1 w-full" />
+                    <input type="number" step="0.01" name="valor_pago_funcionario" value={formData.valor_pago_funcionario} onChange={handleCreateChange} placeholder="Pago ao Funcionário" className="border p-1 w-full" />
+                    <input name="obs" value={formData.obs} onChange={handleCreateChange} placeholder="Observação" className="border p-1 w-full" />
+                    
+                    <button type="submit" className="col-span-2 bg-blue-500 text-white px-4 py-2 rounded">Salvar Finalização</button>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar Finalização (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID Finalização" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.obs || ''} 
+                            onChange={(e) => setEditData({...editData, obs: e.target.value})} 
+                            placeholder="Observação" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de Finalizações</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID</th>
+                            <th className="p-2 border">ID OS</th>
+                            <th className="p-2 border">Cadastro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {finalizacoes.map((f) => (
+                            <tr key={f.id_finalizacao} className="border-t">
+                                <td className="p-2 border">{f.id_finalizacao}</td>
+                                <td className="p-2 border">{f.id_os}</td>
+                                <td className="p-2 border">{new Date(f.dt_cadastro).toLocaleDateString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\FuncionarioTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { IFuncionario } from '../types/backend';
+
+export const FuncionarioTestPage = () => {
+    const [funcionarios, setFuncionarios] = useState<IFuncionario[]>([]);
+    const [formData, setFormData] = useState<{
+        id_pessoa_fisica: string;
+        ativo: string;
+        cargo: string;
+        salario: string;
+        dt_admissao: string;
+    }>({
+        id_pessoa_fisica: '',
+        ativo: 'S',
+        cargo: '',
+        salario: '',
+        dt_admissao: '',
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IFuncionario | null>(null);
+
+    useEffect(() => {
+        loadFuncionarios();
+    }, []);
+
+    const loadFuncionarios = async () => {
+        try {
+            const response = await api.get('/funcionario');
+            setFuncionarios(response.data);
+        } catch (error) {
+            alert('Erro ao carregar funcionários');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                id_pessoa_fisica: Number(formData.id_pessoa_fisica),
+                salario: Number(formData.salario),
+                dt_admissao: new Date(formData.dt_admissao).toISOString()
+            };
+            await api.post('/funcionario', payload);
+            alert('Funcionário criado!');
+            loadFuncionarios();
+            setFormData({
+                id_pessoa_fisica: '',
+                ativo: 'S',
+                cargo: '',
+                salario: '',
+                dt_admissao: '',
+            });
+        } catch (error) {
+            alert('Erro ao criar funcionário.');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/funcionario/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Funcionário não encontrado');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/funcionario/${editData.id_funcionario}`, editData);
+            alert('Funcionário atualizado!');
+            loadFuncionarios();
+        } catch (error) {
+            alert('Erro ao atualizar funcionário');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/funcionario/${searchId}`);
+            alert('Funcionário deletado!');
+            loadFuncionarios();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar funcionário');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Funcionários</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Novo Funcionário</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2">
+                    <input type="number" name="id_pessoa_fisica" value={formData.id_pessoa_fisica} onChange={handleCreateChange} placeholder="ID Pessoa Física" className="border p-1 w-full" required />
+                    <select name="ativo" value={formData.ativo} onChange={handleCreateChange} className="border p-1 w-full">
+                        <option value="S">Ativo (S)</option>
+                        <option value="N">Inativo (N)</option>
+                    </select>
+                    <input name="cargo" value={formData.cargo} onChange={handleCreateChange} placeholder="Cargo" className="border p-1 w-full" required />
+                    <input type="number" step="0.01" name="salario" value={formData.salario} onChange={handleCreateChange} placeholder="Salário" className="border p-1 w-full" />
+                    <input type="date" name="dt_admissao" value={formData.dt_admissao} onChange={handleCreateChange} className="border p-1 w-full" required />
+                    
+                    <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Salvar Funcionário</button>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar Funcionário (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID Funcionário" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.cargo} 
+                            onChange={(e) => setEditData({...editData, cargo: e.target.value})} 
+                            placeholder="Cargo" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de Funcionários</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID</th>
+                            <th className="p-2 border">ID PF</th>
+                            <th className="p-2 border">Cargo</th>
+                            <th className="p-2 border">Ativo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {funcionarios.map((f) => (
+                            <tr key={f.id_funcionario} className="border-t">
+                                <td className="p-2 border">{f.id_funcionario}</td>
+                                <td className="p-2 border">{f.id_pessoa_fisica}</td>
+                                <td className="p-2 border">{f.cargo}</td>
+                                <td className="p-2 border">{f.ativo}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\ItensOsTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { IItensOs } from '../types/backend';
+
+export const ItensOsTestPage = () => {
+    const [itens, setItens] = useState<IItensOs[]>([]);
+    const [formData, setFormData] = useState<{
+        id_os: string;
+        id_pecas_estoque: string;
+        descricao: string;
+        qtd: string;
+        valor_unt: string;
+        valor_total: string;
+    }>({
+        id_os: '',
+        id_pecas_estoque: '',
+        descricao: '',
+        qtd: '',
+        valor_unt: '',
+        valor_total: '',
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IItensOs | null>(null);
+
+    useEffect(() => {
+        loadItens();
+    }, []);
+
+    const loadItens = async () => {
+        try {
+            const response = await api.get('/itens-os');
+            setItens(response.data);
+        } catch (error) {
+            alert('Erro ao carregar itens');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                id_os: Number(formData.id_os),
+                id_pecas_estoque: formData.id_pecas_estoque ? Number(formData.id_pecas_estoque) : null,
+                qtd: Number(formData.qtd),
+                valor_unt: Number(formData.valor_unt),
+                valor_total: Number(formData.valor_total)
+            };
+            await api.post('/itens-os', payload);
+            alert('Item criado!');
+            loadItens();
+            setFormData({
+                id_os: '',
+                id_pecas_estoque: '',
+                descricao: '',
+                qtd: '',
+                valor_unt: '',
+                valor_total: '',
+            });
+        } catch (error) {
+            alert('Erro ao criar item');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/itens-os/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Item não encontrado');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+             const payload = {
+                ...editData,
+                qtd: Number(editData.qtd),
+                valor_unt: Number(editData.valor_unt),
+                valor_total: Number(editData.valor_total)
+             }
+            await api.put(`/itens-os/${editData.id_iten}`, payload);
+            alert('Item atualizado!');
+            loadItens();
+        } catch (error) {
+            alert('Erro ao atualizar item');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/itens-os/${searchId}`);
+            alert('Item deletado!');
+            loadItens();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar item');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Itens de OS</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Novo Item</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2 grid grid-cols-2 gap-2">
+                    <input type="number" name="id_os" value={formData.id_os} onChange={handleCreateChange} placeholder="ID OS" className="border p-1 w-full" required />
+                    <input type="number" name="id_pecas_estoque" value={formData.id_pecas_estoque} onChange={handleCreateChange} placeholder="ID Peça (Opcional)" className="border p-1 w-full" />
+                    <input name="descricao" value={formData.descricao} onChange={handleCreateChange} placeholder="Descrição" className="col-span-2 border p-1 w-full" required />
+                    <input type="number" name="qtd" value={formData.qtd} onChange={handleCreateChange} placeholder="Quantidade" className="border p-1 w-full" required />
+                    <input type="number" step="0.01" name="valor_unt" value={formData.valor_unt} onChange={handleCreateChange} placeholder="Valor Unitário" className="border p-1 w-full" required />
+                    <input type="number" step="0.01" name="valor_total" value={formData.valor_total} onChange={handleCreateChange} placeholder="Valor Total" className="border p-1 w-full" required />
+                    
+                    <button type="submit" className="col-span-2 bg-blue-500 text-white px-4 py-2 rounded">Salvar Item</button>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar Item (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID Item" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.descricao} 
+                            onChange={(e) => setEditData({...editData, descricao: e.target.value})} 
+                            placeholder="Descrição" 
+                            className="border p-1 w-full" 
+                        />
+                         <input 
+                            type="number"
+                            value={editData.qtd} 
+                            onChange={(e) => setEditData({...editData, qtd: Number(e.target.value)})} 
+                            placeholder="Quantidade" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de Itens</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID</th>
+                            <th className="p-2 border">ID OS</th>
+                            <th className="p-2 border">Descrição</th>
+                            <th className="p-2 border">Qtd</th>
+                            <th className="p-2 border">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {itens.map((i) => (
+                            <tr key={i.id_iten} className="border-t">
+                                <td className="p-2 border">{i.id_iten}</td>
+                                <td className="p-2 border">{i.id_os}</td>
+                                <td className="p-2 border">{i.descricao}</td>
+                                <td className="p-2 border">{i.qtd}</td>
+                                <td className="p-2 border">{Number(i.valor_total).toFixed(2)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\OrdemDeServicoTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { IOrdemDeServico } from '../types/backend';
+
+export const OrdemDeServicoTestPage = () => {
+    const [oss, setOss] = useState<IOrdemDeServico[]>([]);
+    const [formData, setFormData] = useState<{
+        id_cliente: string;
+        id_veiculo: string;
+        id_funcionario: string;
+        km_entrada: string;
+        status: string;
+        parcelas: string;
+        defeito_relatado: string;
+    }>({
+        id_cliente: '',
+        id_veiculo: '',
+        id_funcionario: '',
+        km_entrada: '',
+        status: 'ABERTA',
+        parcelas: '1',
+        defeito_relatado: '',
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IOrdemDeServico | null>(null);
+
+    useEffect(() => {
+        loadOss();
+    }, []);
+
+    const loadOss = async () => {
+        try {
+            const response = await api.get('/ordem-de-servico');
+            setOss(response.data);
+        } catch (error) {
+            alert('Erro ao carregar OSs');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                id_cliente: Number(formData.id_cliente),
+                id_veiculo: Number(formData.id_veiculo),
+                id_funcionario: Number(formData.id_funcionario),
+                km_entrada: Number(formData.km_entrada),
+                parcelas: Number(formData.parcelas)
+            };
+            await api.post('/ordem-de-servico', payload);
+            alert('OS criada!');
+            loadOss();
+            setFormData({
+                id_cliente: '',
+                id_veiculo: '',
+                id_funcionario: '',
+                km_entrada: '',
+                status: 'ABERTA',
+                parcelas: '1',
+                defeito_relatado: '',
+            });
+        } catch (error) {
+            alert('Erro ao criar OS. Verifique IDs.');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/ordem-de-servico/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('OS não encontrada');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/ordem-de-servico/${editData.id_os}`, editData);
+            alert('OS atualizada!');
+            loadOss();
+        } catch (error) {
+            alert('Erro ao atualizar OS');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/ordem-de-servico/${searchId}`);
+            alert('OS deletada!');
+            loadOss();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar OS');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Ordens de Serviço</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Nova OS</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2 grid grid-cols-2 gap-2">
+                    <input type="number" name="id_cliente" value={formData.id_cliente} onChange={handleCreateChange} placeholder="ID Cliente" className="border p-1 w-full" required />
+                    <input type="number" name="id_veiculo" value={formData.id_veiculo} onChange={handleCreateChange} placeholder="ID Veículo" className="border p-1 w-full" required />
+                    <input type="number" name="id_funcionario" value={formData.id_funcionario} onChange={handleCreateChange} placeholder="ID Funcionário" className="border p-1 w-full" required />
+                    <input type="number" name="km_entrada" value={formData.km_entrada} onChange={handleCreateChange} placeholder="KM Entrada" className="border p-1 w-full" required />
+                    <input name="status" value={formData.status} onChange={handleCreateChange} placeholder="Status" className="border p-1 w-full" required />
+                    <input type="number" name="parcelas" value={formData.parcelas} onChange={handleCreateChange} placeholder="Parcelas" className="border p-1 w-full" required />
+                    <input name="defeito_relatado" value={formData.defeito_relatado} onChange={handleCreateChange} placeholder="Defeito Relatado" className="col-span-2 border p-1 w-full" />
+                    
+                    <button type="submit" className="col-span-2 bg-blue-500 text-white px-4 py-2 rounded">Salvar OS</button>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar OS (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID OS" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.status} 
+                            onChange={(e) => setEditData({...editData, status: e.target.value})} 
+                            placeholder="Status" 
+                            className="border p-1 w-full" 
+                        />
+                         <input 
+                            value={editData.diagnostico || ''} 
+                            onChange={(e) => setEditData({...editData, diagnostico: e.target.value})} 
+                            placeholder="Diagnóstico" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de OSs</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID</th>
+                            <th className="p-2 border">ID Cliente</th>
+                            <th className="p-2 border">Status</th>
+                            <th className="p-2 border">Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {oss.map((o) => (
+                            <tr key={o.id_os} className="border-t">
+                                <td className="p-2 border">{o.id_os}</td>
+                                <td className="p-2 border">{o.id_cliente}</td>
+                                <td className="p-2 border">{o.status}</td>
+                                <td className="p-2 border">{new Date(o.dt_cadastro).toLocaleDateString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\PecasEstoqueTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { IPecasEstoque } from '../types/backend';
+
+export const PecasEstoqueTestPage = () => {
+    const [pecas, setPecas] = useState<IPecasEstoque[]>([]);
+    const [formData, setFormData] = useState<{
+        nome: string;
+        descricao: string;
+        fabricante: string;
+        valor_custo: string;
+        valor_venda: string;
+        estoque_atual: string;
+        unidade_medida: string;
+    }>({
+        nome: '',
+        descricao: '',
+        fabricante: '',
+        valor_custo: '',
+        valor_venda: '',
+        estoque_atual: '',
+        unidade_medida: '',
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IPecasEstoque | null>(null);
+
+    useEffect(() => {
+        loadPecas();
+    }, []);
+
+    const loadPecas = async () => {
+        try {
+            const response = await api.get('/pecas-estoque');
+            setPecas(response.data);
+        } catch (error) {
+            alert('Erro ao carregar peças');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                valor_custo: Number(formData.valor_custo),
+                valor_venda: Number(formData.valor_venda),
+                estoque_atual: Number(formData.estoque_atual)
+            };
+            await api.post('/pecas-estoque', payload);
+            alert('Peça criada!');
+            loadPecas();
+            setFormData({
+                nome: '',
+                descricao: '',
+                fabricante: '',
+                valor_custo: '',
+                valor_venda: '',
+                estoque_atual: '',
+                unidade_medida: '',
+            });
+        } catch (error) {
+            alert('Erro ao criar peça');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/pecas-estoque/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Peça não encontrada');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+             const payload = {
+                ...editData,
+                valor_custo: Number(editData.valor_custo),
+                valor_venda: Number(editData.valor_venda),
+                estoque_atual: Number(editData.estoque_atual)
+             }
+            await api.put(`/pecas-estoque/${editData.id_pecas_estoque}`, payload);
+            alert('Peça atualizada!');
+            loadPecas();
+        } catch (error) {
+            alert('Erro ao atualizar peça');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/pecas-estoque/${searchId}`);
+            alert('Peça deletada!');
+            loadPecas();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar peça');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Estoque de Peças</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Nova Peça</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2 grid grid-cols-2 gap-2">
+                    <input name="nome" value={formData.nome} onChange={handleCreateChange} placeholder="Nome" className="border p-1 w-full" required />
+                    <input name="descricao" value={formData.descricao} onChange={handleCreateChange} placeholder="Descrição" className="border p-1 w-full" required />
+                    <input name="fabricante" value={formData.fabricante} onChange={handleCreateChange} placeholder="Fabricante" className="border p-1 w-full" />
+                    <input name="unidade_medida" value={formData.unidade_medida} onChange={handleCreateChange} placeholder="UN Medida" className="border p-1 w-full" />
+                    <input type="number" step="0.01" name="valor_custo" value={formData.valor_custo} onChange={handleCreateChange} placeholder="Valor Custo" className="border p-1 w-full" required />
+                    <input type="number" step="0.01" name="valor_venda" value={formData.valor_venda} onChange={handleCreateChange} placeholder="Valor Venda" className="border p-1 w-full" required />
+                    <input type="number" name="estoque_atual" value={formData.estoque_atual} onChange={handleCreateChange} placeholder="Estoque Atual" className="border p-1 w-full" required />
+                    
+                    <button type="submit" className="col-span-2 bg-blue-500 text-white px-4 py-2 rounded">Salvar Peça</button>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar Peça (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID Peça" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.nome} 
+                            onChange={(e) => setEditData({...editData, nome: e.target.value})} 
+                            placeholder="Nome" 
+                            className="border p-1 w-full" 
+                        />
+                         <input 
+                            type="number"
+                            value={editData.estoque_atual} 
+                            onChange={(e) => setEditData({...editData, estoque_atual: Number(e.target.value)})} 
+                            placeholder="Estoque" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de Peças</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID</th>
+                            <th className="p-2 border">Nome</th>
+                            <th className="p-2 border">Fabricante</th>
+                            <th className="p-2 border">Estoque</th>
+                            <th className="p-2 border">Valor Venda</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pecas.map((p) => (
+                            <tr key={p.id_pecas_estoque} className="border-t">
+                                <td className="p-2 border">{p.id_pecas_estoque}</td>
+                                <td className="p-2 border">{p.nome}</td>
+                                <td className="p-2 border">{p.fabricante}</td>
+                                <td className="p-2 border">{p.estoque_atual}</td>
+                                <td className="p-2 border">{Number(p.valor_venda).toFixed(2)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\PessoaFisicaTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { IPessoaFisica } from '../types/backend';
+
+export const PessoaFisicaTestPage = () => {
+    const [pessoasFisicas, setPessoasFisicas] = useState<IPessoaFisica[]>([]);
+    const [formData, setFormData] = useState<{
+        id_pessoa: string;
+        cpf: string;
+    }>({
+        id_pessoa: '',
+        cpf: '',
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IPessoaFisica | null>(null);
+
+    useEffect(() => {
+        loadPessoasFisicas();
+    }, []);
+
+    const loadPessoasFisicas = async () => {
+        try {
+            const response = await api.get('/pessoa-fisica');
+            setPessoasFisicas(response.data);
+        } catch (error) {
+            alert('Erro ao carregar pessoas físicas');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                id_pessoa: Number(formData.id_pessoa)
+            };
+            await api.post('/pessoa-fisica', payload);
+            alert('Pessoa Física criada!');
+            loadPessoasFisicas();
+            setFormData({ id_pessoa: '', cpf: '' });
+        } catch (error) {
+            alert('Erro ao criar pessoa física. Verifique se o ID Pessoa existe e não tem PF vinculada.');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/pessoa-fisica/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Pessoa Física não encontrada');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/pessoa-fisica/${editData.id_pessoa_fisica}`, editData);
+            alert('Pessoa Física atualizada!');
+            loadPessoasFisicas();
+        } catch (error) {
+            alert('Erro ao atualizar pessoa física');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/pessoa-fisica/${searchId}`);
+            alert('Pessoa Física deletada!');
+            loadPessoasFisicas();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar pessoa física');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Pessoas Físicas</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Nova Pessoa Física</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2">
+                    <input type="number" name="id_pessoa" value={formData.id_pessoa} onChange={handleCreateChange} placeholder="ID Pessoa (Existente)" className="border p-1 w-full" required />
+                    <input name="cpf" value={formData.cpf} onChange={handleCreateChange} placeholder="CPF" className="border p-1 w-full" />
+                    <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Salvar Pessoa Física</button>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar Pessoa Física (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID Pessoa Física" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.cpf || ''} 
+                            onChange={(e) => setEditData({...editData, cpf: e.target.value})} 
+                            placeholder="CPF" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de Pessoas Físicas</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID PF</th>
+                            <th className="p-2 border">ID Pessoa</th>
+                            <th className="p-2 border">CPF</th>
+                            <th className="p-2 border">Cadastro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pessoasFisicas.map((pf) => (
+                            <tr key={pf.id_pessoa_fisica} className="border-t">
+                                <td className="p-2 border">{pf.id_pessoa_fisica}</td>
+                                <td className="p-2 border">{pf.id_pessoa}</td>
+                                <td className="p-2 border">{pf.cpf}</td>
+                                <td className="p-2 border">{new Date(pf.dt_cadastro).toLocaleDateString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\PessoaJuridicaTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { IPessoaJuridica } from '../types/backend';
+
+export const PessoaJuridicaTestPage = () => {
+    const [pessoasJuridicas, setPessoasJuridicas] = useState<IPessoaJuridica[]>([]);
+    const [formData, setFormData] = useState<{
+        id_pessoa: string;
+        razao_social: string;
+        nome_fantasia: string;
+        cnpj: string;
+        inscricao_estadual: string;
+    }>({
+        id_pessoa: '',
+        razao_social: '',
+        nome_fantasia: '',
+        cnpj: '',
+        inscricao_estadual: '',
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IPessoaJuridica | null>(null);
+
+    useEffect(() => {
+        loadPessoasJuridicas();
+    }, []);
+
+    const loadPessoasJuridicas = async () => {
+        try {
+            const response = await api.get('/pessoa-juridica');
+            setPessoasJuridicas(response.data);
+        } catch (error) {
+            alert('Erro ao carregar pessoas jurídicas');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                id_pessoa: Number(formData.id_pessoa)
+            };
+            await api.post('/pessoa-juridica', payload);
+            alert('Pessoa Jurídica criada!');
+            loadPessoasJuridicas();
+            setFormData({ id_pessoa: '', razao_social: '', nome_fantasia: '', cnpj: '', inscricao_estadual: '' });
+        } catch (error) {
+            alert('Erro ao criar pessoa jurídica. Verifique se o ID Pessoa existe e não tem PJ vinculada.');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/pessoa-juridica/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Pessoa Jurídica não encontrada');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/pessoa-juridica/${editData.id_pessoa_juridica}`, editData);
+            alert('Pessoa Jurídica atualizada!');
+            loadPessoasJuridicas();
+        } catch (error) {
+            alert('Erro ao atualizar pessoa jurídica');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/pessoa-juridica/${searchId}`);
+            alert('Pessoa Jurídica deletada!');
+            loadPessoasJuridicas();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar pessoa jurídica');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Pessoas Jurídicas</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Nova Pessoa Jurídica</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2">
+                    <input type="number" name="id_pessoa" value={formData.id_pessoa} onChange={handleCreateChange} placeholder="ID Pessoa (Existente)" className="border p-1 w-full" required />
+                    <input name="razao_social" value={formData.razao_social} onChange={handleCreateChange} placeholder="Razão Social" className="border p-1 w-full" required />
+                    <input name="nome_fantasia" value={formData.nome_fantasia} onChange={handleCreateChange} placeholder="Nome Fantasia" className="border p-1 w-full" />
+                    <input name="cnpj" value={formData.cnpj} onChange={handleCreateChange} placeholder="CNPJ" className="border p-1 w-full" />
+                    <input name="inscricao_estadual" value={formData.inscricao_estadual} onChange={handleCreateChange} placeholder="Inscrição Estadual" className="border p-1 w-full" />
+                    <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Salvar PJ</button>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar PJ (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID PJ" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.razao_social} 
+                            onChange={(e) => setEditData({...editData, razao_social: e.target.value})} 
+                            placeholder="Razão Social" 
+                            className="border p-1 w-full" 
+                        />
+                         <input 
+                            value={editData.nome_fantasia || ''} 
+                            onChange={(e) => setEditData({...editData, nome_fantasia: e.target.value})} 
+                            placeholder="Nome Fantasia" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de Pessoas Jurídicas</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID PJ</th>
+                            <th className="p-2 border">ID Pessoa</th>
+                            <th className="p-2 border">Razão Social</th>
+                            <th className="p-2 border">CNPJ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pessoasJuridicas.map((pj) => (
+                            <tr key={pj.id_pessoa_juridica} className="border-t">
+                                <td className="p-2 border">{pj.id_pessoa_juridica}</td>
+                                <td className="p-2 border">{pj.id_pessoa}</td>
+                                <td className="p-2 border">{pj.razao_social}</td>
+                                <td className="p-2 border">{pj.cnpj}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\PessoaTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { IPessoa } from '../types/backend';
+
+export const PessoaTestPage = () => {
+    const [pessoas, setPessoas] = useState<IPessoa[]>([]);
+    const [formData, setFormData] = useState<{
+        nome: string;
+        genero: string;
+        dt_nascimento: string;
+        obs: string;
+    }>({
+        nome: '',
+        genero: '',
+        dt_nascimento: '',
+        obs: ''
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IPessoa | null>(null);
+
+    useEffect(() => {
+        loadPessoas();
+    }, []);
+
+    const loadPessoas = async () => {
+        try {
+            const response = await api.get('/pessoa');
+            setPessoas(response.data);
+        } catch (error) {
+            alert('Erro ao carregar pessoas');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                dt_nascimento: formData.dt_nascimento ? new Date(formData.dt_nascimento).toISOString() : null
+            };
+            await api.post('/pessoa', payload);
+            alert('Pessoa criada!');
+            loadPessoas();
+            setFormData({ nome: '', genero: '', dt_nascimento: '', obs: '' });
+        } catch (error) {
+            alert('Erro ao criar pessoa');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/pessoa/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Pessoa não encontrada');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/pessoa/${editData.id_pessoa}`, editData);
+            alert('Pessoa atualizada!');
+            loadPessoas();
+        } catch (error) {
+            alert('Erro ao atualizar pessoa');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/pessoa/${searchId}`);
+            alert('Pessoa deletada!');
+            loadPessoas();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar pessoa');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Pessoas</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Nova Pessoa</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2">
+                    <input name="nome" value={formData.nome} onChange={handleCreateChange} placeholder="Nome" className="border p-1 w-full" required />
+                    <input name="genero" value={formData.genero} onChange={handleCreateChange} placeholder="Gênero" className="border p-1 w-full" />
+                    <input type="date" name="dt_nascimento" value={formData.dt_nascimento} onChange={handleCreateChange} className="border p-1 w-full" />
+                    <input name="obs" value={formData.obs} onChange={handleCreateChange} placeholder="Observação" className="border p-1 w-full" />
+                    <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Salvar Pessoa</button>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar Pessoa (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID da Pessoa" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.nome} 
+                            onChange={(e) => setEditData({...editData, nome: e.target.value})} 
+                            placeholder="Nome" 
+                            className="border p-1 w-full" 
+                        />
+                         <input 
+                            value={editData.genero || ''} 
+                            onChange={(e) => setEditData({...editData, genero: e.target.value})} 
+                            placeholder="Gênero" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de Pessoas</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID</th>
+                            <th className="p-2 border">Nome</th>
+                            <th className="p-2 border">Gênero</th>
+                            <th className="p-2 border">Cadastro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pessoas.map((p) => (
+                            <tr key={p.id_pessoa} className="border-t">
+                                <td className="p-2 border">{p.id_pessoa}</td>
+                                <td className="p-2 border">{p.nome}</td>
+                                <td className="p-2 border">{p.genero}</td>
+                                <td className="p-2 border">{new Date(p.dt_cadastro).toLocaleDateString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\TipoTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { ITipo } from '../types/backend';
+
+export const TipoTestPage = () => {
+    const [tipos, setTipos] = useState<ITipo[]>([]);
+    const [formData, setFormData] = useState<{
+        funcao: string;
+    }>({
+        funcao: '',
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<ITipo | null>(null);
+
+    useEffect(() => {
+        loadTipos();
+    }, []);
+
+    const loadTipos = async () => {
+        try {
+            const response = await api.get('/tipo');
+            setTipos(response.data);
+        } catch (error) {
+            alert('Erro ao carregar tipos');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.post('/tipo', formData);
+            alert('Tipo criado!');
+            loadTipos();
+            setFormData({ funcao: '' });
+        } catch (error) {
+            alert('Erro ao criar tipo');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/tipo/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Tipo não encontrado');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/tipo/${editData.id_tipo}`, editData);
+            alert('Tipo atualizado!');
+            loadTipos();
+        } catch (error) {
+            alert('Erro ao atualizar tipo');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/tipo/${searchId}`);
+            alert('Tipo deletado!');
+            loadTipos();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar tipo');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Tipos</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Novo Tipo</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2">
+                    <input name="funcao" value={formData.funcao} onChange={handleCreateChange} placeholder="Função" className="border p-1 w-full" required />
+                    <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Salvar Tipo</button>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar Tipo (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID do Tipo" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.funcao || ''} 
+                            onChange={(e) => setEditData({...editData, funcao: e.target.value})} 
+                            placeholder="Função" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de Tipos</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID</th>
+                            <th className="p-2 border">Função</th>
+                            <th className="p-2 border">Cadastro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {tipos.map((t) => (
+                            <tr key={t.id_tipo} className="border-t">
+                                <td className="p-2 border">{t.id_tipo}</td>
+                                <td className="p-2 border">{t.funcao}</td>
+                                <td className="p-2 border">{new Date(t.dt_cadastro).toLocaleDateString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\VeiculoTestPage.tsx
+================================================================================
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { api } from '../services/api';
+import type { IVeiculo } from '../types/backend';
+
+export const VeiculoTestPage = () => {
+    const [veiculos, setVeiculos] = useState<IVeiculo[]>([]);
+    const [formData, setFormData] = useState<{
+        id_cliente: string;
+        placa: string;
+        chassi: string;
+        marca: string;
+        modelo: string;
+        versao: string;
+        ano_modelo: string;
+        cor: string;
+        combustivel: string;
+        obs: string;
+    }>({
+        id_cliente: '',
+        placa: '',
+        chassi: '',
+        marca: '',
+        modelo: '',
+        versao: '',
+        ano_modelo: '',
+        cor: '',
+        combustivel: '',
+        obs: '',
+    });
+
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IVeiculo | null>(null);
+
+    useEffect(() => {
+        loadVeiculos();
+    }, []);
+
+    const loadVeiculos = async () => {
+        try {
+            const response = await api.get('/veiculo');
+            setVeiculos(response.data);
+        } catch (error) {
+            alert('Erro ao carregar veículos');
+        }
+    };
+
+    const handleCreateChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                id_cliente: Number(formData.id_cliente)
+            };
+            await api.post('/veiculo', payload);
+            alert('Veículo criado!');
+            loadVeiculos();
+            setFormData({
+                id_cliente: '',
+                placa: '',
+                chassi: '',
+                marca: '',
+                modelo: '',
+                versao: '',
+                ano_modelo: '',
+                cor: '',
+                combustivel: '',
+                obs: '',
+            });
+        } catch (error) {
+            alert('Erro ao criar veículo. Verifique se o Cliente ID existe.');
+        }
+    };
+
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/veiculo/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Veículo não encontrado');
+            setEditData(null);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/veiculo/${editData.id_veiculo}`, editData);
+            alert('Veículo atualizado!');
+            loadVeiculos();
+        } catch (error) {
+            alert('Erro ao atualizar veículo');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/veiculo/${searchId}`);
+            alert('Veículo deletado!');
+            loadVeiculos();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar veículo');
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Gerenciar Veículos</h1>
+
+            {/* CREATE */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Criar Novo Veículo</h2>
+                <form onSubmit={handleCreateSubmit} className="space-y-2 grid grid-cols-2 gap-2">
+                    <input type="number" name="id_cliente" value={formData.id_cliente} onChange={handleCreateChange} placeholder="ID Cliente" className="border p-1 w-full" required />
+                    <input name="placa" value={formData.placa} onChange={handleCreateChange} placeholder="Placa" className="border p-1 w-full" required />
+                    <input name="marca" value={formData.marca} onChange={handleCreateChange} placeholder="Marca" className="border p-1 w-full" required />
+                    <input name="modelo" value={formData.modelo} onChange={handleCreateChange} placeholder="Modelo" className="border p-1 w-full" required />
+                    <input name="versao" value={formData.versao} onChange={handleCreateChange} placeholder="Versão" className="border p-1 w-full" />
+                    <input name="ano_modelo" value={formData.ano_modelo} onChange={handleCreateChange} placeholder="Ano Modelo" className="border p-1 w-full" required />
+                    <input name="cor" value={formData.cor} onChange={handleCreateChange} placeholder="Cor" className="border p-1 w-full" required />
+                    <input name="combustivel" value={formData.combustivel} onChange={handleCreateChange} placeholder="Combustível" className="border p-1 w-full" required />
+                    
+                    <button type="submit" className="col-span-2 bg-blue-500 text-white px-4 py-2 rounded">Salvar Veículo</button>
+                </form>
+            </div>
+
+            {/* MANAGE (Search/Update/Delete) */}
+            <div className="border p-4 mb-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Gerenciar Veículo (ID)</h2>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        value={searchId} 
+                        onChange={(e) => setSearchId(e.target.value)} 
+                        placeholder="ID Veículo" 
+                        className="border p-1"
+                    />
+                    <button onClick={handleSearch} className="bg-yellow-500 text-white px-4 py-1 rounded">Localizar</button>
+                    <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-1 rounded">Excluir</button>
+                </div>
+
+                {editData && (
+                    <div className="space-y-2 border-t pt-2">
+                         <input 
+                            value={editData.placa} 
+                            onChange={(e) => setEditData({...editData, placa: e.target.value})} 
+                            placeholder="Placa" 
+                            className="border p-1 w-full" 
+                        />
+                         <input 
+                            value={editData.modelo} 
+                            onChange={(e) => setEditData({...editData, modelo: e.target.value})} 
+                            placeholder="Modelo" 
+                            className="border p-1 w-full" 
+                        />
+                        <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2 rounded w-full">Atualizar</button>
+                    </div>
+                )}
+            </div>
+
+            {/* LIST */}
+            <div className="border p-4 rounded bg-gray-50">
+                <h2 className="text-xl font-semibold mb-2">Lista de Veículos</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2 border">ID</th>
+                            <th className="p-2 border">ID Cliente</th>
+                            <th className="p-2 border">Placa</th>
+                            <th className="p-2 border">Modelo</th>
+                            <th className="p-2 border">Cor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {veiculos.map((v) => (
+                            <tr key={v.id_veiculo} className="border-t">
+                                <td className="p-2 border">{v.id_veiculo}</td>
+                                <td className="p-2 border">{v.id_cliente}</td>
+                                <td className="p-2 border">{v.placa}</td>
+                                <td className="p-2 border">{v.modelo}</td>
+                                <td className="p-2 border">{v.cor}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\services\api.ts
+================================================================================
+import axios from 'axios';
+
+export const api = axios.create({
+  baseURL: 'http://localhost:3000/api',
+});
+
+
+
+================================================================================
+FILE PATH: client\src\types\backend.d.ts
+================================================================================
+export interface IPessoa {
+    id_pessoa: number;
+    nome: string;
+    genero?: string | null;
+    dt_nascimento?: string | null; // Date sent as string
+    obs?: string | null;
+    dt_cadastro: string;
+}
+
+export interface IPessoaFisica {
+    id_pessoa_fisica: number;
+    id_pessoa: number;
+    cpf?: string | null;
+    dt_cadastro: string;
+}
+
+export interface IPessoaJuridica {
+    id_pessoa_juridica: number;
+    id_pessoa: number;
+    razao_social: string;
+    nome_fantasia?: string | null;
+    cnpj?: string | null;
+    inscricao_estadual?: string | null;
+    dt_cadastro: string;
+}
+
+export interface ITipo {
+    id_tipo: number;
+    funcao?: string | null;
+    dt_cadastro: string;
+}
+
+export interface ICliente {
+    id_cliente: number;
+    id_pessoa_fisica?: number | null;
+    id_pessoa_juridica?: number | null;
+    tipo_pessoa: number;
+    telefone_1: string;
+    telefone_2?: string | null;
+    telefone_3?: string | null;
+    email?: string | null;
+    logradouro: string;
+    nr_logradouro: string;
+    compl_logradouro?: string | null;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    dt_cadastro: string;
+}
+
+export interface IFuncionario {
+    id_funcionario: number;
+    id_pessoa_fisica: number;
+    ativo: string;
+    cargo: string;
+    salario?: number | null; // Decimal to number
+    comissao?: number | null;
+    dt_admissao: string;
+    dt_recisao?: string | null;
+    motivo_saida?: string | null;
+    obs?: string | null;
+    dt_cadastro: string;
+}
+
+export interface IPecasEstoque {
+    id_pecas_estoque: number;
+    fabricante?: string | null;
+    nome: string;
+    descricao: string;
+    valor_custo: number; // Decimal
+    valor_venda: number; // Decimal
+    estoque_atual: number;
+    unidade_medida?: string | null;
+    dt_ultima_compra?: string | null;
+    dt_cadastro: string;
+}
+
+export interface IVeiculo {
+    id_veiculo: number;
+    id_cliente: number;
+    placa: string;
+    chassi?: string | null;
+    marca: string;
+    modelo: string;
+    versao?: string | null;
+    ano_modelo: string;
+    cor: string;
+    combustivel: string;
+    obs?: string | null;
+    dt_cadastro: string;
+}
+
+export interface IOrdemDeServico {
+    id_os: number;
+    id_cliente: number;
+    id_veiculo: number;
+    id_funcionario: number;
+    dt_abertura: string;
+    dt_entrega?: string | null;
+    km_entrada: number;
+    status: string;
+    defeito_relatado?: string | null;
+    diagnostico?: string | null;
+    valor_servico?: number | null;
+    valor_pecas?: number | null;
+    valor_final?: number | null;
+    modo_pagamento?: string | null;
+    cod_pagamento?: string | null;
+    parcelas: number;
+    obs?: string | null;
+    dt_cadastro: string;
+}
+
+export interface IItensOs {
+    id_iten: number;
+    id_os: number;
+    id_pecas_estoque?: number | null;
+    descricao: string;
+    qtd: number;
+    valor_unt: number;
+    valor_total: number;
+    dt_cadastro: string;
+}
+
+export interface IFinalizacao {
+    id_finalizacao: number;
+    id_os: number;
+    valor_peca_entrada?: number | null;
+    valor_peca_saida?: number | null;
+    valor_pago_funcionario?: number | null;
+    obs?: string | null;
+    dt_cadastro: string;
+}
+
+
+
+================================================================================
+FILE PATH: server\dockerfile
+================================================================================
+# Usa uma imagem base Node.js (Debian-based para melhor compatibilidade c/ Prisma)
+FROM node:20
+
+# Define o diretório de trabalho dentro do contêiner
+WORKDIR /app/server
+
+# Copia os arquivos de configuração de dependências
+COPY package*.json ./
+
+# Instala as dependências (incluindo o Prisma, express, etc.)
+RUN npm install
+
+# Copia o restante do código para o diretório de trabalho
+COPY . .
+
+# Comando de inicialização não é o principal, pois o Docker Compose o sobrescreve
+CMD [ "npm", "run", "dev" ]
+
+
+================================================================================
+FILE PATH: server\package.json
+================================================================================
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "5.22.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "prisma": "5.22.0",
+    "tsx": "^4.21.0"
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\tsconfig.json
+================================================================================
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "compilerOptions": {
+    // File Layout
+    // "rootDir": "./src",
+    // "outDir": "./dist",
+
+    // Environment Settings
+    // See also https://aka.ms/tsconfig/module
+    "module": "nodenext",
+    "target": "esnext",
+    "types": [],
+    // For nodejs:
+    // "lib": ["esnext"],
+    // "types": ["node"],
+    // and npm install -D @types/node
+
+    // Other Outputs
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    // Stricter Typechecking Options
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    // Style Options
+    // "noImplicitReturns": true,
+    // "noImplicitOverride": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    // "noFallthroughCasesInSwitch": true,
+    // "noPropertyAccessFromIndexSignature": true,
+
+    // Recommended Options
+    "strict": true,
+    "jsx": "react-jsx",
+    //"verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\prisma\schema.prisma
+================================================================================
+// server/prisma/schema.prisma
+
+// 1. Configuração do Client: Deve ser 'prisma-client-js'
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+// 2. Configuração do Banco de Dados
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- TABELAS DE GENERALIZAÇÃO ---
+
+// Tabela 1: Pessoa (Base)
+model Pessoa {
+  id_pessoa       Int      @id @default(autoincrement())
+  nome            String   @db.VarChar(100)
+  genero          String?  @db.VarChar(20)
+  dt_nascimento   DateTime? @db.Date // DATE
+  obs             String?  @db.VarChar(500)
+  dt_cadastro     DateTime @default(now()) @db.Timestamp()
+
+  // Relacionamentos 1:1 (Para Especialização)
+  pessoa_fisica   PessoaFisica?
+  pessoa_juridica PessoaJuridica?
+
+  @@map("pessoa")
+}
+
+// Tabela 2: Pessoa Física (Especialização)
+model PessoaFisica {
+  id_pessoa_fisica Int      @id @default(autoincrement())
+  id_pessoa        Int      @unique
+  cpf              String?  @unique @db.VarChar(11)
+  dt_cadastro      DateTime @default(now()) @db.Timestamp()
+
+  // Relacionamento com Pessoa
+  pessoa           Pessoa   @relation(fields: [id_pessoa], references: [id_pessoa])
+
+  // Relacionamentos para outras tabelas
+  funcionario      Funcionario?
+  clientes         Cliente[] // Mapeamento 1:N
+  
+  @@map("pessoa_fisica")
+}
+
+// Tabela 3: Pessoa Jurídica (Especialização)
+model PessoaJuridica {
+  id_pessoa_juridica Int      @id @default(autoincrement())
+  id_pessoa          Int      @unique
+  razao_social       String   @db.VarChar(100)
+  nome_fantasia      String?  @db.VarChar(100)
+  cnpj               String?  @unique @db.VarChar(14)
+  inscricao_estadual String?  @db.VarChar(50)
+  dt_cadastro        DateTime @default(now()) @db.Timestamp()
+
+  // Relacionamento com Pessoa
+  pessoa             Pessoa   @relation(fields: [id_pessoa], references: [id_pessoa])
+
+  // Relacionamentos para outras tabelas
+  clientes           Cliente[]
+
+  @@map("pessoa_juridica")
+}
+
+// Tabela 4: Tipo (Função da Pessoa/Empresa)
+model Tipo {
+  id_tipo     Int      @id @default(autoincrement())
+  funcao      String?  @db.VarChar(50)
+  dt_cadastro DateTime @default(now()) @db.Timestamp()
+  
+  // Relacionamento com Cliente
+  clientes    Cliente[]
+  
+  @@map("tipo")
+}
+
+// --- TABELAS PRINCIPAIS ---
+
+// Tabela 5: Cliente (Endereço e Contato)
+model Cliente {
+  id_cliente          Int       @id @default(autoincrement())
+  
+  // FKs OPCIONAIS (NULLABLE)
+  id_pessoa_fisica    Int?      
+  id_pessoa_juridica  Int?      
+  tipo_pessoa         Int       // FK
+  
+  telefone_1          String    @db.VarChar(15)
+  telefone_2          String?   @db.VarChar(15)
+  telefone_3          String?   @db.VarChar(15)
+  email               String?   @db.VarChar(100)
+  logradouro          String    @db.VarChar(150)
+  nr_logradouro       String    @db.VarChar(10)
+  compl_logradouro    String?   @db.VarChar(50)
+  bairro              String    @db.VarChar(100)
+  cidade              String    @db.VarChar(100)
+  estado              String    @db.Char(2)
+  dt_cadastro         DateTime  @default(now()) @db.Timestamp()
+  
+  // Relacionamentos (Chaves Estrangeiras)
+  pessoa_fisica       PessoaFisica?  @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
+  pessoa_juridica     PessoaJuridica? @relation(fields: [id_pessoa_juridica], references: [id_pessoa_juridica])
+  tipo                Tipo          @relation(fields: [tipo_pessoa], references: [id_tipo])
+  
+  // Relacionamentos de Volta
+  veiculos            Veiculo[]
+  ordens_de_servico   OrdemDeServico[]
+
+  // Índices para as FKs para otimização
+  @@index([id_pessoa_fisica])
+  @@index([id_pessoa_juridica])
+  @@index([tipo_pessoa])
+  
+  // O CHECK CONSTRAINT (exclusividade PF/PJ) será tratado na lógica de serviço
+  @@map("cliente")
+}
+
+// Tabela 6: Funcionário
+model Funcionario {
+  id_funcionario      Int      @id @default(autoincrement())
+  id_pessoa_fisica    Int      @unique 
+  ativo               String   @db.Char(1) // Seu SQL usa CHAR(1) para boolean/status
+  cargo               String   @db.VarChar(50)
+  salario             Decimal?   @db.Decimal(10, 2)
+  comissao            Int?     
+  dt_admissao         DateTime @db.Timestamp()
+  dt_recisao          DateTime? @db.Timestamp()
+  motivo_saida        String?  @db.VarChar(200)
+  obs                 String?  @db.VarChar(500)
+  dt_cadastro         DateTime @default(now()) @db.Timestamp()
+  
+  // Relacionamento 1:1 com PessoaFisica
+  pessoa_fisica       PessoaFisica @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
+  
+  // Relacionamento de Volta
+  ordens_de_servico   OrdemDeServico[]
+
+  @@map("funcionario")
+}
+
+// Tabela 7: Peças Estoque
+model PecasEstoque {
+    id_pecas_estoque    Int      @id @default(autoincrement())
+    fabricante          String?  @db.VarChar(50)
+    nome                String   @db.VarChar(255)
+    descricao           String   @db.VarChar(255)
+    valor_custo         Decimal    @db.Decimal(10, 2)
+    valor_venda         Decimal    @db.Decimal(10, 2)
+    estoque_atual       Int      
+    unidade_medida      String?  @db.VarChar(20)
+    dt_ultima_compra    DateTime? @db.Timestamp()
+    dt_cadastro         DateTime @default(now()) @db.Timestamp()
+    
+    // Relacionamento de Volta (M:N com OS)
+    itens_os            ItensOs[]
+
+    @@map("pecas_estoque")
+}
+
+// Tabela 8: Veículo
+model Veiculo {
+    id_veiculo          Int      @id @default(autoincrement())
+    id_cliente          Int      
+    placa               String   @unique @db.VarChar(8)
+    chassi              String?  @db.VarChar(20)
+    marca               String   @db.VarChar(50)
+    modelo              String   @db.VarChar(50)
+    versao              String?  @db.VarChar(50)
+    ano_modelo          String   @db.VarChar(10)
+    cor                 String   @db.VarChar(30)
+    combustivel         String   @db.VarChar(20)
+    obs                 String?  @db.VarChar(500)
+    dt_cadastro         DateTime @default(now()) @db.Timestamp()
+    
+    // Relacionamento 1:N com Cliente
+    cliente             Cliente  @relation(fields: [id_cliente], references: [id_cliente])
+    
+    // Relacionamento de Volta
+    ordens_de_servico   OrdemDeServico[]
+
+    @@map("veiculo")
+}
+
+// Tabela 9: Ordem de Serviço (OS)
+model OrdemDeServico {
+    id_os               Int      @id @default(autoincrement())
+    id_cliente          Int
+    id_veiculo          Int
+    id_funcionario      Int
+    dt_abertura         DateTime @default(now()) @db.Timestamp()
+    dt_entrega          DateTime? @db.Timestamp()
+    km_entrada          Int      
+    status              String   @db.VarChar(20)
+    defeito_relatado    String?  @db.VarChar(500)
+    diagnostico         String?  @db.VarChar(500)
+    valor_servico       Decimal?   @db.Decimal(10, 2)
+    valor_pecas         Decimal?   @db.Decimal(10, 2)
+    valor_final         Decimal?   @db.Decimal(12, 2)
+    modo_pagamento      String?  @db.VarChar(50)
+    cod_pagamento       String?  @db.VarChar(80)
+    parcelas            Int      
+    obs                 String?  @db.VarChar(500)
+    dt_cadastro         DateTime @default(now()) @db.Timestamp()
+    
+    // Relacionamentos (Chaves Estrangeiras)
+    cliente             Cliente    @relation(fields: [id_cliente], references: [id_cliente])
+    veiculo             Veiculo    @relation(fields: [id_veiculo], references: [id_veiculo])
+    funcionario         Funcionario @relation(fields: [id_funcionario], references: [id_funcionario])
+    
+    // Relacionamentos de Volta
+    itens_os            ItensOs[]
+    finalizacao         Finalizacao?
+
+    @@map("ordem_de_servico")
+}
+
+// Tabela 10: Tabela Associativa M:N (ITENS_OS)
+model ItensOs {
+    id_iten             Int      @id @default(autoincrement())
+    id_os               Int      
+    id_pecas_estoque    Int?      
+    descricao           String   @db.VarChar(500) 
+    qtd                 Int      
+    valor_unt           Decimal    @db.Decimal(10, 2)
+    valor_total         Decimal    @db.Decimal(12, 2)
+    dt_cadastro         DateTime @default(now()) @db.Timestamp()
+    
+    // Relacionamentos (Chaves Estrangeiras)
+    ordem_de_servico    OrdemDeServico @relation(fields: [id_os], references: [id_os])
+    pecas_estoque       PecasEstoque?   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
+
+    @@map("itens_os")
+}
+
+// Tabela 11: Finalização (1:1 com OS)
+model Finalizacao {
+    id_finalizacao      Int      @id @default(autoincrement())
+    id_os               Int      @unique // 1:1 com OS
+    valor_peca_entrada  Decimal?   @db.Decimal(10, 2)
+    valor_peca_saida    Decimal?   @db.Decimal(10, 2)
+    valor_pago_funcionario Decimal? @db.Decimal(10, 2)
+    obs                 String?  @db.VarChar(500)
+    dt_cadastro         DateTime @default(now()) @db.Timestamp()
+    
+    // Relacionamento 1:1 com OrdemDeServico
+    ordem_de_servico    OrdemDeServico @relation(fields: [id_os], references: [id_os])
+
+    @@map("finalizacao")
+}
+
+
+================================================================================
+FILE PATH: server\prisma\migrations\migration_lock.toml
+================================================================================
+# Please do not edit this file manually
+# It should be added in your version-control system (e.g., Git)
+provider = "postgresql"
+
+
+
+================================================================================
+FILE PATH: server\prisma\migrations\20251208001043_init_full_schema\migration.sql
+================================================================================
+-- CreateTable
+CREATE TABLE "pessoa" (
+    "id_pessoa" SERIAL NOT NULL,
+    "nome" VARCHAR(100) NOT NULL,
+    "genero" VARCHAR(20),
+    "dt_nascimento" DATE,
+    "obs" VARCHAR(500),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "pessoa_pkey" PRIMARY KEY ("id_pessoa")
+);
+
+-- CreateTable
+CREATE TABLE "pessoa_fisica" (
+    "id_pessoa_fisica" SERIAL NOT NULL,
+    "id_pessoa" INTEGER NOT NULL,
+    "cpf" VARCHAR(11),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "pessoa_fisica_pkey" PRIMARY KEY ("id_pessoa_fisica")
+);
+
+-- CreateTable
+CREATE TABLE "pessoa_juridica" (
+    "id_pessoa_juridica" SERIAL NOT NULL,
+    "id_pessoa" INTEGER NOT NULL,
+    "razao_social" VARCHAR(100) NOT NULL,
+    "nome_fantasia" VARCHAR(100),
+    "cnpj" VARCHAR(14),
+    "inscricao_estadual" VARCHAR(50),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "pessoa_juridica_pkey" PRIMARY KEY ("id_pessoa_juridica")
+);
+
+-- CreateTable
+CREATE TABLE "tipo" (
+    "id_tipo" SERIAL NOT NULL,
+    "funcao" VARCHAR(50),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "tipo_pkey" PRIMARY KEY ("id_tipo")
+);
+
+-- CreateTable
+CREATE TABLE "cliente" (
+    "id_cliente" SERIAL NOT NULL,
+    "id_pessoa_fisica" INTEGER,
+    "id_pessoa_juridica" INTEGER,
+    "tipo_pessoa" INTEGER NOT NULL,
+    "telefone_1" VARCHAR(15) NOT NULL,
+    "telefone_2" VARCHAR(15),
+    "telefone_3" VARCHAR(15),
+    "email" VARCHAR(100),
+    "logradouro" VARCHAR(150) NOT NULL,
+    "nr_logradouro" VARCHAR(10) NOT NULL,
+    "compl_logradouro" VARCHAR(50),
+    "bairro" VARCHAR(100) NOT NULL,
+    "cidade" VARCHAR(100) NOT NULL,
+    "estado" CHAR(2) NOT NULL,
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "cliente_pkey" PRIMARY KEY ("id_cliente")
+);
+
+-- CreateTable
+CREATE TABLE "funcionario" (
+    "id_funcionario" SERIAL NOT NULL,
+    "id_pessoa_fisica" INTEGER NOT NULL,
+    "ativo" CHAR(1) NOT NULL,
+    "cargo" VARCHAR(50) NOT NULL,
+    "salario" DECIMAL(10,2),
+    "comissao" INTEGER,
+    "dt_admissao" TIMESTAMP NOT NULL,
+    "dt_recisao" TIMESTAMP,
+    "motivo_saida" VARCHAR(200),
+    "obs" VARCHAR(500),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "funcionario_pkey" PRIMARY KEY ("id_funcionario")
+);
+
+-- CreateTable
+CREATE TABLE "pecas_estoque" (
+    "id_pecas_estoque" SERIAL NOT NULL,
+    "fabricante" VARCHAR(50),
+    "nome" VARCHAR(255) NOT NULL,
+    "descricao" VARCHAR(255) NOT NULL,
+    "valor_custo" DECIMAL(10,2) NOT NULL,
+    "valor_venda" DECIMAL(10,2) NOT NULL,
+    "estoque_atual" INTEGER NOT NULL,
+    "unidade_medida" VARCHAR(20),
+    "dt_ultima_compra" TIMESTAMP,
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "pecas_estoque_pkey" PRIMARY KEY ("id_pecas_estoque")
+);
+
+-- CreateTable
+CREATE TABLE "veiculo" (
+    "id_veiculo" SERIAL NOT NULL,
+    "id_cliente" INTEGER NOT NULL,
+    "placa" VARCHAR(8) NOT NULL,
+    "chassi" VARCHAR(20),
+    "marca" VARCHAR(50) NOT NULL,
+    "modelo" VARCHAR(50) NOT NULL,
+    "versao" VARCHAR(50),
+    "ano_modelo" VARCHAR(10) NOT NULL,
+    "cor" VARCHAR(30) NOT NULL,
+    "combustivel" VARCHAR(20) NOT NULL,
+    "obs" VARCHAR(500),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "veiculo_pkey" PRIMARY KEY ("id_veiculo")
+);
+
+-- CreateTable
+CREATE TABLE "ordem_de_servico" (
+    "id_os" SERIAL NOT NULL,
+    "id_cliente" INTEGER NOT NULL,
+    "id_veiculo" INTEGER NOT NULL,
+    "id_funcionario" INTEGER NOT NULL,
+    "dt_abertura" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "dt_entrega" TIMESTAMP,
+    "km_entrada" INTEGER NOT NULL,
+    "status" VARCHAR(20) NOT NULL,
+    "defeito_relatado" VARCHAR(500),
+    "diagnostico" VARCHAR(500),
+    "valor_servico" DECIMAL(10,2),
+    "valor_pecas" DECIMAL(10,2),
+    "valor_final" DECIMAL(12,2),
+    "modo_pagamento" VARCHAR(50),
+    "cod_pagamento" VARCHAR(80),
+    "parcelas" INTEGER NOT NULL,
+    "obs" VARCHAR(500),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ordem_de_servico_pkey" PRIMARY KEY ("id_os")
+);
+
+-- CreateTable
+CREATE TABLE "itens_os" (
+    "id_iten" SERIAL NOT NULL,
+    "id_os" INTEGER NOT NULL,
+    "id_pecas_estoque" INTEGER,
+    "descricao" VARCHAR(500) NOT NULL,
+    "qtd" INTEGER NOT NULL,
+    "valor_unt" DECIMAL(10,2) NOT NULL,
+    "valor_total" DECIMAL(12,2) NOT NULL,
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "itens_os_pkey" PRIMARY KEY ("id_iten")
+);
+
+-- CreateTable
+CREATE TABLE "finalizacao" (
+    "id_finalizacao" SERIAL NOT NULL,
+    "id_os" INTEGER NOT NULL,
+    "valor_peca_entrada" DECIMAL(10,2),
+    "valor_peca_saida" DECIMAL(10,2),
+    "valor_pago_funcionario" DECIMAL(10,2),
+    "obs" VARCHAR(500),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "finalizacao_pkey" PRIMARY KEY ("id_finalizacao")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "pessoa_fisica_id_pessoa_key" ON "pessoa_fisica"("id_pessoa");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "pessoa_fisica_cpf_key" ON "pessoa_fisica"("cpf");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "pessoa_juridica_id_pessoa_key" ON "pessoa_juridica"("id_pessoa");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "pessoa_juridica_cnpj_key" ON "pessoa_juridica"("cnpj");
+
+-- CreateIndex
+CREATE INDEX "cliente_id_pessoa_fisica_idx" ON "cliente"("id_pessoa_fisica");
+
+-- CreateIndex
+CREATE INDEX "cliente_id_pessoa_juridica_idx" ON "cliente"("id_pessoa_juridica");
+
+-- CreateIndex
+CREATE INDEX "cliente_tipo_pessoa_idx" ON "cliente"("tipo_pessoa");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "funcionario_id_pessoa_fisica_key" ON "funcionario"("id_pessoa_fisica");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "veiculo_placa_key" ON "veiculo"("placa");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "finalizacao_id_os_key" ON "finalizacao"("id_os");
+
+-- AddForeignKey
+ALTER TABLE "pessoa_fisica" ADD CONSTRAINT "pessoa_fisica_id_pessoa_fkey" FOREIGN KEY ("id_pessoa") REFERENCES "pessoa"("id_pessoa") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "pessoa_juridica" ADD CONSTRAINT "pessoa_juridica_id_pessoa_fkey" FOREIGN KEY ("id_pessoa") REFERENCES "pessoa"("id_pessoa") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cliente" ADD CONSTRAINT "cliente_id_pessoa_fisica_fkey" FOREIGN KEY ("id_pessoa_fisica") REFERENCES "pessoa_fisica"("id_pessoa_fisica") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cliente" ADD CONSTRAINT "cliente_id_pessoa_juridica_fkey" FOREIGN KEY ("id_pessoa_juridica") REFERENCES "pessoa_juridica"("id_pessoa_juridica") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cliente" ADD CONSTRAINT "cliente_tipo_pessoa_fkey" FOREIGN KEY ("tipo_pessoa") REFERENCES "tipo"("id_tipo") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "funcionario" ADD CONSTRAINT "funcionario_id_pessoa_fisica_fkey" FOREIGN KEY ("id_pessoa_fisica") REFERENCES "pessoa_fisica"("id_pessoa_fisica") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "veiculo" ADD CONSTRAINT "veiculo_id_cliente_fkey" FOREIGN KEY ("id_cliente") REFERENCES "cliente"("id_cliente") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ordem_de_servico" ADD CONSTRAINT "ordem_de_servico_id_cliente_fkey" FOREIGN KEY ("id_cliente") REFERENCES "cliente"("id_cliente") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ordem_de_servico" ADD CONSTRAINT "ordem_de_servico_id_veiculo_fkey" FOREIGN KEY ("id_veiculo") REFERENCES "veiculo"("id_veiculo") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ordem_de_servico" ADD CONSTRAINT "ordem_de_servico_id_funcionario_fkey" FOREIGN KEY ("id_funcionario") REFERENCES "funcionario"("id_funcionario") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "itens_os" ADD CONSTRAINT "itens_os_id_os_fkey" FOREIGN KEY ("id_os") REFERENCES "ordem_de_servico"("id_os") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "itens_os" ADD CONSTRAINT "itens_os_id_pecas_estoque_fkey" FOREIGN KEY ("id_pecas_estoque") REFERENCES "pecas_estoque"("id_pecas_estoque") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "finalizacao" ADD CONSTRAINT "finalizacao_id_os_fkey" FOREIGN KEY ("id_os") REFERENCES "ordem_de_servico"("id_os") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+
+
+================================================================================
+FILE PATH: server\src\prisma.ts
+================================================================================
+import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+export const prisma = new PrismaClient();
+
+
+
+
+================================================================================
+FILE PATH: server\src\server.ts
+================================================================================
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('Centro Automotivo API is running');
+});
+
+import { pessoaRoutes } from './routes/pessoa.routes.js';
+import { tipoRoutes } from './routes/tipo.routes.js';
+import { pessoaFisicaRoutes } from './routes/pessoaFisica.routes.js';
+import { pessoaJuridicaRoutes } from './routes/pessoaJuridica.routes.js';
+import { clienteRoutes } from './routes/cliente.routes.js';
+import { funcionarioRoutes } from './routes/funcionario.routes.js';
+import { pecasEstoqueRoutes } from './routes/pecasEstoque.routes.js';
+import { veiculoRoutes } from './routes/veiculo.routes.js';
+import { ordemDeServicoRoutes } from './routes/ordemDeServico.routes.js';
+import { itensOsRoutes } from './routes/itensOs.routes.js';
+import { finalizacaoRoutes } from './routes/finalizacao.routes.js';
+
+app.use('/api/pessoa', pessoaRoutes);
+app.use('/api/tipo', tipoRoutes);
+app.use('/api/pessoa-fisica', pessoaFisicaRoutes);
+app.use('/api/pessoa-juridica', pessoaJuridicaRoutes);
+app.use('/api/cliente', clienteRoutes);
+app.use('/api/funcionario', funcionarioRoutes);
+app.use('/api/pecas-estoque', pecasEstoqueRoutes);
+app.use('/api/veiculo', veiculoRoutes);
+app.use('/api/ordem-de-servico', ordemDeServicoRoutes);
+app.use('/api/itens-os', itensOsRoutes);
+app.use('/api/finalizacao', finalizacaoRoutes);
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\cliente.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { ClienteRepository } from '../repositories/cliente.repository.js';
+
+const repository = new ClienteRepository();
+
+export class ClienteController {
+  async create(req: Request, res: Response) {
+    try {
+      const cliente = await repository.create(req.body);
+      res.status(201).json(cliente);
+    } catch (error) {
+        console.error(error);
+      res.status(400).json({ error: 'Failed to create Cliente', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const clientes = await repository.findAll();
+      res.json(clientes);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Clientes' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const cliente = await repository.findById(id);
+      if (!cliente) {
+        return res.status(404).json({ error: 'Cliente not found' });
+      }
+      res.json(cliente);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Cliente' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const cliente = await repository.update(id, req.body);
+      res.json(cliente);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Cliente' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Cliente' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\finalizacao.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { FinalizacaoRepository } from '../repositories/finalizacao.repository.js';
+
+const repository = new FinalizacaoRepository();
+
+export class FinalizacaoController {
+  async create(req: Request, res: Response) {
+    try {
+      const finalizacao = await repository.create(req.body);
+      res.status(201).json(finalizacao);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create Finalizacao', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const finalizacoes = await repository.findAll();
+      res.json(finalizacoes);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Finalizacoes' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const finalizacao = await repository.findById(id);
+      if (!finalizacao) {
+        return res.status(404).json({ error: 'Finalizacao not found' });
+      }
+      res.json(finalizacao);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Finalizacao' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const finalizacao = await repository.update(id, req.body);
+      res.json(finalizacao);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Finalizacao' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Finalizacao' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\funcionario.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { FuncionarioRepository } from '../repositories/funcionario.repository.js';
+
+const repository = new FuncionarioRepository();
+
+export class FuncionarioController {
+  async create(req: Request, res: Response) {
+    try {
+      const funcionario = await repository.create(req.body);
+      res.status(201).json(funcionario);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create Funcionario', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const funcionarios = await repository.findAll();
+      res.json(funcionarios);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Funcionarios' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const funcionario = await repository.findById(id);
+      if (!funcionario) {
+        return res.status(404).json({ error: 'Funcionario not found' });
+      }
+      res.json(funcionario);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Funcionario' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const funcionario = await repository.update(id, req.body);
+      res.json(funcionario);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Funcionario' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Funcionario' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\itensOs.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { ItensOsRepository } from '../repositories/itensOs.repository.js';
+
+const repository = new ItensOsRepository();
+
+export class ItensOsController {
+  async create(req: Request, res: Response) {
+    try {
+      const item = await repository.create(req.body);
+      res.status(201).json(item);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create Item OS', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const itens = await repository.findAll();
+      res.json(itens);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Itens OS' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const item = await repository.findById(id);
+      if (!item) {
+        return res.status(404).json({ error: 'Item OS not found' });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Item OS' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const item = await repository.update(id, req.body);
+      res.json(item);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Item OS' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Item OS' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\ordemDeServico.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { OrdemDeServicoRepository } from '../repositories/ordemDeServico.repository.js';
+
+const repository = new OrdemDeServicoRepository();
+
+export class OrdemDeServicoController {
+  async create(req: Request, res: Response) {
+    try {
+      const os = await repository.create(req.body);
+      res.status(201).json(os);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create OS', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const oss = await repository.findAll();
+      res.json(oss);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch OSs' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const os = await repository.findById(id);
+      if (!os) {
+        return res.status(404).json({ error: 'OS not found' });
+      }
+      res.json(os);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch OS' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const os = await repository.update(id, req.body);
+      res.json(os);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update OS' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete OS' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\pecasEstoque.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { PecasEstoqueRepository } from '../repositories/pecasEstoque.repository.js';
+
+const repository = new PecasEstoqueRepository();
+
+export class PecasEstoqueController {
+  async create(req: Request, res: Response) {
+    try {
+      const peca = await repository.create(req.body);
+      res.status(201).json(peca);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create Peca', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const pecas = await repository.findAll();
+      res.json(pecas);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Pecas' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const peca = await repository.findById(id);
+      if (!peca) {
+        return res.status(404).json({ error: 'Peca not found' });
+      }
+      res.json(peca);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Peca' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const peca = await repository.update(id, req.body);
+      res.json(peca);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Peca' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Peca' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\pessoa.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { PessoaRepository } from '../repositories/pessoa.repository.js';
+
+const repository = new PessoaRepository();
+
+export class PessoaController {
+  async create(req: Request, res: Response) {
+    try {
+      const pessoa = await repository.create(req.body);
+      res.status(201).json(pessoa);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create Pessoa', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const pessoas = await repository.findAll();
+      res.json(pessoas);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Pessoas' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const pessoa = await repository.findById(id);
+      if (!pessoa) {
+        return res.status(404).json({ error: 'Pessoa not found' });
+      }
+      res.json(pessoa);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Pessoa' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const pessoa = await repository.update(id, req.body);
+      res.json(pessoa);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Pessoa' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Pessoa' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\pessoaFisica.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { PessoaFisicaRepository } from '../repositories/pessoaFisica.repository.js';
+
+const repository = new PessoaFisicaRepository();
+
+export class PessoaFisicaController {
+  async create(req: Request, res: Response) {
+    try {
+      const pessoaFisica = await repository.create(req.body);
+      res.status(201).json(pessoaFisica);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create PessoaFisica', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const pessoasFisicas = await repository.findAll();
+      res.json(pessoasFisicas);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch PessoasFisicas' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const pessoaFisica = await repository.findById(id);
+      if (!pessoaFisica) {
+        return res.status(404).json({ error: 'PessoaFisica not found' });
+      }
+      res.json(pessoaFisica);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch PessoaFisica' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const pessoaFisica = await repository.update(id, req.body);
+      res.json(pessoaFisica);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update PessoaFisica' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete PessoaFisica' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\pessoaJuridica.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { PessoaJuridicaRepository } from '../repositories/pessoaJuridica.repository.js';
+
+const repository = new PessoaJuridicaRepository();
+
+export class PessoaJuridicaController {
+  async create(req: Request, res: Response) {
+    try {
+      const pessoaJuridica = await repository.create(req.body);
+      res.status(201).json(pessoaJuridica);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create PessoaJuridica', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const pessoasJuridicas = await repository.findAll();
+      res.json(pessoasJuridicas);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch PessoasJuridicas' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const pessoaJuridica = await repository.findById(id);
+      if (!pessoaJuridica) {
+        return res.status(404).json({ error: 'PessoaJuridica not found' });
+      }
+      res.json(pessoaJuridica);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch PessoaJuridica' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const pessoaJuridica = await repository.update(id, req.body);
+      res.json(pessoaJuridica);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update PessoaJuridica' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete PessoaJuridica' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\tipo.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { TipoRepository } from '../repositories/tipo.repository.js';
+
+const repository = new TipoRepository();
+
+export class TipoController {
+  async create(req: Request, res: Response) {
+    try {
+      const tipo = await repository.create(req.body);
+      res.status(201).json(tipo);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create Tipo', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const tipos = await repository.findAll();
+      res.json(tipos);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Tipos' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const tipo = await repository.findById(id);
+      if (!tipo) {
+        return res.status(404).json({ error: 'Tipo not found' });
+      }
+      res.json(tipo);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Tipo' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const tipo = await repository.update(id, req.body);
+      res.json(tipo);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Tipo' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Tipo' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\veiculo.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { VeiculoRepository } from '../repositories/veiculo.repository.js';
+
+const repository = new VeiculoRepository();
+
+export class VeiculoController {
+  async create(req: Request, res: Response) {
+    try {
+      const veiculo = await repository.create(req.body);
+      res.status(201).json(veiculo);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create Veiculo', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const veiculos = await repository.findAll();
+      res.json(veiculos);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Veiculos' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const veiculo = await repository.findById(id);
+      if (!veiculo) {
+        return res.status(404).json({ error: 'Veiculo not found' });
+      }
+      res.json(veiculo);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Veiculo' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const veiculo = await repository.update(id, req.body);
+      res.json(veiculo);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Veiculo' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Veiculo' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\cliente.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class ClienteRepository {
+  async create(data: Prisma.ClienteCreateInput) {
+    return await prisma.cliente.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.cliente.findMany({
+        include: {
+            pessoa_fisica: { include: { pessoa: true } },
+            pessoa_juridica: { include: { pessoa: true } },
+            tipo: true
+        }
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.cliente.findUnique({
+      where: { id_cliente: id },
+      include: {
+        pessoa_fisica: { include: { pessoa: true } },
+        pessoa_juridica: { include: { pessoa: true } },
+        tipo: true
+      }
+    });
+  }
+
+  async update(id: number, data: Prisma.ClienteUpdateInput) {
+    return await prisma.cliente.update({
+      where: { id_cliente: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.cliente.delete({
+      where: { id_cliente: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\finalizacao.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class FinalizacaoRepository {
+  async create(data: Prisma.FinalizacaoCreateInput) {
+    return await prisma.finalizacao.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.finalizacao.findMany({
+        include: { ordem_de_servico: true }
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.finalizacao.findUnique({
+      where: { id_finalizacao: id },
+        include: { ordem_de_servico: true }
+    });
+  }
+
+  async update(id: number, data: Prisma.FinalizacaoUpdateInput) {
+    return await prisma.finalizacao.update({
+      where: { id_finalizacao: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.finalizacao.delete({
+      where: { id_finalizacao: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\funcionario.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class FuncionarioRepository {
+  async create(data: Prisma.FuncionarioCreateInput) {
+    return await prisma.funcionario.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.funcionario.findMany({
+        include: { pessoa_fisica: { include: { pessoa: true } } }
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.funcionario.findUnique({
+      where: { id_funcionario: id },
+      include: { pessoa_fisica: { include: { pessoa: true } } }
+    });
+  }
+
+  async update(id: number, data: Prisma.FuncionarioUpdateInput) {
+    return await prisma.funcionario.update({
+      where: { id_funcionario: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.funcionario.delete({
+      where: { id_funcionario: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\itensOs.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class ItensOsRepository {
+  async create(data: Prisma.ItensOsCreateInput) {
+    return await prisma.itensOs.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.itensOs.findMany({
+        include: { ordem_de_servico: true, pecas_estoque: true }
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.itensOs.findUnique({
+      where: { id_iten: id },
+        include: { ordem_de_servico: true, pecas_estoque: true }
+    });
+  }
+
+  async update(id: number, data: Prisma.ItensOsUpdateInput) {
+    return await prisma.itensOs.update({
+      where: { id_iten: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.itensOs.delete({
+      where: { id_iten: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\ordemDeServico.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class OrdemDeServicoRepository {
+  async create(data: Prisma.OrdemDeServicoCreateInput) {
+    return await prisma.ordemDeServico.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.ordemDeServico.findMany({
+        include: {
+            cliente: true,
+            veiculo: true,
+            funcionario: true,
+            itens_os: true,
+            finalizacao: true
+        }
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.ordemDeServico.findUnique({
+      where: { id_os: id },
+      include: {
+        cliente: true,
+        veiculo: true,
+        funcionario: true,
+        itens_os: true,
+        finalizacao: true
+      }
+    });
+  }
+
+  async update(id: number, data: Prisma.OrdemDeServicoUpdateInput) {
+    return await prisma.ordemDeServico.update({
+      where: { id_os: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.ordemDeServico.delete({
+      where: { id_os: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\pecasEstoque.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class PecasEstoqueRepository {
+  async create(data: Prisma.PecasEstoqueCreateInput) {
+    return await prisma.pecasEstoque.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.pecasEstoque.findMany();
+  }
+
+  async findById(id: number) {
+    return await prisma.pecasEstoque.findUnique({
+      where: { id_pecas_estoque: id },
+    });
+  }
+
+  async update(id: number, data: Prisma.PecasEstoqueUpdateInput) {
+    return await prisma.pecasEstoque.update({
+      where: { id_pecas_estoque: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.pecasEstoque.delete({
+      where: { id_pecas_estoque: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\pessoa.repository.ts
+================================================================================
+import { Prisma, PrismaClient } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class PessoaRepository {
+  async create(data: Prisma.PessoaCreateInput) {
+    return await prisma.pessoa.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.pessoa.findMany();
+  }
+
+  async findById(id: number) {
+    return await prisma.pessoa.findUnique({
+      where: { id_pessoa: id },
+    });
+  }
+
+  async update(id: number, data: Prisma.PessoaUpdateInput) {
+    return await prisma.pessoa.update({
+      where: { id_pessoa: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.pessoa.delete({
+      where: { id_pessoa: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\pessoaFisica.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class PessoaFisicaRepository {
+  async create(data: Prisma.PessoaFisicaCreateInput) {
+    return await prisma.pessoaFisica.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.pessoaFisica.findMany({
+        include: { pessoa: true }
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.pessoaFisica.findUnique({
+      where: { id_pessoa_fisica: id },
+      include: { pessoa: true }
+    });
+  }
+
+  async update(id: number, data: Prisma.PessoaFisicaUpdateInput) {
+    return await prisma.pessoaFisica.update({
+      where: { id_pessoa_fisica: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.pessoaFisica.delete({
+      where: { id_pessoa_fisica: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\pessoaJuridica.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class PessoaJuridicaRepository {
+  async create(data: Prisma.PessoaJuridicaCreateInput) {
+    return await prisma.pessoaJuridica.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.pessoaJuridica.findMany({
+        include: { pessoa: true }
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.pessoaJuridica.findUnique({
+      where: { id_pessoa_juridica: id },
+      include: { pessoa: true }
+    });
+  }
+
+  async update(id: number, data: Prisma.PessoaJuridicaUpdateInput) {
+    return await prisma.pessoaJuridica.update({
+      where: { id_pessoa_juridica: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.pessoaJuridica.delete({
+      where: { id_pessoa_juridica: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\tipo.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class TipoRepository {
+  async create(data: Prisma.TipoCreateInput) {
+    return await prisma.tipo.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.tipo.findMany();
+  }
+
+  async findById(id: number) {
+    return await prisma.tipo.findUnique({
+      where: { id_tipo: id },
+    });
+  }
+
+  async update(id: number, data: Prisma.TipoUpdateInput) {
+    return await prisma.tipo.update({
+      where: { id_tipo: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.tipo.delete({
+      where: { id_tipo: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\veiculo.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class VeiculoRepository {
+  async create(data: Prisma.VeiculoCreateInput) {
+    return await prisma.veiculo.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.veiculo.findMany({
+        include: { cliente: true }
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.veiculo.findUnique({
+      where: { id_veiculo: id },
+      include: { cliente: true }
+    });
+  }
+
+  async update(id: number, data: Prisma.VeiculoUpdateInput) {
+    return await prisma.veiculo.update({
+      where: { id_veiculo: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.veiculo.delete({
+      where: { id_veiculo: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\routes\cliente.routes.ts
+================================================================================
+import { Router } from 'express';
+import { ClienteController } from '../controllers/cliente.controller.js';
+
+const clienteRoutes = Router();
+const controller = new ClienteController();
+
+clienteRoutes.post('/', controller.create);
+clienteRoutes.get('/', controller.findAll);
+clienteRoutes.get('/:id', controller.findById);
+clienteRoutes.put('/:id', controller.update);
+clienteRoutes.delete('/:id', controller.delete);
+
+export { clienteRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\finalizacao.routes.ts
+================================================================================
+import { Router } from 'express';
+import { FinalizacaoController } from '../controllers/finalizacao.controller.js';
+
+const finalizacaoRoutes = Router();
+const controller = new FinalizacaoController();
+
+finalizacaoRoutes.post('/', controller.create);
+finalizacaoRoutes.get('/', controller.findAll);
+finalizacaoRoutes.get('/:id', controller.findById);
+finalizacaoRoutes.put('/:id', controller.update);
+finalizacaoRoutes.delete('/:id', controller.delete);
+
+export { finalizacaoRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\funcionario.routes.ts
+================================================================================
+import { Router } from 'express';
+import { FuncionarioController } from '../controllers/funcionario.controller.js';
+
+const funcionarioRoutes = Router();
+const controller = new FuncionarioController();
+
+funcionarioRoutes.post('/', controller.create);
+funcionarioRoutes.get('/', controller.findAll);
+funcionarioRoutes.get('/:id', controller.findById);
+funcionarioRoutes.put('/:id', controller.update);
+funcionarioRoutes.delete('/:id', controller.delete);
+
+export { funcionarioRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\itensOs.routes.ts
+================================================================================
+import { Router } from 'express';
+import { ItensOsController } from '../controllers/itensOs.controller.js';
+
+const itensOsRoutes = Router();
+const controller = new ItensOsController();
+
+itensOsRoutes.post('/', controller.create);
+itensOsRoutes.get('/', controller.findAll);
+itensOsRoutes.get('/:id', controller.findById);
+itensOsRoutes.put('/:id', controller.update);
+itensOsRoutes.delete('/:id', controller.delete);
+
+export { itensOsRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\ordemDeServico.routes.ts
+================================================================================
+import { Router } from 'express';
+import { OrdemDeServicoController } from '../controllers/ordemDeServico.controller.js';
+
+const ordemDeServicoRoutes = Router();
+const controller = new OrdemDeServicoController();
+
+ordemDeServicoRoutes.post('/', controller.create);
+ordemDeServicoRoutes.get('/', controller.findAll);
+ordemDeServicoRoutes.get('/:id', controller.findById);
+ordemDeServicoRoutes.put('/:id', controller.update);
+ordemDeServicoRoutes.delete('/:id', controller.delete);
+
+export { ordemDeServicoRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\pecasEstoque.routes.ts
+================================================================================
+import { Router } from 'express';
+import { PecasEstoqueController } from '../controllers/pecasEstoque.controller.js';
+
+const pecasEstoqueRoutes = Router();
+const controller = new PecasEstoqueController();
+
+pecasEstoqueRoutes.post('/', controller.create);
+pecasEstoqueRoutes.get('/', controller.findAll);
+pecasEstoqueRoutes.get('/:id', controller.findById);
+pecasEstoqueRoutes.put('/:id', controller.update);
+pecasEstoqueRoutes.delete('/:id', controller.delete);
+
+export { pecasEstoqueRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\pessoa.routes.ts
+================================================================================
+import { Router } from 'express';
+import { PessoaController } from '../controllers/pessoa.controller.js';
+
+const pessoaRoutes = Router();
+const controller = new PessoaController();
+
+pessoaRoutes.post('/', controller.create);
+pessoaRoutes.get('/', controller.findAll);
+pessoaRoutes.get('/:id', controller.findById);
+pessoaRoutes.put('/:id', controller.update);
+pessoaRoutes.delete('/:id', controller.delete);
+
+export { pessoaRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\pessoaFisica.routes.ts
+================================================================================
+import { Router } from 'express';
+import { PessoaFisicaController } from '../controllers/pessoaFisica.controller.js';
+
+const pessoaFisicaRoutes = Router();
+const controller = new PessoaFisicaController();
+
+pessoaFisicaRoutes.post('/', controller.create);
+pessoaFisicaRoutes.get('/', controller.findAll);
+pessoaFisicaRoutes.get('/:id', controller.findById);
+pessoaFisicaRoutes.put('/:id', controller.update);
+pessoaFisicaRoutes.delete('/:id', controller.delete);
+
+export { pessoaFisicaRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\pessoaJuridica.routes.ts
+================================================================================
+import { Router } from 'express';
+import { PessoaJuridicaController } from '../controllers/pessoaJuridica.controller.js';
+
+const pessoaJuridicaRoutes = Router();
+const controller = new PessoaJuridicaController();
+
+pessoaJuridicaRoutes.post('/', controller.create);
+pessoaJuridicaRoutes.get('/', controller.findAll);
+pessoaJuridicaRoutes.get('/:id', controller.findById);
+pessoaJuridicaRoutes.put('/:id', controller.update);
+pessoaJuridicaRoutes.delete('/:id', controller.delete);
+
+export { pessoaJuridicaRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\tipo.routes.ts
+================================================================================
+import { Router } from 'express';
+import { TipoController } from '../controllers/tipo.controller.js';
+
+const tipoRoutes = Router();
+const controller = new TipoController();
+
+tipoRoutes.post('/', controller.create);
+tipoRoutes.get('/', controller.findAll);
+tipoRoutes.get('/:id', controller.findById);
+tipoRoutes.put('/:id', controller.update);
+tipoRoutes.delete('/:id', controller.delete);
+
+export { tipoRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\veiculo.routes.ts
+================================================================================
+import { Router } from 'express';
+import { VeiculoController } from '../controllers/veiculo.controller.js';
+
+const veiculoRoutes = Router();
+const controller = new VeiculoController();
+
+veiculoRoutes.post('/', controller.create);
+veiculoRoutes.get('/', controller.findAll);
+veiculoRoutes.get('/:id', controller.findById);
+veiculoRoutes.put('/:id', controller.update);
+veiculoRoutes.delete('/:id', controller.delete);
+
+export { veiculoRoutes };
+
+
+

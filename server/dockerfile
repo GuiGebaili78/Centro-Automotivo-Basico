@@ -1,5 +1,5 @@
-# Usa uma imagem base Node.js
-FROM node:20-alpine
+# Usa uma imagem base Node.js (Debian-based para melhor compatibilidade c/ Prisma)
+FROM node:20
 
 # Define o diretório de trabalho dentro do contêiner
 WORKDIR /app/server

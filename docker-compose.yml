@@ -1,37 +1,67 @@
-
-
 services:
   # 1. Serviço do Banco de Dados PostgreSQL
   centroautomotivo_db:
-    image: postgres:16-alpine
+    image: postgres:16
     restart: always
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: automotivo_db
     ports:
-      - "5434:5432" # Expõe a porta 5432 para o host
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d automotivo_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Persistência de dados
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
 
-  # 2. Serviço da API (Seu Backend Node/Express)
+  # 2. Serviço da API (Backend Node/Express)
   api:
     build:
-      context: ./server # O Dockerfile está dentro da pasta 'server'
+      context: ./server
       dockerfile: Dockerfile
     image: automotivo-api
-    command: npm run dev # Roda o script de dev que configuramos no server/package.json
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
     ports:
-      - "3000:3000" # Expõe a porta 3000 (onde o Express roda) para o host
+      - "3000:3000"
     environment:
-      # URL que o Prisma usará para conectar. Note que o 'host' é o nome do serviço 'postgres'
-      DATABASE_URL: postgres://user:password@centroautomotivo_db:5432/automotivo_db
+      DATABASE_URL: postgresql://user:password@centroautomotivo_db:5432/automotivo_db
       PORT: 3000
+      NODE_ENV: development
     depends_on:
-      - centroautomotivo_db # Garante que o banco suba primeiro
-    # Mapeia sua pasta de código para dentro do contêiner para ter Hot-Reload
+      centroautomotivo_db:
+        condition: service_healthy
     volumes:
-      - ./server:/app/server 
+      - ./server:/app/server
+      - /app/server/node_modules
+    networks:
+      - app-network
+
+  # 3. Serviço do Frontend (React + Vite)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    image: automotivo-client
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:3000
+    volumes:
+      - ./client:/app/client
+      - /app/client/node_modules
+    depends_on:
+      - api
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

@@ -3,14 +3,13 @@
 // 1. Configuração do Client: Deve ser 'prisma-client-js'
 generator client {
   provider = "prisma-client-js"
-  // Não precisamos de output customizado por enquanto, vamos usar o padrão
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 // 2. Configuração do Banco de Dados
 datasource db {
   provider = "postgresql"
- 
-  
+  url      = env("DATABASE_URL")
 }
 
 // --- TABELAS DE GENERALIZAÇÃO ---
