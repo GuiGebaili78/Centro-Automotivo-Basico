@@ -5,12 +5,18 @@ const repository = new ClienteRepository();
 
 export class ClienteController {
   async create(req: Request, res: Response) {
+    console.log('🔵 ClienteController.create - Received request');
+    console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
+    
     try {
       const cliente = await repository.create(req.body);
+      console.log('✅ ClienteController.create - Success:', cliente.id_cliente);
       res.status(201).json(cliente);
-    } catch (error) {
-        console.error(error);
-      res.status(400).json({ error: 'Failed to create Cliente', details: error });
+    } catch (error: any) {
+      console.error('❌ ClienteController.create - Error:', error);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error stack:', error.stack);
+      res.status(400).json({ error: 'Failed to create Cliente', details: error.message });
     }
   }
 
@@ -53,6 +59,19 @@ export class ClienteController {
       res.status(204).send();
     } catch (error) {
       res.status(400).json({ error: 'Failed to delete Cliente' });
+    }
+  }
+
+  async searchByName(req: Request, res: Response) {
+    try {
+      const { name } = req.query;
+      if (!name || typeof name !== 'string') {
+        return res.status(400).json({ error: 'Name query parameter is required' });
+      }
+      const clientes = await repository.searchByName(name);
+      res.json(clientes);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to search Clientes' });
     }
   }
 }

@@ -34,7 +34,7 @@ model Pessoa {
 model PessoaFisica {
   id_pessoa_fisica Int      @id @default(autoincrement())
   id_pessoa        Int      @unique
-  cpf              String?  @unique @db.VarChar(11)
+  cpf              String?  @db.VarChar(11)
   dt_cadastro      DateTime @default(now()) @db.Timestamp()
 
   // Relacionamento com Pessoa
@@ -93,12 +93,12 @@ model Cliente {
   telefone_2          String?   @db.VarChar(15)
   telefone_3          String?   @db.VarChar(15)
   email               String?   @db.VarChar(100)
-  logradouro          String    @db.VarChar(150)
-  nr_logradouro       String    @db.VarChar(10)
+  logradouro          String?   @db.VarChar(150)
+  nr_logradouro       String?   @db.VarChar(10)
   compl_logradouro    String?   @db.VarChar(50)
-  bairro              String    @db.VarChar(100)
-  cidade              String    @db.VarChar(100)
-  estado              String    @db.Char(2)
+  bairro              String?   @db.VarChar(100)
+  cidade              String?   @db.VarChar(100)
+  estado              String?   @db.Char(2)
   dt_cadastro         DateTime  @default(now()) @db.Timestamp()
   
   // Relacionamentos (Chaves Estrangeiras)
@@ -115,7 +115,6 @@ model Cliente {
   @@index([id_pessoa_juridica])
   @@index([tipo_pessoa])
   
-  // O CHECK CONSTRAINT (exclusividade PF/PJ) será tratado na lógica de serviço
   @@map("cliente")
 }
 
@@ -153,6 +152,10 @@ model PecasEstoque {
     estoque_atual       Int      
     unidade_medida      String?  @db.VarChar(20)
     dt_ultima_compra    DateTime? @db.Timestamp()
+    
+    // Novo Campo
+    custo_unitario_padrao Decimal @default(0) @db.Decimal(10, 2)
+    
     dt_cadastro         DateTime @default(now()) @db.Timestamp()
     
     // Relacionamento de Volta (M:N com OS)
@@ -194,16 +197,24 @@ model OrdemDeServico {
     dt_abertura         DateTime @default(now()) @db.Timestamp()
     dt_entrega          DateTime? @db.Timestamp()
     km_entrada          Int      
-    status              String   @db.VarChar(20)
+    status              String   @db.VarChar(50)
     defeito_relatado    String?  @db.VarChar(500)
     diagnostico         String?  @db.VarChar(500)
+    
+    // Campos Existentes de Valores
     valor_servico       Decimal?   @db.Decimal(10, 2)
     valor_pecas         Decimal?   @db.Decimal(10, 2)
     valor_final         Decimal?   @db.Decimal(12, 2)
+    
+    // Novos Campos Solicitados
+    valor_total_cliente Decimal?   @db.Decimal(10, 2) // Receita do Cliente
+    valor_mao_de_obra   Decimal?   @db.Decimal(10, 2) // Valor M.O. padrão
+    
     modo_pagamento      String?  @db.VarChar(50)
     cod_pagamento       String?  @db.VarChar(80)
     parcelas            Int      
     obs                 String?  @db.VarChar(500)
+    obs_final           String?  @db.VarChar(500)
     dt_cadastro         DateTime @default(now()) @db.Timestamp()
     
     // Relacionamentos (Chaves Estrangeiras)
@@ -213,7 +224,8 @@ model OrdemDeServico {
     
     // Relacionamentos de Volta
     itens_os            ItensOs[]
-    finalizacao         Finalizacao?
+    fechamento_financeiro FechamentoFinanceiro?
+    pagamentos_cliente  PagamentoCliente[]
 
     @@map("ordem_de_servico")
 }
@@ -224,30 +236,82 @@ model ItensOs {
     id_os               Int      
     id_pecas_estoque    Int?      
     descricao           String   @db.VarChar(500) 
-    qtd                 Int      
-    valor_unt           Decimal    @db.Decimal(10, 2)
+    codigo_referencia   String?  @db.VarChar(50) // Identificação da Peça (Nota) 
+    
+    // Campos Renomeados/Garantidos
+    quantidade          Int      
+    valor_venda         Decimal    @db.Decimal(10, 2)
     valor_total         Decimal    @db.Decimal(12, 2)
+    
     dt_cadastro         DateTime @default(now()) @db.Timestamp()
     
     // Relacionamentos (Chaves Estrangeiras)
     ordem_de_servico    OrdemDeServico @relation(fields: [id_os], references: [id_os])
     pecas_estoque       PecasEstoque?   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
+    
+    // Relacionamento com PagamentoPeca
+    pagamentos_peca     PagamentoPeca[]
 
     @@map("itens_os")
 }
 
-// Tabela 11: Finalização (1:1 com OS)
-model Finalizacao {
-    id_finalizacao      Int      @id @default(autoincrement())
-    id_os               Int      @unique // 1:1 com OS
-    valor_peca_entrada  Decimal?   @db.Decimal(10, 2)
-    valor_peca_saida    Decimal?   @db.Decimal(10, 2)
-    valor_pago_funcionario Decimal? @db.Decimal(10, 2)
-    obs                 String?  @db.VarChar(500)
-    dt_cadastro         DateTime @default(now()) @db.Timestamp()
+// Nova Entidade: Fornecedor
+model Fornecedor {
+    id_fornecedor Int      @id @default(autoincrement())
+    nome          String   @db.VarChar(100)
+    documento     String?  @db.VarChar(20)
+    contato       String?  @db.VarChar(100)
+    dt_cadastro   DateTime @default(now()) @db.Timestamp()
     
-    // Relacionamento 1:1 com OrdemDeServico
-    ordem_de_servico    OrdemDeServico @relation(fields: [id_os], references: [id_os])
+    pagamentos_peca PagamentoPeca[]
 
-    @@map("finalizacao")
+    @@map("fornecedor")
+}
+
+// Nova Entidade: PagamentoPeca (Rastreio de Custo Real)
+model PagamentoPeca {
+    id_pagamento_peca     Int      @id @default(autoincrement())
+    id_item_os            Int
+    id_fornecedor         Int
+    
+    custo_real            Decimal  @db.Decimal(10, 2)
+    data_compra           DateTime @db.Timestamp()
+    data_pagamento_fornecedor DateTime? @db.Timestamp()
+    pago_ao_fornecedor    Boolean  @default(false)
+    
+    item_os               ItensOs  @relation(fields: [id_item_os], references: [id_iten])
+    fornecedor            Fornecedor @relation(fields: [id_fornecedor], references: [id_fornecedor])
+
+    @@map("pagamento_peca")
+}
+
+// Nova Entidade: FechamentoFinanceiro (Substitui Finalizacao)
+model FechamentoFinanceiro {
+    id_fechamento_financeiro Int      @id @default(autoincrement())
+    id_os                    Int      @unique
+    custo_total_pecas_real   Decimal  @db.Decimal(10, 2)
+    data_fechamento_financeiro DateTime @default(now()) @db.Timestamp()
+    
+    ordem_de_servico         OrdemDeServico @relation(fields: [id_os], references: [id_os])
+
+    @@map("fechamento_financeiro")
+}
+
+// Nova Entidade: PagamentoCliente (Recebimentos)
+model PagamentoCliente {
+    id_pagamento_cliente  Int      @id @default(autoincrement())
+    id_os                 Int      
+    
+    metodo_pagamento      String   @db.VarChar(50) // 'CREDITO', 'DEBITO', 'PIX', 'DINHEIRO'
+    valor                 Decimal  @db.Decimal(10, 2)
+    data_pagamento        DateTime @default(now()) @db.Timestamp()
+    
+    // Detalhes
+    bandeira_cartao       String?  @db.VarChar(50) // 'VISA', 'MASTER', 'ELO'
+    codigo_transacao      String?  @db.VarChar(100) // NSU, ID PIX
+    qtd_parcelas          Int      @default(1)
+    
+    ordem_de_servico      OrdemDeServico @relation(fields: [id_os], references: [id_os])
+
+    @@map("pagamento_cliente")
 }

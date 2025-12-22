@@ -10,13 +10,18 @@ export class OrdemDeServicoRepository {
 
   async findAll() {
     return await prisma.ordemDeServico.findMany({
-        include: {
-            cliente: true,
-            veiculo: true,
-            funcionario: true,
-            itens_os: true,
-            finalizacao: true
-        }
+      include: {
+        cliente: {
+          include: {
+            pessoa_fisica: { include: { pessoa: true } },
+            pessoa_juridica: { include: { pessoa: true } }
+          }
+        },
+        veiculo: true,
+        funcionario: true,
+        itens_os: true,
+        fechamento_financeiro: true
+      }
     });
   }
 
@@ -24,11 +29,22 @@ export class OrdemDeServicoRepository {
     return await prisma.ordemDeServico.findUnique({
       where: { id_os: id },
       include: {
-        cliente: true,
+        cliente: {
+          include: {
+            pessoa_fisica: { include: { pessoa: true } },
+            pessoa_juridica: { include: { pessoa: true } }
+          }
+        },
         veiculo: true,
         funcionario: true,
-        itens_os: true,
-        finalizacao: true
+        itens_os: {
+          include: {
+            pagamentos_peca: true,
+            pecas_estoque: true
+          }
+        },
+        fechamento_financeiro: true,
+        pagamentos_cliente: true
       }
     });
   }

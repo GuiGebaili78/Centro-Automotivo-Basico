@@ -46,6 +46,11 @@ export interface ICliente {
     cidade: string;
     estado: string;
     dt_cadastro: string;
+
+    // Optional Joins
+    pessoa_fisica?: IPessoaFisica & { pessoa: IPessoa };
+    pessoa_juridica?: IPessoaJuridica & { pessoa: IPessoa };
+    veiculos?: IVeiculo[];
 }
 
 export interface IFuncionario {
@@ -53,13 +58,16 @@ export interface IFuncionario {
     id_pessoa_fisica: number;
     ativo: string;
     cargo: string;
-    salario?: number | null; // Decimal to number
+    salario?: number | null;
     comissao?: number | null;
     dt_admissao: string;
     dt_recisao?: string | null;
     motivo_saida?: string | null;
     obs?: string | null;
     dt_cadastro: string;
+
+    // Optional Joins
+    pessoa_fisica?: IPessoaFisica & { pessoa: IPessoa };
 }
 
 export interface IPecasEstoque {
@@ -71,6 +79,7 @@ export interface IPecasEstoque {
     valor_venda: number; // Decimal
     estoque_atual: number;
     unidade_medida?: string | null;
+    custo_unitario_padrao: number; // Decimal
     dt_ultima_compra?: string | null;
     dt_cadastro: string;
 }
@@ -88,6 +97,9 @@ export interface IVeiculo {
     combustivel: string;
     obs?: string | null;
     dt_cadastro: string;
+
+    // Optional Joins
+    cliente?: ICliente;
 }
 
 export interface IOrdemDeServico {
@@ -104,11 +116,33 @@ export interface IOrdemDeServico {
     valor_servico?: number | null;
     valor_pecas?: number | null;
     valor_final?: number | null;
+    
+    valor_total_cliente?: number | null;
+    valor_mao_de_obra?: number | null;
+
     modo_pagamento?: string | null;
     cod_pagamento?: string | null;
     parcelas: number;
     obs?: string | null;
+    obs_final?: string | null;
     dt_cadastro: string;
+    
+    // Optional Joins
+    cliente?: ICliente;
+    veiculo?: IVeiculo;
+    itens_os?: IItensOs[];
+    pagamentos_cliente?: IPagamentoCliente[];
+}
+
+export interface IPagamentoCliente {
+    id_pagamento_cliente: number;
+    id_os: number;
+    metodo_pagamento: string;
+    valor: number;
+    data_pagamento: string;
+    bandeira_cartao?: string | null;
+    codigo_transacao?: string | null;
+    qtd_parcelas: number;
 }
 
 export interface IItensOs {
@@ -116,18 +150,34 @@ export interface IItensOs {
     id_os: number;
     id_pecas_estoque?: number | null;
     descricao: string;
-    qtd: number;
-    valor_unt: number;
+    quantidade: number;
+    valor_venda: number;
     valor_total: number;
     dt_cadastro: string;
 }
 
-export interface IFinalizacao {
-    id_finalizacao: number;
+export interface IFechamentoFinanceiro {
+    id_fechamento_financeiro: number;
     id_os: number;
-    valor_peca_entrada?: number | null;
-    valor_peca_saida?: number | null;
-    valor_pago_funcionario?: number | null;
-    obs?: string | null;
+    custo_total_pecas_real: number;
+    data_fechamento_financeiro: string;
+}
+
+export interface IFornecedor {
+    id_fornecedor: number;
+    nome: string;
+    documento?: string | null;
+    contato?: string | null;
     dt_cadastro: string;
 }
+
+export interface IPagamentoPeca {
+    id_pagamento_peca: number;
+    id_item_os: number;
+    id_fornecedor: number;
+    custo_real: number;
+    data_compra: string;
+    data_pagamento_fornecedor?: string | null;
+    pago_ao_fornecedor: boolean;
+}
+

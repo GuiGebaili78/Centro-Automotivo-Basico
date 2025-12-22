@@ -6,6 +6,7 @@ const controller = new PecasEstoqueController();
 
 pecasEstoqueRoutes.post('/', controller.create);
 pecasEstoqueRoutes.get('/', controller.findAll);
+pecasEstoqueRoutes.get('/search', controller.search);
 pecasEstoqueRoutes.get('/:id', controller.findById);
 pecasEstoqueRoutes.put('/:id', controller.update);
 pecasEstoqueRoutes.delete('/:id', controller.delete);

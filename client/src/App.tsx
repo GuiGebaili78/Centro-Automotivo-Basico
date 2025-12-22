@@ -1,54 +1,59 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { PessoaTestPage } from './pages/PessoaTestPage';
-import { TipoTestPage } from './pages/TipoTestPage';
-import { PessoaFisicaTestPage } from './pages/PessoaFisicaTestPage';
-import { PessoaJuridicaTestPage } from './pages/PessoaJuridicaTestPage';
-import { ClienteTestPage } from './pages/ClienteTestPage';
-import { FuncionarioTestPage } from './pages/FuncionarioTestPage';
-import { PecasEstoqueTestPage } from './pages/PecasEstoqueTestPage';
-import { VeiculoTestPage } from './pages/VeiculoTestPage';
-import { OrdemDeServicoTestPage } from './pages/OrdemDeServicoTestPage';
-import { ItensOsTestPage } from './pages/ItensOsTestPage';
-import { FinalizacaoTestPage } from './pages/FinalizacaoTestPage';
-import './App.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { MainLayout } from './components/layouts/MainLayout';
+import { HomePage } from './pages/HomePage';
+import { NotFoundPage } from './pages/NotFoundPage';
+import { ClientePage } from './pages/ClientePage'; 
+
+// Importe suas páginas antigas aqui enquanto não refatora todas
+import { VeiculoPage } from './pages/VeiculoPage';
+import { OrdemDeServicoPage } from './pages/OrdemDeServicoPage';
+import { PecasEstoquePage } from './pages/PecasEstoquePage';
+import { FuncionarioPage } from './pages/FuncionarioPage';
+import { PessoaPage } from './pages/PessoaPage';
+import { TipoPage } from './pages/TipoPage';
+import { FechamentoFinanceiroPage } from './pages/FechamentoFinanceiroPage';
+import { FinanceiroPage } from './pages/FinanceiroPage';
+import { FornecedorPage } from './pages/FornecedorPage';
+import { PagamentoPecaPage } from './pages/PagamentoPecaPage';
+import { LivroCaixaPage } from './pages/LivroCaixaPage';
+import { ContasAPagarPage } from './pages/ContasAPagarPage';
+import { SearchClientePage } from './pages/SearchClientePage';
+import { SearchVeiculoPage } from './pages/SearchVeiculoPage';
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="container mx-auto p-4">
-        <nav className="mb-4 text-center">
-            <h1 className="text-3xl font-bold mb-4">Centro Automotivo - Teste CRUD</h1>
-            <div className="flex flex-wrap justify-center gap-2">
-                <Link to="/pessoa" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Pessoa</Link>
-                <Link to="/tipo" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Tipo</Link>
-                <Link to="/pessoa-fisica" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Pessoa Física</Link>
-                <Link to="/pessoa-juridica" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Pessoa Jurídica</Link>
-                <Link to="/cliente" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Cliente</Link>
-                <Link to="/funcionario" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Funcionário</Link>
-                <Link to="/pecas-estoque" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Peças</Link>
-                <Link to="/veiculo" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Veículo</Link>
-                <Link to="/ordem-de-servico" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">OS</Link>
-                <Link to="/itens-os" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Itens OS</Link>
-                <Link to="/finalizacao" className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Finalização</Link>
-                {/* Other links will go here */}
-            </div>
-        </nav>
+      <Routes>
+        {/* Rota Principal com Layout (Sidebar + Conteúdo) */}
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<HomePage />} />
+          
+          {/* Páginas Modernizadas */}
+          <Route path="/cliente" element={<ClientePage />} />
 
-        <Routes>
-            <Route path="/" element={<div className="text-center">Selecione uma entidade no menu acima.</div>} />
-            <Route path="/pessoa" element={<PessoaTestPage />} />
-            <Route path="/tipo" element={<TipoTestPage />} />
-            <Route path="/pessoa-fisica" element={<PessoaFisicaTestPage />} />
-            <Route path="/pessoa-juridica" element={<PessoaJuridicaTestPage />} />
-            <Route path="/cliente" element={<ClienteTestPage />} />
-            <Route path="/funcionario" element={<FuncionarioTestPage />} />
-            <Route path="/pecas-estoque" element={<PecasEstoqueTestPage />} />
-            <Route path="/veiculo" element={<VeiculoTestPage />} />
-            <Route path="/ordem-de-servico" element={<OrdemDeServicoTestPage />} />
-            <Route path="/itens-os" element={<ItensOsTestPage />} />
-            <Route path="/finalizacao" element={<FinalizacaoTestPage />} />
-        </Routes>
-      </div>
+          {/* Páginas Legadas (Ainda funcionam dentro do layout novo!) */}
+          <Route path="/veiculo" element={<VeiculoPage />} />
+          <Route path="/ordem-de-servico" element={<OrdemDeServicoPage />} />
+          <Route path="/pecas-estoque" element={<PecasEstoquePage />} />
+          <Route path="/funcionario" element={<FuncionarioPage />} />
+          <Route path="/pessoa" element={<PessoaPage />} />
+          <Route path="/tipo" element={<TipoPage />} />
+          <Route path="/fechamento-financeiro" element={<FechamentoFinanceiroPage />} />
+          <Route path="/financeiro" element={<LivroCaixaPage />} /> {/* Redirect old /financeiro to LivroCaixaPage */}
+          <Route path="/financeiro/livro-caixa" element={<LivroCaixaPage />} />
+          <Route path="/financeiro/pagamento-pecas" element={<PagamentoPecaPage />} />
+          <Route path="/financeiro/contas-pagar" element={<ContasAPagarPage />} />
+          <Route path="/fornecedor" element={<FornecedorPage />} />
+          <Route path="/pagamento-peca" element={<PagamentoPecaPage />} />
+          
+          {/* Search Pages */}
+          <Route path="/search-cliente" element={<SearchClientePage />} />
+          <Route path="/search-veiculo" element={<SearchVeiculoPage />} />
+          
+          {/* Rota 404 para qualquer coisa não definida */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
     </BrowserRouter>
   );
 }

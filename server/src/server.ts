@@ -25,7 +25,11 @@ import { pecasEstoqueRoutes } from './routes/pecasEstoque.routes.js';
 import { veiculoRoutes } from './routes/veiculo.routes.js';
 import { ordemDeServicoRoutes } from './routes/ordemDeServico.routes.js';
 import { itensOsRoutes } from './routes/itensOs.routes.js';
-import { finalizacaoRoutes } from './routes/finalizacao.routes.js';
+// Novas Rotas
+import { fechamentoFinanceiroRoutes } from './routes/fechamentoFinanceiro.routes.js';
+import { fornecedorRoutes } from './routes/fornecedor.routes.js';
+import { pagamentoPecaRoutes } from './routes/pagamentoPeca.routes.js';
+import { pagamentoClienteRoutes } from './routes/pagamentoCliente.routes.js';
 
 app.use('/api/pessoa', pessoaRoutes);
 app.use('/api/tipo', tipoRoutes);
@@ -37,7 +41,12 @@ app.use('/api/pecas-estoque', pecasEstoqueRoutes);
 app.use('/api/veiculo', veiculoRoutes);
 app.use('/api/ordem-de-servico', ordemDeServicoRoutes);
 app.use('/api/itens-os', itensOsRoutes);
-app.use('/api/finalizacao', finalizacaoRoutes);
+
+// Uso das Novas Rotas
+app.use('/api/fechamento-financeiro', fechamentoFinanceiroRoutes);
+app.use('/api/fornecedor', fornecedorRoutes);
+app.use('/api/pagamento-peca', pagamentoPecaRoutes);
+app.use('/api/pagamento-cliente', pagamentoClienteRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

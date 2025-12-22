@@ -41,7 +41,8 @@ export class OrdemDeServicoController {
       const os = await repository.update(id, req.body);
       res.json(os);
     } catch (error) {
-      res.status(400).json({ error: 'Failed to update OS' });
+      console.error('Update OS Error:', error);
+      res.status(400).json({ error: 'Failed to update OS', details: error instanceof Error ? error.message : error });
     }
   }
 

@@ -30,4 +30,17 @@ export class PecasEstoqueRepository {
       where: { id_pecas_estoque: id },
     });
   }
+
+  async search(query: string) {
+    return await prisma.pecasEstoque.findMany({
+      where: {
+        OR: [
+          { nome: { contains: query, mode: 'insensitive' } },
+          { fabricante: { contains: query, mode: 'insensitive' } },
+          { descricao: { contains: query, mode: 'insensitive' } },
+        ]
+      },
+      take: 10
+    });
+  }
 }

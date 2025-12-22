@@ -1,0 +1,324 @@
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
+import { FechamentoFinanceiroForm } from '../components/forms/FechamentoFinanceiroForm';
+import { Modal } from '../components/ui/Modal';
+import { Plus, Search, Trash2, TrendingUp, AlertCircle, CheckCircle, Edit } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { StatusBanner } from '../components/ui/StatusBanner';
+
+interface IFechamentoFinanceiro {
+    id_fechamento_financeiro: number;
+    id_os: number;
+    custo_total_pecas_real: number;
+    data_fechamento_financeiro: string;
+    ordem_de_servico: IOS;
+}
+
+interface IOS {
+    id_os: number;
+    status: string;
+    valor_total_cliente: number;
+    cliente: {
+        pessoa_fisica?: { pessoa: { nome: string } };
+        pessoa_juridica?: { nome_fantasia: string; razao_social: string };
+    };
+    veiculo: {
+        placa: string;
+        modelo: string;
+    };
+    fechamento_financeiro?: IFechamentoFinanceiro;
+}
+
+export const FechamentoFinanceiroPage = () => {
+    const location = useLocation();
+    const [fechamentos, setFechamentos] = useState<IFechamentoFinanceiro[]>([]);
+    const [pendingOss, setPendingOss] = useState<IOS[]>([]);
+    const [showModal, setShowModal] = useState(false);
+    const [selectedOsId, setSelectedOsId] = useState<number | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const urlIdOs = params.get('id_os');
+        if (urlIdOs) {
+            handleOpenFechamento(Number(urlIdOs));
+        }
+    }, [location.search]);
+
+    const loadData = async () => {
+        try {
+            const [fechamentosRes, osRes] = await Promise.all([
+                api.get('/fechamento-financeiro'),
+                api.get('/ordem-de-servico')
+            ]);
+            
+            setFechamentos(fechamentosRes.data);
+            
+            // Filter OSs that are ready for finance but don't have a closing record yet
+            const allOss = osRes.data;
+            const pending = allOss.filter((os: IOS) => 
+                (os.status === 'PRONTO PARA FINANCEIRO' || os.status === 'FINALIZADA') && 
+                !os.fechamento_financeiro &&
+                !fechamentosRes.data.some((f: IFechamentoFinanceiro) => f.id_os === os.id_os)
+            );
+            setPendingOss(pending);
+
+        } catch (error) {
+            console.error('Erro ao carregar dados', error);
+            setStatusMsg({ type: 'error', text: 'Erro ao carregar dados financeiros' });
+        }
+    };
+
+    const handleOpenFechamento = (id_os: number) => {
+        setSelectedOsId(id_os);
+        setShowModal(true);
+    };
+
+    const handleEditFechamento = (fechamento: IFechamentoFinanceiro) => {
+        // Edit mode: Open form with the OS ID. 
+        // The form will fetch current OS data (which includes detailed payments) and allow updates.
+        setSelectedOsId(fechamento.id_os);
+        setShowModal(true);
+    };
+
+    const handleDelete = async (id: number) => {
+        if(!confirm("Tem certeza que deseja cancelar este fechamento financeiro? Isso não apaga a OS, apenas a consolidação.")) return;
+        try {
+            await api.delete(`/fechamento-financeiro/${id}`);
+            setStatusMsg({ type: 'success', text: 'Fechamento cancelado com sucesso!' });
+            loadData();
+        } catch (error) {
+            setStatusMsg({ type: 'error', text: 'Erro ao deletar fechamento' });
+        }
+    };
+
+    const getClientName = (os: IOS) => {
+        return os.cliente?.pessoa_fisica?.pessoa?.nome || 
+               os.cliente?.pessoa_juridica?.nome_fantasia || 
+               os.cliente?.pessoa_juridica?.razao_social || 'Cliente N/I';
+    };
+
+    const filteredFechamentos = fechamentos.filter(f => 
+        String(f.id_fechamento_financeiro).includes(searchTerm) ||
+        String(f.id_os).includes(searchTerm) ||
+        f.ordem_de_servico?.veiculo?.placa?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500">
+            <StatusBanner msg={statusMsg} onClose={() => setStatusMsg({type: null, text: ''})} />
+
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Gestão Financeira</h1>
+                    <p className="text-gray-500 mt-1">Consolidação de custos e serviços.</p>
+                </div>
+                <button 
+                    onClick={() => { setSelectedOsId(null); setShowModal(true); }}
+                    className="hidden md:flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-gray-200 transition-all hover:bg-gray-800 hover:scale-[1.02]"
+                >
+                    <Plus size={20} />
+                    Lançamento Manual
+                </button>
+            </div>
+
+            {/* STATS CARDS */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-linear-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white shadow-xl shadow-green-200/50 relative overflow-hidden group">
+                    <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                        <TrendingUp size={80} />
+                    </div>
+                    <div className="relative z-10">
+                        <p className="text-green-100 text-sm font-medium mb-1">Custo Total (Peças)</p>
+                        <h3 className="text-3xl font-bold">
+                            R$ {fechamentos.reduce((acc, f) => acc + Number(f.custo_total_pecas_real), 0).toFixed(2)}
+                        </h3>
+                        <p className="text-xs text-green-100 mt-2 opacity-80">Consolidado em {fechamentos.length} serviços</p>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-gray-500 text-sm font-medium mb-1">Pendentes de Fechamento</p>
+                            <h3 className="text-3xl font-bold text-gray-900">{pendingOss.length}</h3>
+                            <p className="text-xs text-orange-500 mt-2 font-medium">Aguardando consolidação</p>
+                        </div>
+                        <div className="p-3 bg-orange-50 text-orange-600 rounded-xl">
+                            <AlertCircle size={24} />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-gray-500 text-sm font-medium mb-1">Fechamentos Realizados</p>
+                            <h3 className="text-3xl font-bold text-gray-900">{fechamentos.length}</h3>
+                            <p className="text-xs text-green-600 mt-2 font-medium">Processados</p>
+                        </div>
+                        <div className="p-3 bg-green-50 text-green-600 rounded-xl">
+                            <CheckCircle size={24} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* PENDING OS LIST */}
+            {pendingOss.length > 0 && (
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span className="w-2 h-8 bg-orange-500 rounded-full"></span>
+                        Aguardando Consolidação
+                    </h2>
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-50 border-b border-gray-100">
+                                <tr>
+                                    <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">OS ID</th>
+                                    <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Cliente</th>
+                                    <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Veículo</th>
+                                    <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {pendingOss.map(os => (
+                                    <tr key={os.id_os} className="hover:bg-gray-50 transition-colors">
+                                        <td className="p-5 font-bold text-gray-900">#{String(os.id_os).padStart(4, '0')}</td>
+                                        <td className="p-5 text-gray-600 font-medium">{getClientName(os)}</td>
+                                        <td className="p-5">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-gray-800 uppercase">{os.veiculo?.placa}</span>
+                                                <span className="text-xs text-gray-400">{os.veiculo?.modelo}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-5">
+                                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700 uppercase">
+                                                {os.status}
+                                            </span>
+                                        </td>
+                                        <td className="p-5 text-right">
+                                            <button 
+                                                onClick={() => handleOpenFechamento(os.id_os)}
+                                                className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-gray-800 transition-all hover:-translate-y-0.5"
+                                            >
+                                                Fechar Financeiro
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* HISTORY LIST */}
+            <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span className="w-2 h-8 bg-green-600 rounded-full"></span>
+                        Histórico de Fechamentos
+                    </h2>
+                    
+                    {/* Search Bar */}
+                    <div className="relative group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors" size={18} />
+                        <input 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)} 
+                            placeholder="Buscar por ID ou Placa..." 
+                            className="pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 focus:outline-none w-64 bg-white shadow-sm"
+                        />
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[300px]">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-50 border-b border-gray-100">
+                            <tr>
+                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">ID Fechamento</th>
+                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Referente OS</th>
+                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Veículo</th>
+                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Custo Real Peças</th>
+                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Data</th>
+                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {filteredFechamentos.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="p-10 text-center text-gray-400 italic">
+                                        {searchTerm ? 'Nenhum registro encontrado para a busca.' : 'Nenhum fechamento realizado ainda.'}
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredFechamentos.map((fech) => (
+                                    <tr key={fech.id_fechamento_financeiro} className="hover:bg-gray-50 group transition-colors">
+                                        <td className="p-5 text-gray-500 font-mono">#{String(fech.id_fechamento_financeiro).padStart(4, '0')}</td>
+                                        <td className="p-5">
+                                            <span className="font-bold text-gray-800 bg-gray-100 px-2 py-1 rounded">OS #{String(fech.id_os).padStart(4, '0')}</span>
+                                        </td>
+                                        <td className="p-5">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-gray-700 uppercase">{fech.ordem_de_servico?.veiculo?.placa || '-'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-5">
+                                            <div className="flex items-center gap-2 text-red-600 font-bold bg-red-50 w-fit px-3 py-1 rounded-lg">
+                                                <span className="text-xs">R$</span>
+                                                {Number(fech.custo_total_pecas_real).toFixed(2)}
+                                            </div>
+                                        </td>
+                                        <td className="p-5 text-sm text-gray-500">
+                                            {new Date(fech.data_fechamento_financeiro).toLocaleDateString('pt-BR')}
+                                        </td>
+                                        <td className="p-5 text-right">
+                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={() => handleEditFechamento(fech)}
+                                                    className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
+                                                    title="Editar Detalhes"
+                                                >
+                                                    <Edit size={18} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDelete(fech.id_fechamento_financeiro)}
+                                                    className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+                                                    title="Cancelar Fechamento"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {showModal && (
+                <Modal title={selectedOsId ? "Detalhes do Fechamento" : "Novo Fechamento"} onClose={() => setShowModal(false)}>
+                    <FechamentoFinanceiroForm 
+                        preSelectedOsId={selectedOsId}
+                        onSuccess={() => {
+                            setShowModal(false);
+                            loadData();
+                            setStatusMsg({ type: 'success', text: 'Operação realizada com sucesso!' });
+                            setTimeout(() => setStatusMsg({type: null, text: ''}), 3000);
+                        }}
+                        onCancel={() => setShowModal(false)}
+                    />
+                </Modal>
+            )}
+        </div>
+    );
+};

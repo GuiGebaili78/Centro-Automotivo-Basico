@@ -10,14 +10,21 @@ export class ItensOsRepository {
 
   async findAll() {
     return await prisma.itensOs.findMany({
-        include: { ordem_de_servico: true, pecas_estoque: true }
+        include: { ordem_de_servico: true, pecas_estoque: true, pagamentos_peca: true }
     });
   }
 
   async findById(id: number) {
     return await prisma.itensOs.findUnique({
       where: { id_iten: id },
-        include: { ordem_de_servico: true, pecas_estoque: true }
+        include: { ordem_de_servico: true, pecas_estoque: true, pagamentos_peca: true }
+    });
+  }
+
+  async findByOsId(idOs: number) {
+    return await prisma.itensOs.findMany({
+      where: { id_os: idOs },
+      include: { pecas_estoque: true, pagamentos_peca: true }
     });
   }
 
@@ -31,6 +38,17 @@ export class ItensOsRepository {
   async delete(id: number) {
     return await prisma.itensOs.delete({
       where: { id_iten: id },
+    });
+  }
+
+  async search(query: string) {
+    // Busca descrições únicas na tabela de itens já usados
+    return await prisma.itensOs.findMany({
+      where: {
+        descricao: { contains: query, mode: 'insensitive' }
+      },
+      distinct: ['descricao'],
+      take: 10
     });
   }
 }

@@ -6,6 +6,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "migrate:host": "set DATABASE_URL=postgresql://user:password@localhost:5434/automotivo_db&& npx prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

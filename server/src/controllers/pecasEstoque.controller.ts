@@ -54,4 +54,15 @@ export class PecasEstoqueController {
       res.status(400).json({ error: 'Failed to delete Peca' });
     }
   }
+
+  async search(req: Request, res: Response) {
+    try {
+      const query = req.query.q as string;
+      if (!query) return res.json([]);
+      const pecas = await repository.search(query);
+      res.json(pecas);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to search Pecas' });
+    }
+  }
 }

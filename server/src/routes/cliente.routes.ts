@@ -6,6 +6,7 @@ const controller = new ClienteController();
 
 clienteRoutes.post('/', controller.create);
 clienteRoutes.get('/', controller.findAll);
+clienteRoutes.get('/search', controller.searchByName); // Must be before /:id
 clienteRoutes.get('/:id', controller.findById);
 clienteRoutes.put('/:id', controller.update);
 clienteRoutes.delete('/:id', controller.delete);

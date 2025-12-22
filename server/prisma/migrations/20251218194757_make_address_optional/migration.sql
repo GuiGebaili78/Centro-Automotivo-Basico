@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "cliente" ALTER COLUMN "logradouro" DROP NOT NULL,
+ALTER COLUMN "nr_logradouro" DROP NOT NULL,
+ALTER COLUMN "bairro" DROP NOT NULL,
+ALTER COLUMN "cidade" DROP NOT NULL,
+ALTER COLUMN "estado" DROP NOT NULL;
