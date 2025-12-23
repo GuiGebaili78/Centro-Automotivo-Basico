@@ -12,7 +12,7 @@ import { FuncionarioPage } from './pages/FuncionarioPage';
 import { PessoaPage } from './pages/PessoaPage';
 import { TipoPage } from './pages/TipoPage';
 import { FechamentoFinanceiroPage } from './pages/FechamentoFinanceiroPage';
-import { FinanceiroPage } from './pages/FinanceiroPage';
+
 import { FornecedorPage } from './pages/FornecedorPage';
 import { PagamentoPecaPage } from './pages/PagamentoPecaPage';
 import { LivroCaixaPage } from './pages/LivroCaixaPage';

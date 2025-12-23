@@ -11,7 +11,7 @@ export const LivroCaixaPage = () => {
     const [cashFilterEnd, setCashFilterEnd] = useState('');
     const [cashSearch, setCashSearch] = useState('');
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false);
 
     useEffect(() => {
         loadData();

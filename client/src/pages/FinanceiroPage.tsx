@@ -6,7 +6,7 @@ import {
     Search, Truck, Calendar, CheckSquare, Square, 
     ArrowUpCircle, ArrowDownCircle, Wallet, Edit, Filter, Trash2, Plus
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
+
 import { Modal } from '../components/ui/Modal';
 
 export const FinanceiroPage = () => {
@@ -14,7 +14,7 @@ export const FinanceiroPage = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'AUTO_PECAS' | 'LIVRO_CAIXA' | 'CONTAS_PAGAR'>('LIVRO_CAIXA');
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false);
 
     // --- STATES FOR ACCOUNTS PAYABLE (PEÇAS) ---
     const [payments, setPayments] = useState<any[]>([]);

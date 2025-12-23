@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '../../services/api';
-import { Calculator, Save, Truck, Plus, BadgeCheck, Palette, AlertCircle, Trash2 } from 'lucide-react';
+import { Calculator, Save, Truck, Plus, BadgeCheck, Palette, Trash2 } from 'lucide-react';
 import { FornecedorForm } from './FornecedorForm';
 import { Modal } from '../ui/Modal';
 import { StatusBanner } from '../ui/StatusBanner';
@@ -226,7 +226,7 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
         return { totalReceita, totalCusto, lucro, margem, totalItemsRevenue };
     };
 
-    const { totalReceita, totalCusto, lucro, margem, totalItemsRevenue } = calculateTotals();
+    const { totalReceita, totalCusto, lucro, totalItemsRevenue } = calculateTotals();
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();

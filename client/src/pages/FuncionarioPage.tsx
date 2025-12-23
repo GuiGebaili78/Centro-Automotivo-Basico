@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import type { IFuncionario } from '../types/backend';
 import { FuncionarioForm } from '../components/forms/FuncionarioForm';
 import { Modal } from '../components/ui/Modal';
-import { Plus, Search, Trash2, Edit, Package, Briefcase, BadgeCheck, XCircle } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, Briefcase, BadgeCheck, XCircle } from 'lucide-react';
 import { StatusBanner } from '../components/ui/StatusBanner';
 
 export const FuncionarioPage = () => {
