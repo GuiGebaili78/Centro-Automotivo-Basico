@@ -65,31 +65,32 @@ export class ClienteRepository {
   }
 
   // Case-insensitive search by name (searches in Pessoa.nome)
+  // Case-insensitive & accent-insensitive search by name
   async searchByName(searchTerm: string) {
+    const searchPattern = `%${searchTerm}%`;
+
+    const ids = await prisma.$queryRaw<{id_cliente: number}[]>`
+      SELECT c.id_cliente
+      FROM "cliente" c
+      LEFT JOIN "pessoa_fisica" pf ON c.id_pessoa_fisica = pf.id_pessoa_fisica
+      LEFT JOIN "pessoa" p1 ON pf.id_pessoa = p1.id_pessoa
+      LEFT JOIN "pessoa_juridica" pj ON c.id_pessoa_juridica = pj.id_pessoa_juridica
+      LEFT JOIN "pessoa" p2 ON pj.id_pessoa = p2.id_pessoa
+      WHERE unaccent(p1.nome) ILIKE unaccent(${searchPattern})
+         OR unaccent(p2.nome) ILIKE unaccent(${searchPattern})
+         OR (pj.nome_fantasia IS NOT NULL AND unaccent(pj.nome_fantasia) ILIKE unaccent(${searchPattern}))
+      LIMIT 20
+    `;
+
+    const idList = ids.map(item => item.id_cliente);
+
+    if (idList.length === 0) {
+        return [];
+    }
+
     return await prisma.cliente.findMany({
       where: {
-        OR: [
-          {
-            pessoa_fisica: {
-              pessoa: {
-                nome: {
-                  contains: searchTerm,
-                  mode: 'insensitive' // Case-insensitive search
-                }
-              }
-            }
-          },
-          {
-            pessoa_juridica: {
-              pessoa: {
-                nome: {
-                  contains: searchTerm,
-                  mode: 'insensitive'
-                }
-              }
-            }
-          }
-        ]
+        id_cliente: { in: idList }
       },
       include: {
         pessoa_fisica: { include: { pessoa: true } },

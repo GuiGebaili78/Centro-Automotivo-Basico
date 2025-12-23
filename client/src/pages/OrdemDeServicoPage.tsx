@@ -4,8 +4,8 @@ import type { FormEvent } from 'react';
 import { api } from '../services/api';
 import type { IOrdemDeServico } from '../types/backend';
 import { 
-    Search, Plus, PenTool, Car, User, Check, 
-    FileText, TrendingUp, AlertCircle, Package, ArrowRight, Wrench, CheckCircle, BadgeCheck, Trash2, DollarSign
+    Search, Plus, PenTool, Car, User, Check, History, X,
+    FileText, AlertCircle, Package, ArrowRight, Wrench, CheckCircle, BadgeCheck, Trash2, DollarSign
 } from 'lucide-react';
 
 import { StatusBanner } from '../components/ui/StatusBanner';
@@ -35,15 +35,10 @@ export const OrdemDeServicoPage = () => {
     const [creationStep, setCreationStep] = useState(1); // 1: Seleção, 2: Dados OS, 3: Itens
     const [currentCreatedOsId, setCurrentCreatedOsId] = useState<number | null>(null);
 
-    const [placaSearch, setPlacaSearch] = useState('');
-    const [clienteSearch, setClienteSearch] = useState('');
     const [foundVeiculo, setFoundVeiculo] = useState<any | null>(null);
-    const [foundCliente, setFoundCliente] = useState<any | null>(null);
+
     
     // Dynamic Search Lists
-    const [vehicleResults, setVehicleResults] = useState<any[]>([]);
-    const [clienteResults, setClienteResults] = useState<any[]>([]);
-
     const [showRegisterModal, setShowRegisterModal] = useState<'NONE' | 'PESSOA' | 'VEICULO'>('NONE');
     const [createdClientId, setCreatedClientId] = useState<number | null>(null);
 
@@ -57,6 +52,11 @@ export const OrdemDeServicoPage = () => {
     const [partSearch, setPartSearch] = useState('');
     const [partResults, setPartResults] = useState<any[]>([]);
     
+    // Labor Services State
+    const [laborServices, setLaborServices] = useState<any[]>([]);
+    const [newLaborService, setNewLaborService] = useState({ id_funcionario: '', valor: '', descricao: '' });
+    const [editingLaborId, setEditingLaborId] = useState<number | null>(null);
+    
 
     const [newItem, setNewItem] = useState({ id_pecas_estoque: '', quantidade: '1', valor_venda: '', descricao: '', codigo_referencia: '', id_fornecedor: '' });
     const [loading, setLoading] = useState(false);
@@ -64,12 +64,8 @@ export const OrdemDeServicoPage = () => {
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
     const [activeIndex, setActiveIndex] = useState<number>(-1);
 
-    const placaInputRef = useRef<HTMLInputElement>(null);
-    const clienteInputRef = useRef<HTMLInputElement>(null);
     const partInputRef = useRef<HTMLInputElement>(null);
 
-    const [vehicleActiveIndex, setVehicleActiveIndex] = useState(-1);
-    const [clienteActiveIndex, setClienteActiveIndex] = useState(-1);
     const [partActiveIndex, setPartActiveIndex] = useState(-1);
     const [editingItemId, setEditingItemId] = useState<number | null>(null);
 
@@ -89,7 +85,48 @@ export const OrdemDeServicoPage = () => {
 
     // Edit Item Modal State
     const [editItemModalOpen, setEditItemModalOpen] = useState(false);
+
     const [editingItemData, setEditingItemData] = useState<any>(null);
+
+    // UNIFIED SEARCH STATES
+    const [unifiedSearch, setUnifiedSearch] = useState('');
+    const [unifiedResults, setUnifiedResults] = useState<any[]>([]);
+    
+    // HISTORY STATES
+    const [historyModalOpen, setHistoryModalOpen] = useState(false);
+    const [historyList, setHistoryList] = useState<any[]>([]);
+    const [historyVehicle, setHistoryVehicle] = useState<any>(null);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
+    // Handlers
+    const handleUnifiedSearch = async (val: string) => {
+        setUnifiedSearch(val);
+        if (val.length < 1) {
+            setUnifiedResults([]);
+            return;
+        }
+        try {
+            const response = await api.get(`/veiculo/search?q=${val}`);
+             // Ensure unique vehicles (though backend should handle distinct, prisma might return multiples if joins allow it, but vehicle ID is unique in table)
+            setUnifiedResults(response.data);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleShowHistory = async (veiculo: any) => {
+        setHistoryVehicle(veiculo);
+        setHistoryModalOpen(true);
+        setLoadingHistory(true);
+        try {
+            const response = await api.get(`/ordem-de-servico/veiculo/${veiculo.id_veiculo}`);
+            setHistoryList(response.data);
+        } catch (error) {
+            setStatusMsg({ type: 'error', text: 'Erro ao carregar histórico.' });
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
 
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -104,11 +141,7 @@ export const OrdemDeServicoPage = () => {
 
     const handleKeyDown = (e: React.KeyboardEvent, type: 'vehicle' | 'cliente' | 'part') => {
         if (e.key === 'Escape') {
-            setVehicleResults([]);
-            setClienteResults([]);
             setPartResults([]);
-            setVehicleActiveIndex(-1);
-            setClienteActiveIndex(-1);
             setPartActiveIndex(-1);
             return;
         }
@@ -118,17 +151,7 @@ export const OrdemDeServicoPage = () => {
         let currentSetter: (i: number) => void = () => {};
         let currentSelect: (item: any) => void = () => {};
 
-        if (type === 'vehicle') {
-            currentResults = vehicleResults;
-            currentActive = vehicleActiveIndex;
-            currentSetter = setVehicleActiveIndex;
-            currentSelect = selectVehicle;
-        } else if (type === 'cliente') {
-            currentResults = clienteResults;
-            currentActive = clienteActiveIndex;
-            currentSetter = setClienteActiveIndex;
-            currentSelect = selectCliente;
-        } else if (type === 'part') {
+        if (type === 'part') {
             currentResults = partResults;
             currentActive = partActiveIndex;
             currentSetter = setPartActiveIndex;
@@ -176,10 +199,8 @@ export const OrdemDeServicoPage = () => {
                     setCreationStep(1);
                 } else {
                     setShowRegisterModal('NONE');
-                    setPlacaSearch('');
-                    setClienteSearch('');
-                    setVehicleResults([]);
-                    setClienteResults([]);
+                    setUnifiedSearch('');
+                    setUnifiedResults([]);
                     setActiveIndex(-1);
                 }
             }
@@ -253,6 +274,7 @@ export const OrdemDeServicoPage = () => {
             setSelectedOsForItems(os);
             setManageModalOpen(true);
             loadOsItems(id);
+            setLaborServices(os.servicos_mao_de_obra || []);
         } catch (error) {
             setStatusMsg({ type: 'error', text: 'Erro ao abrir OS selecionada.' });
         }
@@ -264,9 +286,105 @@ export const OrdemDeServicoPage = () => {
             setSelectedOsForItems(response.data);
             setManageModalOpen(true);
             loadOsItems(os.id_os);
+            setLaborServices(response.data.servicos_mao_de_obra || []);
         } catch (error) {
             setStatusMsg({ type: 'error', text: 'Erro ao carregar detalhes da OS.' });
         }
+    };
+
+    // LABOR HANDLERS & AUTO-SAVE
+    const handleAddLabor = async (e?: FormEvent) => {
+        if (e) e.preventDefault();
+        if (!selectedOsForItems) return;
+        
+        try {
+            const val = Number(newLaborService.valor);
+            if (isNaN(val) || val < 0) {
+                 setStatusMsg({ type: 'error', text: 'Valor inválido.' });
+                 return;
+            }
+            if (!newLaborService.id_funcionario) {
+                setStatusMsg({ type: 'error', text: 'Selecione um funcionário.' });
+                return;
+            }
+
+            if (editingLaborId) {
+                // Update existing
+                await api.put(`/servico-mao-de-obra/${editingLaborId}`, {
+                    id_funcionario: Number(newLaborService.id_funcionario),
+                    valor: val,
+                    descricao: newLaborService.descricao
+                });
+                setStatusMsg({ type: 'success', text: 'Mão de obra atualizada!' });
+            } else {
+                // Create new
+                await api.post('/servico-mao-de-obra', {
+                    id_os: selectedOsForItems.id_os,
+                    id_funcionario: Number(newLaborService.id_funcionario),
+                    valor: val,
+                    descricao: newLaborService.descricao
+                });
+                setStatusMsg({ type: 'success', text: 'Mão de obra adicionada!' });
+            }
+            
+            const response = await api.get(`/ordem-de-servico/${selectedOsForItems.id_os}`);
+            setSelectedOsForItems(response.data);
+            setLaborServices(response.data.servicos_mao_de_obra || []);
+            
+            setNewLaborService({ id_funcionario: '', valor: '', descricao: '' });
+            setEditingLaborId(null);
+            setTimeout(() => setStatusMsg({ type: null, text: '' }), 1500);
+        } catch (error) {
+            setStatusMsg({ type: 'error', text: 'Erro ao salvar mão de obra.' });
+        }
+    };
+
+    const handleEditLabor = (service: any) => {
+        setNewLaborService({
+            id_funcionario: String(service.id_funcionario),
+            valor: String(service.valor),
+            descricao: service.descricao || ''
+        });
+        setEditingLaborId(service.id_servico_mao_de_obra);
+    };
+
+    const handleCancelEditLabor = () => {
+        setNewLaborService({ id_funcionario: '', valor: '', descricao: '' });
+        setEditingLaborId(null);
+    };
+
+    const handleDeleteLabor = async (id: number) => {
+        if(!selectedOsForItems) return;
+        try {
+            await api.delete(`/servico-mao-de-obra/${id}`);
+            const response = await api.get(`/ordem-de-servico/${selectedOsForItems.id_os}`);
+            setSelectedOsForItems(response.data);
+            setLaborServices(response.data.servicos_mao_de_obra || []);
+            setStatusMsg({ type: 'success', text: 'Removido!' });
+             setTimeout(() => setStatusMsg({ type: null, text: '' }), 1500);
+        } catch (error) {
+             setStatusMsg({ type: 'error', text: 'Erro ao remover.' });
+        }
+    };
+    
+    const updateOSField = async (field: string, value: any) => {
+         if (!selectedOsForItems) return;
+         
+         if (selectedOsForItems.status === 'FINALIZADA' || selectedOsForItems.status === 'PAGA_CLIENTE' || selectedOsForItems.status === 'PRONTO PARA FINANCEIRO') {
+             setStatusMsg({ type: 'error', text: 'OS Finalizada/Paga não pode ser editada.' });
+             return;
+         }
+
+         try {
+             // Optimistic update
+             setSelectedOsForItems(prev => prev ? ({ ...prev, [field]: value }) : null);
+             
+             await api.put(`/ordem-de-servico/${selectedOsForItems.id_os}`, {
+                 [field]: value
+             });
+         } catch (error) {
+             setStatusMsg({ type: 'error', text: 'Erro ao salvar alteração.' });
+         }
     };
 
     const handleCloseManageModal = () => {
@@ -559,39 +677,7 @@ export const OrdemDeServicoPage = () => {
         }
     };
 
-    const handleVehicleSearch = async (val: string) => {
-        setPlacaSearch(val.toUpperCase());
-        setVehicleActiveIndex(-1);
-        if (val.length < 1) {
-            setVehicleResults([]);
-            return;
-        }
 
-        try {
-            const response = await api.get(`/veiculo/search?q=${val}`);
-            setVehicleResults(response.data);
-        } catch (error) {
-            console.error(error);
-            setStatusMsg({ type: 'error', text: 'Erro ao buscar veículos.' });
-        }
-    };
-
-    const handleClienteSearch = async (val: string) => {
-        setClienteSearch(val);
-        setClienteActiveIndex(-1);
-        if (val.length < 2) {
-            setClienteResults([]);
-            return;
-        }
-
-        try {
-            const response = await api.get(`/cliente/search?name=${val}`);
-            setClienteResults(response.data);
-        } catch (error) {
-            console.error(error);
-            setStatusMsg({ type: 'error', text: 'Erro ao buscar clientes.' });
-        }
-    };
 
     const handlePartSearch = async (val: string) => {
         setPartSearch(val);
@@ -642,9 +728,8 @@ export const OrdemDeServicoPage = () => {
 
     const selectVehicle = (v: any) => {
         setFoundVeiculo(v);
-        setFoundCliente(v.cliente);
-        setPlacaSearch(v.placa);
-        setVehicleResults([]);
+        setUnifiedSearch('');
+        setUnifiedResults([]);
         setFormData(prev => ({
             ...prev,
             id_cliente: String(v.cliente.id_cliente),
@@ -652,14 +737,7 @@ export const OrdemDeServicoPage = () => {
         }));
     };
 
-    const selectCliente = (c: any) => {
-        setFoundCliente(c);
-        setFoundVeiculo(null);
-        setClienteSearch('');
-        setClienteResults([]);
-        setPlacaSearch('');
-        setFormData(prev => ({ ...prev, id_cliente: String(c.id_cliente), id_veiculo: '' }));
-    };
+
 
 
     const handleCreateOSRecord = async () => {
@@ -795,8 +873,7 @@ export const OrdemDeServicoPage = () => {
             parcelas: '1', defeito_relatado: '', diagnostico: '', valor_total_cliente: '', valor_mao_de_obra: '',
             dt_abertura: new Date().toISOString().slice(0, 16), dt_entrega: '',
         });
-        setPlacaSearch('');
-        setFoundCliente(null);
+        setUnifiedSearch('');
         setFoundVeiculo(null);
         setCreationStep(1);
         setCurrentCreatedOsId(null);
@@ -833,7 +910,7 @@ export const OrdemDeServicoPage = () => {
                 </div>
             </div>
 
-            {/* PASSO 1: IDENTIFICAÇÃO */}
+            {/* PASSO 1: IDENTIFICAÇÃO (UNIFICADA) */}
             <div className={`bg-surface p-6 rounded-2xl shadow-sm border transition-all ${creationStep === 1 ? 'border-primary-500 ring-4 ring-primary-500/10' : 'border-neutral-200'}`}>
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -841,229 +918,128 @@ export const OrdemDeServicoPage = () => {
                             {creationStep > 1 ? <Check size={20} /> : <Search size={20} />}
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-neutral-900">Passo 1: Identificação</h2>
-                            <p className="text-sm text-neutral-500">Localize o veículo e o proprietário.</p>
+                            <h2 className="text-lg font-bold text-neutral-900">Passo 1: Identificação do Cliente/Veículo</h2>
+                            <p className="text-sm text-neutral-500">Busque por placa, modelo ou nome do proprietário.</p>
                         </div>
                     </div>
+                    {creationStep > 1 && (
+                         <button onClick={() => { setCreationStep(1); setUnifiedSearch(''); setUnifiedResults([]); setFoundVeiculo(null); }} className="text-xs font-black text-primary-600 hover:text-primary-800 uppercase">
+                             Alterar
+                         </button>
+                    )}
                 </div>
 
-                {creationStep === 1 ? (
+                {creationStep === 1 && (
                     <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-      
-      {/* Header da Página */}
-                            <div className="space-y-2 relative">
-                                <label className="text-xs font-bold text-neutral-500 uppercase flex items-center gap-2">
-                                    <Car size={14} /> Placa do Veículo
-                                </label>
-                                <div className="relative group">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-primary-500 transition-colors" size={20} />
-                                    <input 
-                                        ref={placaInputRef}
-                                        autoFocus
-                                        value={placaSearch}
-                                        onChange={(e) => handleVehicleSearch(e.target.value)}
-                                        onKeyDown={(e) => handleKeyDown(e, 'vehicle')}
-                                        className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none text-lg font-mono font-bold uppercase tracking-widest text-neutral-900 transition-all"
-                                        placeholder="ABC1234"
-                                        maxLength={7}
-                                    />
-                                </div>
-                                {placaSearch.length >= 1 && vehicleResults.length === 0 && (
-                                    <div className="absolute z-30 w-full mt-2 bg-white border border-neutral-200 rounded-xl shadow-2xl p-4 text-center">
-                                        <p className="text-sm text-neutral-500 mb-3">Placa não encontrada.</p>
-                                        <button 
-                                            onClick={() => {
-                                                if (foundCliente) {
-                                                    setCreatedClientId(foundCliente.id_cliente);
-                                                    setShowRegisterModal('VEICULO');
-                                                } else {
-                                                    setShowRegisterModal('VEICULO'); // Will trigger client selection in VeiculoForm logic if strictly followed, or we can prompt.
-                                                    // Given existing logic, we allow it. The bug was likely the Render Condition below.
-                                                }
-                                            }}
-                                            className="w-full py-2 bg-primary-100 text-primary-700 rounded-lg font-black text-xs uppercase hover:bg-primary-200 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <Plus size={16} /> Cadastrar Novo Veículo
-                                        </button>
-                                    </div>
-                                )}
-                                {vehicleResults.length > 0 && (
-                                    <div className="absolute z-30 w-full mt-2 bg-white border border-neutral-200 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
-                                        {vehicleResults.map((v, idx) => (
-                                            <button 
-                                                key={v.id_veiculo} 
-                                                onClick={() => selectVehicle(v)} 
-                                                className={`w-full p-4 text-left border-b border-neutral-50 hover:bg-primary-50 transition-colors flex items-center justify-between ${idx === vehicleActiveIndex ? 'bg-primary-100' : ''}`}
-                                            >
-                                                <div>
-                                                    <p className="font-black text-neutral-800 tracking-widest">{v.placa}</p>
-                                                    <p className="text-[10px] text-neutral-500 font-bold uppercase">{v.marca} {v.modelo}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-[10px] font-bold text-neutral-400 uppercase">Dono</p>
-                                                    <p className="text-sm font-bold text-primary-600 truncate max-w-[150px]">
-                                                        {v.cliente?.pessoa_fisica?.pessoa?.nome || v.cliente?.pessoa_juridica?.razao_social || 'Cliente sem Nome'}
-                                                    </p>
-                                                    <p className="text-[10px] text-neutral-400 font-medium">{v.cliente?.telefone_1}</p>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
+                         <div className="relative group">
+                            <label className="text-xs font-bold text-neutral-500 uppercase flex items-center gap-2 mb-2">
+                                <Search size={14} /> Buscar Veículo ou Proprietário
+                            </label>
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-primary-500 transition-colors" size={24} />
+                                <input 
+                                    autoFocus
+                                    value={unifiedSearch}
+                                    onChange={(e) => handleUnifiedSearch(e.target.value)}
+                                    className="w-full pl-14 pr-4 py-5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none text-xl font-medium text-neutral-900 transition-all placeholder:text-neutral-400"
+                                    placeholder="Digite a placa (ABC-1234) ou nome do cliente..."
+                                />
                             </div>
 
-                            {/* Busca por Cliente */}
-                            <div className="space-y-2 relative">
-                                <label className="text-xs font-bold text-neutral-500 uppercase flex items-center gap-2">
-                                    <User size={14} /> Proprietário
-                                </label>
-                                <div className="relative group">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-primary-500 transition-colors" size={20} />
-                                    <input 
-                                        ref={clienteInputRef}
-                                        value={clienteSearch}
-                                        onChange={(e) => handleClienteSearch(e.target.value)}
-                                        onKeyDown={(e) => handleKeyDown(e, 'cliente')}
-                                        className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none text-neutral-900 transition-all font-bold"
-                                        placeholder="Nome do cliente..."
-                                    />
-                                </div>
-                                {clienteSearch.length >= 2 && clienteResults.length === 0 && (
-                                    <div className="absolute z-30 w-full mt-2 bg-white border border-neutral-200 rounded-xl shadow-2xl p-4 text-center">
-                                        <p className="text-sm text-neutral-500 mb-3">Cliente não encontrado.</p>
-                                        <button 
-                                            onClick={() => setShowRegisterModal('PESSOA')}
-                                            className="w-full py-2 bg-primary-100 text-primary-700 rounded-lg font-black text-xs uppercase hover:bg-primary-200 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <Plus size={16} /> Cadastrar Novo Cliente
-                                        </button>
-                                    </div>
-                                )}
-                                {clienteResults.length > 0 && (
-                                    <div className="absolute z-30 w-full mt-2 bg-white border border-neutral-200 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
-                                        {clienteResults.map((c, idx) => (
-                                            <button 
-                                                key={c.id_cliente} 
-                                                onClick={() => selectCliente(c)} 
-                                                className={`w-full p-4 text-left border-b border-neutral-50 hover:bg-primary-50 transition-colors ${idx === clienteActiveIndex ? 'bg-primary-100' : ''}`}
-                                            >
-                                                <p className="font-bold text-neutral-900">{c.pessoa_fisica?.pessoa.nome || c.pessoa_juridica?.razao_social}</p>
-                                                <p className="text-[10px] text-neutral-500">{c.email} • {c.telefone_1}</p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Lista de Veículos do Cliente Selecionado */}
-                        {foundCliente && !foundVeiculo && (
-                            <div className="p-6 bg-primary-50/30 rounded-2xl border border-dashed border-primary-200 animate-in zoom-in-95 duration-300">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <Car size={18} className="text-primary-600" />
-                                    <h3 className="text-sm font-black text-primary-900 uppercase">Selecione um Veículo de {foundCliente.pessoa_fisica?.pessoa.nome || foundCliente.pessoa_juridica?.razao_social}</h3>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    {(foundCliente.veiculos || []).map((v: any) => (
-                                        <button 
-                                            key={v.id_veiculo} 
-                                            onClick={() => selectVehicle({ ...v, cliente: foundCliente })}
-                                            className="p-4 bg-white border border-primary-100 rounded-xl hover:border-primary-500 hover:shadow-lg transition-all text-left flex items-center justify-between group"
-                                        >
-                                            <div>
-                                                <p className="font-black text-primary-900 tracking-widest">{v.placa}</p>
-                                                <p className="text-[10px] text-neutral-500 font-bold uppercase">{v.marca} {v.modelo}</p>
-                                            </div>
-                                            <ArrowRight size={16} className="text-primary-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all" />
-                                        </button>
-                                    ))}
-                                    <button 
-                                        onClick={() => setShowRegisterModal('VEICULO')}
-                                        className="p-4 border border-dashed border-neutral-300 rounded-xl hover:border-primary-500 hover:text-primary-600 transition-all text-left flex items-center gap-3 text-neutral-500 font-bold text-sm"
-                                    >
-                                        <Plus size={20} /> Novo Veículo
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {(foundCliente || foundVeiculo) && (
-                            <div className="flex flex-col items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300 border-t border-neutral-100 pt-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                                    <div className={`p-4 rounded-xl border flex items-center justify-between ${foundCliente ? 'bg-primary-50 border-primary-100 text-primary-700' : 'bg-neutral-50 border-neutral-200 opacity-50 border-dashed'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <User size={20} />
-                                            <div>
-                                                <p className="text-[10px] font-black uppercase">Cliente Selecionado</p>
-                                                <p className="font-bold">{foundCliente ? (foundCliente.pessoa_fisica?.pessoa.nome || foundCliente.pessoa_juridica?.razao_social) : 'Aguardando seleção...'}</p>
+                             {/* LISTA DE RESULTADOS UNIFICADA */}
+                             {unifiedSearch.length > 0 && (
+                                <div className="mt-4 space-y-3">
+                                    {unifiedResults.length === 0 ? (
+                                        <div className="text-center p-8 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
+                                            <p className="text-neutral-500 font-medium mb-4">Nenhum registro encontrado para "{unifiedSearch}".</p>
+                                            <div className="flex justify-center gap-3">
+                                                 <button 
+                                                    onClick={() => setShowRegisterModal('VEICULO')}
+                                                    className="px-6 py-3 bg-primary-100 text-primary-700 rounded-xl font-black text-xs uppercase hover:bg-primary-200 transition-all flex items-center gap-2"
+                                                >
+                                                    <Plus size={16} /> Novo Veículo
+                                                </button>
+                                                <button 
+                                                    onClick={() => setShowRegisterModal('PESSOA')}
+                                                    className="px-6 py-3 bg-neutral-100 text-neutral-600 rounded-xl font-black text-xs uppercase hover:bg-neutral-200 transition-all flex items-center gap-2"
+                                                >
+                                                    <User size={16} /> Novo Cliente
+                                                </button>
                                             </div>
                                         </div>
-                                        {foundCliente && <button onClick={() => setFoundCliente(null)} className="text-neutral-400 hover:text-red-500"><Plus size={18} className="rotate-45" /></button>}
-                                    </div>
-                                    <div className={`p-4 rounded-xl border flex items-center justify-between ${foundVeiculo ? 'bg-primary-50 border-primary-100 text-primary-700' : 'bg-neutral-50 border-neutral-200 opacity-50 border-dashed'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <Car size={20} />
-                                            <div>
-                                                <p className="text-[10px] font-black uppercase">Veículo Selecionado</p>
-                                                <p className="font-bold tracking-widest uppercase">{foundVeiculo ? foundVeiculo.placa : 'Aguardando seleção...'}</p>
-                                            </div>
-                                        </div>
-                                        {foundVeiculo && <button onClick={() => setFoundVeiculo(null)} className="text-neutral-400 hover:text-red-500"><Plus size={18} className="rotate-45" /></button>}
-                                    </div>
-                                </div>
-                                {foundVeiculo && (
-                                    <div className="w-full flex flex-col items-center gap-6">
-                                        <div className="w-full p-6 bg-primary-50 border border-primary-200 rounded-3xl text-primary-900 shadow-2xl relative overflow-hidden group">
-                                            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
-                                                <BadgeCheck size={120} />
-                                            </div>
-                                            <div className="relative z-10 space-y-4">
-                                                <div className="flex items-center gap-3 text-primary-600 font-black uppercase text-xs tracking-widest">
-                                                    <Check size={16} /> Conferência de Dados
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Proprietário / Cliente</p>
-                                                        <p className="text-xl font-black">{foundCliente ? (foundCliente.pessoa_fisica?.pessoa.nome || foundCliente.pessoa_juridica?.razao_social) : '---'}</p>
-                                                        <p className="text-xs text-neutral-400 font-medium">{foundCliente?.telefone_1}</p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                            {unifiedResults.map((item) => (
+                                                <div key={item.id_veiculo} className="bg-white border border-neutral-100 p-4 rounded-xl shadow-sm hover:shadow-md hover:border-primary-200 transition-all group flex flex-col md:flex-row items-center justify-between gap-4">
+                                                    <div className="flex items-center gap-4 w-full md:w-auto">
+                                                        <div className="w-12 h-12 bg-primary-50 text-primary-600 rounded-xl flex items-center justify-center shrink-0">
+                                                             <Car size={24} />
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-baseline gap-2">
+                                                                <h3 className="text-lg font-black text-neutral-900 uppercase tracking-widest">{item.placa}</h3>
+                                                                <span className="text-xs font-bold text-neutral-400 uppercase">{item.marca} {item.modelo}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1 text-sm text-neutral-600 font-medium mt-0.5">
+                                                                <User size={14} className="text-neutral-400" />
+                                                                {item.cliente?.pessoa_fisica?.pessoa?.nome || item.cliente?.pessoa_juridica?.razao_social || 'Desconhecido'}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Veículo / Placa</p>
-                                                        <p className="text-xl font-black tracking-widest uppercase">{foundVeiculo.placa}</p>
-                                                        <p className="text-xs text-neutral-400 font-bold uppercase">{foundVeiculo.marca} {foundVeiculo.modelo} ({foundVeiculo.cor})</p>
-                                                    </div>
-                                                    <div className="flex items-center justify-end">
+                                                    
+                                                    <div className="flex gap-2 w-full md:w-auto">
                                                         <button 
-                                                            onClick={() => setCreationStep(2)}
-                                                            className="bg-primary-600 text-white px-10 py-4 rounded-2xl font-black text-lg hover:bg-primary-700 transition-all shadow-xl shadow-primary-500/20 flex items-center gap-3 active:scale-95"
+                                                            onClick={() => handleShowHistory(item)}
+                                                            className="flex-1 md:flex-none px-4 py-3 bg-neutral-50 text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 font-bold text-xs uppercase flex items-center justify-center gap-2 transition-colors"
+                                                            title="Ver Histórico"
                                                         >
-                                                            CONFIRMAR <ArrowRight size={22} />
+                                                            <History size={16} /> Histórico
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => {
+                                                                 selectVehicle(item);
+                                                                 setCreationStep(2); // Muda para o passo 2 automaticamente
+                                                                 // Pode adicionar lógica para 'mostrar' confirmação se quiser, mas o usuário pediu "Inicia fluxo"
+                                                            }}
+                                                            className="flex-1 md:flex-none px-6 py-3 bg-primary-600 text-white rounded-xl font-black text-xs uppercase hover:bg-primary-700 shadow-lg shadow-primary-500/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                                                        >
+                                                            <Plus size={16} strokeWidth={3} /> Nova OS
                                                         </button>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            ))}
                                         </div>
-                                        <p className="text-xs text-neutral-400 italic font-medium">Os dados acima estão corretos? Se sim, clique em CONFIRMAR para iniciar o diagnóstico.</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="flex items-center justify-between bg-primary-50 border border-primary-200 p-4 rounded-2xl text-primary-900">
-                        <div className="flex gap-12">
-                            <div>
-                                <p className="text-[10px] font-bold text-neutral-400 uppercase">Proprietário</p>
-                                <p className="font-black">{foundCliente?.pessoa_fisica?.pessoa.nome || foundCliente?.pessoa_juridica?.razao_social}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-bold text-neutral-400 uppercase">Veículo</p>
-                                <p className="font-black tracking-widest uppercase">{foundVeiculo?.placa}</p>
-                            </div>
+                                    )}
+                                </div>
+                             )}
                         </div>
-                        <button onClick={() => setCreationStep(1)} className="text-xs font-black text-primary-600 hover:text-primary-800">ALTERAR</button>
+                    </div>
+                )}
+                
+                {/* Visualização Resumida (Quando Passo 1 Concluído) */}
+                {creationStep > 1 && foundVeiculo && (
+                    <div className="flex flex-col md:flex-row gap-8 mt-2 animate-in fade-in duration-300">
+                         <div className="flex items-center gap-3">
+                             <div className="p-3 bg-primary-50 rounded-xl text-primary-700">
+                                 <Car size={20} />
+                             </div>
+                             <div>
+                                 <p className="text-[10px] font-bold text-neutral-400 uppercase">Veículo Selecionado</p>
+                                 <p className="font-black text-lg uppercase tracking-widest text-neutral-900">{foundVeiculo.placa}</p>
+                                 <p className="text-xs font-bold text-neutral-500 uppercase">{foundVeiculo.modelo}</p>
+                             </div>
+                         </div>
+                         <div className="hidden md:block w-px bg-neutral-200 h-12"></div>
+                         <div className="flex items-center gap-3">
+                             <div className="p-3 bg-primary-50 rounded-xl text-primary-700">
+                                 <User size={20} />
+                             </div>
+                             <div>
+                                 <p className="text-[10px] font-bold text-neutral-400 uppercase">Proprietário</p>
+                                 <p className="font-bold text-lg text-neutral-900">{foundVeiculo.cliente?.pessoa_fisica?.pessoa?.nome || foundVeiculo.cliente?.pessoa_juridica?.razao_social}</p>
+                                 <p className="text-xs font-bold text-neutral-500">{foundVeiculo.cliente?.telefone_1}</p>
+                             </div>
+                         </div>
                     </div>
                 )}
             </div>
@@ -1455,9 +1431,8 @@ export const OrdemDeServicoPage = () => {
                     <ClienteForm 
                         onSuccess={(client) => {
                             setCreatedClientId(client.id_cliente);
-                            setClienteSearch(''); // Clear search to hide "Not Found" card
+                            setUnifiedSearch(''); // Clear search to hide "Not Found" card
 
-                            setFoundCliente(client); // Auto select
                             setShowRegisterModal('VEICULO');
                         }}
                         onCancel={() => setShowRegisterModal('NONE')}
@@ -1469,13 +1444,12 @@ export const OrdemDeServicoPage = () => {
                 <Modal title="Cadastro Rápido: Novo Veículo" onClose={() => setShowRegisterModal('NONE')}>
                     <VeiculoForm
                         clientId={createdClientId}
-                        initialData={{ placa: placaSearch }}
+                        initialData={{ placa: unifiedSearch.length <= 7 ? unifiedSearch : '' }}
                         onCreateClient={() => {
                             setShowRegisterModal('PESSOA');
                         }}
                         onSuccess={(veiculo) => {
                              setFoundVeiculo(veiculo);
-                             setFoundCliente(veiculo.cliente);
                              setFormData(prev => ({
                                 ...prev,
                                 id_cliente: String(veiculo.id_cliente),
@@ -1498,6 +1472,7 @@ export const OrdemDeServicoPage = () => {
             {/* MODAL: GERENCIAR ITENS (DESIGN PREMIUM) */}
             {manageModalOpen && selectedOsForItems && (
                  <Modal 
+                    className="max-w-5xl"
                     title={
                         <div className="flex items-baseline gap-2">
                             <span>OS #{String(selectedOsForItems.id_os).padStart(4, '0')}</span>
@@ -1540,7 +1515,7 @@ export const OrdemDeServicoPage = () => {
 
  
                          {/* Status Header */}
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div className="grid grid-cols-1 gap-4">
                              <div className="space-y-1">
                                  <label className="text-[10px] font-black text-primary-400 uppercase">KM Entrada</label>
                                  <input 
@@ -1548,72 +1523,14 @@ export const OrdemDeServicoPage = () => {
                                      value={selectedOsForItems.km_entrada}
                                      onChange={e => {
                                          setSelectedOsForItems({...selectedOsForItems, km_entrada: Number(e.target.value)});
-                                         setIsDirty(true);
                                      }}
+                                     onBlur={e => updateOSField('km_entrada', Number(e.target.value))}
                                      className="w-full border-b border-neutral-200 py-1 font-bold outline-none focus:border-primary-500 transition-colors"
                                  />
                              </div>
-                             <div className="space-y-1">
-                                 <label className="text-[10px] font-black text-neutral-400 uppercase">Mecânico</label>
-                                 <select 
-                                     value={selectedOsForItems.id_funcionario}
-                                     onChange={e => {
-                                         setSelectedOsForItems({...selectedOsForItems, id_funcionario: Number(e.target.value)});
-                                         setIsDirty(true);
-                                     }}
-                                     className="w-full border-b border-neutral-200 py-1 font-bold outline-none focus:border-primary-500 transition-colors bg-transparent"
-                                 >
-                                     {employees.map(emp => (
-                                         <option key={emp.id_funcionario} value={emp.id_funcionario}>
-                                             {emp.pessoa_fisica?.pessoa?.nome || `Mecânico #${emp.id_funcionario}`}
-                                         </option>
-                                     ))}
-                                 </select>
-                             </div>
                          </div>
 
-                        {/* Summary Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 flex items-center gap-3">
-                                <div className="p-2 bg-white rounded-lg text-neutral-400">
-                                    <Package size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-neutral-500 uppercase">Peças</p>
-                                    <p className="text-lg font-bold text-neutral-900">R$ {osItems.reduce((acc, item) => acc + Number(item.valor_total), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                </div>
-                            </div>
-                            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 flex items-center gap-3">
-                                <div className="p-2 bg-white rounded-lg text-neutral-400">
-                                    <ArrowRight size={20} />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-[10px] font-bold text-neutral-500 uppercase">Mão de Obra</p>
-                                    <div className="relative">
-                                        <span className="absolute left-0 top-1/2 -translate-y-1/2 font-black text-neutral-400">R$</span>
-                                        <input 
-                                            type="number" step="0.01" 
-                                            value={selectedOsForItems.valor_mao_de_obra === 0 ? '' : (selectedOsForItems.valor_mao_de_obra ?? '')}
-                                            onChange={e => {
-                                                setSelectedOsForItems({...selectedOsForItems, valor_mao_de_obra: e.target.value === '' ? 0 : Number(e.target.value)});
-                                                setIsDirty(true);
-                                            }}
-                                            className="bg-transparent border-b border-primary-200 pl-6 py-0 font-black text-lg w-full focus:border-primary-500 outline-none text-primary-900"
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-4 bg-primary-50 rounded-2xl border border-primary-100 flex items-center gap-3">
-                                <div className="p-2 bg-white rounded-lg text-primary-600 shadow-sm">
-                                    <TrendingUp size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-primary-600 uppercase">Total Geral</p>
-                                    <p className="text-xl font-black text-primary-900">R$ {(osItems.reduce((acc, item) => acc + Number(item.valor_total), 0) + Number(selectedOsForItems.valor_mao_de_obra || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                </div>
-                            </div>
-                        </div>
+                        {/* Summary Cards moved to bottom */}
 
                         {/* SEÇÃO FINANCEIRO MOVIDA PARA BAIXO DO LISTAGEM */}
 
@@ -1623,10 +1540,8 @@ export const OrdemDeServicoPage = () => {
                                 <label className="text-[10px] font-black text-gray-400 uppercase">Defeito Relatado</label>
                                 <textarea 
                                     value={selectedOsForItems.defeito_relatado || ''}
-                                    onChange={e => {
-                                        setSelectedOsForItems({...selectedOsForItems, defeito_relatado: e.target.value});
-                                        setIsDirty(true);
-                                    }}
+                                    onChange={e => setSelectedOsForItems({...selectedOsForItems, defeito_relatado: e.target.value})}
+                                    onBlur={e => updateOSField('defeito_relatado', e.target.value)}
                                     className="w-full bg-primary-50 p-3 rounded-xl border border-primary-100 text-xs font-medium resize-none h-20 outline-none focus:border-primary-300 text-primary-900"
                                 />
                             </div>
@@ -1634,10 +1549,8 @@ export const OrdemDeServicoPage = () => {
                                 <label className="text-[10px] font-black text-gray-400 uppercase">Diagnóstico / Ações</label>
                                 <textarea 
                                     value={selectedOsForItems.diagnostico || ''}
-                                    onChange={e => {
-                                        setSelectedOsForItems({...selectedOsForItems, diagnostico: e.target.value});
-                                        setIsDirty(true);
-                                    }}
+                                    onChange={e => setSelectedOsForItems({...selectedOsForItems, diagnostico: e.target.value})}
+                                    onBlur={e => updateOSField('diagnostico', e.target.value)}
                                     className="w-full bg-primary-50 p-3 rounded-xl border border-primary-100 text-xs font-medium resize-none h-20 outline-none focus:border-primary-300 text-primary-900"
                                 />
                             </div>
@@ -1645,10 +1558,8 @@ export const OrdemDeServicoPage = () => {
                                 <label className="text-[10px] font-black text-green-600 uppercase">Observação Final (Para Financeiro)</label>
                                 <textarea 
                                     value={(selectedOsForItems as any).obs_final || ''}
-                                    onChange={e => {
-                                        setSelectedOsForItems({...selectedOsForItems, obs_final: e.target.value});
-                                        setIsDirty(true);
-                                    }}
+                                    onChange={e => setSelectedOsForItems({...selectedOsForItems, obs_final: e.target.value})}
+                                    onBlur={e => updateOSField('obs_final', e.target.value)}
                                     placeholder="Observações de custos extras, descontos ou detalhes para o faturamento..."
                                     className="w-full bg-green-50 p-3 rounded-xl border border-green-100 text-xs font-medium resize-none h-20 outline-none focus:border-green-300"
                                 />
@@ -1656,7 +1567,7 @@ export const OrdemDeServicoPage = () => {
                         </div>
 
                         {/* Form Adicionar Peça */}
-                        {selectedOsForItems.status !== 'FINALIZADA' && (
+                        {!['FINALIZADA', 'PAGA_CLIENTE', 'PRONTO PARA FINANCEIRO'].includes(selectedOsForItems.status) && (
                             <div className="p-4 border border-dashed border-primary-200 rounded-2xl bg-primary-50">
                                 <p className="text-[10px] font-black text-gray-500 uppercase mb-4 flex items-center gap-2">
                                     <Plus size={14} className="text-green-600" /> Adicionar Peça / Serviço
@@ -1760,18 +1671,165 @@ export const OrdemDeServicoPage = () => {
                                             <td className="p-4 text-right font-black text-gray-900 italic">R$ {Number(item.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                             <td className="p-4 text-center">
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <button onClick={() => handleEditItem(item)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
-                                                        <PenTool size={14} />
-                                                    </button>
-                                                    <button onClick={() => handleDeleteItem(item.id_iten, selectedOsForItems.id_os)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                                        <Plus size={14} className="rotate-45" />
-                                                    </button>
+                                                    {!['FINALIZADA', 'PAGA_CLIENTE', 'PRONTO PARA FINANCEIRO'].includes(selectedOsForItems.status) ? (
+                                                        <>
+                                                            <button onClick={() => handleEditItem(item)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                                                                <PenTool size={14} />
+                                                            </button>
+                                                            <button onClick={() => handleDeleteItem(item.id_iten, selectedOsForItems.id_os)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                                <Plus size={14} className="rotate-45" />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-gray-300">-</span>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                              </table>
+                        </div>
+
+                        {/* SEÇÃO: Mão de Obra (Múltiplos Profissionais) */}
+                        <div className="space-y-4">
+                             <div className="flex items-center gap-2 mb-2">
+                                <Wrench size={18} className="text-primary-600" />
+                                <h3 className="text-sm font-black text-neutral-600 uppercase tracking-widest">Mão de Obra / Serviços</h3>
+                            </div>
+                            
+                            {selectedOsForItems.status !== 'FINALIZADA' && (
+                                <div className="p-4 bg-primary-50 rounded-2xl border border-primary-100 grid grid-cols-12 gap-3 items-end">
+                                    <div className="col-span-12 md:col-span-5">
+                                        <label className="text-[10px] font-black text-primary-400 uppercase mb-1 block">Profissional / Mecânico</label>
+                                        <select 
+                                            value={newLaborService.id_funcionario}
+                                            onChange={e => setNewLaborService({...newLaborService, id_funcionario: e.target.value})}
+                                            className="w-full p-3 rounded-xl border border-primary-200 outline-none focus:border-primary-500 font-bold text-sm bg-white"
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {employees.map(emp => (
+                                                <option key={emp.id_funcionario} value={emp.id_funcionario}>
+                                                    {emp.pessoa_fisica?.pessoa?.nome} ({emp.cargo})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="col-span-12 md:col-span-4">
+                                         <label className="text-[10px] font-black text-primary-400 uppercase mb-1 block">Descrição (Opcional)</label>
+                                         <input 
+                                            value={newLaborService.descricao}
+                                            onChange={e => setNewLaborService({...newLaborService, descricao: e.target.value})}
+                                            placeholder="Ex: Troca de óleo..."
+                                            className="w-full p-3 rounded-xl border border-primary-200 outline-none focus:border-primary-500 font-bold text-sm bg-white"
+                                         />
+                                    </div>
+                                    <div className="col-span-12 md:col-span-2">
+                                        <label className="text-[10px] font-black text-primary-400 uppercase mb-1 block">Valor (R$)</label>
+                                        <input 
+                                            type="number" step="0.01"
+                                            value={newLaborService.valor}
+                                            onChange={e => setNewLaborService({...newLaborService, valor: e.target.value})}
+                                            placeholder="0.00"
+                                            className="w-full p-3 rounded-xl border border-primary-200 outline-none focus:border-primary-500 font-black text-sm bg-white"
+                                        />
+                                    </div>
+                                    <div className="col-span-12 md:col-span-1 flex gap-1">
+                                        <button 
+                                            onClick={handleAddLabor} 
+                                            disabled={!newLaborService.id_funcionario || !newLaborService.valor}
+                                            className={`w-full h-[46px] rounded-xl flex items-center justify-center transition-colors shadow-lg ${editingLaborId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary-600 hover:bg-primary-700'} text-white disabled:opacity-50`}
+                                        >
+                                            {editingLaborId ? <Check size={20} strokeWidth={3} /> : <Plus size={20} strokeWidth={3} />}
+                                        </button>
+                                        {editingLaborId && (
+                                            <button 
+                                                onClick={handleCancelEditLabor}
+                                                className="h-[46px] w-[46px] bg-neutral-200 text-neutral-500 hover:bg-neutral-300 rounded-xl flex items-center justify-center transition-colors"
+                                            >
+                                                <X size={20} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Lista Mão de Obra */}
+                            <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden shadow-sm">
+                                {laborServices.length === 0 ? (
+                                    <div className="p-6 text-center text-neutral-400 text-xs italic">Nenhum serviço de mão de obra lançado.</div>
+                                ) : (
+                                    <table className="w-full text-xs text-left">
+                                         <thead className="bg-neutral-50 border-b border-neutral-100">
+                                            <tr>
+                                                <th className="p-3 font-black text-neutral-400 uppercase text-[9px] tracking-widest">Profissional</th>
+                                                <th className="p-3 font-black text-neutral-400 uppercase text-[9px] tracking-widest">Descrição</th>
+                                                <th className="p-3 font-black text-neutral-400 uppercase text-[9px] tracking-widest text-right">Valor</th>
+                                                <th className="p-3 text-center"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-neutral-50">
+                                            {laborServices.map(svc => (
+                                                <tr key={svc.id_servico_mao_de_obra}>
+                                                    <td className="p-3 font-bold text-neutral-700">
+                                                        {svc.funcionario?.pessoa_fisica?.pessoa?.nome || 'Mecânico'}
+                                                    </td>
+                                                    <td className="p-3 text-neutral-600">{svc.descricao || '-'}</td>
+                                                    <td className="p-3 text-right font-black text-neutral-900">R$ {Number(svc.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                                    <td className="p-3 text-center">
+                                                        {selectedOsForItems.status !== 'FINALIZADA' && (
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <button onClick={() => handleEditLabor(svc)} className="text-neutral-400 hover:text-amber-500 transition-colors">
+                                                                    <PenTool size={14} />
+                                                                </button>
+                                                                <button onClick={() => handleDeleteLabor(svc.id_servico_mao_de_obra)} className="text-neutral-400 hover:text-red-500 transition-colors">
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Summary Cards (Moved Here) */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 flex items-center gap-3">
+                                <div className="p-2 bg-white rounded-lg text-neutral-400">
+                                    <Package size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-neutral-500 uppercase">Total Peças</p>
+                                    <p className="text-lg font-black text-neutral-900">R$ {osItems.reduce((acc, item) => acc + Number(item.valor_total), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 flex items-center gap-3">
+                                <div className="p-2 bg-white rounded-lg text-neutral-400">
+                                    <Wrench size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-neutral-500 uppercase">Total Mão de Obra</p>
+                                    <p className="text-lg font-black text-neutral-900">R$ {laborServices.reduce((acc, svc) => acc + Number(svc.valor), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-primary-50 rounded-2xl border border-primary-100 flex items-center gap-3">
+                                <div className="p-2 bg-white rounded-lg text-primary-600 shadow-sm">
+                                    <DollarSign size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-primary-600 uppercase">Valor Total OS</p>
+                                    <p className="text-2xl font-black text-primary-900">
+                                        R$ {(
+                                            osItems.reduce((acc, item) => acc + Number(item.valor_total), 0) + 
+                                            laborServices.reduce((acc, svc) => acc + Number(svc.valor), 0)
+                                        ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Botão Finalizar (Styled Light) */}
@@ -1855,13 +1913,7 @@ export const OrdemDeServicoPage = () => {
                             </div>
 
                             {/* Botão Salvar Dados Básicos (Moved) */}
-                            <Button 
-                                onClick={handleUpdateOsInfo}
-                                isLoading={loading}
-                                className="w-full bg-success-600 hover:bg-success-700 text-white font-black py-4 rounded-xl uppercase tracking-widest shadow-lg shadow-success-500/20"
-                            >
-                                SALVAR DADOS BÁSICOS
-                            </Button>
+                            {/* Auto-save enabled, manual save button removed */}
 
                              {selectedOsForItems.status === 'ABERTA' ? (
                                 <div className="bg-green-50/50 p-6 rounded-3xl border border-green-100 space-y-6">
@@ -2033,6 +2085,110 @@ export const OrdemDeServicoPage = () => {
             <div className="fixed bottom-8 right-8 z-100 min-w-[320px]">
                 <StatusBanner msg={statusMsg} onClose={() => setStatusMsg({type: null, text: ''})} />
             </div>
+            {/* MODAL: HISTÓRICO DE SERVIÇOS */}
+            {historyModalOpen && historyVehicle && (
+                <Modal 
+                    title={
+                        <div className="flex items-baseline gap-2">
+                             <span className="text-primary-600"><History size={20} /></span>
+                             <span>Histórico do Veículo</span>
+                             <span className="text-sm font-black text-neutral-400 uppercase tracking-widest ml-2 bg-neutral-100 px-2 py-0.5 rounded">{historyVehicle.placa}</span>
+                        </div>
+                    } 
+                    onClose={() => setHistoryModalOpen(false)}
+                >
+                    <div className="space-y-6">
+                        {loadingHistory ? (
+                            <div className="p-8 text-center bg-neutral-50 rounded-2xl">
+                                <p className="text-neutral-500 font-bold animate-pulse">Carregando histórico...</p>
+                            </div>
+                        ) : historyList.length === 0 ? (
+                            <div className="p-8 text-center bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
+                                <p className="text-neutral-500 font-bold">Nenhum serviço anterior encontrado para este veículo.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                                {historyList.map(hist => (
+                                    <div key={hist.id_os} className="bg-white border border-neutral-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="flex justify-between items-start mb-3 border-b border-neutral-50 pb-3">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-xs font-bold uppercase text-neutral-400 bg-neutral-50 px-2 py-0.5 rounded">OS #{String(hist.id_os).padStart(4, '0')}</span>
+                                                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${getStatusStyle(hist.status)}`}>{hist.status}</span>
+                                                </div>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <p className="text-[10px] font-bold text-neutral-500">
+                                                        <span className="text-neutral-400">Abertura:</span> {new Date(hist.dt_abertura).toLocaleDateString()} {new Date(hist.dt_abertura).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                    {hist.dt_entrega && (
+                                                        <p className="text-[10px] font-bold text-neutral-500">
+                                                            <span className="text-neutral-400">Fechamento:</span> {new Date(hist.dt_entrega).toLocaleDateString()}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                 <p className="text-[10px] font-bold text-neutral-400 uppercase">Total (Cliente)</p>
+                                                 <p className="font-black text-neutral-900 text-lg">R$ {Number(hist.valor_total_cliente).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                                 <button 
+                                                    onClick={() => {
+                                                        setHistoryModalOpen(false);
+                                                        handleOpenFromId(hist.id_os);
+                                                    }}
+                                                    className="mt-2 text-[10px] px-3 py-1 bg-primary-600 text-white rounded-lg font-black uppercase hover:bg-primary-700 transition-colors flex items-center gap-1 ml-auto"
+                                                 >
+                                                    <PenTool size={10} /> Abrir / Editar
+                                                 </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-neutral-700">
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-neutral-400 uppercase mb-1">Diagnóstico / Defeito</p>
+                                                    <p className="text-xs italic text-neutral-600 bg-neutral-50 p-3 rounded-lg border border-neutral-100 min-h-[60px] whitespace-pre-wrap" title={hist.defeito_relatado}>{hist.defeito_relatado || 'Não informado'}</p>
+                                                </div>
+                                                <div className="flex justify-between items-center bg-neutral-50 p-2 rounded-lg border border-neutral-100">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-neutral-400 uppercase">Mecânico</p>
+                                                        <p className="font-bold text-xs">{hist.funcionario?.pessoa_fisica?.pessoa?.nome || 'N/A'}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-[10px] font-black text-neutral-400 uppercase">Mão de Obra</p>
+                                                        <p className="font-bold text-xs">R$ {Number(hist.valor_mao_de_obra || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100">
+                                                <p className="text-[10px] font-black text-neutral-400 uppercase mb-2">Peças e Serviços Utilizados</p>
+                                                <ul className="space-y-1 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
+                                                    {(hist.itens_os || []).length === 0 ? (
+                                                        <li className="text-[10px] text-neutral-400 italic">Nenhum item adicionado.</li>
+                                                    ) : (hist.itens_os || []).map((item: any, i: number) => (
+                                                        <li key={i} className="flex justify-between items-center bg-white p-2 rounded border border-neutral-50 text-[11px]">
+                                                            <span className="font-bold text-neutral-700 truncate max-w-[180px]" title={item.descricao}>{item.descricao}</span>
+                                                            <div className="flex gap-2">
+                                                                <span className="text-neutral-500 font-medium">x{item.quantidade}</span>
+                                                                <span className="font-bold text-neutral-900">R$ {Number(item.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <div className="flex justify-end pt-4 border-t border-neutral-100">
+                            <button onClick={() => setHistoryModalOpen(false)} className="px-6 py-2 bg-neutral-100 text-neutral-600 font-bold rounded-xl hover:bg-neutral-200 transition-colors">
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 };

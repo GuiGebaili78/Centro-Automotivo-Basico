@@ -5,9 +5,10 @@ interface ModalProps {
     title: React.ReactNode;
     children: React.ReactNode;
     onClose: () => void;
+    className?: string;
 }
 
-export const Modal = ({ title, children, onClose }: ModalProps) => {
+export const Modal = ({ title, children, onClose, className = 'max-w-2xl' }: ModalProps) => {
     // Close on Escape key
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
@@ -19,7 +20,7 @@ export const Modal = ({ title, children, onClose }: ModalProps) => {
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+            <div className={`bg-white rounded-xl shadow-2xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 ${className}`}>
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-neutral-100">
                     <h2 className="text-xl font-bold text-neutral-900">{title}</h2>

@@ -35,6 +35,19 @@ export class OrdemDeServicoController {
     }
   }
 
+  async findByVehicleId(req: Request, res: Response) {
+    try {
+      const vehicleId = Number(req.params.vehicleId);
+      if (isNaN(vehicleId)) {
+        return res.status(400).json({ error: 'Invalid Vehicle ID' });
+      }
+      const oss = await repository.findByVehicleId(vehicleId);
+      res.json(oss);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch OSs for vehicle' });
+    }
+  }
+
   async update(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);

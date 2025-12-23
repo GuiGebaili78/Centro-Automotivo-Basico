@@ -25,6 +25,8 @@ import { pecasEstoqueRoutes } from './routes/pecasEstoque.routes.js';
 import { veiculoRoutes } from './routes/veiculo.routes.js';
 import { ordemDeServicoRoutes } from './routes/ordemDeServico.routes.js';
 import { itensOsRoutes } from './routes/itensOs.routes.js';
+import { servicoMaoDeObraRoutes } from './routes/servicoMaoDeObra.routes.js';
+
 // Novas Rotas
 import { fechamentoFinanceiroRoutes } from './routes/fechamentoFinanceiro.routes.js';
 import { fornecedorRoutes } from './routes/fornecedor.routes.js';
@@ -41,6 +43,7 @@ app.use('/api/pecas-estoque', pecasEstoqueRoutes);
 app.use('/api/veiculo', veiculoRoutes);
 app.use('/api/ordem-de-servico', ordemDeServicoRoutes);
 app.use('/api/itens-os', itensOsRoutes);
+app.use('/api/servico-mao-de-obra', servicoMaoDeObraRoutes);
 
 // Uso das Novas Rotas
 app.use('/api/fechamento-financeiro', fechamentoFinanceiroRoutes);

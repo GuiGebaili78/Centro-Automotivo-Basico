@@ -137,6 +137,7 @@ model Funcionario {
   
   // Relacionamento de Volta
   ordens_de_servico   OrdemDeServico[]
+  servicos_mao_de_obra ServicoMaoDeObra[]
 
   @@map("funcionario")
 }
@@ -193,7 +194,7 @@ model OrdemDeServico {
     id_os               Int      @id @default(autoincrement())
     id_cliente          Int
     id_veiculo          Int
-    id_funcionario      Int
+    id_funcionario      Int?
     dt_abertura         DateTime @default(now()) @db.Timestamp()
     dt_entrega          DateTime? @db.Timestamp()
     km_entrada          Int      
@@ -216,14 +217,16 @@ model OrdemDeServico {
     obs                 String?  @db.VarChar(500)
     obs_final           String?  @db.VarChar(500)
     dt_cadastro         DateTime @default(now()) @db.Timestamp()
+    deleted_at          DateTime? @db.Timestamp() // Soft Delete Marker
     
     // Relacionamentos (Chaves Estrangeiras)
     cliente             Cliente    @relation(fields: [id_cliente], references: [id_cliente])
     veiculo             Veiculo    @relation(fields: [id_veiculo], references: [id_veiculo])
-    funcionario         Funcionario @relation(fields: [id_funcionario], references: [id_funcionario])
+    funcionario         Funcionario? @relation(fields: [id_funcionario], references: [id_funcionario])
     
     // Relacionamentos de Volta
     itens_os            ItensOs[]
+    servicos_mao_de_obra ServicoMaoDeObra[]
     fechamento_financeiro FechamentoFinanceiro?
     pagamentos_cliente  PagamentoCliente[]
 
@@ -244,6 +247,7 @@ model ItensOs {
     valor_total         Decimal    @db.Decimal(12, 2)
     
     dt_cadastro         DateTime @default(now()) @db.Timestamp()
+    deleted_at          DateTime? @db.Timestamp()
     
     // Relacionamentos (Chaves Estrangeiras)
     ordem_de_servico    OrdemDeServico @relation(fields: [id_os], references: [id_os])
@@ -278,6 +282,7 @@ model PagamentoPeca {
     data_compra           DateTime @db.Timestamp()
     data_pagamento_fornecedor DateTime? @db.Timestamp()
     pago_ao_fornecedor    Boolean  @default(false)
+    deleted_at            DateTime? @db.Timestamp()
     
     item_os               ItensOs  @relation(fields: [id_item_os], references: [id_iten])
     fornecedor            Fornecedor @relation(fields: [id_fornecedor], references: [id_fornecedor])
@@ -291,6 +296,7 @@ model FechamentoFinanceiro {
     id_os                    Int      @unique
     custo_total_pecas_real   Decimal  @db.Decimal(10, 2)
     data_fechamento_financeiro DateTime @default(now()) @db.Timestamp()
+    deleted_at               DateTime? @db.Timestamp()
     
     ordem_de_servico         OrdemDeServico @relation(fields: [id_os], references: [id_os])
 
@@ -305,6 +311,7 @@ model PagamentoCliente {
     metodo_pagamento      String   @db.VarChar(50) // 'CREDITO', 'DEBITO', 'PIX', 'DINHEIRO'
     valor                 Decimal  @db.Decimal(10, 2)
     data_pagamento        DateTime @default(now()) @db.Timestamp()
+    deleted_at            DateTime? @db.Timestamp()
     
     // Detalhes
     bandeira_cartao       String?  @db.VarChar(50) // 'VISA', 'MASTER', 'ELO'
@@ -314,4 +321,33 @@ model PagamentoCliente {
     ordem_de_servico      OrdemDeServico @relation(fields: [id_os], references: [id_os])
 
     @@map("pagamento_cliente")
+}
+
+model ServicoMaoDeObra {
+    id_servico_mao_de_obra Int      @id @default(autoincrement())
+    id_os                 Int
+    id_funcionario        Int
+    valor                 Decimal  @db.Decimal(10, 2)
+    descricao             String?  @db.VarChar(255)
+    
+    dt_cadastro           DateTime @default(now()) @db.Timestamp()
+    deleted_at            DateTime? @db.Timestamp()
+    
+    ordem_de_servico      OrdemDeServico @relation(fields: [id_os], references: [id_os])
+    funcionario           Funcionario    @relation(fields: [id_funcionario], references: [id_funcionario])
+
+    @@map("servico_mao_de_obra")
+}
+
+model AuditLog {
+    id_log          Int      @id @default(autoincrement())
+    tabela          String   @db.VarChar(50)
+    registro_id     Int
+    acao            String   @db.VarChar(50) 
+    valor_antigo    String?  @db.Text
+    valor_novo      String?  @db.Text
+    usuario_id      Int?
+    dt_criacao      DateTime @default(now()) @db.Timestamp()
+
+    @@map("audit_log")
 }

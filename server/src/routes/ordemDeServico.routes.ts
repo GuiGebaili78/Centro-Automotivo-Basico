@@ -9,5 +9,6 @@ ordemDeServicoRoutes.get('/', controller.findAll);
 ordemDeServicoRoutes.get('/:id', controller.findById);
 ordemDeServicoRoutes.put('/:id', controller.update);
 ordemDeServicoRoutes.delete('/:id', controller.delete);
+ordemDeServicoRoutes.get('/veiculo/:vehicleId', controller.findByVehicleId);
 
 export { ordemDeServicoRoutes };
