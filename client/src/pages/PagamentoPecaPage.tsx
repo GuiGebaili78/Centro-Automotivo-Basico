@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { StatusBanner } from '../components/ui/StatusBanner';
 import { 
     Search, Truck, Calendar, CheckSquare, Square, 
-    Edit, Filter, Trash2, Save, CalendarCheck, DollarSign, X
+    Edit, Trash2, Save, CalendarCheck, DollarSign, X
 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 

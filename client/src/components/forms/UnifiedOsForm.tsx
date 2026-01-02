@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, Car, Wrench, ArrowRight, X, Phone, Calendar, AlertCircle, MapPin } from 'lucide-react';
+import { User, Car, Wrench, ArrowRight, Phone, AlertCircle, MapPin } from 'lucide-react';
 import { api } from '../../services/api';
 import { Button } from '../ui/Button';
 
