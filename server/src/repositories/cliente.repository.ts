@@ -1,11 +1,73 @@
+
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 
 export class ClienteRepository {
   async create(data: any) {
     console.log('📥 ClienteRepository.create - Received data:', JSON.stringify(data, null, 2));
+
+    // TRANSACTIONAL CREATION FOR SIMPLIFIED PAYLOAD
+    // If 'nome' is provided and we don't have explicit foreign keys, assume we need to create the person structure.
+    if (data.nome && !data.id_pessoa_fisica && !data.id_pessoa_juridica) {
+        return await prisma.$transaction(async (tx) => {
+            // 1. Create Base Pessoa
+            const pessoa = await tx.pessoa.create({
+                data: { 
+                    nome: data.nome 
+                }
+            });
+
+            let idPessoaFisica = null;
+            let idPessoaJuridica = null;
+            let tipoPessoaId = 1; // Default to Fisica
+
+            if (data.tipo === 'JURIDICA') {
+                tipoPessoaId = 2;
+                const pj = await tx.pessoaJuridica.create({
+                    data: {
+                        id_pessoa: pessoa.id_pessoa,
+                        razao_social: data.nome, // Using name as Razao Social for simplicity
+                        cnpj: data.cnpj || null
+                    }
+                });
+                idPessoaJuridica = pj.id_pessoa_juridica;
+            } else {
+                // Default to FISICA
+                const pf = await tx.pessoaFisica.create({
+                    data: {
+                        id_pessoa: pessoa.id_pessoa,
+                        cpf: data.cpf || null
+                    }
+                });
+                idPessoaFisica = pf.id_pessoa_fisica;
+            }
+
+            // 2. Create Cliente
+            const cliente = await tx.cliente.create({
+                data: {
+                    id_pessoa_fisica: idPessoaFisica,
+                    id_pessoa_juridica: idPessoaJuridica,
+                    tipo_pessoa: tipoPessoaId,
+                    telefone_1: data.telefone_1,
+                    telefone_2: data.telefone_2 || null,
+                    email: data.email || null,
+                    logradouro: data.logradouro || null,
+                    nr_logradouro: data.nr_logradouro || null,
+                    bairro: data.bairro || null,
+                    cidade: data.cidade || null,
+                    estado: data.estado || null,
+                    // Map 'cep' if you add it to schema, currently schema doesn't seem to have explicit 'cep' column in Cliente? 
+                    // Checked schema: Cliente has logradouro, nr, compl, bairro, cidade, estado. NO CEP.
+                    // Ignoring CEP for now as it's not in schema.
+                }
+            });
+
+            console.log('✅ Cliente transaction complete:', cliente.id_cliente);
+            return cliente;
+        });
+    }
     
-    // Extract the FK field and value
+    // EXISTING LOGIC (If IDs are provided)
     const { id_pessoa_fisica, id_pessoa_juridica, ...clienteData } = data;
     
     const payload = {
@@ -22,7 +84,7 @@ export class ClienteRepository {
       });
       console.log('✅ ClienteRepository.create - Success:', result.id_cliente);
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ ClienteRepository.create - Error:', error);
       throw error;
     }
@@ -64,7 +126,6 @@ export class ClienteRepository {
     });
   }
 
-  // Case-insensitive search by name (searches in Pessoa.nome)
   // Case-insensitive & accent-insensitive search by name
   async searchByName(searchTerm: string) {
     const searchPattern = `%${searchTerm}%`;

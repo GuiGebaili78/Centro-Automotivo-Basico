@@ -61,41 +61,28 @@ export class VeiculoRepository {
     });
   }
 
-  // search by partial plate or model
   // search by partial plate or model (accent-insensitive)
   async search(query: string) {
-    const searchPattern = `%${query}%`;
+    // Check if query is numeric (potentially ID search) but we treat as string for now
     
-    // We fetch IDs first using raw query to leverage 'unaccent'
-    // Note: Table names MUST match the @@map in prisma schema (lowercase/snake_case)
-    const ids = await prisma.$queryRaw<{id_veiculo: number}[]>`
-      SELECT v.id_veiculo
-      FROM "veiculo" v
-      LEFT JOIN "cliente" c ON v.id_cliente = c.id_cliente
-      LEFT JOIN "pessoa_fisica" pf ON c.id_pessoa_fisica = pf.id_pessoa_fisica
-      LEFT JOIN "pessoa" p1 ON pf.id_pessoa = p1.id_pessoa
-      LEFT JOIN "pessoa_juridica" pj ON c.id_pessoa_juridica = pj.id_pessoa_juridica
-      LEFT JOIN "pessoa" p2 ON pj.id_pessoa = p2.id_pessoa
-      WHERE unaccent(v.placa) ILIKE unaccent(${searchPattern})
-         OR unaccent(v.modelo) ILIKE unaccent(${searchPattern})
-         OR unaccent(v.marca) ILIKE unaccent(${searchPattern})
-         OR unaccent(p1.nome) ILIKE unaccent(${searchPattern})
-         OR (pj.nome_fantasia IS NOT NULL AND unaccent(pj.nome_fantasia) ILIKE unaccent(${searchPattern}))
-         OR unaccent(p2.nome) ILIKE unaccent(${searchPattern})
-      LIMIT 20
-    `;
-
-    const idList = ids.map(item => item.id_veiculo);
-
-    if (idList.length === 0) {
-        return [];
-    }
-
-    // Then fetch full objects using Prisma include
     return await prisma.veiculo.findMany({
       where: {
-        id_veiculo: { in: idList }
+        OR: [
+          { placa: { contains: query, mode: 'insensitive' } },
+          { modelo: { contains: query, mode: 'insensitive' } },
+          { marca: { contains: query, mode: 'insensitive' } },
+          {
+            cliente: {
+               OR: [
+                   { pessoa_fisica: { pessoa: { nome: { contains: query, mode: 'insensitive' } } } },
+                   { pessoa_juridica: { razao_social: { contains: query, mode: 'insensitive' } } },
+                   { pessoa_juridica: { nome_fantasia: { contains: query, mode: 'insensitive' } } }
+               ]
+            }
+          }
+        ]
       },
+      take: 20,
       include: { 
         cliente: {
             include: {

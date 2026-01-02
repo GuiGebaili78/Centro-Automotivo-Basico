@@ -33,8 +33,14 @@ export class ServicoMaoDeObraController {
   async update(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const data = req.body;
-      const result = await repository.update(Number(id), data);
+      const { id_funcionario, valor, descricao } = req.body;
+      
+      const updateData: any = {};
+      if (id_funcionario) updateData.id_funcionario = Number(id_funcionario);
+      if (valor !== undefined) updateData.valor = Number(valor);
+      if (descricao !== undefined) updateData.descricao = descricao;
+
+      const result = await repository.update(Number(id), updateData);
       res.json(result);
     } catch (error) {
       console.error(error);

@@ -13,6 +13,16 @@ export class OrdemDeServicoController {
     }
   }
 
+  async createUnified(req: Request, res: Response) {
+    try {
+        const result = await repository.createUnified(req.body);
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Unified Create Error:', error);
+        res.status(400).json({ error: 'Failed to create OS Unified', details: error instanceof Error ? error.message : error });
+    }
+  }
+
   async findAll(req: Request, res: Response) {
     try {
       const oss = await repository.findAll();

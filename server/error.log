@@ -1,6 +1,0 @@
-src/repositories/servicoMaoDeObra.repository.ts(13,7): error TS2375: Type '{ id_os: number; id_funcionario: number; valor: number; descricao: string | undefined; }' is not assignable to type '(Without<ServicoMaoDeObraCreateInput, ServicoMaoDeObraUncheckedCreateInput> & ServicoMaoDeObraUncheckedCreateInput) | (Without<...> & ServicoMaoDeObraCreateInput)' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-  Type '{ id_os: number; id_funcionario: number; valor: number; descricao: string | undefined; }' is not assignable to type 'Without<ServicoMaoDeObraCreateInput, ServicoMaoDeObraUncheckedCreateInput> & ServicoMaoDeObraUncheckedCreateInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-    Type '{ id_os: number; id_funcionario: number; valor: number; descricao: string | undefined; }' is not assignable to type 'ServicoMaoDeObraUncheckedCreateInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-      Types of property 'descricao' are incompatible.
-        Type 'string | undefined' is not assignable to type 'string | null'.
-          Type 'undefined' is not assignable to type 'string | null'.

@@ -1,3 +1,4 @@
+
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { AuditLogRepository } from './auditLog.repository.js';
@@ -7,14 +8,13 @@ const auditRepo = new AuditLogRepository();
 const osRepo = new OrdemDeServicoRepository();
 
 export class ServicoMaoDeObraRepository {
-  async create(data: { id_os: number; id_funcionario: number; valor: number; descricao?: string }) {
-    // Audit will be handled here or controller? Better here.
+  async create(data: { id_os: number; id_funcionario: number; valor: number; descricao?: string | null }) {
     const created = await prisma.servicoMaoDeObra.create({
       data: {
         id_os: data.id_os,
         id_funcionario: data.id_funcionario,
         valor: data.valor,
-        descricao: data.descricao || null
+        descricao: data.descricao ?? null
       },
       include: { funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } } }
     });

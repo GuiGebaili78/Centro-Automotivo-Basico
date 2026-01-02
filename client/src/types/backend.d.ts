@@ -150,6 +150,7 @@ export interface IItensOs {
     id_os: number;
     id_pecas_estoque?: number | null;
     descricao: string;
+    codigo_referencia?: string | null;
     quantidade: number;
     valor_venda: number;
     valor_total: number;

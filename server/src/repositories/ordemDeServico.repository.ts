@@ -20,6 +20,118 @@ export class OrdemDeServicoRepository {
     return created;
   }
 
+  async createUnified(data: any) {
+    return await prisma.$transaction(async (tx) => {
+        let finalClientId = data.client.id_cliente;
+
+        // 1. Handle Client Creation if needed
+        if (!finalClientId) {
+             const isJuridica = data.client.tipo === 'JURIDICA';
+             
+             // Base Pessoa
+             const pessoa = await tx.pessoa.create({
+                 data: { nome: data.client.nome }
+             });
+
+             let idPessoaFisica = null;
+             let idPessoaJuridica = null;
+             let tipoId = 1; // Default Default 1=Fisica
+
+             if (isJuridica) {
+                 tipoId = 2; // Default 2=Juridica
+                 const pj = await tx.pessoaJuridica.create({
+                     data: {
+                         id_pessoa: pessoa.id_pessoa,
+                         razao_social: data.client.nome,
+                         cnpj: data.client.cnpj || null
+                     }
+                 });
+                 idPessoaJuridica = pj.id_pessoa_juridica;
+             } else {
+                 const pf = await tx.pessoaFisica.create({
+                     data: {
+                         id_pessoa: pessoa.id_pessoa,
+                         cpf: data.client.cpf || null
+                     }
+                 });
+                 idPessoaFisica = pf.id_pessoa_fisica;
+             }
+
+             const newClient = await tx.cliente.create({
+                 data: {
+                     id_pessoa_fisica: idPessoaFisica,
+                     id_pessoa_juridica: idPessoaJuridica,
+                     tipo_pessoa: tipoId,
+                     telefone_1: data.client.telefone,
+                     logradouro: data.client.logradouro,
+                     nr_logradouro: data.client.numero,
+                     bairro: data.client.bairro,
+                     cidade: data.client.cidade,
+                     estado: data.client.estado
+                 }
+             });
+             finalClientId = newClient.id_cliente;
+        }
+
+        // 2. Handle Vehicle Creation if needed
+        let finalVehicleId = data.vehicle.id_veiculo;
+        if (!finalVehicleId) {
+             // Check if vehicle exists by Plate to avoid duplicates
+             const existingVehicle = await tx.veiculo.findUnique({
+                 where: { placa: data.vehicle.placa }
+             });
+
+             if (existingVehicle) {
+                 // If vehicle exists, update owner to new client and use it
+                 if (existingVehicle.id_cliente !== finalClientId) {
+                     await tx.veiculo.update({
+                         where: { id_veiculo: existingVehicle.id_veiculo },
+                         data: { id_cliente: finalClientId }
+                     });
+                 }
+                 finalVehicleId = existingVehicle.id_veiculo;
+             } else {
+                 const newVehicle = await tx.veiculo.create({
+                     data: {
+                         id_cliente: finalClientId,
+                         placa: data.vehicle.placa,
+                         marca: data.vehicle.marca,
+                         modelo: data.vehicle.modelo,
+                         cor: data.vehicle.cor || 'BRANCO',
+                         ano_modelo: data.vehicle.ano,
+                         combustivel: data.vehicle.combustivel || 'FLEX'
+                     }
+                 });
+                 finalVehicleId = newVehicle.id_veiculo;
+             }
+        }
+
+        // 3. Create OS
+        const os = await tx.ordemDeServico.create({
+            data: {
+                id_cliente: finalClientId,
+                id_veiculo: finalVehicleId,
+                id_funcionario: Number(data.os.id_funcionario),
+                km_entrada: Number(data.os.km_entrada),
+                defeito_relatado: data.os.defeito_relatado,
+                status: 'ABERTA',
+                valor_total_cliente: 0,
+                valor_mao_de_obra: 0,
+                parcelas: 1 // Default
+            }
+        });
+
+        await auditRepo.create({
+            tabela: 'ordem_de_servico',
+            registro_id: os.id_os,
+            acao: 'CREATE',
+            valor_novo: os
+        });
+
+        return os;
+    });
+  }
+
   async findAll() {
     return await prisma.ordemDeServico.findMany({
       where: { deleted_at: null },
@@ -32,9 +144,10 @@ export class OrdemDeServicoRepository {
         },
         veiculo: true,
         funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } },
-        itens_os: true,
+        itens_os: { where: { deleted_at: null } },
         fechamento_financeiro: true,
         servicos_mao_de_obra: {
+            where: { deleted_at: null },
             include: { funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } } }
         }
       }
@@ -54,6 +167,7 @@ export class OrdemDeServicoRepository {
         veiculo: true,
         funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } },
         itens_os: {
+          where: { deleted_at: null },
           include: {
             pagamentos_peca: true,
             pecas_estoque: true
@@ -62,6 +176,7 @@ export class OrdemDeServicoRepository {
         fechamento_financeiro: true,
         pagamentos_cliente: true,
         servicos_mao_de_obra: {
+            where: { deleted_at: null },
             include: { funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } } }
         }
       }

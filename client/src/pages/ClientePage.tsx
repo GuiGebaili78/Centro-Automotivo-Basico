@@ -156,7 +156,7 @@ export const ClientePage = () => {
     const search = searchTerm.toLowerCase();
     const nome = getNome(c).toLowerCase();
     const email = c.email?.toLowerCase() || '';
-    const cidade = c.cidade.toLowerCase();
+    const cidade = (c.cidade || '').toLowerCase();
     const id = c.id_cliente.toString();
     
     return nome.includes(search) || 

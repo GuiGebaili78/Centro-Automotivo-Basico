@@ -5,6 +5,7 @@ const ordemDeServicoRoutes = Router();
 const controller = new OrdemDeServicoController();
 
 ordemDeServicoRoutes.post('/', controller.create);
+ordemDeServicoRoutes.post('/unified', controller.createUnified);
 ordemDeServicoRoutes.get('/', controller.findAll);
 ordemDeServicoRoutes.get('/:id', controller.findById);
 ordemDeServicoRoutes.put('/:id', controller.update);

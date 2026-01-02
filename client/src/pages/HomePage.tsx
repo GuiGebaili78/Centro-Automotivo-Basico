@@ -143,6 +143,8 @@ export function HomePage() {
                 <tr>
                   <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest">OS / Data</th>
                   <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest">Veículo</th>
+                  <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest">Diagnóstico / Ações</th>
+                  <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest">Técnico</th>
                   <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest">Cliente</th>
                   <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest text-center">Status</th>
                 </tr>
@@ -150,7 +152,7 @@ export function HomePage() {
               <tbody className="divide-y divide-neutral-50">
                 {recentOss.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-10 text-center text-neutral-400 italic">Nenhuma OS encontrada.</td>
+                    <td colSpan={6} className="p-10 text-center text-neutral-400 italic">Nenhuma OS encontrada.</td>
                   </tr>
                 ) : (
                   recentOss
@@ -168,6 +170,18 @@ export function HomePage() {
                       <td className="p-4">
                         <p className="font-black text-neutral-700 tracking-tight text-sm uppercase">{os.veiculo?.placa}</p>
                         <p className="text-[10px] text-neutral-400 font-bold uppercase">{os.veiculo?.modelo}</p>
+                      </td>
+                      {/* Diagnóstico / Ações */}
+                      <td className="p-4 max-w-[200px]" title={os.diagnostico || os.defeito_relatado || 'Sem diagnóstico registrado'}>
+                          <p className="text-xs font-medium text-neutral-600 line-clamp-2">
+                             {os.diagnostico || os.defeito_relatado || <span className="text-neutral-300 italic">Pendente</span>}
+                          </p>
+                      </td>
+                      {/* Técnico */}
+                      <td className="p-4">
+                          <p className="text-xs font-bold text-neutral-700 uppercase">
+                              {os.funcionario?.pessoa_fisica?.pessoa?.nome?.split(' ')[0] || <span className="text-neutral-300">---</span>}
+                          </p>
                       </td>
                       <td className="p-4">
                         <p className="text-sm font-bold text-neutral-600 truncate max-w-[150px]">
