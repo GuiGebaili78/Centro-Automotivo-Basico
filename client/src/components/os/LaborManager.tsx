@@ -208,6 +208,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                     </div>
                     <div className="col-span-12 md:col-span-1 flex gap-1">
                         <button 
+                            type="button"
                             onClick={handleAddLabor} 
                             disabled={!newLaborService.id_funcionario || !newLaborService.valor}
                             className={`w-full h-[46px] rounded-xl flex items-center justify-center transition-colors shadow-lg ${editingLaborId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary-600 hover:bg-primary-700'} text-white disabled:opacity-50`}
@@ -216,6 +217,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                         </button>
                         {editingLaborId && (
                             <button 
+                                type="button"
                                 onClick={() => {
                                     setNewLaborService({ id_funcionario: '', valor: '', descricao: '' });
                                     setEditingLaborId(null);
@@ -254,10 +256,10 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                                     <td className="p-3 text-center">
                                         {!readOnly && (
                                             <div className="flex items-center justify-center gap-2">
-                                                <button onClick={() => handleEditLabor(svc)} className="text-neutral-400 hover:text-amber-500 transition-colors" title="Editar">
+                                                <button type="button" onClick={() => handleEditLabor(svc)} className="text-neutral-400 hover:text-amber-500 transition-colors" title="Editar">
                                                     <Wrench size={14} />
                                                 </button>
-                                                <button onClick={() => handleDeleteLabor(svc.id_servico_mao_de_obra || svc.id_temporary!)} className="text-neutral-400 hover:text-red-500 transition-colors" title="Remover">
+                                                <button type="button" onClick={() => handleDeleteLabor(svc.id_servico_mao_de_obra || svc.id_temporary!)} className="text-neutral-400 hover:text-red-500 transition-colors" title="Remover">
                                                     <Trash2 size={14} />
                                                 </button>
                                             </div>

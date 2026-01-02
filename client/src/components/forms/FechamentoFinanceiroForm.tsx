@@ -3,6 +3,7 @@ import { api } from '../../services/api';
 import { Calculator, Save, Truck, Plus, BadgeCheck, Palette, Trash2 } from 'lucide-react';
 import { PagamentoClienteForm } from './PagamentoClienteForm';
 import { FornecedorForm } from './FornecedorForm';
+import { LaborManager } from '../os/LaborManager';
 import { Modal } from '../ui/Modal';
 import { StatusBanner } from '../ui/StatusBanner';
 import { Button } from '../ui/Button';
@@ -72,6 +73,18 @@ interface OSData {
     fechamento_financeiro?: {
         id_fechamento_financeiro: number;
     };
+    servicos_mao_de_obra?: {
+        id_servico_mao_de_obra: number;
+        valor: number;
+        funcionario?: {
+            pessoa_fisica?: {
+                pessoa: {
+                    nome: string;
+                }
+            };
+            cargo?: string;
+        }
+    }[];
 }
 
 export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel }: FechamentoFinanceiroFormProps) => {
@@ -114,8 +127,12 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
         onConfirm: () => void;
     }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
+    // Employees State (for LaborManager)
+    const [employees, setEmployees] = useState<any[]>([]);
+
     useEffect(() => {
         loadFornecedores();
+        loadEmployees();
         if (preSelectedOsId) {
             fetchOsData(preSelectedOsId);
         }
@@ -127,6 +144,16 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
             setFornecedores(response.data);
         } catch (error) {
             console.error("Erro ao carregar fornecedores");
+        }
+    };
+
+    const loadEmployees = async () => {
+        try {
+            const response = await api.get('/funcionario');
+            // Ensure we map to the format expected by select options or LaborManager
+            setEmployees(response.data);
+        } catch (error) {
+            console.error("Erro ao carregar funcionários");
         }
     };
 
@@ -180,19 +207,7 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
         }));
     };
 
-    const handleUpdateLabor = async (value: string) => {
-        if (!osData) return;
-        const numValue = Number(value);
-        if (isNaN(numValue) || numValue < 0) return;
 
-        setOsData({...osData, valor_mao_de_obra: numValue}); // Update local state immediately for UI
-        
-        try {
-            await api.put(`/ordem-de-servico/${osData.id_os}`, { valor_mao_de_obra: numValue });
-        } catch (error) {
-            setStatusMsg({ type: 'error', text: 'Erro ao atualizar Mão de Obra.' });
-        }
-    };
 
     // ITEM EDITING
     const handleSaveItemEdit = async (e: FormEvent) => {
@@ -369,39 +384,64 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                 <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                     
                     {/* OS Summary Card */}
-                    <div className="bg-white border-2 border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row justify-between gap-4">
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-gray-100 text-gray-600">OS #{osData.id_os}</span>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-green-100 text-green-700">{osData.status}</span>
-                            </div>
-                            <h3 className="font-extrabold text-lg text-gray-900">{getClientName()}</h3>
-                            <div className="flex items-center gap-4 text-sm text-gray-500 font-medium mt-1">
-                                <div className="flex items-center gap-1">
-                                    <Truck size={14} />
-                                    {osData.veiculo.modelo} - {osData.veiculo.placa}
+                    <div className="bg-white border-2 border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
+                        <div className="flex flex-col md:flex-row justify-between gap-4">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-gray-100 text-gray-600">OS #{osData.id_os}</span>
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-green-100 text-green-700">{osData.status}</span>
                                 </div>
-                                {osData.veiculo.cor && (
+                                <h3 className="font-extrabold text-lg text-gray-900">{getClientName()}</h3>
+                                <div className="flex items-center gap-4 text-sm text-gray-500 font-medium mt-1">
                                     <div className="flex items-center gap-1">
-                                        <Palette size={14} />
-                                        <span className="capitalize">{osData.veiculo.cor}</span>
+                                        <Truck size={14} />
+                                        {osData.veiculo.modelo} - {osData.veiculo.placa}
                                     </div>
-                                )}
+                                    {osData.veiculo.cor && (
+                                        <div className="flex items-center gap-1">
+                                            <Palette size={14} />
+                                            <span className="capitalize">{osData.veiculo.cor}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs font-bold text-gray-400 uppercase">Receita Total</p>
+                                <p className="text-2xl font-black text-green-600 mb-2">
+                                    R$ {Number(totalReceita).toFixed(2)}
+                                </p>
                             </div>
                         </div>
-                        <div className="text-right">
-                            <p className="text-xs font-bold text-gray-400 uppercase">Receita Total</p>
-                            <p className="text-2xl font-black text-green-600">
-                                R$ {Number(totalReceita).toFixed(2)}
-                            </p>
-                            <div className="flex items-center justify-end gap-2 mt-1">
-                                <span className="text-xs text-gray-400 font-medium">Mão de Obra Cobrada: R$</span>
-                                <input 
-                                    type="number" 
-                                    step="0.01"
-                                    value={osData.valor_mao_de_obra}
-                                    onChange={(e) => handleUpdateLabor(e.target.value)}
-                                    className="w-24 p-1 text-right text-sm font-bold border-b border-gray-300 focus:border-green-500 outline-none bg-transparent"
+
+                        {/* Detalhamento de Mão de Obra (LaborManager) - Full Width */}
+                        <div className="mt-2 border border-blue-100 rounded-xl overflow-hidden text-left bg-blue-50/30">
+                            <div className="px-4 py-2 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center">
+                                <span className="text-xs font-black uppercase text-blue-600 flex items-center gap-2">
+                                    <BadgeCheck size={14} /> Mão de Obra (Execução)
+                                </span>
+                            </div>
+                            <div className="p-3">
+                                {/* Prevent form submission from inner buttons by intercepting onSubmit if possible, 
+                                    but simpler is assuming LaborManager buttons might need fixing. 
+                                    However, typically we can just rely on LaborManager being well behaved. 
+                                    If it submits, it's a bug in LaborManager or we need to ensure this form doesn't catch it. 
+                                    We can try to assist by making this a div not a form? No, it needs to submit. 
+                                    We will assume LaborManager is being fixed or we add a note to fix it.
+                                    For layout: Full width container.
+                                */}
+                                <LaborManager 
+                                    osId={osData.id_os}
+                                    mode="api" 
+                                    employees={employees}
+                                    initialData={osData.servicos_mao_de_obra as any[]} 
+                                    onChange={() => fetchOsData(osData.id_os)} 
+                                    readOnly={false}
+                                    onTotalChange={(total) => {
+                                        setOsData(prev => {
+                                            if (!prev || prev.valor_mao_de_obra === total) return prev;
+                                            return { ...prev, valor_mao_de_obra: total };
+                                        });
+                                    }}
                                 />
                             </div>
                         </div>
@@ -605,6 +645,32 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                         <button type="button" onClick={onCancel} className="flex-1 py-4 text-gray-600 font-bold hover:bg-gray-50 rounded-xl transition-colors">
                             Cancelar
                         </button>
+                        
+                        {osData.status === 'FINALIZADA' && (
+                            <button 
+                                type="button" 
+                                onClick={async () => {
+                                    if(!osData) return;
+                                    try {
+                                        if (osData.fechamento_financeiro) {
+                                            await api.delete(`/fechamento-financeiro/${osData.fechamento_financeiro.id_fechamento_financeiro}`);
+                                        }
+                                        await api.put(`/ordem-de-servico/${osData.id_os}`, { 
+                                            status: 'ABERTA',
+                                            valor_mao_de_obra: osData.valor_mao_de_obra 
+                                        });
+                                        setStatusMsg({ type: 'success', text: 'OS Reaberta com sucesso!' });
+                                        onSuccess(osData);
+                                    } catch(e) {
+                                        setStatusMsg({ type: 'error', text: 'Erro ao reabrir OS.' });
+                                    }
+                                }}
+                                className="flex-1 py-4 text-orange-600 font-bold hover:bg-orange-50 rounded-xl transition-colors border border-orange-100"
+                            >
+                                Reabrir OS
+                            </button>
+                        )}
+
                         <Button 
                             type="submit" 
                             isLoading={loading}

@@ -132,6 +132,21 @@ export interface IOrdemDeServico {
     veiculo?: IVeiculo;
     itens_os?: IItensOs[];
     pagamentos_cliente?: IPagamentoCliente[];
+    funcionario?: IFuncionario;
+    fechamento_financeiro?: IFechamentoFinanceiro;
+    servicos_mao_de_obra?: IServicoMaoDeObra[];
+}
+
+export interface IServicoMaoDeObra {
+    id_servico_mao_de_obra: number;
+    id_os: number;
+    id_funcionario: number;
+    valor: number;
+    descricao?: string | null;
+    dt_cadastro: string;
+
+    // Optional Joins
+    funcionario?: IFuncionario;
 }
 
 export interface IPagamentoCliente {

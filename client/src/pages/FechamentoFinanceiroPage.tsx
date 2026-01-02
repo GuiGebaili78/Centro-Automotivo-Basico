@@ -25,8 +25,18 @@ interface IOS {
     veiculo: {
         placa: string;
         modelo: string;
+        cor: string;
     };
     fechamento_financeiro?: IFechamentoFinanceiro;
+    servicos_mao_de_obra?: {
+        funcionario: {
+            pessoa_fisica: {
+                pessoa: {
+                    nome: string;
+                }
+            }
+        }
+    }[];
 }
 
 export const FechamentoFinanceiroPage = () => {
@@ -243,10 +253,10 @@ export const FechamentoFinanceiroPage = () => {
                     <table className="w-full text-left">
                         <thead className="bg-gray-50 border-b border-gray-100">
                             <tr>
-                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">ID Fechamento</th>
-                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Referente OS</th>
-                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Veículo</th>
-                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Custo Real Peças</th>
+                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">OS</th>
+                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Veículo (Placa/Cor)</th>
+                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Valor Serviço</th>
+                                <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Mão de Obra (Execução)</th>
                                 <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Data</th>
                                 <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Ações</th>
                             </tr>
@@ -261,19 +271,35 @@ export const FechamentoFinanceiroPage = () => {
                             ) : (
                                 filteredFechamentos.map((fech) => (
                                     <tr key={fech.id_fechamento_financeiro} className="hover:bg-gray-50 group transition-colors">
-                                        <td className="p-5 text-gray-500 font-mono">#{String(fech.id_fechamento_financeiro).padStart(4, '0')}</td>
                                         <td className="p-5">
                                             <span className="font-bold text-gray-800 bg-gray-100 px-2 py-1 rounded">OS #{String(fech.id_os).padStart(4, '0')}</span>
                                         </td>
                                         <td className="p-5">
                                             <div className="flex flex-col">
                                                 <span className="font-bold text-gray-700 uppercase">{fech.ordem_de_servico?.veiculo?.placa || '-'}</span>
+                                                <span className="text-xs text-gray-400">
+                                                    {fech.ordem_de_servico?.veiculo?.modelo} 
+                                                    {fech.ordem_de_servico?.veiculo?.cor && ` - ${fech.ordem_de_servico.veiculo.cor}`}
+                                                </span>
                                             </div>
                                         </td>
                                         <td className="p-5">
-                                            <div className="flex items-center gap-2 text-red-600 font-bold bg-red-50 w-fit px-3 py-1 rounded-lg">
+                                            <div className="flex items-center gap-2 text-blue-600 font-bold bg-blue-50 w-fit px-3 py-1 rounded-lg">
                                                 <span className="text-xs">R$</span>
-                                                {Number(fech.custo_total_pecas_real).toFixed(2)}
+                                                {Number(fech.ordem_de_servico?.valor_total_cliente || 0).toFixed(2)}
+                                            </div>
+                                        </td>
+                                        <td className="p-5">
+                                            <div className="flex flex-col gap-1">
+                                                {fech.ordem_de_servico?.servicos_mao_de_obra && fech.ordem_de_servico.servicos_mao_de_obra.length > 0 ? (
+                                                     fech.ordem_de_servico.servicos_mao_de_obra.map((svc, idx) => (
+                                                         <span key={idx} className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded w-fit">
+                                                             {svc.funcionario?.pessoa_fisica?.pessoa?.nome?.split(' ')[0] || 'N/I'}
+                                                         </span>
+                                                     ))
+                                                ) : (
+                                                    <span className="text-xs text-gray-400 italic">Não informado</span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="p-5 text-sm text-gray-500">

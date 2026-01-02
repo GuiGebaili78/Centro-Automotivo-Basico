@@ -235,10 +235,11 @@ export const OrdemDeServicoPage = () => {
         const q = searchTerm.toLowerCase();
         const plate = os.veiculo?.placa?.toLowerCase() || '';
         const model = os.veiculo?.modelo?.toLowerCase() || '';
+        const brand = os.veiculo?.marca?.toLowerCase() || '';
         const owner = (os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.razao_social || '').toLowerCase();
         const id = String(os.id_os);
         
-        return plate.includes(q) || model.includes(q) || owner.includes(q) || id.includes(q);
+        return plate.includes(q) || model.includes(q) || brand.includes(q) || owner.includes(q) || id.includes(q);
     });
 
     const handlePartSearch = async (val: string) => {
@@ -332,13 +333,17 @@ export const OrdemDeServicoPage = () => {
     const handleFinishService = async () => {
         if (!selectedOsForItems) return;
         const totalItems = osItems.reduce((acc, item) => acc + Number(item.valor_total), 0);
-        const totalLabor = laborServices.reduce((acc, l) => acc + Number(l.valor), 0);
+        
+        // Se houver serviços de Mão de Obra cadastrados, usa a soma deles. 
+        // Se não houver (lista vazia), preserva o valor manual que pode ter sido editado no Financeiro.
+        const sumLaborServices = laborServices.reduce((acc, l) => acc + Number(l.valor), 0);
+        const finalLaborValue = laborServices.length > 0 ? sumLaborServices : (selectedOsForItems.valor_mao_de_obra || 0);
         
         try {
              await api.put(`/ordem-de-servico/${selectedOsForItems.id_os}`, {
                 valor_pecas: totalItems,
-                valor_mao_de_obra: totalLabor,
-                valor_total_cliente: totalItems + totalLabor,
+                valor_mao_de_obra: finalLaborValue,
+                valor_total_cliente: totalItems + finalLaborValue,
                 status: 'PRONTO PARA FINANCEIRO',
                 dt_entrega: selectedOsForItems.dt_entrega ? new Date(selectedOsForItems.dt_entrega).toISOString() : new Date().toISOString()
             });
@@ -402,7 +407,10 @@ export const OrdemDeServicoPage = () => {
                     <table className="w-full text-left">
                         <thead className="bg-neutral-50 border-b border-neutral-100">
                             <tr>
-                                <th className="p-4 font-black text-neutral-400 uppercase text-[10px] tracking-widest">OS / Veículo</th>
+                                <th className="p-4 font-black text-neutral-400 uppercase text-[10px] tracking-widest">OS / Data</th>
+                                <th className="p-4 font-black text-neutral-400 uppercase text-[10px] tracking-widest">Veículo</th>
+                                <th className="p-4 font-black text-neutral-400 uppercase text-[10px] tracking-widest">Diagnóstico / Ações</th>
+                                <th className="p-4 font-black text-neutral-400 uppercase text-[10px] tracking-widest">Técnico</th>
                                 <th className="p-4 font-black text-neutral-400 uppercase text-[10px] tracking-widest">Cliente</th>
                                 <th className="p-4 font-black text-neutral-400 uppercase text-[10px] tracking-widest text-center">Status</th>
                                 <th className="p-4 font-black text-neutral-400 uppercase text-[10px] tracking-widest text-right">Ações</th>
@@ -412,18 +420,28 @@ export const OrdemDeServicoPage = () => {
                             {filteredOss.sort((a,b) => b.id_os - a.id_os).map((os) => (
                                 <tr key={os.id_os} className="hover:bg-neutral-25 transition-colors group">
                                     <td className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="font-black text-neutral-900">#{String(os.id_os).padStart(4, '0')}</div>
-                                            <div className="px-2 py-0.5 bg-neutral-100 rounded text-xs font-bold text-neutral-600 uppercase">
-                                                {os.veiculo?.placa}
-                                            </div>
-                                        </div>
-                                        <div className="text-[10px] text-neutral-400 font-bold uppercase mt-1">
-                                            {os.veiculo?.modelo} • {os.veiculo?.cor}
-                                        </div>
+                                        <div className="font-bold text-neutral-900">#OS-{String(os.id_os).padStart(4, '0')}</div>
+                                        <div className="text-[10px] text-neutral-400 font-medium">{new Date(os.dt_abertura).toLocaleDateString()}</div>
                                     </td>
-                                    <td className="p-4 font-bold text-neutral-700">
+                                    <td className="p-4">
+                                        <div className="font-black text-neutral-700 tracking-tight text-sm uppercase">{os.veiculo?.placa}</div>
+                                        <div className="text-[10px] text-neutral-400 font-bold uppercase">{os.veiculo?.modelo}</div>
+                                    </td>
+                                    <td className="p-4 max-w-[200px]" title={os.diagnostico || os.defeito_relatado || 'Sem diagnóstico registrado'}>
+                                        <p className="text-xs font-medium text-neutral-600 line-clamp-2">
+                                            {os.diagnostico || os.defeito_relatado || <span className="text-neutral-300 italic">Pendente</span>}
+                                        </p>
+                                    </td>
+                                    <td className="p-4">
+                                        <p className="text-xs font-bold text-neutral-700 uppercase">
+                                            {os.funcionario?.pessoa_fisica?.pessoa?.nome?.split(' ')[0] || <span className="text-neutral-300">---</span>}
+                                        </p>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
                                             {os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.razao_social || 'Desconhecido'}
+                                        </div>
+                                        <div className="text-[10px] text-neutral-400 font-medium">{os.cliente?.telefone_1}</div>
                                     </td>
                                     <td className="p-4 text-center">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ring-1 ${getStatusStyle(os.status)}`}>
@@ -439,10 +457,6 @@ export const OrdemDeServicoPage = () => {
                                                 Gerenciar
                                             </button>
                                             
-                                            {/* Button '+ nova os' logic:
-                                                - OS 'Aberta': Only 'Gerenciar' (Already handled by strict logic? No, need to conditionalize)
-                                                - OS 'Finalizada'/'Pronto': Show '+ nova os'
-                                            */}
                                             {(os.status === 'FINALIZADA' || os.status === 'PRONTO PARA FINANCEIRO' || os.status === 'PAGA_CLIENTE') && (
                                                 <button 
                                                     onClick={() => handleOpenNewOsForExisting(os.veiculo, os.cliente)}
@@ -654,14 +668,19 @@ export const OrdemDeServicoPage = () => {
                                      </div>
                                      <div>
                                          <p className="text-[10px] font-bold text-neutral-400 uppercase">Total Mão de Obra</p>
-                                         <p className="font-bold text-xl text-neutral-300">R$ {laborServices.reduce((acc, l) => acc + Number(l.valor), 0).toFixed(2)}</p>
+                                         <p className="font-bold text-xl text-neutral-300">
+                                            R$ {(laborServices.length > 0 
+                                                ? laborServices.reduce((acc, l) => acc + Number(l.valor), 0) 
+                                                : (selectedOsForItems.valor_mao_de_obra || 0)
+                                            ).toFixed(2)}
+                                         </p>
                                      </div>
                                  </div>
                                  <div className="text-right">
                                      <p className="text-[10px] font-black text-success-500 uppercase">VALOR TOTAL DA OS</p>
                                      <p className="font-black text-4xl">R$ {(
                                          osItems.reduce((acc, i) => acc + Number(i.valor_total), 0) + 
-                                         laborServices.reduce((acc, l) => acc + Number(l.valor), 0)
+                                         (laborServices.length > 0 ? laborServices.reduce((acc, l) => acc + Number(l.valor), 0) : (selectedOsForItems.valor_mao_de_obra || 0))
                                      ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                  </div>
                              </div>
@@ -673,7 +692,9 @@ export const OrdemDeServicoPage = () => {
                                         <div className="flex items-center gap-2">
                                             <p className="text-[10px] font-bold text-neutral-400 uppercase">Pagamentos Recebidos</p>
                                             {(() => {
-                                                 const totalOS = (osItems.reduce((acc, i) => acc + Number(i.valor_total), 0) + laborServices.reduce((acc, l) => acc + Number(l.valor), 0));
+                                                 const totalItemsVal = osItems.reduce((acc, i) => acc + Number(i.valor_total), 0);
+                                                 const totalLaborVal = laborServices.length > 0 ? laborServices.reduce((acc, l) => acc + Number(l.valor), 0) : (selectedOsForItems.valor_mao_de_obra || 0);
+                                                 const totalOS = totalItemsVal + totalLaborVal;
                                                  const totalPago = selectedOsForItems.pagamentos_cliente?.filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0) || 0;
                                                  const restante = totalOS - totalPago;
                                                  const isOk = restante <= 0.01;
@@ -707,9 +728,13 @@ export const OrdemDeServicoPage = () => {
                                                 variant="secondary"
                                                 onClick={async () => {
                                                     try {
+                                                        if (selectedOsForItems.fechamento_financeiro) {
+                                                            await api.delete(`/fechamento-financeiro/${selectedOsForItems.fechamento_financeiro.id_fechamento_financeiro}`);
+                                                        }
                                                         await api.put(`/ordem-de-servico/${selectedOsForItems.id_os}`, { status: 'ABERTA' });
-                                                        handleOpenFromId(selectedOsForItems.id_os);
+                                                        loadOss(); // Reload list to update status in table
                                                         setStatusMsg({ type: 'success', text: 'OS Reaberta com sucesso!' });
+                                                        setManageModalOpen(false);
                                                     } catch(e) {
                                                         setStatusMsg({ type: 'error', text: 'Erro ao reabrir OS.' });
                                                     }
@@ -806,20 +831,23 @@ export const OrdemDeServicoPage = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
-                                        {selectedOsForItems.pagamentos_cliente.map(pag => (
-                                            <tr key={pag.id_pagamento_cliente}>
-                                                <td className="p-2">{new Date(pag.data_pagamento).toLocaleDateString()}</td>
-                                                <td className="p-2 font-bold">{pag.metodo_pagamento}</td>
-                                                <td className="p-2">{pag.bandeira_cartao || '-'}</td>
-                                                <td className="p-2 text-right font-bold text-green-600">R$ {Number(pag.valor).toFixed(2)}</td>
-                                            </tr>
-                                        ))}
+                                        {selectedOsForItems.pagamentos_cliente.sort((a,b) => new Date(b.data_pagamento).getTime() - new Date(a.data_pagamento).getTime()).map(pag => {
+                                            const isDeleted = !!pag.deleted_at;
+                                            return (
+                                                <tr key={pag.id_pagamento_cliente} className={isDeleted ? 'bg-red-50 opacity-60' : ''}>
+                                                    <td className={`p-2 ${isDeleted ? 'line-through' : ''}`}>{new Date(pag.data_pagamento).toLocaleDateString()}</td>
+                                                    <td className={`p-2 font-bold ${isDeleted ? 'line-through' : ''}`}>{pag.metodo_pagamento}</td>
+                                                    <td className={`p-2 ${isDeleted ? 'line-through' : ''}`}>{pag.bandeira_cartao || '-'}</td>
+                                                    <td className={`p-2 text-right font-bold ${isDeleted ? 'line-through text-red-800' : 'text-green-600'}`}>R$ {Number(pag.valor).toFixed(2)}</td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                     <tfoot className="bg-green-50">
                                         <tr>
                                             <td colSpan={3} className="p-2 font-bold text-green-700">TOTAL PAGO</td>
                                             <td className="p-2 text-right font-black text-green-700">
-                                                R$ {selectedOsForItems.pagamentos_cliente.reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2)}
+                                                R$ {selectedOsForItems.pagamentos_cliente.filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2)}
                                             </td>
                                         </tr>
                                     </tfoot>
@@ -832,7 +860,7 @@ export const OrdemDeServicoPage = () => {
                         osId={selectedOsForItems.id_os}
                         valorTotal={
                             (osItems.reduce((acc, i) => acc + Number(i.valor_total), 0) + laborServices.reduce((acc, l) => acc + Number(l.valor), 0)) -
-                            (selectedOsForItems.pagamentos_cliente?.reduce((acc, p) => acc + Number(p.valor), 0) || 0)
+                            (selectedOsForItems.pagamentos_cliente?.filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0) || 0)
                         }
                         onSuccess={() => { setShowPaymentModal(false); handleOpenFromId(selectedOsForItems.id_os); }}
                         onCancel={() => setShowPaymentModal(false)}
