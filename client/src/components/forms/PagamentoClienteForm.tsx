@@ -27,15 +27,25 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
         }
     }, [initialData]);
 
+    const [error, setError] = useState('');
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setError('');
 
         try {
+            const cleanValor = String(valor).replace(',', '.');
+            if (isNaN(Number(cleanValor)) || Number(cleanValor) <= 0) {
+                setError('Valor inválido.');
+                setLoading(false);
+                return;
+            }
+
             const payload = {
                 id_os: osId,
                 metodo_pagamento: metodo,
-                valor: Number(valor),
+                valor: Number(cleanValor),
                 data_pagamento: initialData?.data_pagamento || new Date().toISOString(),
                 bandeira_cartao: (metodo === 'CREDITO' || metodo === 'DEBITO') ? bandeira : null,
                 codigo_transacao: codigoTransacao || null,
@@ -52,6 +62,7 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
             onSuccess(response.data);
         } catch (error) {
             console.error(error);
+            setError('Erro ao salvar pagamento. Verifique os dados.');
         } finally {
             setLoading(false);
         }
@@ -66,6 +77,12 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                     <p className="text-xs text-green-700">Informe os detalhes do recebimento do cliente.</p>
                 </div>
             </div>
+
+            {error && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-bold border border-red-200">
+                    {error}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">

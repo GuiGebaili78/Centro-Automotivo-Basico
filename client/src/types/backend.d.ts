@@ -143,6 +143,7 @@ export interface IPagamentoCliente {
     bandeira_cartao?: string | null;
     codigo_transacao?: string | null;
     qtd_parcelas: number;
+    deleted_at?: string | null;
 }
 
 export interface IItensOs {

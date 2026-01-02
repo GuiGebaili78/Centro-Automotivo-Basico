@@ -306,7 +306,7 @@ export const FechamentoFinanceiroPage = () => {
             </div>
 
             {showModal && (
-                <Modal title={selectedOsId ? "Detalhes do Fechamento" : "Novo Fechamento"} onClose={() => setShowModal(false)}>
+                <Modal title={selectedOsId ? "Detalhes do Fechamento" : "Novo Fechamento"} onClose={() => setShowModal(false)} className="max-w-5xl">
                     <FechamentoFinanceiroForm 
                         preSelectedOsId={selectedOsId}
                         onSuccess={() => {

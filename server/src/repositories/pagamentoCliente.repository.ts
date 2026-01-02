@@ -29,8 +29,9 @@ export class PagamentoClienteRepository {
   }
 
   async delete(id: number) {
-    return await prisma.pagamentoCliente.delete({
+    return await prisma.pagamentoCliente.update({
       where: { id_pagamento_cliente: id },
+      data: { deleted_at: new Date() }
     });
   }
 }

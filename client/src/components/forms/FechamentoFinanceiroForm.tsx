@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '../../services/api';
 import { Calculator, Save, Truck, Plus, BadgeCheck, Palette, Trash2 } from 'lucide-react';
+import { PagamentoClienteForm } from './PagamentoClienteForm';
 import { FornecedorForm } from './FornecedorForm';
 import { Modal } from '../ui/Modal';
 import { StatusBanner } from '../ui/StatusBanner';
@@ -58,6 +59,16 @@ interface OSData {
         modelo: string;
         cor: string;
     };
+    pagamentos_cliente?: {
+        id_pagamento_cliente: number;
+        metodo_pagamento: string;
+        valor: number;
+        data_pagamento: string;
+        bandeira_cartao?: string;
+        codigo_transacao?: string;
+        qtd_parcelas?: number;
+        deleted_at?: string;
+    }[];
     fechamento_financeiro?: {
         id_fechamento_financeiro: number;
     };
@@ -75,6 +86,25 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
     const [itemsState, setItemsState] = useState<Record<number, ItemFinanceiroState>>({});
     const [showFornecedorModal, setShowFornecedorModal] = useState(false);
     const [editItem, setEditItem] = useState<ItemOS | null>(null);
+    const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; data: any }>({ isOpen: false, data: null });
+
+    const handleDeletePayment = (id: number) => {
+         setConfirmModal({
+            isOpen: true,
+            title: 'Excluir Pagamento',
+            message: 'Tem certeza que deseja excluir este pagamento?',
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/pagamento-cliente/${id}`);
+                    setStatusMsg({ type: 'success', text: 'Pagamento removido!' });
+                    if (osData) fetchOsData(osData.id_os);
+                } catch (error) {
+                    setStatusMsg({ type: 'error', text: 'Erro ao remover pagamento.' });
+                }
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
 
     // Confirmation Modal State
     const [confirmModal, setConfirmModal] = useState<{
@@ -237,6 +267,15 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
             // 1. Processar Pagamentos (Upsert)
             const pagamentoPromises = osData.itens_os.map(async (item) => {
                 const st = itemsState[item.id_iten];
+                
+                // Validação de preenchimento dos custos
+                if (!st || !st.id_fornecedor || !st.custo_real || Number(st.custo_real) <= 0) {
+                     // Se não tiver fornecedor ou custo real, vamos apenas ignorar se for um item sem custo (opcional)
+                     // Mas o usuário pediu aviso se esquecer.
+                     // Vamos lançar erro se houver items sem custo definido.
+                     throw new Error(`Item "${item.descricao}" está sem Fornecedor ou Custo Real definido.`);
+                }
+
                 if (st && st.id_fornecedor && Number(st.custo_real) > 0) {
                     const payload = {
                         id_item_os: item.id_iten,
@@ -281,9 +320,9 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
             }
 
             onSuccess(response.data);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            setStatusMsg({ type: 'error', text: 'Erro ao processar fechamento financeiro.' });
+            setStatusMsg({ type: 'error', text: error.message || 'Erro ao processar fechamento financeiro.' });
         } finally {
             setLoading(false);
         }
@@ -292,6 +331,7 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
     const getClientName = () => osData?.cliente?.pessoa_fisica?.pessoa?.nome || osData?.cliente?.pessoa_juridica?.nome_fantasia || 'Cliente';
 
     return (
+        <>
         <form onSubmit={handleSubmit} className="space-y-6 relative">
              <StatusBanner msg={statusMsg} onClose={() => setStatusMsg({type: null, text: ''})} />
 
@@ -355,7 +395,7 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                                 R$ {Number(totalReceita).toFixed(2)}
                             </p>
                             <div className="flex items-center justify-end gap-2 mt-1">
-                                <span className="text-xs text-gray-400 font-medium">Mão de Obra: R$</span>
+                                <span className="text-xs text-gray-400 font-medium">Mão de Obra Cobrada: R$</span>
                                 <input 
                                     type="number" 
                                     step="0.01"
@@ -454,12 +494,85 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                         )}
                     </div>
 
-                    {/* LIVE FOOTER TOTALS */}
+                    {/* PAGAMENTOS RECEBIDOS (CRUD) */}
+                    <div className="border border-green-200 rounded-2xl overflow-hidden bg-white shadow-sm mt-6">
+                        <div className="bg-green-50 px-4 py-3 border-b border-green-200 flex justify-between items-center">
+                            <h4 className="font-bold text-sm text-green-800 uppercase tracking-wide">Recebimentos (Pagamentos do Cliente)</h4>
+                            <button 
+                                type="button"
+                                onClick={() => setPaymentModal({ isOpen: true, data: null })}
+                                className="text-[10px] font-black uppercase text-green-700 bg-white border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
+                            >
+                                <Plus size={12} /> Novo Pagamento
+                            </button>
+                        </div>
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-white border-b border-green-100 text-green-400 font-bold uppercase">
+                                <tr>
+                                    <th className="p-3">Data</th>
+                                    <th className="p-3">Método</th>
+                                    <th className="p-3">Pars.</th>
+                                    <th className="p-3">NSU / Cód.</th>
+                                    <th className="p-3 text-right">Valor</th>
+                                    <th className="p-3 text-center">Status</th>
+                                    <th className="p-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-green-50">
+                                {osData.pagamentos_cliente?.sort((a,b) => new Date(b.data_pagamento).getTime() - new Date(a.data_pagamento).getTime()).map(pag => {
+                                    const isDeleted = !!pag.deleted_at;
+                                    return (
+                                        <tr key={pag.id_pagamento_cliente} className={isDeleted ? 'bg-red-50 opacity-60' : 'hover:bg-green-50/50'}>
+                                            <td className={`p-3 ${isDeleted ? 'line-through' : ''}`}>{new Date(pag.data_pagamento).toLocaleDateString()}</td>
+                                            <td className={`p-3 font-bold ${isDeleted ? 'line-through' : ''}`}>
+                                                {pag.metodo_pagamento}
+                                                {pag.bandeira_cartao && <span className="text-gray-400 font-normal ml-1">({pag.bandeira_cartao})</span>}
+                                            </td>
+                                            <td className={`p-3 font-bold text-center ${isDeleted ? 'line-through' : ''}`}>
+                                                {pag.qtd_parcelas && pag.qtd_parcelas > 1 ? `${pag.qtd_parcelas}x` : '-'}
+                                            </td>
+                                            <td className={`p-3 font-mono text-gray-500 ${isDeleted ? 'line-through' : ''}`}>{pag.codigo_transacao || '-'}</td>
+                                            <td className={`p-3 text-right font-black ${isDeleted ? 'line-through text-red-800' : 'text-green-700'}`}>R$ {Number(pag.valor).toFixed(2)}</td>
+                                            <td className="p-3 text-center">
+                                                {isDeleted ? <span className="text-[9px] font-black text-red-500 uppercase rounded bg-white px-1">Excluído</span> : <span className="text-[9px] font-black text-green-600 uppercase">Ativo</span>}
+                                            </td>
+                                            <td className="p-3 text-center">
+                                                {!isDeleted && (
+                                                    <div className="flex justify-center gap-2">
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setPaymentModal({ isOpen: true, data: pag })}
+                                                            className="text-gray-400 hover:text-blue-600"
+                                                        >
+                                                            <BadgeCheck size={14} />
+                                                        </button>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => handleDeletePayment(pag.id_pagamento_cliente)}
+                                                            className="text-gray-400 hover:text-red-600"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {(!osData.pagamentos_cliente || osData.pagamentos_cliente.length === 0) && (
+                                    <tr><td colSpan={6} className="p-4 text-center text-gray-400">Nenhum pagamento registrado.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                     <div className={`p-6 rounded-2xl border-2 transition-colors ${lucro >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
                             <div>
-                                <p className="text-xs font-bold uppercase text-gray-500 mb-1">Custo Total (Peças)</p>
-                                <p className="text-3xl font-black text-gray-900">R$ {totalCusto.toFixed(2)}</p>
+                                <p className="text-xs font-bold uppercase text-gray-500 mb-1">Valor Peças (Cobrado)</p>
+                                <p className="text-3xl font-black text-gray-900">R$ {(totalItemsRevenue || 0).toFixed(2)}</p>
+                                <p className="text-[10px] uppercase font-bold text-gray-400 mt-1">
+                                    Ref: <span className={lucro >= 0 ? "text-green-600" : "text-red-600"}>R$ {((totalItemsRevenue || 0) - totalCusto).toFixed(2)}</span>
+                                </p>
                             </div>
                             
                             <div className="md:text-center">
@@ -474,6 +587,16 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                                 <p className="text-4xl font-black text-green-600">
                                     R$ {totalReceita.toFixed(2)}
                                 </p>
+                                {(() => {
+                                    const totalPago = osData.pagamentos_cliente?.filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0) || 0;
+                                    const restante = totalReceita - totalPago;
+                                    const isOk = restante <= 0.01;
+                                    return (
+                                        <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase ${isOk ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                            {isOk ? <><BadgeCheck size={14} /> OK (QUITADO)</> : <><div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" /> PENDENTE</>}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
@@ -493,6 +616,9 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                     </div>
                 </div>
             )}
+        </form>
+
+            {/* MODALS OUTSIDE THE MAIN FORM */}
 
             {showFornecedorModal && (
                 <Modal title="Novo Fornecedor" onClose={() => setShowFornecedorModal(false)}>
@@ -502,6 +628,25 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                              loadFornecedores(); 
                         }}
                         onCancel={() => setShowFornecedorModal(false)}
+                    />
+                </Modal>
+            )}
+
+            {paymentModal.isOpen && osData && (
+                <Modal title={paymentModal.data ? 'Editar Pagamento' : 'Novo Pagamento'} onClose={() => setPaymentModal({ isOpen: false, data: null })}>
+                    <PagamentoClienteForm
+                        osId={osData.id_os}
+                        valorTotal={
+                            ((osData!.itens_os.reduce((acc, i) => acc + Number(i.valor_total), 0) + Number(osData!.valor_mao_de_obra || 0)) -
+                            (osData!.pagamentos_cliente?.filter(p => !p.deleted_at && p.id_pagamento_cliente !== paymentModal.data?.id_pagamento_cliente).reduce((acc, p) => acc + Number(p.valor), 0) || 0))
+                        }
+                        initialData={paymentModal.data}
+                        onSuccess={() => {
+                            setPaymentModal({ isOpen: false, data: null });
+                            fetchOsData(osData.id_os);
+                            setStatusMsg({ type: 'success', text: 'Pagamento salvo!' });
+                        }}
+                        onCancel={() => setPaymentModal({ isOpen: false, data: null })}
                     />
                 </Modal>
             )}
@@ -580,6 +725,6 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                     </div>
                 </Modal>
             )}
-        </form>
+        </>
     );
 };

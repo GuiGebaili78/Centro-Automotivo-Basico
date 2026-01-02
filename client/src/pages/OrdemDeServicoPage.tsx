@@ -670,8 +670,22 @@ export const OrdemDeServicoPage = () => {
                              <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                                  <div className="flex items-center gap-4 bg-neutral-800 p-3 rounded-xl w-full md:w-auto">
                                     <div className="flex-1">
-                                        <p className="text-[10px] font-bold text-neutral-400 uppercase">Pagamentos Recebidos</p>
-                                        <p className="font-bold text-xl text-white">R$ {selectedOsForItems.pagamentos_cliente?.reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2) || '0.00'}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-[10px] font-bold text-neutral-400 uppercase">Pagamentos Recebidos</p>
+                                            {(() => {
+                                                 const totalOS = (osItems.reduce((acc, i) => acc + Number(i.valor_total), 0) + laborServices.reduce((acc, l) => acc + Number(l.valor), 0));
+                                                 const totalPago = selectedOsForItems.pagamentos_cliente?.filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0) || 0;
+                                                 const restante = totalOS - totalPago;
+                                                 const isOk = restante <= 0.01;
+                                                 
+                                                 return (
+                                                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1 ${isOk ? 'bg-green-500 text-white' : 'bg-red-500 text-white shadow-lg shadow-red-500/30'}`}>
+                                                         {isOk ? 'OK' : 'PENDENTE'}
+                                                     </span>
+                                                 );
+                                            })()}
+                                        </div>
+                                        <p className="font-bold text-xl text-white">R$ {selectedOsForItems.pagamentos_cliente?.filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2) || '0.00'}</p>
                                     </div>
                                     <Button variant="secondary" onClick={() => setShowPaymentModal(true)} size="sm" className="h-10 px-4 bg-neutral-700 text-white border-none hover:bg-neutral-600">
                                         <DollarSign size={16} className="mr-2" /> Gerenciar
@@ -685,10 +699,29 @@ export const OrdemDeServicoPage = () => {
                                         className="w-full md:w-auto px-8 py-4 h-auto text-lg font-black uppercase tracking-widest shadow-xl shadow-success-500/20 hover:scale-105 transition-all"
                                     >
                                          <CheckCircle className="mr-2" size={24} strokeWidth={2.5} /> FINALIZAR OS
-                                     </Button>
+                                    </Button>
                                  ) : (
-                                    <div className="flex items-center gap-3 text-success-400 font-bold bg-white/10 px-6 py-3 rounded-xl border border-white/10">
-                                        <BadgeCheck size={24} /> STATUS: {selectedOsForItems.status}
+                                    <div className="flex items-center gap-2">
+                                        {(selectedOsForItems.status === 'PRONTO PARA FINANCEIRO' || selectedOsForItems.status === 'FINALIZADA') && (
+                                            <Button
+                                                variant="secondary"
+                                                onClick={async () => {
+                                                    try {
+                                                        await api.put(`/ordem-de-servico/${selectedOsForItems.id_os}`, { status: 'ABERTA' });
+                                                        handleOpenFromId(selectedOsForItems.id_os);
+                                                        setStatusMsg({ type: 'success', text: 'OS Reaberta com sucesso!' });
+                                                    } catch(e) {
+                                                        setStatusMsg({ type: 'error', text: 'Erro ao reabrir OS.' });
+                                                    }
+                                                }}
+                                                className="bg-white border-2 border-dashed border-neutral-600 text-neutral-400 hover:text-white hover:bg-neutral-700 hover:border-neutral-500 px-4 py-3 h-auto"
+                                            >
+                                                REABRIR OS
+                                            </Button>
+                                        )}
+                                        <div className="flex items-center gap-3 text-success-400 font-bold bg-white/10 px-6 py-3 rounded-xl border border-white/10">
+                                            <BadgeCheck size={24} /> STATUS: {selectedOsForItems.status}
+                                        </div>
                                     </div>
                                  )}
                              </div>
