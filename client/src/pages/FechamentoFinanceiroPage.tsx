@@ -113,11 +113,20 @@ export const FechamentoFinanceiroPage = () => {
                os.cliente?.pessoa_juridica?.razao_social || 'Cliente N/I';
     };
 
-    const filteredFechamentos = fechamentos.filter(f => 
-        String(f.id_fechamento_financeiro).includes(searchTerm) ||
-        String(f.id_os).includes(searchTerm) ||
-        f.ordem_de_servico?.veiculo?.placa?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredFechamentos = fechamentos.filter(f => {
+        if (!searchTerm) return true;
+        const q = searchTerm.toLowerCase();
+        
+        const id = String(f.id_fechamento_financeiro);
+        const fullId = `#${id}`;
+        const osId = String(f.id_os);
+        const fullOsId = `#${osId}`;
+        const plate = f.ordem_de_servico?.veiculo?.placa?.toLowerCase() || '';
+        const model = f.ordem_de_servico?.veiculo?.modelo?.toLowerCase() || '';
+        const color = f.ordem_de_servico?.veiculo?.cor?.toLowerCase() || '';
+        
+        return [id, fullId, osId, fullOsId, plate, model, color].join(' ').includes(q);
+    }).sort((a, b) => b.id_fechamento_financeiro - a.id_fechamento_financeiro);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -200,7 +209,7 @@ export const FechamentoFinanceiroPage = () => {
                             <tbody className="divide-y divide-gray-50">
                                 {pendingOss.map(os => (
                                     <tr key={os.id_os} className="hover:bg-gray-50 transition-colors">
-                                        <td className="p-5 font-bold text-gray-900">#{String(os.id_os).padStart(4, '0')}</td>
+                                        <td className="p-5 font-bold text-gray-900">#{os.id_os}</td>
                                         <td className="p-5 text-gray-600 font-medium">{getClientName(os)}</td>
                                         <td className="p-5">
                                             <div className="flex flex-col">
@@ -272,14 +281,15 @@ export const FechamentoFinanceiroPage = () => {
                                 filteredFechamentos.map((fech) => (
                                     <tr key={fech.id_fechamento_financeiro} className="hover:bg-gray-50 group transition-colors">
                                         <td className="p-5">
-                                            <span className="font-bold text-gray-800 bg-gray-100 px-2 py-1 rounded">OS #{String(fech.id_os).padStart(4, '0')}</span>
+                                            <span className="font-bold text-gray-800 bg-gray-100 px-2 py-1 rounded">OS #{fech.id_os}</span>
                                         </td>
                                         <td className="p-5">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-gray-700 uppercase">{fech.ordem_de_servico?.veiculo?.placa || '-'}</span>
-                                                <span className="text-xs text-gray-400">
-                                                    {fech.ordem_de_servico?.veiculo?.modelo} 
-                                                    {fech.ordem_de_servico?.veiculo?.cor && ` - ${fech.ordem_de_servico.veiculo.cor}`}
+                                                <span className="font-bold text-gray-700 uppercase">
+                                                    {fech.ordem_de_servico?.veiculo?.placa || '-'} - {fech.ordem_de_servico?.veiculo?.modelo} 
+                                                </span>
+                                                <span className="text-xs text-gray-400 uppercase">
+                                                    ({fech.ordem_de_servico?.veiculo?.cor || 'Cor N/I'})
                                                 </span>
                                             </div>
                                         </td>

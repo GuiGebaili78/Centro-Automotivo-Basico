@@ -12,7 +12,22 @@ export class FechamentoFinanceiroRepository {
     return await prisma.fechamentoFinanceiro.findMany({
         include: { 
             ordem_de_servico: {
-                include: { veiculo: true }
+                include: { 
+                    veiculo: true,
+                    servicos_mao_de_obra: {
+                        include: {
+                            funcionario: {
+                                include: {
+                                    pessoa_fisica: {
+                                        include: {
+                                            pessoa: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             } 
         }
     });

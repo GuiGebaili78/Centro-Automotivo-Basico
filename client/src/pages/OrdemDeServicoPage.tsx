@@ -236,10 +236,12 @@ export const OrdemDeServicoPage = () => {
         const plate = os.veiculo?.placa?.toLowerCase() || '';
         const model = os.veiculo?.modelo?.toLowerCase() || '';
         const brand = os.veiculo?.marca?.toLowerCase() || '';
+        const color = os.veiculo?.cor?.toLowerCase() || '';
         const owner = (os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.razao_social || '').toLowerCase();
         const id = String(os.id_os);
+        const fullIdHash = `#${os.id_os}`;
         
-        return plate.includes(q) || model.includes(q) || brand.includes(q) || owner.includes(q) || id.includes(q);
+        return [plate, model, brand, color, owner, id, fullIdHash].join(' ').includes(q);
     });
 
     const handlePartSearch = async (val: string) => {
@@ -420,12 +422,16 @@ export const OrdemDeServicoPage = () => {
                             {filteredOss.sort((a,b) => b.id_os - a.id_os).map((os) => (
                                 <tr key={os.id_os} className="hover:bg-neutral-25 transition-colors group">
                                     <td className="p-4">
-                                        <div className="font-bold text-neutral-900">#OS-{String(os.id_os).padStart(4, '0')}</div>
+                                        <div className="font-bold text-neutral-900">#{os.id_os}</div>
                                         <div className="text-[10px] text-neutral-400 font-medium">{new Date(os.dt_abertura).toLocaleDateString()}</div>
                                     </td>
                                     <td className="p-4">
-                                        <div className="font-black text-neutral-700 tracking-tight text-sm uppercase">{os.veiculo?.placa}</div>
-                                        <div className="text-[10px] text-neutral-400 font-bold uppercase">{os.veiculo?.modelo}</div>
+                                        <div className="font-black text-neutral-700 tracking-tight text-sm uppercase">
+                                            {os.veiculo?.placa} - {os.veiculo?.modelo} 
+                                        </div>
+                                        <div className="text-[10px] text-neutral-400 font-bold uppercase">
+                                             ({os.veiculo?.cor || 'Cor N/I'})
+                                        </div>
                                     </td>
                                     <td className="p-4 max-w-[200px]" title={os.diagnostico || os.defeito_relatado || 'Sem diagnóstico registrado'}>
                                         <p className="text-xs font-medium text-neutral-600 line-clamp-2">
@@ -498,7 +504,7 @@ export const OrdemDeServicoPage = () => {
                     className="max-w-6xl"
                     title={
                         <div className="flex items-baseline gap-2">
-                            <span>OS #{String(selectedOsForItems.id_os).padStart(4, '0')}</span>
+                            <span>OS #{selectedOsForItems.id_os}</span>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getStatusStyle(selectedOsForItems.status)}`}>
                                 {selectedOsForItems.status}
                             </span>

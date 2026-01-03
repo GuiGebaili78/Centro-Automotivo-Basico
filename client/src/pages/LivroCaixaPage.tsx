@@ -27,26 +27,52 @@ export const LivroCaixaPage = () => {
 
             // Process Cash Book
             // Map Outflows (Payments to Suppliers)
+            // Process Cash Book
+            // Map Outflows (Payments to Suppliers)
             const outflows = paymentsRes.data
                 .filter((p: any) => p.pago_ao_fornecedor && p.data_pagamento_fornecedor) 
-                .map((p: any) => ({
-                    id: `out-${p.id_pagamento_peca}`,
-                    date: p.data_pagamento_fornecedor || p.data_compra,
-                    description: `Pagamento Fornecedor - ${p.item_os?.descricao || 'Peça'}`,
-                    type: 'OUT',
-                    value: Number(p.custo_real),
-                    details: `OS #${p.item_os?.id_os} - ${p.fornecedor?.nome}`
-                }));
+                .map((p: any) => {
+                    const os = p.item_os?.ordem_de_servico;
+                    const veh = os?.veiculo;
+                    const cli = os?.cliente;
+                    const clientName = cli?.pessoa_fisica?.pessoa?.nome || cli?.pessoa_juridica?.nome_fantasia || cli?.pessoa_juridica?.razao_social || 'Desconhecido';
+                    const vehicleText = veh ? `${veh.placa} - ${veh.modelo} (${veh.cor})` : '';
+
+                    return {
+                        id: `out-${p.id_pagamento_peca}`,
+                        rawId: p.item_os?.id_os, // for search
+                        date: p.data_pagamento_fornecedor || p.data_compra,
+                        description: `Pagamento Fornecedor - ${p.item_os?.descricao || 'Peça'}`,
+                        type: 'OUT',
+                        value: Number(p.custo_real),
+                        details: `OS #${p.item_os?.id_os} - ${p.fornecedor?.nome}`,
+                        vehicle: vehicleText,
+                        client: clientName,
+                        deleted_at: p.deleted_at
+                    };
+                });
 
             // Map Inflows (Payments from Clients)
-            const inflows = (inflowsRes.data || []).map((p: any) => ({
-                id: `in-${p.id_pagamento_cliente}`,
-                date: p.data_pagamento,
-                description: `Recebimento OS #${p.id_os}`,
-                type: 'IN',
-                value: Number(p.valor),
-                details: `Forma: ${p.metodo_pagamento}`
-            }));
+            const inflows = (inflowsRes.data || []).map((p: any) => {
+                const os = p.ordem_de_servico;
+                const veh = os?.veiculo;
+                const cli = os?.cliente;
+                const clientName = cli?.pessoa_fisica?.pessoa?.nome || cli?.pessoa_juridica?.nome_fantasia || cli?.pessoa_juridica?.razao_social || 'Desconhecido';
+                const vehicleText = veh ? `${veh.placa} - ${veh.modelo} (${veh.cor})` : '';
+
+                return {
+                    id: `in-${p.id_pagamento_cliente}`,
+                    rawId: p.id_os,
+                    date: p.data_pagamento,
+                    description: `Recebimento OS #${p.id_os}`,
+                    type: 'IN',
+                    value: Number(p.valor),
+                    details: `Forma: ${p.metodo_pagamento}`,
+                    vehicle: vehicleText,
+                    client: clientName,
+                    deleted_at: p.deleted_at
+                };
+            });
 
             const combined = [...outflows, ...inflows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setCashBookEntries(combined);
@@ -74,15 +100,23 @@ export const LivroCaixaPage = () => {
         }
         if (cashSearch) {
              const searchLower = cashSearch.toLowerCase();
-             const matchDesc = entry.description.toLowerCase().includes(searchLower);
-             const matchDetails = entry.details.toLowerCase().includes(searchLower);
-             if (!matchDesc && !matchDetails) return false;
+             const searchableText = [
+                 entry.description, 
+                 entry.details, 
+                 entry.vehicle,
+                 entry.client,
+                 `#${entry.rawId}`,
+                 String(entry.value)
+             ].join(' ').toLowerCase();
+
+             if (!searchableText.includes(searchLower)) return false;
         }
         return true;
     });
 
-    const totalInflow = filteredCashBook.filter(e => e.type === 'IN').reduce((acc, e) => acc + e.value, 0);
-    const totalOutflow = filteredCashBook.filter(e => e.type === 'OUT').reduce((acc, e) => acc + e.value, 0);
+    // Totals should exclude deleted items
+    const totalInflow = filteredCashBook.filter(e => e.type === 'IN' && !e.deleted_at).reduce((acc, e) => acc + e.value, 0);
+    const totalOutflow = filteredCashBook.filter(e => e.type === 'OUT' && !e.deleted_at).reduce((acc, e) => acc + e.value, 0);
     const balance = totalInflow - totalOutflow;
 
     return (
@@ -166,12 +200,14 @@ export const LivroCaixaPage = () => {
                 </div>
 
                 {/* TRANSACTIONS TABLE */}
+                {/* TRANSACTIONS TABLE */}
                  <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden w-full">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
                                 <th className="p-5">Data</th>
                                 <th className="p-5">Descrição</th>
+                                <th className="p-5">Veículo / Cliente</th>
                                 <th className="p-5">Detalhes</th>
                                 <th className="p-5 text-right">Valor</th>
                                 <th className="p-5 text-center">Tipo</th>
@@ -179,28 +215,40 @@ export const LivroCaixaPage = () => {
                         </thead>
                         <tbody className="divide-y divide-neutral-50">
                             {filteredCashBook.length === 0 ? (
-                                 <tr><td colSpan={5} className="p-10 text-center text-neutral-400 italic font-medium">Nenhuma movimentação encontrada para o filtro.</td></tr>
+                                 <tr><td colSpan={6} className="p-10 text-center text-neutral-400 italic font-medium">Nenhuma movimentação encontrada para o filtro.</td></tr>
                             ) : (
                                 filteredCashBook.map(entry => (
-                                    <tr key={entry.id} className="hover:bg-neutral-25 transition-colors">
+                                    <tr key={entry.id} className={`hover:bg-neutral-25 transition-colors ${entry.deleted_at ? 'opacity-50' : ''}`}>
                                         <td className="p-5">
-                                            <div className="flex items-center gap-2 font-bold text-neutral-600 text-xs">
+                                            <div className={`flex items-center gap-2 font-bold text-xs ${entry.deleted_at ? 'line-through text-neutral-400' : 'text-neutral-600'}`}>
                                                 <Calendar size={14} />
                                                 {new Date(entry.date).toLocaleDateString()}
                                             </div>
                                         </td>
-                                        <td className="p-5 font-bold text-neutral-900">{entry.description}</td>
-                                        <td className="p-5 text-xs font-medium text-neutral-500">{entry.details}</td>
-                                        <td className="p-5 text-right font-black text-neutral-900">
+                                        <td className={`p-5 font-bold ${entry.deleted_at ? 'line-through text-neutral-400' : 'text-neutral-900'}`}>{entry.description}</td>
+                                        <td className="p-5">
+                                            <div className="flex flex-col">
+                                                <span className={`font-black text-xs uppercase ${entry.deleted_at ? 'line-through text-neutral-400' : 'text-neutral-800'}`}>
+                                                    {entry.vehicle || '---'}
+                                                </span>
+                                                <span className={`text-[10px] font-bold ${entry.deleted_at ? 'line-through text-neutral-300' : 'text-neutral-400'}`}>
+                                                    {entry.client || 'Mobile Cliente'}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className={`p-5 text-xs font-medium ${entry.deleted_at ? 'line-through text-neutral-300' : 'text-neutral-500'}`}>{entry.details}</td>
+                                        <td className={`p-5 text-right font-black ${entry.deleted_at ? 'line-through text-neutral-400' : 'text-neutral-900'}`}>
                                             R$ {entry.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                         </td>
                                         <td className="p-5 text-center">
                                             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                                entry.type === 'IN' 
+                                                entry.deleted_at 
+                                                ? 'bg-neutral-100 text-neutral-500 line-through'
+                                                : entry.type === 'IN' 
                                                 ? 'bg-success-100 text-success-700' 
                                                 : 'bg-red-100 text-red-700'
                                             }`}>
-                                                {entry.type === 'IN' ? 'ENTRADA' : 'SAÍDA'}
+                                                {entry.deleted_at ? 'CANCELADO' : (entry.type === 'IN' ? 'ENTRADA' : 'SAÍDA')}
                                             </span>
                                         </td>
                                     </tr>

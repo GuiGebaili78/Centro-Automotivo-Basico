@@ -395,7 +395,7 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                                 <div className="flex items-center gap-4 text-sm text-gray-500 font-medium mt-1">
                                     <div className="flex items-center gap-1">
                                         <Truck size={14} />
-                                        {osData.veiculo.modelo} - {osData.veiculo.placa}
+                                        {osData.veiculo.placa} - {osData.veiculo.modelo}
                                     </div>
                                     {osData.veiculo.cor && (
                                         <div className="flex items-center gap-1">

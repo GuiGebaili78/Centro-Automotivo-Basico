@@ -10,7 +10,19 @@ export class PagamentoClienteRepository {
 
   async findAll() {
     return await prisma.pagamentoCliente.findMany({
-        include: { ordem_de_servico: true }
+        include: { 
+          ordem_de_servico: {
+            include: {
+              veiculo: true,
+              cliente: {
+                include: {
+                  pessoa_fisica: { include: { pessoa: true } },
+                  pessoa_juridica: { include: { pessoa: true } }
+                }
+              }
+            }
+          }
+        }
     });
   }
 

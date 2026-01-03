@@ -242,10 +242,20 @@ export const PagamentoPecaPage = () => {
             if (String(p.id_fornecedor) !== String(filterSupplier)) return false;
         }
 
-        // 5. Plate Filter
+        // 5. General Search (was Plate Filter)
         if (filterPlate) {
-            const plate = p.item_os?.ordem_de_servico?.veiculo?.placa || '';
-            if (!plate.toLowerCase().includes(filterPlate.toLowerCase())) return false;
+            const q = filterPlate.toLowerCase();
+            const plate = p.item_os?.ordem_de_servico?.veiculo?.placa?.toLowerCase() || '';
+            const model = p.item_os?.ordem_de_servico?.veiculo?.modelo?.toLowerCase() || '';
+            const color = p.item_os?.ordem_de_servico?.veiculo?.cor?.toLowerCase() || '';
+            const supplier = p.fornecedor?.nome?.toLowerCase() || '';
+            const desc = p.item_os?.descricao?.toLowerCase() || '';
+            const osId = String(p.item_os?.id_os || '');
+            const fullOsId = `#${osId}`;
+            
+            const searchable = [plate, model, color, supplier, desc, osId, fullOsId].join(' ');
+            
+            if (!searchable.includes(q)) return false;
         }
         
         return true;
@@ -299,14 +309,14 @@ export const PagamentoPecaPage = () => {
                     </div>
 
                     <div className="md:col-span-3">
-                            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">Buscar por Placa</label>
+                            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">Buscar (Geral)</label>
                             <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                             <input 
                                 value={filterPlate}
                                 onChange={(e) => setFilterPlate(e.target.value)}
-                                placeholder="Digite a placa do veículo da OS..."
-                                className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors uppercase"
+                                placeholder="Placa, OS, Fornecedor..."
+                                className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors"
                             />
                             </div>
                     </div>
@@ -468,9 +478,9 @@ export const PagamentoPecaPage = () => {
                                         <td className="p-5">
                                             <div>
                                                 <p className="font-black text-neutral-800 text-xs uppercase tracking-widest bg-neutral-100 px-2 py-1 rounded w-fit">
-                                                    {p.item_os?.ordem_de_servico?.veiculo?.placa || 'N/A'}
+                                                    {p.item_os?.ordem_de_servico?.veiculo?.placa || '---'} - {p.item_os?.ordem_de_servico?.veiculo?.modelo || 'N/A'}
                                                 </p>
-                                                <p className="text-[10px] text-neutral-400 font-bold mt-1">OS #{String(p.item_os?.id_os).padStart(4, '0')}</p>
+                                                <p className="text-[10px] text-neutral-400 font-bold mt-1">OS #{p.item_os?.id_os}</p>
                                                 {/* Optional: Show OS Finish Date if available */}
                                                 {p.item_os?.ordem_de_servico?.dt_entrega && (
                                                     <p className="text-[9px] text-green-600 font-bold mt-1">

@@ -164,12 +164,12 @@ export function HomePage() {
                       className="hover:bg-neutral-50 cursor-pointer transition-colors group"
                     >
                       <td className="p-4">
-                        <p className="font-bold text-neutral-900">#OS-{String(os.id_os).padStart(4, '0')}</p>
+                        <p className="font-bold text-neutral-900">#{os.id_os}</p>
                         <p className="text-[10px] text-neutral-400 font-medium">{new Date(os.dt_abertura).toLocaleDateString()}</p>
                       </td>
                       <td className="p-4">
-                        <p className="font-black text-neutral-700 tracking-tight text-sm uppercase">{os.veiculo?.placa}</p>
-                        <p className="text-[10px] text-neutral-400 font-bold uppercase">{os.veiculo?.modelo}</p>
+                        <p className="font-black text-neutral-700 tracking-tight text-sm uppercase">{os.veiculo?.placa} - {os.veiculo?.modelo}</p>
+                        <p className="text-[10px] text-neutral-400 font-bold uppercase">({os.veiculo?.cor || 'Cor N/I'})</p>
                       </td>
                       {/* Diagnóstico / Ações */}
                       <td className="p-4 max-w-[200px]" title={os.diagnostico || os.defeito_relatado || 'Sem diagnóstico registrado'}>
