@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { FechamentoFinanceiroForm } from '../components/forms/FechamentoFinanceiroForm';
 import { Modal } from '../components/ui/Modal';
-import { Plus, Search, Trash2, TrendingUp, AlertCircle, CheckCircle, Edit } from 'lucide-react';
+import { Plus, Search, Trash2, Edit } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { StatusBanner } from '../components/ui/StatusBanner';
 
@@ -146,55 +146,18 @@ export const FechamentoFinanceiroPage = () => {
                 </button>
             </div>
 
-            {/* STATS CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-linear-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white shadow-xl shadow-green-200/50 relative overflow-hidden group">
-                    <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
-                        <TrendingUp size={80} />
-                    </div>
-                    <div className="relative z-10">
-                        <p className="text-green-100 text-sm font-medium mb-1">Custo Total (Peças)</p>
-                        <h3 className="text-3xl font-bold">
-                            R$ {fechamentos.reduce((acc, f) => acc + Number(f.custo_total_pecas_real), 0).toFixed(2)}
-                        </h3>
-                        <p className="text-xs text-green-100 mt-2 opacity-80">Consolidado em {fechamentos.length} serviços</p>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-gray-500 text-sm font-medium mb-1">Pendentes de Fechamento</p>
-                            <h3 className="text-3xl font-bold text-gray-900">{pendingOss.length}</h3>
-                            <p className="text-xs text-orange-500 mt-2 font-medium">Aguardando consolidação</p>
-                        </div>
-                        <div className="p-3 bg-orange-50 text-orange-600 rounded-xl">
-                            <AlertCircle size={24} />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-gray-500 text-sm font-medium mb-1">Fechamentos Realizados</p>
-                            <h3 className="text-3xl font-bold text-gray-900">{fechamentos.length}</h3>
-                            <p className="text-xs text-green-600 mt-2 font-medium">Processados</p>
-                        </div>
-                        <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-                            <CheckCircle size={24} />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             {/* PENDING OS LIST */}
-            {pendingOss.length > 0 && (
-                <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <span className="w-2 h-8 bg-orange-500 rounded-full"></span>
-                        Aguardando Consolidação
-                    </h2>
+            <div className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <span className="w-2 h-8 bg-orange-500 rounded-full"></span>
+                    Aguardando Consolidação
+                </h2>
+                
+                {pendingOss.length === 0 ? (
+                    <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-gray-400 italic font-medium">
+                        Nenhum fechamento pendente
+                    </div>
+                ) : (
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <table className="w-full text-left">
                             <thead className="bg-gray-50 border-b border-gray-100">
@@ -235,8 +198,8 @@ export const FechamentoFinanceiroPage = () => {
                             </tbody>
                         </table>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
             {/* HISTORY LIST */}
             <div className="space-y-4">
@@ -302,9 +265,12 @@ export const FechamentoFinanceiroPage = () => {
                                         <td className="p-5">
                                             <div className="flex flex-col gap-1">
                                                 {fech.ordem_de_servico?.servicos_mao_de_obra && fech.ordem_de_servico.servicos_mao_de_obra.length > 0 ? (
-                                                     fech.ordem_de_servico.servicos_mao_de_obra.map((svc, idx) => (
+                                                     Array.from(new Set(fech.ordem_de_servico.servicos_mao_de_obra
+                                                        .map(svc => svc.funcionario?.pessoa_fisica?.pessoa?.nome?.split(' ')[0])
+                                                        .filter(Boolean)
+                                                     )).map((name, idx) => (
                                                          <span key={idx} className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded w-fit">
-                                                             {svc.funcionario?.pessoa_fisica?.pessoa?.nome?.split(' ')[0] || 'N/I'}
+                                                             {name}
                                                          </span>
                                                      ))
                                                 ) : (

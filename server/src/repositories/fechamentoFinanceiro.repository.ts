@@ -15,6 +15,7 @@ export class FechamentoFinanceiroRepository {
                 include: { 
                     veiculo: true,
                     servicos_mao_de_obra: {
+                        where: { deleted_at: null },
                         include: {
                             funcionario: {
                                 include: {
