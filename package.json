@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Root scripts for managing Docker and overarching project tasks",
   "scripts": {
-    "docker:reset": "docker compose down && docker compose up -d",
+    "docker:reset": "docker compose up -d --build",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "db:migrate": "docker compose exec api npx prisma migrate dev",

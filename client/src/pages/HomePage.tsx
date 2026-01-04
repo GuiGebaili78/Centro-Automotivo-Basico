@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Users, Wrench, DollarSign, CheckCircle } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
-const StatCard = ({ title, value, icon: Icon, color, onClick }: any) => (
+const StatCard = ({ title, value, color, onClick, subtext }: any) => (
   <div 
     onClick={onClick}
-    className={`bg-white p-6 rounded-xl shadow-sm border border-neutral-100 flex items-center gap-4 cursor-pointer hover:shadow-md transition `}
+    className={`bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 group`}
   >
-    <div className={`p-4 rounded-full ${color.replace('-500', '-50')} ${color.replace('bg-', 'text-')}`}>
-      <Icon size={24} />
-    </div>
-    <div>
-      <p className="text-sm text-neutral-500 font-medium">{title}</p>
-      <h3 className="text-2xl font-bold text-neutral-900">{value}</h3>
+    <div className="flex flex-col justify-between h-full items-center text-center">
+       <div>
+         <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">{title}</p>
+         <h3 className={`text-4xl font-black ${color.replace('bg-', 'text-')}`}>{value}</h3>
+       </div>
+       {subtext && <div className="mt-4 pt-4 border-t border-neutral-50 w-full">
+           <p className="text-[10px] text-neutral-400 font-bold uppercase">{subtext}</p>
+       </div>}
     </div>
   </div>
 );
@@ -21,220 +23,268 @@ const StatCard = ({ title, value, icon: Icon, color, onClick }: any) => (
 export function HomePage() {
   const navigate = useNavigate();
   const [recentOss, setRecentOss] = useState<any[]>([]);
+  const [filterPeriod, setFilterPeriod] = useState<'HOJE' | 'SEMANA' | 'MES'>('HOJE');
+  
   const [stats, setStats] = useState({
-    clientes: 0,
-    osAndamento: 0,
-    osFinalizada: 0,
-    pagamentosPendentes: 0
+    osAberta: 0,
+    contasPagar: 0,
+    livroCaixaEntries: 0,
+    livroCaixaExits: 0,
+    autoPecasPendentes: 0,
+    consolidacao: 0
   });
 
   useEffect(() => {
-    fetchStats();
+    fetchData();
   }, []);
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     try {
-      const [osRes, cliRes, pagRes] = await Promise.all([
+      const [osRes, contasRes, pagPecaRes, pagCliRes] = await Promise.all([
         api.get('/ordem-de-servico'),
-        api.get('/cliente'),
-        api.get('/pagamento-peca')
+        api.get('/contas-pagar'),
+        api.get('/pagamento-peca'),
+        api.get('/pagamento-cliente')
       ]);
 
       const oss = osRes.data;
-      const clientes = cliRes.data;
-      const pagamentos = pagRes.data;
+      const contas = contasRes.data;
+      const pagPecas = pagPecaRes.data;
+      const pagClients = pagCliRes.data;
 
-      const osAndamento = oss.filter((o: any) => o.status === 'ABERTA' || o.status === 'EM_ANDAMENTO').length;
-      const osPronta = oss.filter((o: any) => o.status === 'PRONTO PARA FINANCEIRO').length;
-      const osFinalizada = oss.filter((o: any) => o.status === 'FINALIZADA').length;
-      const pagamentosPendentes = pagamentos.filter((p: any) => p.pago_ao_fornecedor === false).length;
+      // 1. Serviços em Aberto
+      const osAberta = oss.filter((o: any) => o.status === 'ABERTA' || o.status === 'EM_ANDAMENTO').length;
+      
+      // 2. Contas a Pagar (Geral) -> Status PENDENTE
+      const contasPagar = contas.filter((c: any) => c.status === 'PENDENTE').length;
+
+      // Robust matcher for local date string match (ignores timezone shifts from DB midnight)
+      const isToday = (dateStr: string) => {
+          if (!dateStr) return false;
+          // Create Date object from ISO string (e.g. 2026-01-04T02:00:00Z)
+          const date = new Date(dateStr);
+          // Get local date string YYYY-MM-DD (e.g. 2026-01-03)
+          const localDateStr = date.toLocaleDateString('en-CA');
+          
+          const todayStr = new Date().toLocaleDateString('en-CA');
+          return localDateStr === todayStr;
+      };
+
+      const todayEntries = pagClients.filter((p: any) => isToday(p.data_pagamento) && !p.deleted_at).length;
+      
+      const todayExits = pagPecas.filter((p: any) => {
+          if (!p.pago_ao_fornecedor) return false;
+          if (!p.data_pagamento_fornecedor) return false;
+          return isToday(p.data_pagamento_fornecedor) && !p.deleted_at;
+      }).length;
+
+      // 4. Auto Peças (Pecas não pagas ao fornecedor)
+      const autoPecasPendentes = pagPecas.filter((p: any) => !p.pago_ao_fornecedor && !p.deleted_at).length;
+
+      // 5. Consolidação (OS Pronta para Financeiro E SEM Fechamento)
+      const consolidacao = oss.filter((o: any) => o.status === 'PRONTO PARA FINANCEIRO' && !o.fechamento_financeiro).length;
 
       setStats({
-        clientes: clientes.length,
-        osAndamento,
-        osFinalizada: osFinalizada + osPronta, 
-        pagamentosPendentes
+          osAberta,
+          contasPagar,
+          livroCaixaEntries: todayEntries,
+          livroCaixaExits: todayExits,
+          autoPecasPendentes,
+          consolidacao
       });
 
-      // Filter recent OSs to show active and recently completed ones
-      // Show ALL recent OSs so user sees what is happening
-      setRecentOss(oss.sort((a: any, b: any) => b.id_os - a.id_os));
+      setRecentOss(oss);
 
     } catch (error) {
-      console.error('Erro ao carregar estatísticas', error);
+      console.error('Erro ao carregar dados', error);
     }
+  };
+
+  const getFilteredRecentServices = () => {
+      const now = new Date();
+      // Set to start of day for comparisons
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      return recentOss.filter(os => {
+          // Use updated_at timestamp. If unavailable, use dt_abertura.
+          // Note: updated_at was recently added, so older records might have it = null or old date.
+          // Fallback logic: check both or prefer updated_at if valid.
+          const dateRef = os.updated_at ? new Date(os.updated_at) : new Date(os.dt_abertura);
+          
+          if (filterPeriod === 'HOJE') {
+              // Compare if dateRef is >= today 00:00
+              return dateRef >= startOfToday;
+          } else if (filterPeriod === 'SEMANA') {
+              const weekAgo = new Date(startOfToday);
+              weekAgo.setDate(startOfToday.getDate() - 7);
+              return dateRef >= weekAgo;
+          } else { // MES
+              const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+              return dateRef >= firstDayMonth;
+          }
+      }).sort((a,b) => {
+          const dateA = a.updated_at ? new Date(a.updated_at).getTime() : new Date(a.dt_abertura).getTime();
+          const dateB = b.updated_at ? new Date(b.updated_at).getTime() : new Date(b.dt_abertura).getTime();
+          return dateB - dateA;
+      });
   };
 
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'FINALIZADA': return 'bg-green-100 text-green-700 ring-green-200';
-      case 'PAGA_CLIENTE': return 'bg-neutral-100 text-neutral-600 ring-neutral-200';
-      case 'PRONTO PARA FINANCEIRO': return 'bg-orange-100 text-orange-700 ring-orange-200 font-black animate-pulse';
-      case 'ABERTA': return 'bg-blue-50 text-blue-600 ring-blue-200';
-      case 'EM_ANDAMENTO': return 'bg-cyan-50 text-cyan-600 ring-cyan-200';
-      default: return 'bg-gray-100 text-gray-500 ring-gray-200';
+      case 'FINALIZADA': return 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200';
+      case 'PAGA_CLIENTE': return 'bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200';
+      case 'PRONTO PARA FINANCEIRO': return 'bg-amber-100 text-amber-700 ring-1 ring-amber-200';
+      case 'ABERTA': return 'bg-blue-100 text-blue-700 ring-1 ring-blue-200';
+      case 'EM_ANDAMENTO': return 'bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200';
+      default: return 'bg-gray-50 text-gray-500 ring-1 ring-gray-200';
     }
   };
 
-  const handleRowClick = (os: any) => {
-      // If ready for finance, take them there to close it
-      if (os.status === 'PRONTO PARA FINANCEIRO') {
-          navigate(`/fechamento-financeiro?id_os=${os.id_os}`);
-      } else {
-          navigate(`/ordem-de-servico?id=${os.id_os}`);
-      }
-  };
+  const filteredServices = getFilteredRecentServices();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-neutral-900">Visão Geral</h1>
-        <span className="text-sm text-neutral-500">{new Date().toLocaleDateString()}</span>
+        <div>
+            <h1 className="text-2xl font-black text-neutral-900 tracking-tight">Visão Geral</h1>
+            <p className="text-neutral-500">Acompanhamento diário da oficina.</p>
+        </div>
+        <span className="text-sm font-bold text-neutral-400 bg-neutral-100 px-3 py-1 rounded-lg uppercase">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard 
-            title="Total Clientes" 
-            value={stats.clientes} 
-            icon={Users} 
+            title="Serviços Abertos" 
+            value={stats.osAberta} 
             color="bg-blue-500" 
-            onClick={() => navigate('/cliente')}
-        />
-        <StatCard 
-            title="Serviços em Aberto" 
-            value={stats.osAndamento} 
-            icon={Wrench} 
-            color="bg-yellow-500" 
             onClick={() => navigate('/ordem-de-servico')}
+            subtext="Em produção"
         />
         <StatCard 
-            title="Concluídos (Mês)" 
-            value={stats.osFinalizada} 
-            icon={CheckCircle} 
-            color="bg-green-500" 
-            onClick={() => navigate('/ordem-de-servico')}
-        />
-        <StatCard 
-            title="Pagamentos Pendentes" 
-            value={stats.pagamentosPendentes} 
-            icon={DollarSign} 
+            title="Contas a Pagar" 
+            value={stats.contasPagar} 
             color="bg-red-500" 
+            onClick={() => navigate('/financeiro/contas-pagar')}
+            subtext="Geral / Fixas"
+        />
+        <StatCard 
+            title="Livro Caixa" 
+            value={stats.livroCaixaEntries + stats.livroCaixaExits} 
+            color="bg-neutral-900" 
+            onClick={() => navigate('/financeiro/livro-caixa')}
+            subtext={`Ent: ${stats.livroCaixaEntries}  |  Sai: ${stats.livroCaixaExits}`}
+        />
+        <StatCard 
+            title="Auto Peças" 
+            value={stats.autoPecasPendentes} 
+            color="bg-orange-500" 
+            onClick={() => navigate('/financeiro/pagamento-pecas')}
+            subtext="Pendentes Pagto"
+        />
+        <StatCard 
+            title="Consolidação" 
+            value={stats.consolidacao} 
+            color="bg-emerald-500" 
             onClick={() => navigate('/fechamento-financeiro')}
+            subtext="Aguardando Financ."
         />
       </div>
 
-      {/* Recent Activity & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-neutral-100 min-h-[400px]">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-neutral-900">Serviços Recentes</h2>
+      {/* Shortcuts */}
+      <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate('/ordem-de-servico')}
-              className="text-sm font-bold text-blue-600 hover:underline"
+                onClick={() => navigate('/ordem-de-servico?new=true')} 
+                className="bg-neutral-900 hover:bg-black text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-neutral-900/20 transition-transform hover:-translate-y-0.5"
             >
-              Ver Todas
+                <Plus size={20} /> Nova OS
             </button>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-neutral-50 border-b border-neutral-100">
-                <tr>
-                  <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest">OS / Data</th>
-                  <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest">Veículo</th>
-                  <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest">Diagnóstico / Ações</th>
-                  <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest">Técnico</th>
-                  <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest">Cliente</th>
-                  <th className="p-4 text-[10px] font-black uppercase text-neutral-500 tracking-widest text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-50">
-                {recentOss.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-10 text-center text-neutral-400 italic">Nenhuma OS encontrada.</td>
-                  </tr>
-                ) : (
-                  recentOss
-                    .slice(0, 5) // Show top 5
-                    .map((os: any) => (
-                    <tr 
-                      key={os.id_os} 
-                      onClick={() => handleRowClick(os)}
-                      className="hover:bg-neutral-50 cursor-pointer transition-colors group"
-                    >
-                      <td className="p-4">
-                        <p className="font-bold text-neutral-900">#{os.id_os}</p>
-                        <p className="text-[10px] text-neutral-400 font-medium">{new Date(os.dt_abertura).toLocaleDateString()}</p>
-                      </td>
-                      <td className="p-4">
-                        <p className="font-black text-neutral-700 tracking-tight text-sm uppercase">{os.veiculo?.placa} - {os.veiculo?.modelo}</p>
-                        <p className="text-[10px] text-neutral-400 font-bold uppercase">({os.veiculo?.cor || 'Cor N/I'})</p>
-                      </td>
-                      {/* Diagnóstico / Ações */}
-                      <td className="p-4 max-w-[200px]" title={os.diagnostico || os.defeito_relatado || 'Sem diagnóstico registrado'}>
-                          <p className="text-xs font-medium text-neutral-600 line-clamp-2">
-                             {os.diagnostico || os.defeito_relatado || <span className="text-neutral-300 italic">Pendente</span>}
-                          </p>
-                      </td>
-                      {/* Técnico */}
-                      <td className="p-4">
-                          <p className="text-xs font-bold text-neutral-700 uppercase">
-                              {os.funcionario?.pessoa_fisica?.pessoa?.nome?.split(' ')[0] || <span className="text-neutral-300">---</span>}
-                          </p>
-                      </td>
-                      <td className="p-4">
-                        <p className="text-sm font-bold text-neutral-600 truncate max-w-[150px]">
-                          {os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.razao_social}
-                        </p>
-                        <p className="text-[10px] text-neutral-400 font-medium">{os.cliente?.telefone_1}</p>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ring-1 ${getStatusStyle(os.status)}`}>
-                          {os.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-100">
-          <h2 className="text-lg font-bold text-neutral-900 mb-6">Atalhos Rápidos</h2>
-          <div className="grid grid-cols-1 gap-3">
-            <button 
-                onClick={() => navigate('/ordem-de-servico')}
-                className="w-full text-left p-4 bg-neutral-50 hover:bg-blue-50 hover:border-blue-200 border border-transparent rounded-xl transition-all group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-2 bg-white rounded-lg shadow-sm group-hover:bg-blue-500 group-hover:text-white transition-all text-blue-600">
-                  <Wrench size={20} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-neutral-800">Nova OS</p>
-                  <p className="text-[10px] text-neutral-500">Abrir novo atendimento</p>
-                </div>
-              </div>
-            </button>
+      {/* Recent Services - FULL WIDTH */}
+      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
+        <div className="p-6 border-b border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h2 className="text-lg font-black text-neutral-900 tracking-tight">Serviços Recentes</h2>
             
-            <button 
-                onClick={() => navigate('/cliente')}
-                className="w-full text-left p-4 bg-neutral-50 hover:bg-blue-50 hover:border-blue-200 border border-transparent rounded-xl transition-all group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-2 bg-white rounded-lg shadow-sm group-hover:bg-blue-500 group-hover:text-white transition-all text-blue-600">
-                  <Users size={20} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-neutral-800">Novo Cliente</p>
-                  <p className="text-[10px] text-neutral-500">Cadastrar no sistema</p>
-                </div>
-              </div>
-            </button>
-          </div>
+            {/* Date Tabs */}
+            <div className="flex bg-neutral-100 p-1 rounded-xl">
+                {['HOJE', 'SEMANA', 'MES'].map((p) => (
+                    <button
+                        key={p}
+                        onClick={() => setFilterPeriod(p as any)}
+                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${filterPeriod === p ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}
+                    >
+                        {p === 'MES' ? 'Mês' : p}
+                    </button>
+                ))}
+            </div>
+        </div>
+        
+        <div className="overflow-x-auto">
+        <table className="w-full text-left">
+            <thead className="bg-neutral-50 border-b border-neutral-100">
+            <tr>
+                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">OS / Data</th>
+                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">Veículo</th>
+                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">Diagnóstico</th>
+                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">Cliente</th>
+                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest text-center">Status</th>
+            </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-50">
+            {filteredServices.length === 0 ? (
+                <tr>
+                <td colSpan={5} className="p-12 text-center text-neutral-400 font-medium italic">
+                    Nenhuma atualização neste período.
+                </td>
+                </tr>
+            ) : (
+                filteredServices.map((os: any) => (
+                <tr 
+                    key={os.id_os} 
+                    onClick={() => navigate(os.status === 'PRONTO PARA FINANCEIRO' ? `/fechamento-financeiro?id_os=${os.id_os}` : `/ordem-de-servico?id=${os.id_os}`)}
+                    className="hover:bg-neutral-25 cursor-pointer transition-colors group"
+                >
+                    <td className="p-4">
+                        <div className="font-black text-neutral-800">#{os.id_os}</div>
+                        <div className="text-[10px] text-neutral-400 font-bold">{new Date(os.dt_abertura).toLocaleDateString()}</div>
+                    </td>
+                    <td className="p-4">
+                        <div className="flex flex-col">
+                            <span className="font-bold text-neutral-700 uppercase text-xs">
+                                {os.veiculo?.modelo || 'Modelo N/I'}
+                            </span>
+                            <span className="text-[10px] font-black text-neutral-400 uppercase">
+                                {os.veiculo?.placa || '---'}
+                            </span>
+                             {os.veiculo?.cor && (
+                                <span className="text-[9px] font-bold text-neutral-500 uppercase flex items-center gap-1 mt-0.5">
+                                    <span className="w-2 h-2 rounded-full border border-neutral-200" style={{backgroundColor: os.veiculo.cor === 'PRATA' ? '#ccc' : os.veiculo.cor === 'BRANCO' ? '#fff' : os.veiculo.cor === 'PRETO' ? '#000' : 'gray'}}></span>
+                                    {os.veiculo.cor}
+                                </span>
+                            )}
+                        </div>
+                    </td>
+                    <td className="p-4 max-w-[250px]">
+                        <p className="text-xs font-medium text-neutral-600 line-clamp-1">
+                            {os.diagnostico || os.defeito_relatado || <span className="text-neutral-300 italic">---</span>}
+                        </p>
+                    </td>
+                    <td className="p-4">
+                        <div className="font-bold text-neutral-700 text-xs truncate max-w-[150px]">
+                            {os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.razao_social}
+                        </div>
+                    </td>
+                    <td className="p-4 text-center">
+                        <span className={`px-3 py-1 rounded-md text-[10px] font-black uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}>
+                            {os.status.replace(/_/g, ' ')}
+                        </span>
+                    </td>
+                </tr>
+                ))
+            )}
+            </tbody>
+        </table>
         </div>
       </div>
     </div>

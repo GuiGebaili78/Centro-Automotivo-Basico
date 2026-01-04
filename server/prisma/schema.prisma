@@ -236,6 +236,8 @@ model OrdemDeServico {
     @@index([id_veiculo])
     @@index([status])
     @@index([deleted_at])
+    
+    updated_at          DateTime @default(now()) @updatedAt @db.Timestamp()
 }
 
 // Tabela 10: Tabela Associativa M:N (ITENS_OS)
@@ -355,4 +357,22 @@ model AuditLog {
     dt_criacao      DateTime @default(now()) @db.Timestamp()
 
     @@map("audit_log")
+}
+
+// Nova Tabela: Contas a Pagar (Despesas Gerais)
+model ContasPagar {
+    id_conta_pagar      Int      @id @default(autoincrement())
+    descricao           String   @db.VarChar(255)
+    valor               Decimal  @db.Decimal(10, 2)
+    dt_vencimento       DateTime @db.Date
+    dt_pagamento        DateTime? @db.Date
+    status              String   @db.VarChar(20) // 'PENDENTE', 'PAGO'
+    categoria           String?  @db.VarChar(50) // 'AGUA', 'LUZ', 'ALUGUEL', 'INTERNET', 'OUTROS'
+    obs                 String?  @db.VarChar(500)
+    
+    dt_cadastro         DateTime @default(now()) @db.Timestamp()
+    updated_at          DateTime @default(now()) @updatedAt @db.Timestamp()
+    deleted_at          DateTime? @db.Timestamp()
+
+    @@map("contas_pagar")
 }

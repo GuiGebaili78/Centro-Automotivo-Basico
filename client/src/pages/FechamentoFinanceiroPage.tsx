@@ -47,6 +47,10 @@ export const FechamentoFinanceiroPage = () => {
     const [selectedOsId, setSelectedOsId] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
+    
+    // Date Filters
+    const [filterStart, setFilterStart] = useState('');
+    const [filterEnd, setFilterEnd] = useState('');
 
     useEffect(() => {
         loadData();
@@ -71,6 +75,8 @@ export const FechamentoFinanceiroPage = () => {
             
             // Filter OSs that are ready for finance but don't have a closing record yet
             const allOss = osRes.data;
+            // Also include FINALIZADA because sometimes they might need closing adjustments? 
+            // The prompt says "Aguardando Consolidação" -> Usually PRONTO PARA FINANCEIRO
             const pending = allOss.filter((os: IOS) => 
                 (os.status === 'PRONTO PARA FINANCEIRO' || os.status === 'FINALIZADA') && 
                 !os.fechamento_financeiro &&
@@ -90,8 +96,6 @@ export const FechamentoFinanceiroPage = () => {
     };
 
     const handleEditFechamento = (fechamento: IFechamentoFinanceiro) => {
-        // Edit mode: Open form with the OS ID. 
-        // The form will fetch current OS data (which includes detailed payments) and allow updates.
         setSelectedOsId(fechamento.id_os);
         setShowModal(true);
     };
@@ -113,7 +117,40 @@ export const FechamentoFinanceiroPage = () => {
                os.cliente?.pessoa_juridica?.razao_social || 'Cliente N/I';
     };
 
+    const applyQuickFilter = (type: 'TODAY' | 'WEEK' | 'MONTH') => {
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-CA'); // Local YYYY-MM-DD
+        
+        if (type === 'TODAY') {
+            setFilterStart(todayStr);
+            setFilterEnd(todayStr);
+        } else if (type === 'WEEK') {
+             const weekAgo = new Date(now);
+             weekAgo.setDate(now.getDate() - 7);
+             setFilterStart(weekAgo.toLocaleDateString('en-CA'));
+             setFilterEnd(todayStr);
+        } else if (type === 'MONTH') {
+             const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+             setFilterStart(firstDay.toLocaleDateString('en-CA'));
+             setFilterEnd(todayStr);
+        }
+    };
+
     const filteredFechamentos = fechamentos.filter(f => {
+        // Date Filter
+        if (filterStart) {
+            const date = new Date(f.data_fechamento_financeiro);
+            const start = new Date(filterStart);
+            // reset time for date comparison or use string comparison
+            // Simplest: Compare YYYY-MM-DD strings
+            if (f.data_fechamento_financeiro < filterStart) return false; 
+            // Note: String comparison works for ISO dates. data_fechamento likely ISO
+        }
+        if (filterEnd) {
+             const dateStr = f.data_fechamento_financeiro.split('T')[0];
+             if (dateStr > filterEnd) return false;
+        }
+
         if (!searchTerm) return true;
         const q = searchTerm.toLowerCase();
         
@@ -127,6 +164,7 @@ export const FechamentoFinanceiroPage = () => {
         
         return [id, fullId, osId, fullOsId, plate, model, color].join(' ').includes(q);
     }).sort((a, b) => b.id_fechamento_financeiro - a.id_fechamento_financeiro);
+
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -203,21 +241,46 @@ export const FechamentoFinanceiroPage = () => {
 
             {/* HISTORY LIST */}
             <div className="space-y-4">
-                <div className="flex justify-between items-end">
+                <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                         <span className="w-2 h-8 bg-green-600 rounded-full"></span>
                         Histórico de Fechamentos
                     </h2>
                     
-                    {/* Search Bar */}
-                    <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors" size={18} />
-                        <input 
-                            value={searchTerm} 
-                            onChange={(e) => setSearchTerm(e.target.value)} 
-                            placeholder="Buscar por ID ou Placa..." 
-                            className="pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 focus:outline-none w-64 bg-white shadow-sm"
-                        />
+                    <div className="flex flex-col md:flex-row gap-3 items-end">
+                         {/* Quick Filters */}
+                         <div className="flex bg-gray-100 p-1 rounded-xl">
+                            <button onClick={() => applyQuickFilter('TODAY')} className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase hover:bg-white hover:shadow-sm text-gray-500 hover:text-gray-900 transition-all">Hoje</button>
+                            <button onClick={() => applyQuickFilter('WEEK')} className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase hover:bg-white hover:shadow-sm text-gray-500 hover:text-gray-900 transition-all">Semana</button>
+                            <button onClick={() => applyQuickFilter('MONTH')} className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase hover:bg-white hover:shadow-sm text-gray-500 hover:text-gray-900 transition-all">Mês</button>
+                        </div>
+
+                         {/* Date Inputs */}
+                         <div className="flex gap-2">
+                            <input 
+                                type="date" 
+                                value={filterStart}
+                                onChange={e => setFilterStart(e.target.value)}
+                                className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            />
+                            <input 
+                                type="date" 
+                                value={filterEnd}
+                                onChange={e => setFilterEnd(e.target.value)}
+                                className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            />
+                        </div>
+
+                        {/* Search Bar */}
+                        <div className="relative group">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors" size={18} />
+                            <input 
+                                value={searchTerm} 
+                                onChange={(e) => setSearchTerm(e.target.value)} 
+                                placeholder="Buscar por ID ou Placa..." 
+                                className="pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 focus:outline-none w-48 bg-white shadow-sm font-medium text-sm"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -237,7 +300,7 @@ export const FechamentoFinanceiroPage = () => {
                             {filteredFechamentos.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className="p-10 text-center text-gray-400 italic">
-                                        {searchTerm ? 'Nenhum registro encontrado para a busca.' : 'Nenhum fechamento realizado ainda.'}
+                                        {searchTerm || filterStart ? 'Nenhum registro encontrado para a busca.' : 'Nenhum fechamento realizado ainda.'}
                                     </td>
                                 </tr>
                             ) : (

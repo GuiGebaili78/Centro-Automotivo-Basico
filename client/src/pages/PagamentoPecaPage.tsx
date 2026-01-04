@@ -595,7 +595,7 @@ export const PagamentoPecaPage = () => {
 
                             {/* Editable Payment Date */}
                             <div className="md:col-span-2">
-                                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block text-green-600">Data de Pagamento à Auto Peças (Editável)</label>
+                                <label className="text-[10px] font-black uppercase mb-2 block text-green-600">Data de Pagamento à Auto Peças (Editável)</label>
                                 <input 
                                     type="date"
                                     value={editPayment.data_pagamento_fornecedor || ''}

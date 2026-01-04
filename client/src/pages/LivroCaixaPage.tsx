@@ -119,6 +119,26 @@ export const LivroCaixaPage = () => {
     const totalOutflow = filteredCashBook.filter(e => e.type === 'OUT' && !e.deleted_at).reduce((acc, e) => acc + e.value, 0);
     const balance = totalInflow - totalOutflow;
 
+    // Helper for quick filters
+    const applyQuickFilter = (type: 'TODAY' | 'WEEK' | 'MONTH') => {
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        
+        if (type === 'TODAY') {
+            setCashFilterStart(todayStr);
+            setCashFilterEnd(todayStr);
+        } else if (type === 'WEEK') {
+             const weekAgo = new Date(now);
+             weekAgo.setDate(now.getDate() - 7);
+             setCashFilterStart(weekAgo.toISOString().split('T')[0]);
+             setCashFilterEnd(todayStr);
+        } else if (type === 'MONTH') {
+             const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+             setCashFilterStart(firstDay.toISOString().split('T')[0]);
+             setCashFilterEnd(todayStr);
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <StatusBanner msg={statusMsg} onClose={() => setStatusMsg({type: null, text: ''})} />
@@ -133,8 +153,8 @@ export const LivroCaixaPage = () => {
             <div className="space-y-6">
                 {/* Manual Entry & Filters */}
                 <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col md:flex-row justify-between items-end gap-4">
-                    <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
+                    <div className="w-full grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div className="md:col-span-1">
                             <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">Buscar Detalhes</label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
@@ -146,23 +166,35 @@ export const LivroCaixaPage = () => {
                                 />
                             </div>
                         </div>
-                        <div>
-                            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">De</label>
-                            <input 
-                                type="date" 
-                                value={cashFilterStart}
-                                onChange={e => setCashFilterStart(e.target.value)}
-                                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors uppercase"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">Até</label>
-                            <input 
-                                type="date" 
-                                value={cashFilterEnd}
-                                onChange={e => setCashFilterEnd(e.target.value)}
-                                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors uppercase"
-                            />
+                        
+                        {/* Quick Filters */}
+                        <div className="md:col-span-3 flex items-end gap-2">
+                            <div className="grid grid-cols-2 gap-2 flex-1">
+                                <div>
+                                    <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">De</label>
+                                    <input 
+                                        type="date" 
+                                        value={cashFilterStart}
+                                        onChange={e => setCashFilterStart(e.target.value)}
+                                        className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors uppercase"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">Até</label>
+                                    <input 
+                                        type="date" 
+                                        value={cashFilterEnd}
+                                        onChange={e => setCashFilterEnd(e.target.value)}
+                                        className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors uppercase"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="flex bg-neutral-100 p-1 rounded-xl h-[46px] items-center">
+                                <button onClick={() => applyQuickFilter('TODAY')} className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase hover:bg-white hover:shadow-sm transition-all text-neutral-500 hover:text-neutral-900">Hoje</button>
+                                <button onClick={() => applyQuickFilter('WEEK')} className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase hover:bg-white hover:shadow-sm transition-all text-neutral-500 hover:text-neutral-900">Semana</button>
+                                <button onClick={() => applyQuickFilter('MONTH')} className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase hover:bg-white hover:shadow-sm transition-all text-neutral-500 hover:text-neutral-900">Mês</button>
+                            </div>
                         </div>
                     </div>
                     <button 

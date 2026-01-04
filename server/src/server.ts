@@ -33,6 +33,8 @@ import { fornecedorRoutes } from './routes/fornecedor.routes.js';
 import { pagamentoPecaRoutes } from './routes/pagamentoPeca.routes.js';
 import { pagamentoClienteRoutes } from './routes/pagamentoCliente.routes.js';
 
+import contasPagarRoutes from './routes/contasPagar.routes.js';
+
 app.use('/api/pessoa', pessoaRoutes);
 app.use('/api/tipo', tipoRoutes);
 app.use('/api/pessoa-fisica', pessoaFisicaRoutes);
@@ -50,6 +52,7 @@ app.use('/api/fechamento-financeiro', fechamentoFinanceiroRoutes);
 app.use('/api/fornecedor', fornecedorRoutes);
 app.use('/api/pagamento-peca', pagamentoPecaRoutes);
 app.use('/api/pagamento-cliente', pagamentoClienteRoutes);
+app.use('/api/contas-pagar', contasPagarRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
