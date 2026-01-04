@@ -138,6 +138,7 @@ model Funcionario {
   // Relacionamento de Volta
   ordens_de_servico   OrdemDeServico[]
   servicos_mao_de_obra ServicoMaoDeObra[]
+  pagamentos           PagamentoEquipe[]
 
   @@map("funcionario")
 }
@@ -339,6 +340,11 @@ model ServicoMaoDeObra {
     
     dt_cadastro           DateTime @default(now()) @db.Timestamp()
     deleted_at            DateTime? @db.Timestamp()
+
+    // Controle Financeiro
+    status_pagamento      String   @default("PENDENTE") @db.VarChar(20) // 'PENDENTE', 'PAGO'
+    id_pagamento_equipe   Int?
+    pagamento_equipe      PagamentoEquipe? @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
     
     ordem_de_servico      OrdemDeServico @relation(fields: [id_os], references: [id_os])
     funcionario           Funcionario    @relation(fields: [id_funcionario], references: [id_funcionario])
@@ -375,4 +381,49 @@ model ContasPagar {
     deleted_at          DateTime? @db.Timestamp()
 
     @@map("contas_pagar")
+}
+
+// ---------------------------------------------------------
+// MÓDULO FINANCEIRO AVANÇADO (LIVRO CAIXA E EQUIPE)
+// ---------------------------------------------------------
+
+// Tabela 13: Pagamento de Equipe (Comissões e Salários Consolidados)
+model PagamentoEquipe {
+    id_pagamento_equipe Int      @id @default(autoincrement())
+    id_funcionario      Int
+    
+    valor_total         Decimal  @db.Decimal(10, 2)
+    forma_pagamento     String?  @db.VarChar(50) 
+    premio_valor        Decimal? @db.Decimal(10, 2)
+    premio_descricao    String?  @db.VarChar(255)
+    dt_pagamento        DateTime @default(now()) @db.Timestamp()
+    
+    tipo_lancamento     String   @default("COMISSAO") @db.VarChar(50) // 'COMISSAO', 'SALARIO', 'VALE'
+    referencia_inicio   DateTime? @db.Date // Para Salário/Vale
+    referencia_fim      DateTime? @db.Date // Para Salário/Vale
+    
+    obs                 String?  @db.VarChar(500)
+    
+    // Relações
+    funcionario         Funcionario @relation(fields: [id_funcionario], references: [id_funcionario])
+    servicos_pagos      ServicoMaoDeObra[] // 1 Pagamento pode quitar vários serviços
+    movimentacoes_caixa LivroCaixa[]       // Gera 1 ou mais saídas no caixa
+
+    @@map("pagamento_equipe")
+}
+
+// Tabela 14: Livro Caixa (Registro Central de Movimentações)
+model LivroCaixa {
+    id_livro_caixa      Int      @id @default(autoincrement())
+    descricao           String   @db.VarChar(255)
+    valor               Decimal  @db.Decimal(10, 2)
+    tipo_movimentacao   String   @db.VarChar(10) // 'ENTRADA' ou 'SAIDA'
+    categoria           String   @db.VarChar(50) // 'EQUIPE', 'FORNECEDOR', 'VENDA', 'OUTROS'
+    dt_movimentacao     DateTime @default(now()) @db.Timestamp()
+    
+    // Rastreabilidade (Opcional)
+    id_pagamento_equipe Int?
+    pagamento_equipe    PagamentoEquipe? @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
+    
+    @@map("livro_caixa")
 }

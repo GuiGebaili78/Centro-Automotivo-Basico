@@ -54,6 +54,11 @@ app.use('/api/pagamento-peca', pagamentoPecaRoutes);
 app.use('/api/pagamento-cliente', pagamentoClienteRoutes);
 app.use('/api/contas-pagar', contasPagarRoutes);
 
+import { pagamentoEquipeRoutes } from './routes/pagamentoEquipe.routes.js';
+import { livroCaixaRoutes } from './routes/livroCaixa.routes.js';
+app.use('/api/pagamento-equipe', pagamentoEquipeRoutes);
+app.use('/api/livro-caixa', livroCaixaRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

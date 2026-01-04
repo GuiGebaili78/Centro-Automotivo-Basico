@@ -44,6 +44,8 @@ export class ServicoMaoDeObraRepository {
     const current = await prisma.servicoMaoDeObra.findUnique({ where: { id_servico_mao_de_obra: id } });
     
     if (!current) throw new Error('Serviço não encontrado');
+    // @ts-ignore - status_pagamento exists in db but type might leak outdated
+    if (current.status_pagamento === 'PAGO') throw new Error('Bloqueado: Comissão já paga ao funcionário.');
 
     const updated = await prisma.servicoMaoDeObra.update({
       where: { id_servico_mao_de_obra: id },
@@ -67,6 +69,8 @@ export class ServicoMaoDeObraRepository {
   async softDelete(id: number) {
     const current = await prisma.servicoMaoDeObra.findUnique({ where: { id_servico_mao_de_obra: id } });
     if (!current) throw new Error('Serviço não encontrado');
+    // @ts-ignore
+    if (current.status_pagamento === 'PAGO') throw new Error('Bloqueado: Comissão já paga ao funcionário.');
 
     const updated = await prisma.servicoMaoDeObra.update({
         where: { id_servico_mao_de_obra: id },
