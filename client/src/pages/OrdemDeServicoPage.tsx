@@ -5,8 +5,9 @@ import { api } from '../services/api';
 import type { IOrdemDeServico } from '../types/backend';
 import { 
     Search, Plus, PenTool, Car, X,
-    Package, Wrench, CheckCircle, BadgeCheck, DollarSign
+    Package, Wrench, CheckCircle, BadgeCheck, DollarSign, Phone
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 import { StatusBanner } from '../components/ui/StatusBanner';
 import { Modal } from '../components/ui/Modal';
@@ -17,6 +18,7 @@ import { VeiculoForm } from '../components/forms/VeiculoForm';
 import { LaborManager } from '../components/os/LaborManager';
 
 export const OrdemDeServicoPage = () => {
+    const navigate = useNavigate();
     // --- STATE ---
     const [searchTerm, setSearchTerm] = useState(''); // NEW: Localizar Search
     const [dateFilter, setDateFilter] = useState<'ALL' | 'HOJE' | 'SEMANA' | 'MES'>('ALL');
@@ -499,7 +501,7 @@ export const OrdemDeServicoPage = () => {
                                         <div className="flex justify-end gap-2">
                                             <button 
                                                 onClick={() => handleManageItem(os)} 
-                                                className="px-3 py-1.5 bg-neutral-50 border border-neutral-200 text-neutral-600 rounded-lg font-bold text-xs uppercase hover:bg-primary-600 hover:text-white hover:border-primary-600 transition-colors"
+                                                className="h-9 px-4 bg-neutral-50 border border-neutral-200 text-neutral-600 rounded-lg font-bold text-xs uppercase hover:bg-primary-600 hover:text-white hover:border-primary-600 transition-colors shadow-sm"
                                             >
                                                 Gerenciar
                                             </button>
@@ -507,10 +509,10 @@ export const OrdemDeServicoPage = () => {
                                             {(os.status === 'FINALIZADA' || os.status === 'PRONTO PARA FINANCEIRO' || os.status === 'PAGA_CLIENTE') && (
                                                 <button 
                                                     onClick={() => handleOpenNewOsForExisting(os.veiculo, os.cliente)}
-                                                    className="px-3 py-1.5 bg-primary-50 border border-primary-100 text-primary-600 rounded-lg font-bold text-xs uppercase hover:bg-primary-600 hover:text-white hover:border-primary-600 transition-colors flex items-center gap-1"
+                                                    className="h-9 px-4 bg-primary-50 border border-primary-100 text-primary-600 rounded-lg font-bold text-xs uppercase hover:bg-primary-600 hover:text-white hover:border-primary-600 transition-colors flex items-center gap-2 shadow-sm"
                                                     title="Nova OS para este veículo"
                                                     >
-                                                    <Plus size={14} /> Nova OS
+                                                    <Plus size={16} /> Nova OS
                                                 </button>
                                             )}
                                         </div>
@@ -551,7 +553,10 @@ export const OrdemDeServicoPage = () => {
                             </span>
                         </div>
                     } 
-                    onClose={() => setManageModalOpen(false)}
+                    onClose={() => {
+                        setManageModalOpen(false);
+                        navigate('/'); // Redirect to Dashboard on Close as requested
+                    }}
                 >
                     <div className="space-y-8">
                         {/* Header Info */}
@@ -1101,24 +1106,22 @@ export const OrdemDeServicoPage = () => {
                             <div className="flex justify-between items-start border-b border-primary-100 pb-4">
                                 <div>
                                     <p className="text-[10px] font-bold text-primary-400 uppercase mb-1">Cliente</p>
-                                    <p className="font-bold text-primary-900 text-lg">{wizardClient.pessoa_fisica?.pessoa?.nome || wizardClient.pessoa_juridica?.razao_social}</p>
-                                    <p className="text-xs text-primary-600 font-medium">
-                                        {wizardClient.pessoa_fisica?.pessoa?.contatos?.[0]?.valor || wizardClient.pessoa_juridica?.pessoa?.contatos?.[0]?.valor || 'Sem telefone'}
+                                    <p className="font-bold text-primary-900 text-lg leading-tight">{wizardClient.pessoa_fisica?.pessoa?.nome || wizardClient.pessoa_juridica?.razao_social}</p>
+                                    <p className="text-sm text-primary-600 font-bold mt-1 flex items-center gap-1">
+                                        <Phone size={14} className="text-primary-400" /> {wizardClient.telefone_1 || wizardClient.telefone_2 || 'Sem telefone'}
                                     </p>
                                 </div>
                             </div>
                             
-                            <div className="flex justify-between items-start">
-                                <div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex-1">
                                     <p className="text-[10px] font-bold text-primary-400 uppercase mb-1">Veículo</p>
-                                    <p className="font-bold text-primary-900 text-lg">{wizardVehicle.placa}</p>
-                                    <p className="text-xs text-primary-600 font-bold uppercase">{wizardVehicle.modelo}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-[10px] font-bold text-primary-400 uppercase mb-1">Cor</p>
-                                    <div className="flex items-center gap-2 justify-end">
-                                        <span className="w-4 h-4 rounded-full border border-primary-200 shadow-sm" style={{backgroundColor: wizardVehicle.cor === 'PRATA' ? '#ccc' : wizardVehicle.cor === 'BRANCO' ? '#fff' : wizardVehicle.cor === 'PRETO' ? '#000' : 'gray'}}></span>
-                                        <p className="font-bold text-primary-900 uppercase text-sm">{wizardVehicle.cor}</p>
+                                    <div className="flex items-center gap-3">
+                                         <div className="w-12 h-12 rounded-full border-2 border-white shadow-md shrink-0" style={{backgroundColor: wizardVehicle.cor === 'PRATA' ? '#ccc' : wizardVehicle.cor === 'BRANCO' ? '#fff' : wizardVehicle.cor === 'PRETO' ? '#000' : 'gray'}}></div>
+                                         <div>
+                                            <p className="font-black text-primary-900 text-xl tracking-tight">{wizardVehicle.placa}</p>
+                                            <p className="text-xs text-primary-600 font-bold uppercase">{wizardVehicle.modelo} • {wizardVehicle.cor}</p>
+                                         </div>
                                     </div>
                                 </div>
                             </div>

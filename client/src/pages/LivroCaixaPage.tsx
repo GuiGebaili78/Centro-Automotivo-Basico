@@ -48,6 +48,7 @@ export const LivroCaixaPage = () => {
                         details: `OS #${p.item_os?.id_os} - ${p.fornecedor?.nome}`,
                         vehicle: vehicleText,
                         client: clientName,
+                        obs: '',
                         deleted_at: p.deleted_at
                     };
                 });
@@ -67,9 +68,10 @@ export const LivroCaixaPage = () => {
                     description: `Recebimento OS #${p.id_os}`,
                     type: 'IN',
                     value: Number(p.valor),
-                    details: `Forma: ${p.metodo_pagamento}`,
+                    details: `Forma: ${p.metodo_pagamento}${p.qtd_parcelas ? ` (${p.qtd_parcelas}x)` : ''}`,
                     vehicle: vehicleText,
                     client: clientName,
+                    obs: p.observacao || '',
                     deleted_at: p.deleted_at
                 };
             });
@@ -239,6 +241,7 @@ export const LivroCaixaPage = () => {
                                 <th className="p-5">Veículo / Cliente</th>
                                 <th className="p-5">Detalhes</th>
                                 <th className="p-5 text-right">Valor</th>
+                                <th className="p-5 font-black text-neutral-400 uppercase text-[10px] tracking-widest">Obs</th>
                                 <th className="p-5 text-center">Tipo</th>
                             </tr>
                         </thead>
@@ -268,6 +271,11 @@ export const LivroCaixaPage = () => {
                                         <td className={`p-5 text-xs font-medium ${entry.deleted_at ? 'line-through text-neutral-300' : 'text-neutral-500'}`}>{entry.details}</td>
                                         <td className={`p-5 text-right font-black ${entry.deleted_at ? 'line-through text-neutral-400' : 'text-neutral-900'}`}>
                                             R$ {entry.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </td>
+                                        <td className="p-5">
+                                            <div className="text-xs text-neutral-500 italic truncate max-w-[150px]" title={entry.obs}>
+                                                {entry.obs || '-'}
+                                            </div>
                                         </td>
                                         <td className="p-5 text-center">
                                             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${

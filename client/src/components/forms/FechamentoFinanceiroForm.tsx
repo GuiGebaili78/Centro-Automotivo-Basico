@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Calculator, Save, Truck, Plus, BadgeCheck, Palette, Trash2 } from 'lucide-react';
 import { PagamentoClienteForm } from './PagamentoClienteForm';
@@ -88,6 +89,7 @@ interface OSData {
 }
 
 export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel }: FechamentoFinanceiroFormProps) => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [fetchingOs, setFetchingOs] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
@@ -380,6 +382,7 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
             }
 
             onSuccess(response.data);
+            navigate('/');
         } catch (error: any) {
             console.error(error);
             setStatusMsg({ type: 'error', text: error.message || 'Erro ao processar fechamento financeiro.' });
