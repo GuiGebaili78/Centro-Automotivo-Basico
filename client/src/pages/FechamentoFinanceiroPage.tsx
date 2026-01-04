@@ -139,16 +139,18 @@ export const FechamentoFinanceiroPage = () => {
     const filteredFechamentos = fechamentos.filter(f => {
         // Date Filter
         if (filterStart) {
-            const date = new Date(f.data_fechamento_financeiro);
-            const start = new Date(filterStart);
-            // reset time for date comparison or use string comparison
-            // Simplest: Compare YYYY-MM-DD strings
-            if (f.data_fechamento_financeiro < filterStart) return false; 
-            // Note: String comparison works for ISO dates. data_fechamento likely ISO
+            // Fix: Compare using Local Date Strings to avoid Timezone shifts (e.g. UTC-3)
+            // 'filterStart' is YYYY-MM-DD from input. 
+            // We must convert the record's ISO timestamp to YYYY-MM-DD in Local Time.
+            const recordDate = new Date(f.data_fechamento_financeiro);
+            const recordDateLocal = recordDate.toLocaleDateString('en-CA'); // YYYY-MM-DD Local
+            
+            if (recordDateLocal < filterStart) return false;
         }
         if (filterEnd) {
-             const dateStr = f.data_fechamento_financeiro.split('T')[0];
-             if (dateStr > filterEnd) return false;
+             const recordDate = new Date(f.data_fechamento_financeiro);
+             const recordDateLocal = recordDate.toLocaleDateString('en-CA');
+             if (recordDateLocal > filterEnd) return false;
         }
 
         if (!searchTerm) return true;

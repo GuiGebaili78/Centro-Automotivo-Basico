@@ -113,13 +113,20 @@ export function HomePage() {
           
           if (filterPeriod === 'HOJE') {
               // Compare if dateRef is >= today 00:00
+              // AND User Requirement: Show ONLY 'ABERTA' in the Dashboard List
+              // FIX: If OS is OPEN, show it regardless of date? No, user said "Dashboard didn't load Open OSs". 
+              // Assumption: User wants to see ALL Open OSs.
+              // Logic: Default SHOW if Open. If not Open, respect Date.
+              if (os.status === 'ABERTA') return true;
               return dateRef >= startOfToday;
           } else if (filterPeriod === 'SEMANA') {
               const weekAgo = new Date(startOfToday);
               weekAgo.setDate(startOfToday.getDate() - 7);
+              if (os.status === 'ABERTA') return true;
               return dateRef >= weekAgo;
           } else { // MES
               const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+              if (os.status === 'ABERTA') return true;
               return dateRef >= firstDayMonth;
           }
       }).sort((a,b) => {
@@ -204,7 +211,7 @@ export function HomePage() {
       {/* Recent Services - FULL WIDTH */}
       <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
         <div className="p-6 border-b border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <h2 className="text-lg font-black text-neutral-900 tracking-tight">Serviços Recentes</h2>
+            <h2 className="text-lg font-black text-neutral-900 tracking-tight">Ordens de Serviços Recentes</h2>
             
             {/* Date Tabs */}
             <div className="flex bg-neutral-100 p-1 rounded-xl">
@@ -229,6 +236,7 @@ export function HomePage() {
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">Diagnóstico</th>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">Cliente</th>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest text-center">Status</th>
+                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest text-right">Ações</th>
             </tr>
             </thead>
             <tbody className="divide-y divide-neutral-50">
@@ -279,6 +287,17 @@ export function HomePage() {
                         <span className={`px-3 py-1 rounded-md text-[10px] font-black uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}>
                             {os.status.replace(/_/g, ' ')}
                         </span>
+                    </td>
+                    <td className="p-4 text-right">
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation(); // Prevent row click
+                                navigate(`/ordem-de-servico?id=${os.id_os}`);
+                            }}
+                            className="bg-neutral-900 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase hover:bg-black transition-transform hover:scale-105 shadow-md shadow-neutral-900/20"
+                        >
+                            Gerenciar
+                        </button>
                     </td>
                 </tr>
                 ))

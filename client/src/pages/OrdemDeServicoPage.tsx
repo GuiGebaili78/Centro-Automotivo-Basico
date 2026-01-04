@@ -19,6 +19,7 @@ import { LaborManager } from '../components/os/LaborManager';
 export const OrdemDeServicoPage = () => {
     // --- STATE ---
     const [searchTerm, setSearchTerm] = useState(''); // NEW: Localizar Search
+    const [dateFilter, setDateFilter] = useState<'ALL' | 'HOJE' | 'SEMANA' | 'MES'>('ALL');
 
     const [oss, setOss] = useState<IOrdemDeServico[]>([]);
     
@@ -235,9 +236,28 @@ export const OrdemDeServicoPage = () => {
 
     // FILTER LOGIC
     const filteredOss = oss.filter(os => {
+        // 1. Date Filter
+        if (dateFilter !== 'ALL') {
+             const now = new Date();
+             const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+             const osDate = new Date(os.dt_abertura);
+             
+             if (dateFilter === 'HOJE') {
+                 if (osDate < startOfToday) return false;
+             } else if (dateFilter === 'SEMANA') {
+                 const weekAgo = new Date(startOfToday);
+                 weekAgo.setDate(startOfToday.getDate() - 7);
+                 if (osDate < weekAgo) return false;
+             } else if (dateFilter === 'MES') {
+                 const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                 if (osDate < firstDayMonth) return false;
+             }
+        }
+
         if (!searchTerm) {
-            // Se não houver busca, mostrar apenas ABERTA (Gestão Ativa)
-            return os.status === 'ABERTA';
+            // User requested to show ALL OSs (subject to Date Filter)
+            // Previously restricted to 'ABERTA'. Now we show everything matching the date filter.
+            return true; 
         }
 
         const q = searchTerm.toLowerCase();
@@ -370,10 +390,12 @@ export const OrdemDeServicoPage = () => {
     // --- RENDER ---
     const getStatusStyle = (status: string) => {
         switch (status) {
-            case 'FINALIZADA': return 'bg-success-50 text-success-600 border-success-200';
-            case 'PAGA_CLIENTE': return 'bg-neutral-100 text-neutral-600 border-neutral-200';
-            case 'PRONTO PARA FINANCEIRO': return 'bg-warning-50 text-warning-600 border-warning-200';
-            default: return 'bg-primary-50 text-primary-600 border-primary-200';
+            case 'FINALIZADA': return 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200';
+            case 'PAGA_CLIENTE': return 'bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200';
+            case 'PRONTO PARA FINANCEIRO': return 'bg-amber-100 text-amber-700 ring-1 ring-amber-200';
+            case 'ABERTA': return 'bg-blue-100 text-blue-700 ring-1 ring-blue-200';
+            case 'EM_ANDAMENTO': return 'bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200';
+            default: return 'bg-gray-50 text-gray-500 ring-1 ring-gray-200';
         }
     };
 
@@ -408,8 +430,19 @@ export const OrdemDeServicoPage = () => {
                             placeholder="Buscar por Placa, Cliente ou Modelo..."
                         />
                     </div>
-                    {/* FIXED 'CRIAR OS' BUTTON REMOVED as per requirement. Only search. 
-                        Button appears if NO results. */}
+                    
+                    {/* Date Filters */}
+                    <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
+                         {['ALL', 'HOJE', 'SEMANA', 'MES'].map((f) => (
+                             <button
+                                 key={f}
+                                 onClick={() => setDateFilter(f as any)}
+                                 className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${dateFilter === f ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}
+                             >
+                                 {f === 'ALL' ? 'Todos' : f === 'MES' ? 'Mês' : f}
+                             </button>
+                         ))}
+                    </div>
                 </div>
 
                 {/* SEARCH RESULTS */}
@@ -1060,6 +1093,55 @@ export const OrdemDeServicoPage = () => {
                 </Modal>
             )}
 
+
+            {newOsWizardStep === 'OS' && wizardClient && wizardVehicle && (
+                 <Modal title="Passo 3: Confirmar Abertura" onClose={() => setNewOsWizardStep('NONE')} className="max-w-xl">
+                     <div className="space-y-6">
+                         <div className="bg-primary-50 p-6 rounded-xl border border-primary-100 space-y-4">
+                            <div className="flex justify-between items-start border-b border-primary-100 pb-4">
+                                <div>
+                                    <p className="text-[10px] font-bold text-primary-400 uppercase mb-1">Cliente</p>
+                                    <p className="font-bold text-primary-900 text-lg">{wizardClient.pessoa_fisica?.pessoa?.nome || wizardClient.pessoa_juridica?.razao_social}</p>
+                                    <p className="text-xs text-primary-600 font-medium">
+                                        {wizardClient.pessoa_fisica?.pessoa?.contatos?.[0]?.valor || wizardClient.pessoa_juridica?.pessoa?.contatos?.[0]?.valor || 'Sem telefone'}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="text-[10px] font-bold text-primary-400 uppercase mb-1">Veículo</p>
+                                    <p className="font-bold text-primary-900 text-lg">{wizardVehicle.placa}</p>
+                                    <p className="text-xs text-primary-600 font-bold uppercase">{wizardVehicle.modelo}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-bold text-primary-400 uppercase mb-1">Cor</p>
+                                    <div className="flex items-center gap-2 justify-end">
+                                        <span className="w-4 h-4 rounded-full border border-primary-200 shadow-sm" style={{backgroundColor: wizardVehicle.cor === 'PRATA' ? '#ccc' : wizardVehicle.cor === 'BRANCO' ? '#fff' : wizardVehicle.cor === 'PRETO' ? '#000' : 'gray'}}></span>
+                                        <p className="font-bold text-primary-900 uppercase text-sm">{wizardVehicle.cor}</p>
+                                    </div>
+                                </div>
+                            </div>
+                         </div>
+                         
+                         <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 text-center">
+                             <p className="text-neutral-500 text-sm font-medium">Confirme os dados acima para iniciar a Ordem de Serviço.</p>
+                         </div>
+                         
+                         <form onSubmit={(e) => {
+                             e.preventDefault();
+                             handleCreateOsFinal(null, 0, ''); // No mechanic, No KM, No Defect for now
+                         }}>
+                             <div className="pt-2 flex gap-3">
+                                <button type="button" onClick={() => setNewOsWizardStep('NONE')} className="flex-1 py-4 text-sm font-bold text-neutral-500 hover:bg-neutral-50 rounded-xl transition-colors">CANCELAR</button>
+                                <button type="submit" style={{ flex: 2 }} className="py-4 bg-neutral-900 text-white font-bold rounded-xl shadow-lg hover:bg-black transition-transform hover:-translate-y-1 flex items-center justify-center gap-2">
+                                    <CheckCircle size={20} /> ABRIR ORDEM DE SERVIÇO
+                                </button>
+                             </div>
+                         </form>
+                     </div>
+                 </Modal>
+            )}
 
         </div>
     );

@@ -7,8 +7,8 @@ import {
 
 export const LivroCaixaPage = () => {
     const [cashBookEntries, setCashBookEntries] = useState<any[]>([]);
-    const [cashFilterStart, setCashFilterStart] = useState('');
-    const [cashFilterEnd, setCashFilterEnd] = useState('');
+    const [cashFilterStart, setCashFilterStart] = useState(new Date().toLocaleDateString('en-CA'));
+    const [cashFilterEnd, setCashFilterEnd] = useState(new Date().toLocaleDateString('en-CA'));
     const [cashSearch, setCashSearch] = useState('');
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
     const [, setLoading] = useState(false);
@@ -88,15 +88,12 @@ export const LivroCaixaPage = () => {
     // Cash Book Filters
     const filteredCashBook = cashBookEntries.filter(entry => {
         if (cashFilterStart) {
-             const start = new Date(cashFilterStart);
-             const date = new Date(entry.date);
-             if (date < start) return false;
+             const recordDateLocal = new Date(entry.date).toLocaleDateString('en-CA');
+             if (recordDateLocal < cashFilterStart) return false;
         }
         if (cashFilterEnd) {
-             const end = new Date(cashFilterEnd);
-             end.setHours(23, 59, 59, 999);
-             const date = new Date(entry.date);
-             if (date > end) return false;
+             const recordDateLocal = new Date(entry.date).toLocaleDateString('en-CA');
+             if (recordDateLocal > cashFilterEnd) return false;
         }
         if (cashSearch) {
              const searchLower = cashSearch.toLowerCase();

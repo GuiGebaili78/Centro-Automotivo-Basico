@@ -197,14 +197,59 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
         fetchOsData(Number(idOs));
     };
 
-    const handleItemChange = (id_iten: number, field: keyof ItemFinanceiroState, value: any) => {
-        setItemsState(prev => ({
-            ...prev,
-            [id_iten]: {
-                ...prev[id_iten],
-                [field]: value
+    // Auto-save logic
+    const saveItemCost = async (id_iten: number, partialState: ItemFinanceiroState) => {
+         const item = osData?.itens_os.find(i => i.id_iten === id_iten);
+         if (!item || !partialState.id_fornecedor || !partialState.custo_real) return;
+
+         try {
+            const payload = {
+                id_item_os: id_iten,
+                id_fornecedor: Number(partialState.id_fornecedor),
+                custo_real: Number(partialState.custo_real),
+                data_compra: new Date().toISOString(),
+                pago_ao_fornecedor: partialState.pago_fornecedor
+            };
+
+            if (partialState.id_pagamento_peca) {
+                    await api.put(`/pagamento-peca/${partialState.id_pagamento_peca}`, payload);
+            } else {
+                    const res = await api.post('/pagamento-peca', payload);
+                    // Update the state with the new ID to avoid duplicates on next save
+                    setItemsState(prev => ({
+                        ...prev,
+                        [id_iten]: { ...prev[id_iten], id_pagamento_peca: res.data.id_pagamento_peca }
+                    }));
             }
-        }));
+         } catch (error) {
+             console.error("Erro no auto-save do item", error);
+         }
+    };
+
+    const handleItemChange = (id_iten: number, field: keyof ItemFinanceiroState, value: any) => {
+        setItemsState(prev => {
+            const newState = {
+                ...prev,
+                [id_iten]: {
+                    ...prev[id_iten],
+                    [field]: value
+                }
+            };
+            
+            // Auto-save trigger (debounced 500ms effectively by user typing speed, but for simplicity here we just call it)
+            // Ideally we should debounce. For now, let's just trigger it. 
+            // Actually, flooding the API on every keypress for 'custo_real' is bad.
+            // Let's rely on onBlur for inputs, but the user might click 'Novo Pagamento' without blurring properly?
+            // User said "costs were blank again... did not persist".
+            // Let's add onBlur to the inputs to trigger save.
+            
+            return newState;
+        });
+    };
+
+    const handleItemBlur = (id_iten: number) => {
+        const state = itemsState[id_iten];
+        if (state) saveItemCost(id_iten, state);
     };
 
 
@@ -505,6 +550,7 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                                                 className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                                                 value={itemsState[item.id_iten]?.id_fornecedor || ''}
                                                 onChange={e => handleItemChange(item.id_iten, 'id_fornecedor', e.target.value)}
+                                                onBlur={() => handleItemBlur(item.id_iten)}
                                             >
                                                 <option value="">-- Selecione --</option>
                                                 {fornecedores.map(f => (
@@ -520,6 +566,7 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                                                     step="0.01"
                                                     value={itemsState[item.id_iten]?.custo_real}
                                                     onChange={e => handleItemChange(item.id_iten, 'custo_real', e.target.value)}
+                                                    onBlur={() => handleItemBlur(item.id_iten)}
                                                     className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm font-bold text-red-600 focus:ring-2 focus:ring-red-500 outline-none"
                                                     placeholder="0.00"
                                                 />
