@@ -23,7 +23,7 @@ const StatCard = ({ title, value, color, onClick, subtext }: any) => (
 export function HomePage() {
   const navigate = useNavigate();
   const [recentOss, setRecentOss] = useState<any[]>([]);
-  const [filterPeriod, setFilterPeriod] = useState<'HOJE' | 'SEMANA' | 'MES'>('HOJE');
+  const [filterPeriod, setFilterPeriod] = useState<'HOJE' | 'SEMANA' | 'MES' | 'STATUS'>('HOJE');
   
   const [stats, setStats] = useState({
     osAberta: 0,
@@ -102,34 +102,44 @@ export function HomePage() {
 
   const getFilteredRecentServices = () => {
       const now = new Date();
-      // Set to start of day for comparisons
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
-      return recentOss.filter(os => {
-          // Use updated_at timestamp. If unavailable, use dt_abertura.
-          // Note: updated_at was recently added, so older records might have it = null or old date.
-          // Fallback logic: check both or prefer updated_at if valid.
-          const dateRef = os.updated_at ? new Date(os.updated_at) : new Date(os.dt_abertura);
-          
-          if (filterPeriod === 'HOJE') {
-              // Compare if dateRef is >= today 00:00
-              // AND User Requirement: Show ONLY 'ABERTA' in the Dashboard List
-              // FIX: If OS is OPEN, show it regardless of date? No, user said "Dashboard didn't load Open OSs". 
-              // Assumption: User wants to see ALL Open OSs.
-              // Logic: Default SHOW if Open. If not Open, respect Date.
-              if (os.status === 'ABERTA') return true;
-              return dateRef >= startOfToday;
-          } else if (filterPeriod === 'SEMANA') {
-              const weekAgo = new Date(startOfToday);
-              weekAgo.setDate(startOfToday.getDate() - 7);
-              if (os.status === 'ABERTA') return true;
-              return dateRef >= weekAgo;
-          } else { // MES
-              const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-              if (os.status === 'ABERTA') return true;
-              return dateRef >= firstDayMonth;
+      let filtered = recentOss;
+
+      // 1. Filter Logic
+      if (filterPeriod !== 'STATUS') {
+          filtered = recentOss.filter(os => {
+            const dateRef = os.updated_at ? new Date(os.updated_at) : new Date(os.dt_abertura);
+            if (filterPeriod === 'HOJE') {
+                if (os.status === 'ABERTA') return true;
+                return dateRef >= startOfToday;
+            } else if (filterPeriod === 'SEMANA') {
+                const weekAgo = new Date(startOfToday);
+                weekAgo.setDate(startOfToday.getDate() - 7);
+                if (os.status === 'ABERTA') return true;
+                return dateRef >= weekAgo;
+            } else { // MES
+                const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                if (os.status === 'ABERTA') return true;
+                return dateRef >= firstDayMonth;
+            }
+          });
+      }
+
+      // 2. Sort Logic
+      return filtered.sort((a,b) => {
+          if (filterPeriod === 'STATUS') {
+              const priority: Record<string, number> = {
+                  'ABERTA': 1, 'EM_ANDAMENTO': 1,
+                  'PRONTO PARA FINANCEIRO': 2,
+                  'finalizada': 3, 'FINALIZADA': 3, 
+                  'PAGA_CLIENTE': 4
+              };
+              const pA = priority[a.status] || 99;
+              const pB = priority[b.status] || 99;
+              if (pA !== pB) return pA - pB;
           }
-      }).sort((a,b) => {
+          // Date Sort (Secondary for STATUS, Primary for others)
           const dateA = a.updated_at ? new Date(a.updated_at).getTime() : new Date(a.dt_abertura).getTime();
           const dateB = b.updated_at ? new Date(b.updated_at).getTime() : new Date(b.dt_abertura).getTime();
           return dateB - dateA;
@@ -202,9 +212,9 @@ export function HomePage() {
       <div className="flex items-center gap-4">
             <button 
                 onClick={() => navigate('/ordem-de-servico?new=true')} 
-                className="bg-neutral-900 hover:bg-black text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-neutral-900/20 transition-transform hover:-translate-y-0.5"
+                className="bg-neutral-900 hover:bg-black text-white px-8 py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center gap-3 shadow-xl shadow-neutral-900/20 transition-all hover:-translate-y-1 hover:shadow-2xl"
             >
-                <Plus size={20} /> Nova OS
+                <Plus size={22} /> Nova Ordem de Serviço
             </button>
       </div>
 
@@ -215,7 +225,7 @@ export function HomePage() {
             
             {/* Date Tabs */}
             <div className="flex bg-neutral-100 p-1 rounded-xl">
-                {['HOJE', 'SEMANA', 'MES'].map((p) => (
+                {['HOJE', 'SEMANA', 'MES', 'STATUS'].map((p) => (
                     <button
                         key={p}
                         onClick={() => setFilterPeriod(p as any)}

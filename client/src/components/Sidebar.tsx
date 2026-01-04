@@ -121,7 +121,7 @@ export const Sidebar = () => {
       <div className="p-4 border-t border-neutral-800">
         <div className="bg-neutral-800/50 rounded-lg p-3">
           <p className="text-xs text-center text-neutral-500">
-            &copy; 2024 Centro Automotivo
+            &copy; 2026 Centro Automotivo Guilherme Gebaili
           </p>
         </div>
       </div>

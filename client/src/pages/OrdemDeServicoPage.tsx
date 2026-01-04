@@ -29,6 +29,7 @@ export const OrdemDeServicoPage = () => {
     const [manageModalOpen, setManageModalOpen] = useState(false);
     const [selectedOsForItems, setSelectedOsForItems] = useState<IOrdemDeServico | null>(null);
     const [osItems, setOsItems] = useState<any[]>([]);
+    const [highlightIndex, setHighlightIndex] = useState(-1); // Keyboard Nav State
     const [availableParts, setAvailableParts] = useState<any[]>([]);
     const [laborServices, setLaborServices] = useState<any[]>([]);
     
@@ -42,6 +43,8 @@ export const OrdemDeServicoPage = () => {
     const [newItem, setNewItem] = useState({ id_pecas_estoque: '', quantidade: '1', valor_venda: '', descricao: '', codigo_referencia: '', id_fornecedor: '' });
     const [editingItemId, setEditingItemId] = useState<number | null>(null);
     const partInputRef = useRef<HTMLInputElement>(null);
+    const quantityInputRef = useRef<HTMLInputElement>(null);
+    const referenceInputRef = useRef<HTMLInputElement>(null);
     
 
 
@@ -296,6 +299,8 @@ export const OrdemDeServicoPage = () => {
         setNewItem({ ...newItem, id_pecas_estoque: String(p.id_pecas_estoque), valor_venda: String(p.valor_venda), descricao: p.nome });
         setPartSearch(p.nome);
         setPartResults([]);
+        setHighlightIndex(-1);
+        requestAnimationFrame(() => referenceInputRef.current?.focus());
     };
 
     const handleAddItem = async (e?: FormEvent) => {
@@ -326,6 +331,9 @@ export const OrdemDeServicoPage = () => {
             setEditingItemId(null);
             loadOsItems(selectedOsForItems.id_os);
             setTimeout(() => setStatusMsg({ type: null, text: '' }), 1500);
+            // Focus back on search input for rapid entry
+            requestAnimationFrame(() => partInputRef.current?.focus());
+            setTimeout(() => partInputRef.current?.focus(), 100);
         } catch (error) { setStatusMsg({ type: 'error', text: 'Erro ao salvar item.' }); }
     };
 
@@ -352,8 +360,12 @@ export const OrdemDeServicoPage = () => {
             const qtd = Number(editingItemData.quantidade);
             const val = Number(editingItemData.valor_venda);
             await api.put(`/itens-os/${editingItemData.id_iten}`, {
-                descricao: editingItemData.descricao, quantidade: qtd, valor_venda: val, valor_total: qtd * val,
-                codigo_referencia: editingItemData.codigo_referencia, id_fornecedor: editingItemData.id_fornecedor || null
+                descricao: editingItemData.descricao, 
+                quantidade: qtd, 
+                valor_venda: val, 
+                valor_total: qtd * val,
+                codigo_referencia: editingItemData.codigo_referencia, 
+                id_fornecedor: editingItemData.id_fornecedor ? Number(editingItemData.id_fornecedor) : null
             });
             loadOsItems(selectedOsForItems.id_os);
             setEditItemModalOpen(false);
@@ -380,11 +392,12 @@ export const OrdemDeServicoPage = () => {
                 dt_entrega: selectedOsForItems.dt_entrega ? new Date(selectedOsForItems.dt_entrega).toISOString() : new Date().toISOString()
             });
             setStatusMsg({ type: 'success', text: 'OS Finalizada! Enviada para Financeiro.' });
+            setStatusMsg({ type: 'success', text: 'OS Finalizada! Enviada para Financeiro.' });
             setTimeout(() => {
-                setManageModalOpen(false);
                 setStatusMsg({ type: null, text: '' });
-                loadOss();
-            }, 2000);
+                // loadOss(); // No longer needed if navigating away
+                navigate('/');
+            }, 1500);
         } catch (e) { setStatusMsg({ type: 'error', text: 'Erro ao finalizar OS.' }); }
     };
     
@@ -664,7 +677,7 @@ export const OrdemDeServicoPage = () => {
                                   <h3 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2 pl-1">
                                      <Wrench size={14} /> Mão de Obra
                                   </h3>
-                                  <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm h-full max-h-[220px] overflow-y-auto">
+                                   <div className="h-full max-h-[380px] overflow-y-auto group scrollbar-thin scrollbar-thumb-neutral-200 hover:scrollbar-thumb-neutral-300 pr-1">
                                      <LaborManager 
                                          mode="api"
                                          osId={selectedOsForItems.id_os}
@@ -673,7 +686,7 @@ export const OrdemDeServicoPage = () => {
                                          onChange={() => handleOpenFromId(selectedOsForItems.id_os)} 
                                          readOnly={selectedOsForItems.status === 'FINALIZADA' || selectedOsForItems.status === 'PAGA_CLIENTE'}
                                      />
-                                  </div>
+                                   </div>
                              </div>
                          </div>
                         
@@ -695,12 +708,35 @@ export const OrdemDeServicoPage = () => {
                                         className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 font-bold text-sm bg-white transition-all shadow-sm"
                                         placeholder="Buscar peça no estoque..."
                                         value={partSearch}
-                                        onChange={e => handlePartSearch(e.target.value)}
+                                        onChange={e => {
+                                            handlePartSearch(e.target.value);
+                                            setHighlightIndex(-1);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (partResults.length === 0) return;
+                                            if (e.key === 'ArrowDown') {
+                                                e.preventDefault();
+                                                setHighlightIndex(prev => Math.min(prev + 1, partResults.length - 1));
+                                            } else if (e.key === 'ArrowUp') {
+                                                e.preventDefault();
+                                                setHighlightIndex(prev => Math.max(prev - 1, -1)); // -1 means input focus
+                                            } else if (e.key === 'Enter') {
+                                                if (highlightIndex >= 0 && partResults[highlightIndex]) {
+                                                    e.preventDefault();
+                                                    selectPart(partResults[highlightIndex]);
+                                                    setHighlightIndex(-1);
+                                                }
+                                            }
+                                        }}
                                     />
                                     {partResults.length > 0 && (
                                         <div className="absolute z-50 w-full mt-2 bg-white border border-neutral-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2">
-                                            {partResults.map(p => (
-                                                <button key={p.id_pecas_estoque || p.nome} onClick={() => selectPart(p)} className="w-full text-left p-3 hover:bg-neutral-50 text-sm font-medium border-b border-neutral-50 flex justify-between group/item transition-colors">
+                                            {partResults.map((p, idx) => (
+                                                <button 
+                                                    key={p.id_pecas_estoque || p.nome} 
+                                                    onClick={() => selectPart(p)} 
+                                                    className={`w-full text-left p-3 text-sm font-medium border-b border-neutral-50 flex justify-between group/item transition-colors ${idx === highlightIndex ? 'bg-primary-50 ring-1 ring-inset ring-primary-100 z-10' : 'hover:bg-neutral-50'}`}
+                                                >
                                                     <span className="text-neutral-700 group-hover/item:text-neutral-900">{p.nome}</span>
                                                     <span className="font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md">R$ {Number(p.valor_venda).toFixed(2)}</span>
                                                 </button>
@@ -710,12 +746,14 @@ export const OrdemDeServicoPage = () => {
                                     </div>
                                     <form onSubmit={handleAddItem} className="flex gap-2">
                                         <input 
+                                            ref={referenceInputRef}
                                             className="w-32 p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-50" 
                                             placeholder="Ref (Opcional)" 
                                             value={newItem.codigo_referencia} 
                                             onChange={e => setNewItem({...newItem, codigo_referencia: e.target.value})} 
                                         />
                                         <input 
+                                            ref={quantityInputRef}
                                             className="w-24 p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-center text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-50" 
                                             placeholder="Qtd" 
                                             value={newItem.quantidade} 
@@ -730,7 +768,7 @@ export const OrdemDeServicoPage = () => {
                                         <div className="flex-1 flex items-center justify-end px-4 text-xs font-bold text-neutral-400 uppercase tracking-wider">
                                             Total: R$ {(Number(newItem.quantidade) * Number(newItem.valor_venda || 0)).toFixed(2)}
                                         </div>
-                                        <button className="bg-neutral-900 text-white px-6 py-2 rounded-xl hover:bg-black hover:scale-105 transition-all shadow-lg shadow-neutral-900/20 font-bold uppercase text-xs flex items-center gap-2"><Plus size={16} /> Adicionar</button>
+                                        <button type="submit" className="bg-neutral-900 text-white px-6 py-2 rounded-xl hover:bg-black hover:scale-105 transition-all shadow-lg shadow-neutral-900/20 font-bold uppercase text-xs flex items-center gap-2"><Plus size={16} /> Adicionar</button>
                                     </form>
                             </div>
                         )}
@@ -1117,7 +1155,7 @@ export const OrdemDeServicoPage = () => {
                                 <div className="flex-1">
                                     <p className="text-[10px] font-bold text-primary-400 uppercase mb-1">Veículo</p>
                                     <div className="flex items-center gap-3">
-                                         <div className="w-12 h-12 rounded-full border-2 border-white shadow-md shrink-0" style={{backgroundColor: wizardVehicle.cor === 'PRATA' ? '#ccc' : wizardVehicle.cor === 'BRANCO' ? '#fff' : wizardVehicle.cor === 'PRETO' ? '#000' : 'gray'}}></div>
+                                         {/* Gray Circle Removed */}
                                          <div>
                                             <p className="font-black text-primary-900 text-xl tracking-tight">{wizardVehicle.placa}</p>
                                             <p className="text-xs text-primary-600 font-bold uppercase">{wizardVehicle.modelo} • {wizardVehicle.cor}</p>
