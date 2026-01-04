@@ -429,6 +429,13 @@ export const OrdemDeServicoPage = () => {
                         <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Ordens de Serviço</h1>
                         <p className="text-neutral-500">Gestão centralizada de atendimentos.</p>
                     </div>
+                    <button 
+                        onClick={() => setNewOsWizardStep('CLIENT')}
+                        className="group bg-primary-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/20 flex items-center gap-2 active:scale-95"
+                    >
+                        <Plus size={18} className="group-hover:rotate-90 transition-transform" />
+                        Nova Ordem de Serviço
+                    </button>
                 </div>
             </div>
 
