@@ -32,6 +32,7 @@ services:
       DATABASE_URL: postgresql://user:password@centroautomotivo_db:5432/automotivo_db
       PORT: 3000
       NODE_ENV: development
+      NODE_OPTIONS: "--max-old-space-size=4096"
     depends_on:
       centroautomotivo_db:
         condition: service_healthy
@@ -51,6 +52,7 @@ services:
       - "5173:5173"
     environment:
       VITE_API_URL: http://localhost:3000
+      NODE_OPTIONS: "--max-old-space-size=4096"
     volumes:
       - ./client:/app/client
       - /app/client/node_modules

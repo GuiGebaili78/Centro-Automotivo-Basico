@@ -17,3 +17,5 @@ Estilização via Tailwind 3 com cores centralizadas no tailwind.config.js.
 Tudo passa pelo Docker, não é pra fazer nada direto sem passar pelo docker.
 Preciso que vc tenha essas informações para que a cada alteração não modifique códigos ou funcionalidades que já estão funcionando bem.
 Responder tudo e portugues Brasil, pt-br. Não entendo nada de ingles
+
+O projeto é um app para gestão de oficinas automotivas, o diferencial é que ele é fácil de usar, é objetivo e fácil de navegar. Para oficinas pequenas que não precisam de um software complexo e caro. Oficinas que não vendem peças, apenas serviços de manutenção e pequenas peças como lampadas, oleo, bateria etc.. apenas para agilizar o serviço.

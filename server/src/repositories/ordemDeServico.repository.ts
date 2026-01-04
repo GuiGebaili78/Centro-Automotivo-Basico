@@ -144,12 +144,8 @@ export class OrdemDeServicoRepository {
         },
         veiculo: true,
         funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } },
-        itens_os: { where: { deleted_at: null } },
-        fechamento_financeiro: true,
-        servicos_mao_de_obra: {
-            where: { deleted_at: null },
-            include: { funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } } }
-        }
+        // itens_os and servico_mao_de_obra removed for performance (list view doesn't need them)
+        fechamento_financeiro: true
       }
     });
   }

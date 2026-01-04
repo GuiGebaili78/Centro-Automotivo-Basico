@@ -231,6 +231,11 @@ model OrdemDeServico {
     pagamentos_cliente  PagamentoCliente[]
 
     @@map("ordem_de_servico")
+    
+    @@index([id_cliente])
+    @@index([id_veiculo])
+    @@index([status])
+    @@index([deleted_at])
 }
 
 // Tabela 10: Tabela Associativa M:N (ITENS_OS)

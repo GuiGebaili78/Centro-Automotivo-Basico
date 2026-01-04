@@ -139,9 +139,8 @@ export const OrdemDeServicoPage = () => {
             const myVehicles = res.data.filter((v: any) => v.id_cliente === client.id_cliente);
             
             if (myVehicles.length === 1) {
-                // Requirement: If only 1 vehicle, skip selection and go directly to OS creation
-                setWizardVehicle(myVehicles[0]);
-                setNewOsWizardStep('OS');
+                // If only 1 vehicle, auto create OS immediately
+                handleCreateOsFinal(null, 0, '', myVehicles[0], client);
             } else if (myVehicles.length > 1) {
                 // Multiple choices: Show List, Hide Form initially
                 setWizardVehicleList(myVehicles);
@@ -154,7 +153,6 @@ export const OrdemDeServicoPage = () => {
                  setNewOsWizardStep('VEHICLE');
             }
         } catch {
-             // Fallback
              setWizardVehicleList([]);
              setShowVehicleForm(true);
              setNewOsWizardStep('VEHICLE');
@@ -162,17 +160,27 @@ export const OrdemDeServicoPage = () => {
     };
 
     const handleVehicleWizardSuccess = (vehicle: any) => {
-        setWizardVehicle(vehicle);
-        setNewOsWizardStep('OS');
+        // Auto create OS immediately after selection
+        handleCreateOsFinal(null, 0, '', vehicle, wizardClient);
     };
 
-    const handleCreateOsFinal = async (mechanicId: number, km: number, defect: string) => {
-        if (!wizardClient || !wizardVehicle) return;
+    const handleCreateOsFinal = async (
+        mechanicId: number | null = null, 
+        km: number = 0, 
+        defect: string = '',
+        overrideVehicle: any = null,
+        overrideClient: any = null
+    ) => {
+        const client = overrideClient || wizardClient;
+        const vehicle = overrideVehicle || wizardVehicle;
+
+        if (!client || !vehicle) return;
+
         try {
              const payload = {
-                id_cliente: wizardClient.id_cliente,
-                id_veiculo: wizardVehicle.id_veiculo,
-                id_funcionario: mechanicId,
+                id_cliente: client.id_cliente,
+                id_veiculo: vehicle.id_veiculo,
+                id_funcionario: mechanicId || null,
                 km_entrada: km,
                 defeito_relatado: defect,
                 status: 'ABERTA',
@@ -198,7 +206,7 @@ export const OrdemDeServicoPage = () => {
             const response = await api.get(`/ordem-de-servico/${id}`);
             setSelectedOsForItems(response.data);
             setManageModalOpen(true);
-            loadOsItems(id);
+            setOsItems(response.data.itens_os || []);
             setLaborServices(response.data.servicos_mao_de_obra || []);
         } catch (error) {
             setStatusMsg({ type: 'error', text: 'Erro ao abrir OS.' });
@@ -273,7 +281,7 @@ export const OrdemDeServicoPage = () => {
         if (!selectedOsForItems) return;
         try {
             const part = availableParts.find(p => p.id_pecas_estoque === Number(newItem.id_pecas_estoque));
-            const description = part ? part.nome : (partSearch || 'Item Diverso');
+            const description = part ? part.nome : (newItem.descricao || partSearch || 'Item Diverso');
             const qtd = Number(newItem.quantidade);
             const val = Number(newItem.valor_venda);
 
@@ -339,7 +347,7 @@ export const OrdemDeServicoPage = () => {
         // Se houver serviços de Mão de Obra cadastrados, usa a soma deles. 
         // Se não houver (lista vazia), preserva o valor manual que pode ter sido editado no Financeiro.
         const sumLaborServices = laborServices.reduce((acc, l) => acc + Number(l.valor), 0);
-        const finalLaborValue = laborServices.length > 0 ? sumLaborServices : (selectedOsForItems.valor_mao_de_obra || 0);
+        const finalLaborValue = laborServices.length > 0 ? sumLaborServices : Number(selectedOsForItems.valor_mao_de_obra || 0);
         
         try {
              await api.put(`/ordem-de-servico/${selectedOsForItems.id_os}`, {
@@ -514,247 +522,343 @@ export const OrdemDeServicoPage = () => {
                 >
                     <div className="space-y-8">
                         {/* Header Info */}
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 p-4 bg-primary-50 rounded-2xl border border-primary-100">
-                             <div>
-                                 <p className="text-[10px] font-black text-primary-400 uppercase">Veículo</p>
-                                 <p className="font-black text-lg text-primary-900 uppercase">{selectedOsForItems.veiculo?.placa}</p>
-                                 <p className="text-xs font-bold text-primary-700">{selectedOsForItems.veiculo?.modelo}</p>
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6 bg-primary-50/50 rounded-2xl border border-primary-100 items-center">
+                             {/* Coluna 1: Veículo (Destacando Modelo e Cor) */}
+                             <div className="space-y-1">
+                                 <p className="text-[10px] font-bold text-primary-400 uppercase tracking-wider">Veículo</p>
+                                 <div className="flex flex-col">
+                                     <h3 className="text-2xl font-black text-primary-900 leading-none tracking-tight">
+                                        {selectedOsForItems.veiculo?.modelo}
+                                     </h3>
+                                     <div className="flex items-center gap-2 mt-1">
+                                         <span className="text-base font-bold text-primary-700 uppercase bg-primary-100/50 px-2 py-0.5 rounded-md">
+                                             {selectedOsForItems.veiculo?.cor || 'Cor N/I'}
+                                         </span>
+                                         <span className="text-sm font-medium text-primary-400 uppercase tracking-widest border border-primary-200 px-2 py-0.5 rounded-md">
+                                             {selectedOsForItems.veiculo?.placa}
+                                         </span>
+                                     </div>
+                                 </div>
                              </div>
-                             <div>
-                                 <p className="text-[10px] font-black text-primary-400 uppercase">Cor do Veículo</p>
-                                 <p className="font-bold text-primary-900">{selectedOsForItems.veiculo?.cor || 'Não informada'}</p>
+
+                             {/* Coluna 2: Cliente */}
+                             <div className="space-y-1">
+                                 <p className="text-[10px] font-bold text-primary-400 uppercase tracking-wider">Cliente / Contato</p>
+                                 <div className="flex flex-col">
+                                     <p className="font-bold text-lg text-primary-900 leading-tight">
+                                         {selectedOsForItems.cliente?.pessoa_fisica?.pessoa?.nome || selectedOsForItems.cliente?.pessoa_juridica?.razao_social}
+                                     </p>
+                                     <p className="text-sm font-medium text-primary-600 flex items-center gap-1">
+                                         {selectedOsForItems.cliente?.telefone_1 || 'Sem telefone'}
+                                     </p>
+                                 </div>
                              </div>
-                             <div>
-                                 <p className="text-[10px] font-black text-primary-400 uppercase">Cliente</p>
-                                 <p className="font-black text-primary-900 truncate">{selectedOsForItems.cliente?.pessoa_fisica?.pessoa.nome || selectedOsForItems.cliente?.pessoa_juridica?.razao_social}</p>
+
+                             {/* Coluna 3: Entrada */}
+                             <div className="space-y-1">
+                                  <p className="text-[10px] font-bold text-primary-400 uppercase tracking-wider">Data de Entrada</p>
+                                  <div className="flex items-center gap-2">
+                                      <div className="bg-white p-2 rounded-lg border border-primary-100 shadow-sm">
+                                        <p className="font-black text-xl text-primary-900 leading-none">
+                                            {new Date(selectedOsForItems.dt_abertura).getDate()}
+                                        </p>
+                                      </div>
+                                      <div className="flex flex-col leading-none">
+                                          <span className="text-xs font-bold text-primary-500 uppercase">
+                                              {new Date(selectedOsForItems.dt_abertura).toLocaleString('default', { month: 'short' })}
+                                          </span>
+                                          <span className="text-[10px] font-medium text-primary-300">
+                                              {new Date(selectedOsForItems.dt_abertura).getFullYear()}
+                                          </span>
+                                      </div>
+                                  </div>
                              </div>
-                             <div>
-                                 <p className="text-[10px] font-black text-primary-400 uppercase">Telefone</p>
-                                 <p className="font-bold text-primary-900">{selectedOsForItems.cliente?.telefone_1 || 'Não informado'}</p>
-                             </div>
-                             <div>
-                                  <p className="text-[10px] font-black text-primary-400 uppercase">Entrada</p>
-                                  <p className="font-bold text-primary-900">{new Date(selectedOsForItems.dt_abertura).toLocaleDateString()}</p>
-                             </div>
-                             <div>
-                                  <label className="text-[10px] font-black text-primary-400 uppercase block">KM Atual</label>
-                                  <input 
-                                    className="bg-white border text-center font-black w-24 rounded p-1"
-                                    type="number"
-                                    value={selectedOsForItems.km_entrada}
-                                    onChange={e => setSelectedOsForItems({...selectedOsForItems, km_entrada: Number(e.target.value)})}
-                                    onBlur={e => updateOSField('km_entrada', Number(e.target.value))}
-                                  />
+
+                             {/* Coluna 4: KM */}
+                             <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-primary-400 uppercase tracking-wider block">KM Atual</label>
+                                  <div className="relative group">
+                                      <input 
+                                        className="w-full bg-white border border-primary-200 text-primary-900 font-black text-xl rounded-xl px-4 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all shadow-sm"
+                                        type="number"
+                                        value={selectedOsForItems.km_entrada}
+                                        onChange={e => setSelectedOsForItems({...selectedOsForItems, km_entrada: Number(e.target.value)})}
+                                        onBlur={e => updateOSField('km_entrada', Number(e.target.value))}
+                                      />
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-primary-300 group-focus-within:text-primary-500 uppercase tracking-wider">KM</span>
+                                  </div>
                              </div>
                          </div>
 
-                         {/* Diagnóstico / Defeito */}
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div className="space-y-1">
-                                <label className="text-[10px] font-black text-neutral-400 uppercase">Defeito</label>
-                                <textarea 
-                                    className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-100 text-xs font-medium h-20 outline-none focus:border-primary-300 resize-none"
-                                    value={selectedOsForItems.defeito_relatado || ''}
-                                    onChange={e => setSelectedOsForItems({...selectedOsForItems, defeito_relatado: e.target.value})}
-                                    onBlur={e => updateOSField('defeito_relatado', e.target.value)}
-                                />
+                         {/* SPLIT LAYOUT: Defects/Diagnosis (Left) & Labor (Right) */}
+                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                             
+                             {/* LEFT COL: Text Areas */}
+                             <div className="space-y-4">
+                                 <div className="space-y-1">
+                                    <label className="flex items-center gap-2 text-[10px] font-black text-neutral-400 uppercase tracking-wider">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span> Defeito Relatado
+                                    </label>
+                                    <textarea 
+                                        className="w-full bg-red-50/20 p-3 rounded-xl border border-red-100 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                                        placeholder="Descreva o defeito..."
+                                        value={selectedOsForItems.defeito_relatado || ''}
+                                        onChange={e => setSelectedOsForItems({...selectedOsForItems, defeito_relatado: e.target.value})}
+                                        onBlur={e => updateOSField('defeito_relatado', e.target.value)}
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="flex items-center gap-2 text-[10px] font-black text-neutral-400 uppercase tracking-wider">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span> Diagnóstico Técnico
+                                    </label>
+                                    <textarea 
+                                        className="w-full bg-blue-50/20 p-3 rounded-xl border border-blue-100 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                                        placeholder="Insira o diagnóstico..."
+                                        value={selectedOsForItems.diagnostico || ''}
+                                        onChange={e => setSelectedOsForItems({...selectedOsForItems, diagnostico: e.target.value})}
+                                        onBlur={e => updateOSField('diagnostico', e.target.value)}
+                                    />
+                                 </div>
                              </div>
-                             <div className="space-y-1">
-                                <label className="text-[10px] font-black text-neutral-400 uppercase">Diagnóstico</label>
-                                <textarea 
-                                    className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-100 text-xs font-medium h-20 outline-none focus:border-primary-300 resize-none"
-                                    value={selectedOsForItems.diagnostico || ''}
-                                    onChange={e => setSelectedOsForItems({...selectedOsForItems, diagnostico: e.target.value})}
-                                    onBlur={e => updateOSField('diagnostico', e.target.value)}
-                                />
+
+                             {/* RIGHT COL: Labor Manager */}
+                             <div className="w-full space-y-2 h-full">
+                                  <h3 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2 pl-1">
+                                     <Wrench size={14} /> Mão de Obra
+                                  </h3>
+                                  <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm h-full max-h-[220px] overflow-y-auto">
+                                     <LaborManager 
+                                         mode="api"
+                                         osId={selectedOsForItems.id_os}
+                                         initialData={laborServices}
+                                         employees={employees}
+                                         onChange={() => handleOpenFromId(selectedOsForItems.id_os)} 
+                                         readOnly={selectedOsForItems.status === 'FINALIZADA' || selectedOsForItems.status === 'PAGA_CLIENTE'}
+                                     />
+                                  </div>
                              </div>
                          </div>
                         
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                             {/* ITENS (PEÇAS) */}
-                             <div className="space-y-4">
-                                <h3 className="text-sm font-black text-neutral-600 uppercase tracking-widest flex items-center gap-2">
-                                    <Package size={18} className="text-primary-600" /> Peças e Produtos
-                                </h3>
-                                {/* Form Add Item */}
-                                {selectedOsForItems.status !== 'FINALIZADA' && selectedOsForItems.status !== 'PAGA_CLIENTE' && (
-                                    <div className="p-4 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50">
-                                         <div className="relative group mb-3">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
-                                            <input 
-                                                ref={partInputRef}
-                                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-neutral-200 outline-none focus:border-primary-500 font-bold text-sm"
-                                                placeholder="Buscar peça..."
-                                                value={partSearch}
-                                                onChange={e => handlePartSearch(e.target.value)}
-                                            />
-                                            {partResults.length > 0 && (
-                                                <div className="absolute z-50 w-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
-                                                    {partResults.map(p => (
-                                                        <button key={p.id_pecas_estoque || p.nome} onClick={() => selectPart(p)} className="w-full text-left p-3 hover:bg-neutral-50 text-xs font-bold border-b border-neutral-50 flex justify-between">
-                                                            <span>{p.nome}</span>
-                                                            <span className="text-primary-600">R$ {Number(p.valor_venda).toFixed(2)}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                         </div>
-                                         <form onSubmit={handleAddItem} className="flex gap-2">
-                                              <input 
-                                                  className="w-24 p-2 rounded-lg border font-bold text-sm" 
-                                                  placeholder="Ref" 
-                                                  value={newItem.codigo_referencia} 
-                                                  onChange={e => setNewItem({...newItem, codigo_referencia: e.target.value})} 
-                                              />
-                                              <input className="w-16 p-2 rounded-lg border font-bold text-center" placeholder="Qtd" value={newItem.quantidade} onChange={e => setNewItem({...newItem, quantidade: e.target.value})} />
-                                              <input className="flex-1 p-2 rounded-lg border font-bold" placeholder="Valor Unit." value={newItem.valor_venda} onChange={e => setNewItem({...newItem, valor_venda: e.target.value})} />
-                                              <button className="bg-neutral-800 text-white p-2 rounded-lg hover:bg-black"><Plus size={20} /></button>
-                                         </form>
-                                    </div>
-                                )}
-                                {/* List Items */}
-                                <div className="border rounded-xl overflow-hidden text-xs">
-                                     <table className="w-full text-left">
-                                        <thead className="bg-neutral-50">
-                                            <tr>
-                                                <th className="p-3">Item</th>
-                                                <th className="p-3">Ref/Código</th>
-                                                <th className="p-3 text-center">Qtd</th>
-                                                <th className="p-3 text-right">Unit.</th>
-                                                <th className="p-3 text-right">Total</th>
-                                                <th className="p-3"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-neutral-50">
-                                            {osItems.map(item => (
-                                                <tr key={item.id_iten}>
-                                                    <td className="p-3 font-medium">{item.descricao}</td>
-                                                    <td className="p-3 text-neutral-500">{item.codigo_referencia || '-'}</td>
-                                                    <td className="p-3 text-center">{item.quantidade}</td>
-                                                    <td className="p-3 text-right">R$ {Number(item.valor_venda).toFixed(2)}</td>
-                                                    <td className="p-3 text-right font-bold">R$ {Number(item.valor_total).toFixed(2)}</td>
-                                                    <td className="p-3 text-right">
-                                                         {selectedOsForItems.status !== 'FINALIZADA' && selectedOsForItems.status !== 'PAGA_CLIENTE' && (
-                                                            <div className="flex justify-end gap-1">
-                                                                <button onClick={() => handleEditItem(item)} className="text-neutral-400 hover:text-blue-500"><PenTool size={12} /></button>
-                                                                <button onClick={() => handleDeleteItem(item.id_iten)} className="text-neutral-400 hover:text-red-500"><X size={12} /></button>
-                                                            </div>
-                                                         )}
-                                                    </td>
-                                                </tr>
+                        {/* ITENS (PEÇAS) - FULL WIDTH */}
+                        <div className="space-y-4 pt-4 border-t border-dashed border-neutral-200">
+                        <h3 className="text-sm font-black text-neutral-600 uppercase tracking-widest flex items-center gap-3 pb-2 border-b border-neutral-100">
+                            <div className="p-1.5 bg-orange-100 rounded-lg text-orange-600">
+                                <Package size={16} />
+                            </div>
+                            Peças e Produtos
+                        </h3>
+                        {/* Form Add Item */}
+                        {selectedOsForItems.status !== 'FINALIZADA' && selectedOsForItems.status !== 'PAGA_CLIENTE' && (
+                            <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 shadow-sm">
+                                    <div className="relative group mb-3">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-primary-500 transition-colors" size={18} />
+                                    <input 
+                                        ref={partInputRef}
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 font-bold text-sm bg-white transition-all shadow-sm"
+                                        placeholder="Buscar peça no estoque..."
+                                        value={partSearch}
+                                        onChange={e => handlePartSearch(e.target.value)}
+                                    />
+                                    {partResults.length > 0 && (
+                                        <div className="absolute z-50 w-full mt-2 bg-white border border-neutral-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2">
+                                            {partResults.map(p => (
+                                                <button key={p.id_pecas_estoque || p.nome} onClick={() => selectPart(p)} className="w-full text-left p-3 hover:bg-neutral-50 text-sm font-medium border-b border-neutral-50 flex justify-between group/item transition-colors">
+                                                    <span className="text-neutral-700 group-hover/item:text-neutral-900">{p.nome}</span>
+                                                    <span className="font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md">R$ {Number(p.valor_venda).toFixed(2)}</span>
+                                                </button>
                                             ))}
-                                        </tbody>
-                                     </table>
-                                </div>
-                             </div>
-
-                             {/* MÃO DE OBRA (REUSABLE COMPONENT) */}
-                             <div className="space-y-4">
-                                <h3 className="text-sm font-black text-neutral-600 uppercase tracking-widest flex items-center gap-2">
-                                    <Wrench size={18} className="text-primary-600" /> Mão de Obra
-                                </h3>
-                                <LaborManager 
-                                    mode="api"
-                                    osId={selectedOsForItems.id_os}
-                                    initialData={laborServices}
-                                    employees={employees}
-                                    onChange={() => handleOpenFromId(selectedOsForItems.id_os)} // Reload
-                                    readOnly={selectedOsForItems.status === 'FINALIZADA' || selectedOsForItems.status === 'PAGA_CLIENTE'}
-                                />
-                             </div>
+                                        </div>
+                                    )}
+                                    </div>
+                                    <form onSubmit={handleAddItem} className="flex gap-2">
+                                        <input 
+                                            className="w-32 p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-50" 
+                                            placeholder="Ref (Opcional)" 
+                                            value={newItem.codigo_referencia} 
+                                            onChange={e => setNewItem({...newItem, codigo_referencia: e.target.value})} 
+                                        />
+                                        <input 
+                                            className="w-24 p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-center text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-50" 
+                                            placeholder="Qtd" 
+                                            value={newItem.quantidade} 
+                                            onChange={e => setNewItem({...newItem, quantidade: e.target.value})} 
+                                        />
+                                        <input 
+                                            className="w-48 p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-50" 
+                                            placeholder="Valor Unit." 
+                                            value={newItem.valor_venda} 
+                                            onChange={e => setNewItem({...newItem, valor_venda: e.target.value})} 
+                                        />
+                                        <div className="flex-1 flex items-center justify-end px-4 text-xs font-bold text-neutral-400 uppercase tracking-wider">
+                                            Total: R$ {(Number(newItem.quantidade) * Number(newItem.valor_venda || 0)).toFixed(2)}
+                                        </div>
+                                        <button className="bg-neutral-900 text-white px-6 py-2 rounded-xl hover:bg-black hover:scale-105 transition-all shadow-lg shadow-neutral-900/20 font-bold uppercase text-xs flex items-center gap-2"><Plus size={16} /> Adicionar</button>
+                                    </form>
+                            </div>
+                        )}
+                        {/* List Items */}
+                        <div className="border border-neutral-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                                <table className="w-full text-left">
+                                <thead className="bg-neutral-50 border-b border-neutral-100">
+                                    <tr>
+                                        <th className="p-3 pl-4 text-[10px] uppercase font-black text-neutral-400 tracking-wider">Item</th>
+                                        <th className="p-3 text-[10px] uppercase font-black text-neutral-400 tracking-wider">Ref/Código</th>
+                                        <th className="p-3 text-[10px] uppercase font-black text-neutral-400 tracking-wider text-center">Qtd</th>
+                                        <th className="p-3 text-[10px] uppercase font-black text-neutral-400 tracking-wider text-right">Unit.</th>
+                                        <th className="p-3 text-[10px] uppercase font-black text-neutral-400 tracking-wider text-right">Total</th>
+                                        <th className="p-3 w-20"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-50">
+                                    {osItems.map(item => (
+                                        <tr key={item.id_iten} className="hover:bg-neutral-50/50 transition-colors group">
+                                            <td className="p-3 pl-4">
+                                                <div className="font-bold text-sm text-neutral-700">{item.descricao}</div>
+                                            </td>
+                                            <td className="p-3">
+                                                <div className="text-[10px] text-neutral-400 font-medium font-mono bg-neutral-100 px-2 py-0.5 rounded-md w-fit">{item.codigo_referencia || '-'}</div>
+                                            </td>
+                                            <td className="p-3 text-center font-bold text-neutral-600 text-xs">{item.quantidade}</td>
+                                            <td className="p-3 text-right text-neutral-500 text-xs">R$ {Number(item.valor_venda).toFixed(2)}</td>
+                                            <td className="p-3 text-right font-black text-neutral-800 text-xs">R$ {Number(item.valor_total).toFixed(2)}</td>
+                                            <td className="p-3 text-right pr-4">
+                                                    {selectedOsForItems.status !== 'FINALIZADA' && selectedOsForItems.status !== 'PAGA_CLIENTE' && (
+                                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button onClick={() => handleEditItem(item)} className="p-1.5 hover:bg-blue-50 text-neutral-400 hover:text-blue-600 rounded-md transition-colors"><PenTool size={14} /></button>
+                                                        <button onClick={() => handleDeleteItem(item.id_iten)} className="p-1.5 hover:bg-red-50 text-neutral-400 hover:text-red-600 rounded-md transition-colors"><X size={14} /></button>
+                                                    </div>
+                                                    )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {osItems.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="p-8 text-center text-neutral-300 text-xs italic">Nenhum item adicionado à lista.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                                </table>
+                        </div>
                         </div>
 
-                         {/* Totals & Actions */}
-                         <div className="p-6 bg-neutral-900 rounded-2xl text-white">
-                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b border-neutral-700 pb-6 mb-6">
-                                 <div className="flex gap-8">
-                                     <div>
-                                         <p className="text-[10px] font-bold text-neutral-400 uppercase">Total Peças</p>
-                                         <p className="font-bold text-xl text-neutral-300">R$ {osItems.reduce((acc, i) => acc + Number(i.valor_total), 0).toFixed(2)}</p>
+                         {/* Totals & Actions - Keep as is (below everything) */}
+                         <div className="relative overflow-hidden rounded-3xl bg-neutral-900 border border-neutral-800 shadow-2xl">
+                             {/* Background Glow Effect */}
+                             <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary-900/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                             <div className="relative p-8 text-white space-y-8">
+                                 {/* Totals Row */}
+                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 pb-8 border-b border-neutral-800">
+                                     <div className="flex gap-12">
+                                         <div>
+                                             <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Peças</p>
+                                             <p className="font-medium text-lg text-neutral-300">R$ {osItems.reduce((acc, i) => acc + Number(i.valor_total), 0).toFixed(2)}</p>
+                                         </div>
+                                         <div>
+                                             <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Mão de Obra</p>
+                                             <p className="font-medium text-lg text-neutral-300">
+                                                R$ {Number(laborServices.length > 0 
+                                                    ? laborServices.reduce((acc, l) => acc + Number(l.valor), 0) 
+                                                    : (selectedOsForItems.valor_mao_de_obra || 0)
+                                                ).toFixed(2)}
+                                             </p>
+                                         </div>
                                      </div>
-                                     <div>
-                                         <p className="text-[10px] font-bold text-neutral-400 uppercase">Total Mão de Obra</p>
-                                         <p className="font-bold text-xl text-neutral-300">
-                                            R$ {(laborServices.length > 0 
-                                                ? laborServices.reduce((acc, l) => acc + Number(l.valor), 0) 
-                                                : (selectedOsForItems.valor_mao_de_obra || 0)
-                                            ).toFixed(2)}
+                                     <div className="text-right">
+                                         <p className="text-xs font-black text-success-500 uppercase tracking-widest mb-1">VALOR TOTAL</p>
+                                         <p className="font-black text-5xl tracking-tighter text-white drop-shadow-lg">
+                                             R$ {(
+                                             osItems.reduce((acc, i) => acc + Number(i.valor_total), 0) + 
+                                             (laborServices.length > 0 ? laborServices.reduce((acc, l) => acc + Number(l.valor), 0) : Number(selectedOsForItems.valor_mao_de_obra || 0))
+                                         ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                          </p>
                                      </div>
                                  </div>
-                                 <div className="text-right">
-                                     <p className="text-[10px] font-black text-success-500 uppercase">VALOR TOTAL DA OS</p>
-                                     <p className="font-black text-4xl">R$ {(
-                                         osItems.reduce((acc, i) => acc + Number(i.valor_total), 0) + 
-                                         (laborServices.length > 0 ? laborServices.reduce((acc, l) => acc + Number(l.valor), 0) : (selectedOsForItems.valor_mao_de_obra || 0))
-                                     ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                 </div>
-                             </div>
 
-                             {/* Payment & Finalization Row */}
-                             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                                 <div className="flex items-center gap-4 bg-neutral-800 p-3 rounded-xl w-full md:w-auto">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-[10px] font-bold text-neutral-400 uppercase">Pagamentos Recebidos</p>
-                                            {(() => {
-                                                 const totalItemsVal = osItems.reduce((acc, i) => acc + Number(i.valor_total), 0);
-                                                 const totalLaborVal = laborServices.length > 0 ? laborServices.reduce((acc, l) => acc + Number(l.valor), 0) : (selectedOsForItems.valor_mao_de_obra || 0);
-                                                 const totalOS = totalItemsVal + totalLaborVal;
-                                                 const totalPago = selectedOsForItems.pagamentos_cliente?.filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0) || 0;
-                                                 const restante = totalOS - totalPago;
-                                                 const isOk = restante <= 0.01;
-                                                 
-                                                 return (
-                                                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1 ${isOk ? 'bg-green-500 text-white' : 'bg-red-500 text-white shadow-lg shadow-red-500/30'}`}>
-                                                         {isOk ? 'OK' : 'PENDENTE'}
-                                                     </span>
-                                                 );
-                                            })()}
-                                        </div>
-                                        <p className="font-bold text-xl text-white">R$ {selectedOsForItems.pagamentos_cliente?.filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2) || '0.00'}</p>
-                                    </div>
-                                    <Button variant="secondary" onClick={() => setShowPaymentModal(true)} size="sm" className="h-10 px-4 bg-neutral-700 text-white border-none hover:bg-neutral-600">
-                                        <DollarSign size={16} className="mr-2" /> Gerenciar
-                                    </Button>
-                                 </div>
-                                 
-                                 {selectedOsForItems.status === 'ABERTA' ? (
-                                     <Button 
-                                        onClick={handleFinishService} 
-                                        variant="success" 
-                                        className="w-full md:w-auto px-8 py-4 h-auto text-lg font-black uppercase tracking-widest shadow-xl shadow-success-500/20 hover:scale-105 transition-all"
-                                    >
-                                         <CheckCircle className="mr-2" size={24} strokeWidth={2.5} /> FINALIZAR OS
-                                    </Button>
-                                 ) : (
-                                    <div className="flex items-center gap-2">
-                                        {(selectedOsForItems.status === 'PRONTO PARA FINANCEIRO' || selectedOsForItems.status === 'FINALIZADA') && (
-                                            <Button
-                                                variant="secondary"
-                                                onClick={async () => {
-                                                    try {
-                                                        if (selectedOsForItems.fechamento_financeiro) {
-                                                            await api.delete(`/fechamento-financeiro/${selectedOsForItems.fechamento_financeiro.id_fechamento_financeiro}`);
-                                                        }
-                                                        await api.put(`/ordem-de-servico/${selectedOsForItems.id_os}`, { status: 'ABERTA' });
-                                                        loadOss(); // Reload list to update status in table
-                                                        setStatusMsg({ type: 'success', text: 'OS Reaberta com sucesso!' });
-                                                        setManageModalOpen(false);
-                                                    } catch(e) {
-                                                        setStatusMsg({ type: 'error', text: 'Erro ao reabrir OS.' });
-                                                    }
-                                                }}
-                                                className="bg-white border-2 border-dashed border-neutral-600 text-neutral-400 hover:text-white hover:bg-neutral-700 hover:border-neutral-500 px-4 py-3 h-auto"
+                                 {/* Footer Actions Row */}
+                                 <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+                                     
+                                     {/* Payment Card - HIGH VISIBILITY REDESIGN */}
+                                     <div className="w-full lg:w-auto flex-1 max-w-2xl bg-neutral-800/50 rounded-2xl p-2 pr-4 flex items-center justify-between border border-neutral-700/50 hover:bg-neutral-800 transition-colors group">
+                                          <div className="flex items-center gap-4">
+                                              <div className="bg-neutral-900 border border-neutral-800 p-3 rounded-xl shadow-lg">
+                                                  <DollarSign className="text-success-500" size={24} strokeWidth={2.5} />
+                                              </div>
+                                              <div>
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-wider">Pagamentos Recebidos</p>
+                                                      {(() => {
+                                                          const totalItemsVal = osItems.reduce((acc, i) => acc + Number(i.valor_total || 0), 0);
+                                                          const totalLaborVal = laborServices.length > 0 
+                                                              ? laborServices.reduce((acc, l) => acc + Number(l.valor || 0), 0) 
+                                                              : Number(selectedOsForItems.valor_mao_de_obra || 0);
+                                                          const totalOS = totalItemsVal + totalLaborVal;
+                                                          
+                                                          const payments = selectedOsForItems.pagamentos_cliente || [];
+                                                          const totalPago = payments.filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0);
+                                                          
+                                                          const isOk = (totalOS - totalPago) <= 0.05; // Margem de 5 centavos
+                                                          
+                                                          return (
+                                                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${isOk ? 'bg-success-500/20 text-success-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                  {isOk ? 'QUITADO' : 'PENDENTE'}
+                                                              </span>
+                                                          );
+                                                      })()}
+                                                  </div>
+                                                  <p className="font-bold text-2xl text-white tracking-tight">
+                                                      R$ {(selectedOsForItems.pagamentos_cliente || []).filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2)}
+                                                  </p>
+                                              </div>
+                                          </div>
+                                          <Button variant="secondary" onClick={() => setShowPaymentModal(true)} size="sm" className="bg-neutral-700 text-neutral-200 border-none hover:bg-neutral-600 font-bold uppercase text-xs h-9 px-4 ml-4">
+                                              Gerenciar
+                                          </Button>
+                                     </div>
+                                     
+                                     <div className="flex gap-4 w-full lg:w-auto justify-end">
+                                         {selectedOsForItems.status === 'ABERTA' ? (
+                                             <Button 
+                                                onClick={handleFinishService} 
+                                                variant="success" 
+                                                className="w-full lg:w-auto px-8 py-5 h-auto text-lg font-black uppercase tracking-widest shadow-xl shadow-success-500/20 hover:scale-105 transition-all flex-1 lg:flex-none justify-center"
                                             >
-                                                REABRIR OS
+                                                 <CheckCircle className="mr-3" size={24} strokeWidth={3} /> FINALIZAR OS
                                             </Button>
-                                        )}
-                                        <div className="flex items-center gap-3 text-success-400 font-bold bg-white/10 px-6 py-3 rounded-xl border border-white/10">
-                                            <BadgeCheck size={24} /> STATUS: {selectedOsForItems.status}
-                                        </div>
-                                    </div>
-                                 )}
+                                         ) : (
+                                            <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+                                                {(selectedOsForItems.status === 'PRONTO PARA FINANCEIRO' || selectedOsForItems.status === 'FINALIZADA') && (
+                                                    <Button
+                                                        variant="secondary"
+                                                        onClick={async () => {
+                                                            try {
+                                                                if (selectedOsForItems.fechamento_financeiro) {
+                                                                    await api.delete(`/fechamento-financeiro/${selectedOsForItems.fechamento_financeiro.id_fechamento_financeiro}`);
+                                                                }
+                                                                await api.put(`/ordem-de-servico/${selectedOsForItems.id_os}`, { status: 'ABERTA' });
+                                                                loadOss(); 
+                                                                setStatusMsg({ type: 'success', text: 'OS Reaberta com sucesso!' });
+                                                                setManageModalOpen(false);
+                                                            } catch(e) {
+                                                                setStatusMsg({ type: 'error', text: 'Erro ao reabrir OS.' });
+                                                            }
+                                                        }}
+                                                        className="bg-transparent border-2 border-dashed border-neutral-600 text-neutral-500 hover:text-white hover:bg-neutral-800 hover:border-neutral-500 px-6 py-4 h-auto w-full sm:w-auto font-bold uppercase transition-all"
+                                                    >
+                                                        REABRIR OS
+                                                    </Button>
+                                                )}
+                                                <div className="flex items-center justify-center gap-3 text-success-400 font-black bg-success-500/10 px-8 py-4 rounded-xl border border-success-500/20 w-full sm:w-auto">
+                                                    <BadgeCheck size={28} /> 
+                                                    <div className="flex flex-col text-left">
+                                                        <span className="text-[10px] text-success-600/70 uppercase leading-none">Status Atual</span>
+                                                        <span className="text-lg leading-none mt-1">{selectedOsForItems.status}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                         )}
+                                     </div>
+                                 </div>
                              </div>
                          </div>
                     </div>
@@ -866,7 +970,7 @@ export const OrdemDeServicoPage = () => {
                         osId={selectedOsForItems.id_os}
                         valorTotal={
                             (osItems.reduce((acc, i) => acc + Number(i.valor_total), 0) + laborServices.reduce((acc, l) => acc + Number(l.valor), 0)) -
-                            (selectedOsForItems.pagamentos_cliente?.filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0) || 0)
+                            ((selectedOsForItems.pagamentos_cliente || []).filter(p => !p.deleted_at).reduce((acc, p) => acc + Number(p.valor), 0))
                         }
                         onSuccess={() => { setShowPaymentModal(false); handleOpenFromId(selectedOsForItems.id_os); }}
                         onCancel={() => setShowPaymentModal(false)}
@@ -956,58 +1060,7 @@ export const OrdemDeServicoPage = () => {
                 </Modal>
             )}
 
-            {newOsWizardStep === 'OS' && wizardClient && wizardVehicle && (
-                 <Modal title="Passo 3: Confirmar Abertura de OS" onClose={() => setNewOsWizardStep('NONE')} className="max-w-lg">
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                                <p className="text-[10px] font-black text-neutral-400 uppercase">Veículo</p>
-                                <p className="font-bold text-neutral-900 uppercase">{wizardVehicle.placa}</p>
-                                <p className="text-xs text-neutral-500">{wizardVehicle.modelo}</p>
-                            </div>
-                            <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                                <p className="text-[10px] font-black text-neutral-400 uppercase">Cliente</p>
-                                <p className="font-bold text-neutral-900 truncate">{wizardClient.pessoa_fisica?.pessoa?.nome || wizardClient.pessoa_juridica?.razao_social}</p>
-                                <p className="text-xs text-neutral-500">{wizardClient.telefone_1}</p>
-                            </div>
-                        </div>
 
-                        <form onSubmit={(e) => {
-                             e.preventDefault();
-                             const data = new FormData(e.currentTarget);
-                             handleCreateOsFinal(
-                                 Number(data.get('mechanicId')), 
-                                 Number(data.get('km')), 
-                                 String(data.get('defects'))
-                             );
-                        }} className="space-y-4">
-                             <div>
-                                <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Mecânico Responsável</label>
-                                <select name="mechanicId" className="w-full border p-3 rounded-xl font-bold text-neutral-700 bg-white" required>
-                                    <option value="">Selecione...</option>
-                                    {employees.map(emp => (
-                                        <option key={emp.id_funcionario} value={emp.id_funcionario}>
-                                            {emp.pessoa_fisica?.pessoa?.nome}
-                                        </option>
-                                    ))}
-                                </select>
-                             </div>
-                             <div>
-                                <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">KM Atual</label>
-                                <input name="km" type="number" className="w-full border p-3 rounded-xl font-bold" placeholder="0" />
-                             </div>
-                             <div>
-                                <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Relato de Defeito / Solicitação</label>
-                                <textarea name="defects" className="w-full border p-3 rounded-xl resize-none h-24" placeholder="Descreva o problema relatado..." />
-                             </div>
-
-                             <Button variant="success" className="w-full py-4 text-lg font-black uppercase tracking-widest">
-                                 <CheckCircle className="mr-2" /> GERAR ORDEM DE SERVIÇO
-                             </Button>
-                        </form>
-                    </div>
-                 </Modal>
-            )}
         </div>
     );
 };
