@@ -52,6 +52,8 @@ interface OSData {
     valor_mao_de_obra: number;
     valor_pecas: number; 
     itens_os: ItemOS[];
+    defeito_relatado?: string;
+    diagnostico?: string;
     cliente: {
         pessoa_fisica?: { pessoa: { nome: string } };
         pessoa_juridica?: { nome_fantasia: string };
@@ -326,6 +328,15 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
         if (!osData) return;
 
         try {
+            // Validação: Verificar se há pagamentos registrados (Receita)
+            const totalPago = osData.pagamentos_cliente?.reduce((acc, p) => p.deleted_at ? acc : acc + Number(p.valor), 0) || 0;
+            
+            if (totalPago === 0) {
+                 setStatusMsg({ type: 'error', text: 'Nenhum recebimento registrado. Adicione o pagamento do cliente (seção Recebimentos) antes de finalizar.' });
+                 setLoading(false);
+                 return;
+            }
+
             // 1. Processar Pagamentos (Upsert)
             const pagamentoPromises = osData.itens_os.map(async (item) => {
                 const st = itemsState[item.id_iten];
@@ -433,29 +444,53 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                     
                     {/* OS Summary Card */}
                     <div className="bg-white border-2 border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-                        <div className="flex flex-col md:flex-row justify-between gap-4">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-gray-100 text-gray-600">OS #{osData.id_os}</span>
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-green-100 text-green-700">{osData.status}</span>
+                        <div className="flex flex-col md:flex-row gap-6 items-start">
+                            {/* LEFT: Client & Vehicle Info */}
+                            <div className="flex-1 min-w-[200px]">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase bg-gray-100 text-gray-600 tracking-wide">OS #{osData.id_os}</span>
+                                    <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase bg-green-100 text-green-700 tracking-wide">{osData.status}</span>
                                 </div>
-                                <h3 className="font-extrabold text-lg text-gray-900">{getClientName()}</h3>
-                                <div className="flex items-center gap-4 text-sm text-gray-500 font-medium mt-1">
-                                    <div className="flex items-center gap-1">
-                                        <Truck size={14} />
-                                        {osData.veiculo.placa} - {osData.veiculo.modelo}
+                                <h3 className="font-black text-xl text-gray-900 leading-tight">{getClientName()}</h3>
+                                <div className="mt-3 bg-gray-50 border border-gray-100 rounded-xl p-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Truck size={18} className="text-gray-400" />
+                                        <span className="font-black text-gray-800 text-base uppercase">{osData.veiculo.placa}</span>
+                                        <span className="text-gray-300">|</span>
+                                        <span className="font-bold text-gray-600 text-sm uppercase">{osData.veiculo.modelo}</span>
                                     </div>
                                     {osData.veiculo.cor && (
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase pl-1">
                                             <Palette size={14} />
                                             <span className="capitalize">{osData.veiculo.cor}</span>
                                         </div>
                                     )}
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <p className="text-xs font-bold text-gray-400 uppercase">Receita Total</p>
-                                <p className="text-2xl font-black text-green-600 mb-2">
+                            
+                            {/* CENTER: Defect & Diagnosis */}
+                            <div className="flex-1 w-full md:border-l md:border-r border-gray-100 md:px-6 border-dashed">
+                                <div className="flex flex-col gap-3">
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-wider">Defeito Relatado</p>
+                                        <p className="text-sm font-medium text-gray-700 leading-relaxed">
+                                            {osData.defeito_relatado || <span className="italic text-gray-400">Não informado</span>}
+                                        </p>
+                                    </div>
+                                    <div className="h-px bg-gray-100 w-full" />
+                                    <div>
+                                        <p className="text-[10px] font-black text-blue-400 uppercase mb-1 tracking-wider">Diagnóstico Técnico</p>
+                                        <p className="text-sm font-medium text-gray-700 leading-relaxed">
+                                            {osData.diagnostico || <span className="italic text-gray-400">Não informado</span>}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* RIGHT: Revenue */}
+                            <div className="md:text-right min-w-[150px]">
+                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Receita Total</p>
+                                <p className="text-3xl font-black text-green-600 tracking-tight">
                                     R$ {Number(totalReceita).toFixed(2)}
                                 </p>
                             </div>

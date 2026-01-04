@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { FechamentoFinanceiroForm } from '../components/forms/FechamentoFinanceiroForm';
 import { Modal } from '../components/ui/Modal';
-import { Plus, Search, Trash2, Edit } from 'lucide-react';
+import { Search, Trash2, Edit } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { StatusBanner } from '../components/ui/StatusBanner';
 
@@ -47,6 +47,7 @@ export const FechamentoFinanceiroPage = () => {
     const [selectedOsId, setSelectedOsId] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
+    const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
     
     // Date Filters
     const [filterStart, setFilterStart] = useState('');
@@ -101,14 +102,39 @@ export const FechamentoFinanceiroPage = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if(!confirm("Tem certeza que deseja cancelar este fechamento financeiro? Isso não apaga a OS, apenas a consolidação.")) return;
-        try {
-            await api.delete(`/fechamento-financeiro/${id}`);
-            setStatusMsg({ type: 'success', text: 'Fechamento cancelado com sucesso!' });
-            loadData();
-        } catch (error) {
-            setStatusMsg({ type: 'error', text: 'Erro ao deletar fechamento' });
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: 'Cancelar Fechamento',
+            message: 'Tem certeza que deseja cancelar este fechamento financeiro? Isso não apaga a OS, apenas a consolidação.',
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/fechamento-financeiro/${id}`);
+                    setStatusMsg({ type: 'success', text: 'Fechamento cancelado com sucesso!' });
+                    loadData();
+                    setConfirmModal(prev => ({...prev, isOpen: false}));
+                } catch (error) {
+                    setStatusMsg({ type: 'error', text: 'Erro ao deletar fechamento' });
+                }
+            }
+        });
+    };
+
+    const handleReopenOs = async (id_os: number) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Reabrir OS',
+            message: "Deseja reabrir esta OS para edição? Ela voltará para o status 'ABERTA'.",
+            onConfirm: async () => {
+                try {
+                    await api.put(`/ordem-de-servico/${id_os}`, { status: 'ABERTA' });
+                    setStatusMsg({ type: 'success', text: 'OS reaberta com sucesso!' });
+                    loadData();
+                    setConfirmModal(prev => ({...prev, isOpen: false}));
+                } catch (error) {
+                    setStatusMsg({ type: 'error', text: 'Erro ao reabrir OS.' });
+                }
+            }
+        });
     };
 
     const getClientName = (os: IOS) => {
@@ -177,13 +203,6 @@ export const FechamentoFinanceiroPage = () => {
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Gestão Financeira</h1>
                     <p className="text-gray-500 mt-1">Consolidação de custos e serviços.</p>
                 </div>
-                <button 
-                    onClick={() => { setSelectedOsId(null); setShowModal(true); }}
-                    className="hidden md:flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-gray-200 transition-all hover:bg-gray-800 hover:scale-[1.02]"
-                >
-                    <Plus size={20} />
-                    Lançamento Manual
-                </button>
             </div>
 
             {/* PENDING OS LIST */}
@@ -226,12 +245,21 @@ export const FechamentoFinanceiroPage = () => {
                                             </span>
                                         </td>
                                         <td className="p-5 text-right">
-                                            <button 
-                                                onClick={() => handleOpenFechamento(os.id_os)}
-                                                className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-gray-800 transition-all hover:-translate-y-0.5"
-                                            >
-                                                Fechar Financeiro
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button 
+                                                    onClick={() => handleReopenOs(os.id_os)}
+                                                    className="bg-white border border-gray-200 text-gray-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                                                    title="Reabrir OS para edição"
+                                                >
+                                                    Reabrir OS
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleOpenFechamento(os.id_os)}
+                                                    className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-gray-800 transition-all hover:-translate-y-0.5"
+                                                >
+                                                    Fechar Financeiro
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -384,6 +412,26 @@ export const FechamentoFinanceiroPage = () => {
                         }}
                         onCancel={() => setShowModal(false)}
                     />
+                </Modal>
+            )}
+
+            {confirmModal.isOpen && (
+                <Modal title={confirmModal.title} onClose={() => setConfirmModal(prev => ({...prev, isOpen: false}))}>
+                    <p className="mb-6">{confirmModal.message}</p>
+                    <div className="flex justify-end gap-2">
+                        <button 
+                            onClick={() => setConfirmModal(prev => ({...prev, isOpen: false}))}
+                            className="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            onClick={confirmModal.onConfirm}
+                            className="bg-red-50 text-red-600 px-4 py-2 rounded-xl font-bold hover:bg-red-100 hover:text-red-700 transition-colors"
+                        >
+                            Confirmar
+                        </button>
+                    </div>
                 </Modal>
             )}
         </div>

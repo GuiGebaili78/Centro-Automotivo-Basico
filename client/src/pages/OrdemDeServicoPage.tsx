@@ -893,7 +893,7 @@ export const OrdemDeServicoPage = () => {
                                      </div>
                                      
                                      <div className="flex gap-4 w-full lg:w-auto justify-end">
-                                         {selectedOsForItems.status === 'ABERTA' ? (
+                                         {['ABERTA', 'EM_ANDAMENTO'].includes(selectedOsForItems.status) ? (
                                              <Button 
                                                 onClick={handleFinishService} 
                                                 variant="success" 

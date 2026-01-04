@@ -89,14 +89,7 @@ export const LivroCaixaPage = () => {
 
     // Cash Book Filters
     const filteredCashBook = cashBookEntries.filter(entry => {
-        if (cashFilterStart) {
-             const recordDateLocal = new Date(entry.date).toLocaleDateString('en-CA');
-             if (recordDateLocal < cashFilterStart) return false;
-        }
-        if (cashFilterEnd) {
-             const recordDateLocal = new Date(entry.date).toLocaleDateString('en-CA');
-             if (recordDateLocal > cashFilterEnd) return false;
-        }
+        // 1. Search overrides date filters (Global Search)
         if (cashSearch) {
              const searchLower = cashSearch.toLowerCase();
              const searchableText = [
@@ -108,7 +101,17 @@ export const LivroCaixaPage = () => {
                  String(entry.value)
              ].join(' ').toLowerCase();
 
-             if (!searchableText.includes(searchLower)) return false;
+             return searchableText.includes(searchLower);
+        }
+
+        // 2. Date Filters (Applied only when NOT searching)
+        const recordDateLocal = new Date(entry.date).toLocaleDateString('en-CA');
+
+        if (cashFilterStart) {
+             if (recordDateLocal < cashFilterStart) return false;
+        }
+        if (cashFilterEnd) {
+             if (recordDateLocal > cashFilterEnd) return false;
         }
         return true;
     });
