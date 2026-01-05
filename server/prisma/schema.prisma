@@ -421,9 +421,23 @@ model LivroCaixa {
     categoria           String   @db.VarChar(50) // 'EQUIPE', 'FORNECEDOR', 'VENDA', 'OUTROS'
     dt_movimentacao     DateTime @default(now()) @db.Timestamp()
     
+    // New fields
+    obs                 String?  @db.VarChar(500)
+    origem              String   @default("MANUAL") @db.VarChar(20) // 'MANUAL' or 'AUTOMATICA'
+    deleted_at          DateTime? @db.Timestamp()
+
     // Rastreabilidade (Opcional)
     id_pagamento_equipe Int?
     pagamento_equipe    PagamentoEquipe? @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
     
     @@map("livro_caixa")
+}
+
+model CategoriaFinanceira {
+    id_categoria    Int      @id @default(autoincrement())
+    nome            String   @unique @db.VarChar(50)
+    tipo            String   @db.VarChar(10) // 'ENTRADA', 'SAIDA', 'AMBOS'
+    dt_cadastro     DateTime @default(now()) @db.Timestamp()
+
+    @@map("categoria_financeira")
 }

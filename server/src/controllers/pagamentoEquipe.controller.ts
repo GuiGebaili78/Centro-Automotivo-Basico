@@ -125,7 +125,19 @@ export const getHistorico = async (req: Request, res: Response) => {
                      include: { pessoa_fisica: { include: { pessoa: true } } }
                 },
                 servicos_pagos: {
-                    include: { ordem_de_servico: true }
+                    include: { 
+                        ordem_de_servico: {
+                            include: {
+                                veiculo: true,
+                                cliente: {
+                                    include: {
+                                        pessoa_fisica: { include: { pessoa: true } },
+                                        pessoa_juridica: { include: { pessoa: true } }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             },
             orderBy: { dt_pagamento: 'desc' }

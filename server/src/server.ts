@@ -56,8 +56,11 @@ app.use('/api/contas-pagar', contasPagarRoutes);
 
 import { pagamentoEquipeRoutes } from './routes/pagamentoEquipe.routes.js';
 import { livroCaixaRoutes } from './routes/livroCaixa.routes.js';
+import { categoriaFinanceiraRoutes } from './routes/categoriaFinanceira.routes.js';
+
 app.use('/api/pagamento-equipe', pagamentoEquipeRoutes);
 app.use('/api/livro-caixa', livroCaixaRoutes);
+app.use('/api/categoria-financeira', categoriaFinanceiraRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

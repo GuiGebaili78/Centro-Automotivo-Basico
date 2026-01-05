@@ -260,49 +260,112 @@ export const PagamentoEquipePage = () => {
                         <table className="w-full text-left">
                             <thead className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
                                 <tr>
-                                    <th className="p-4">Data Pagamento</th>
+                                    <th className="p-4">Data Pagto</th>
                                     <th className="p-4">Colaborador</th>
-                                    <th className="p-4 text-right">Valor Total</th>
-                                    <th className="p-4">Obs</th>
-                                     <th className="p-4 text-center">Ações</th>
+                                    <th className="p-4">Referência / OS</th>
+                                    <th className="p-4">Valor</th>
+                                    <th className="p-4 text-center">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-neutral-50">
-                                {historico.map((h) => (
-                                    <tr key={h.id_pagamento_equipe} className="hover:bg-neutral-50 transition-colors">
-                                        <td className="p-4">
-                                            <div className="font-bold text-neutral-800">{new Date(h.dt_pagamento).toLocaleDateString()}</div>
-                                            <div className="text-[10px] text-neutral-400">{new Date(h.dt_pagamento).toLocaleTimeString()}</div>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="font-bold text-neutral-700">{h.funcionario?.pessoa_fisica?.pessoa?.nome}</div>
-                                            <div className="text-[10px] uppercase font-black tracking-widest text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded w-fit mt-1">
-                                                {h.tipo_lancamento || 'COMISSAO'}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-xs text-neutral-600">
-                                            {h.referencia_inicio && h.referencia_fim && (
-                                                <div className="flex items-center gap-1 font-bold mb-1 text-neutral-500">
-                                                    <Calendar size={10} />
-                                                    {new Date(h.referencia_inicio).toLocaleDateString()} - {new Date(h.referencia_fim).toLocaleDateString()}
-                                                </div>
-                                            )}
-                                            {h.premio_descricao && (
-                                                <div className="text-emerald-600 font-bold mb-0.5">Extra: {h.premio_descricao}</div>
-                                            )}
-                                            <div className="truncate max-w-xs opacity-80">{h.obs || '-'}</div>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <span className="font-black text-neutral-800 block">R$ {Number(h.valor_total).toFixed(2)}</span>
-                                            {Number(h.premio_valor) > 0 && (
-                                                 <span className="text-[10px] text-emerald-600 font-bold">+ R$ {Number(h.premio_valor).toFixed(2)} extra</span>
-                                            )}
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <button className="text-primary-600 hover:text-primary-800 font-bold text-xs uppercase">Detalhes</button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {Array.isArray(historico) && historico.flatMap(h => {
+                                    // If COMISSAO and has items, explode them.
+                                    if (h.tipo_lancamento === 'COMISSAO' && h.servicos_pagos && h.servicos_pagos.length > 0) {
+                                        const items = h.servicos_pagos.map((s: any) => ({
+                                            type: 'ITEM',
+                                            parent: h,
+                                            item: s
+                                        }));
+                                        // Add Extra/Premium row if exists separately? 
+                                        // User wants to see lines. If there is extra value, it should be a separate line or attached to header?
+                                        // Let's show a header line ONLY if there is extra value or global obs, otherwise just items?
+                                        // User wants "3 OSs, linha a linha".
+                                        // If I show items, I obscure the total payment event.
+                                        // But I can show a summary row if needed.
+                                        // For now, let's show items. And if there is "Premio", show a separate row for Prize?
+                                        if (Number(h.premio_valor) > 0) {
+                                            items.push({ type: 'PREMIO', parent: h });
+                                        }
+                                        return items;
+                                    }
+                                    // Else (Salary, Vale, or Commission without items/manual), show as single row
+                                    return [{ type: 'HEAD', parent: h }];
+                                }).map((row: any) => {
+                                    const { type, parent, item } = row;
+                                    
+                                    if (type === 'HEAD' || type === 'PREMIO') {
+                                        const isPremio = type === 'PREMIO';
+                                        return (
+                                            <tr key={`${type}-${parent.id_pagamento_equipe}`} className="hover:bg-neutral-50 transition-colors bg-neutral-50/30">
+                                                <td className="p-4">
+                                                    <div className="font-bold text-neutral-800">{new Date(parent.dt_pagamento).toLocaleDateString()}</div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="font-bold text-neutral-700">{parent.funcionario?.pessoa_fisica?.pessoa?.nome}</div>
+                                                    <div className="text-[10px] uppercase font-black tracking-widest text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded w-fit mt-1">
+                                                        {isPremio ? 'PRÊMIO/EXTRA' : parent.tipo_lancamento}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-xs text-neutral-600">
+                                                    {parent.referencia_inicio && !isPremio && (
+                                                        <div className="flex items-center gap-1 font-bold mb-1 text-neutral-500">
+                                                            <Calendar size={10} />
+                                                            {new Date(parent.referencia_inicio).toLocaleDateString()} - {new Date(parent.referencia_fim).toLocaleDateString()}
+                                                        </div>
+                                                    )}
+                                                    <div className="truncate max-w-xs italic">{isPremio ? parent.premio_descricao : (parent.obs || '-')}</div>
+                                                </td>
+                                                <td className="p-4 font-black text-neutral-800">
+                                                    R$ {Number(isPremio ? parent.premio_valor : parent.valor_total).toFixed(2)}
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <span className="text-neutral-300">-</span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    } else {
+                                        // ITEM ROW (Commission details)
+                                        const os = item.ordem_de_servico;
+                                        // Safety check: if OS relationship is missing, skip row to prevent crash
+                                        if (!os) return null;
+
+                                        return (
+                                            <tr key={`item-${item.id_servico_mao_de_obra}`} className="hover:bg-neutral-50 transition-colors border-l-4 border-l-transparent hover:border-l-primary-500">
+                                                <td className="p-4 pl-4 text-neutral-400">
+                                                    <div className="text-[10px]">{new Date(parent.dt_pagamento).toLocaleDateString()}</div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="font-bold text-neutral-700 text-sm">{parent.funcionario?.pessoa_fisica?.pessoa?.nome}</div>
+                                                    <div className="text-[9px] uppercase font-black tracking-widest text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded w-fit mt-1">
+                                                        COMISSÃO
+                                                    </div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="bg-neutral-800 text-white text-[10px] font-black px-1.5 rounded">OS #{os.id_os}</span>
+                                                        <span className="text-xs font-bold text-neutral-600">{os.veiculo?.modelo} <span className="font-normal text-neutral-400">({os.veiculo?.placa})</span></span>
+                                                    </div>
+                                                    <div className="text-[10px] text-neutral-500 leading-relaxed max-w-md">
+                                                        {os.defeito_relatado && <div><span className="font-bold">Defeito:</span> {os.defeito_relatado}</div>}
+                                                        {os.diagnostico && <div><span className="font-bold">Diag:</span> {os.diagnostico}</div>}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4">
+                                                   <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded text-xs">R$ {Number(item.valor).toFixed(2)}</span>
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <button 
+                                                        onClick={() => navigate('/ordem-de-servico', { state: { highlightOsId: os.id_os } })}
+                                                        className="text-neutral-400 hover:text-primary-600 transition-colors"
+                                                        title="Ir para OS"
+                                                    >
+                                                        <ExternalLink size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    }
+                                })}
                             </tbody>
                         </table>
                      </div>

@@ -53,8 +53,9 @@ export class PagamentoPecaRepository {
   }
 
   async delete(id: number) {
-    return await prisma.pagamentoPeca.delete({
+    return await prisma.pagamentoPeca.update({
       where: { id_pagamento_peca: id },
+      data: { deleted_at: new Date() }
     });
   }
 }

@@ -144,7 +144,20 @@ export class OrdemDeServicoRepository {
         },
         veiculo: true,
         funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } },
-        // itens_os and servico_mao_de_obra removed for performance (list view doesn't need them)
+        servicos_mao_de_obra: {
+            select: {
+                funcionario: {
+                    select: {
+                        id_funcionario: true,
+                        pessoa_fisica: {
+                            select: {
+                                pessoa: { select: { nome: true } }
+                            }
+                        }
+                    }
+                }
+            }
+         },
         fechamento_financeiro: true
       }
     });

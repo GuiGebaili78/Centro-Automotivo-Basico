@@ -240,7 +240,7 @@ export const OrdemDeServicoPage = () => {
     };
 
     // FILTER LOGIC
-    const filteredOss = oss.filter(os => {
+    const filteredOss = (Array.isArray(oss) ? oss : []).filter(os => {
         // 1. Date Filter
         if (dateFilter !== 'ALL') {
              const now = new Date();
@@ -502,8 +502,18 @@ export const OrdemDeServicoPage = () => {
                                         </p>
                                     </td>
                                     <td className="p-4">
-                                        <p className="text-xs font-bold text-neutral-700 uppercase">
-                                            {os.funcionario?.pessoa_fisica?.pessoa?.nome?.split(' ')[0] || <span className="text-neutral-300">---</span>}
+                                        <p className="text-xs font-bold text-neutral-700 uppercase truncate max-w-[120px]" title="Responsável Técnico">
+                                            {(() => {
+                                                // @ts-ignore
+                                                const mechanics = os.servicos_mao_de_obra?.map(s => s.funcionario?.pessoa_fisica?.pessoa?.nome?.split(' ')[0]).filter(Boolean);
+                                                const uniqueMechanics = [...new Set(mechanics || [])];
+                                                
+                                                if (uniqueMechanics.length > 0) {
+                                                    return uniqueMechanics.join(', ');
+                                                }
+                                                // Fallback to OS Creator/Owner
+                                                return os.funcionario?.pessoa_fisica?.pessoa?.nome?.split(' ')[0] || <span className="text-neutral-300">---</span>;
+                                            })()}
                                         </p>
                                     </td>
                                     <td className="p-4">
