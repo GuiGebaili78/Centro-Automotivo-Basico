@@ -27,6 +27,11 @@ export const PagamentoEquipePage = () => {
     
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
 
+    // History Filters
+    const [filterHistColab, setFilterHistColab] = useState('');
+    const [filterHistStart, setFilterHistStart] = useState('');
+    const [filterHistEnd, setFilterHistEnd] = useState('');
+
     // --- EFFECTS ---
     useEffect(() => {
         loadFuncionarios();
@@ -155,6 +160,28 @@ export const PagamentoEquipePage = () => {
          });
     }, [pendentes, searchTerm, funcionarios]);
 
+    // Filtro Tab Historico
+    const filteredHistorico = useMemo(() => {
+        return historico.filter(h => {
+             // 1. Colaborador
+             if (filterHistColab && String(h.id_funcionario) !== filterHistColab) return false;
+
+             // 2. Dates
+             if (filterHistStart || filterHistEnd) {
+                 // Convert API date (YYYY-MM-DD...) to normalized string YYYY-MM-DD
+                 const dtPagStr = h.dt_pagamento ? h.dt_pagamento.split('T')[0] : '';
+                 
+                 if (filterHistStart && dtPagStr < filterHistStart) return false;
+                 if (filterHistEnd && dtPagStr > filterHistEnd) return false;
+             }
+             return true;
+        });
+    }, [historico, filterHistColab, filterHistStart, filterHistEnd]);
+
+    const totalHistorico = useMemo(() => {
+        return filteredHistorico.reduce((acc, h) => acc + (Number(h.valor_total) || 0) + (Number(h.premio_valor) || 0), 0);
+    }, [filteredHistorico]);
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
              <StatusBanner msg={statusMsg} onClose={() => setStatusMsg({type: null, text: ''})} />
@@ -203,8 +230,40 @@ export const PagamentoEquipePage = () => {
                             className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-100 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-primary-500/20"
                         />
                     </div>
-                    {/* Date Filters could go here */}
                 </div>
+
+                {activeTab === 'PAGO' && (
+                    <div className="p-4 bg-neutral-50/50 border-b border-neutral-100 flex flex-wrap gap-4 items-end">
+                        <div className="w-full md:w-auto min-w-[200px]">
+                            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-2">Filtrar Colaborador</label>
+                            <select 
+                                value={filterHistColab} 
+                                onChange={e => setFilterHistColab(e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-primary-500/20"
+                            >
+                                <option value="">Todos</option>
+                                {funcionarios.map((f: any) => (
+                                    <option key={f.id_funcionario} value={f.id_funcionario}>{f.pessoa_fisica?.pessoa?.nome}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex gap-2">
+                            <div>
+                                <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-2">De</label>
+                                <input type="date" value={filterHistStart} onChange={e => setFilterHistStart(e.target.value)} className="px-3 py-2 bg-white border border-neutral-200 rounded-xl font-bold text-sm outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-2">Até</label>
+                                <input type="date" value={filterHistEnd} onChange={e => setFilterHistEnd(e.target.value)} className="px-3 py-2 bg-white border border-neutral-200 rounded-xl font-bold text-sm outline-none" />
+                            </div>
+                        </div>
+                         {/* TOTAL CARD */}
+                        <div className="ml-auto bg-neutral-900 text-white px-6 py-2 rounded-xl flex flex-col items-end shadow-lg">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400">Total Selecionado</span>
+                            <span className="text-xl font-black">R$ {totalHistorico.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    </div>
+                )}
 
                 {activeTab === 'PENDENTE' && (
                     <div className="overflow-x-auto">
@@ -268,7 +327,7 @@ export const PagamentoEquipePage = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-neutral-50">
-                                {Array.isArray(historico) && historico.flatMap(h => {
+                                {Array.isArray(filteredHistorico) && filteredHistorico.flatMap(h => {
                                     // If COMISSAO and has items, explode them.
                                     if (h.tipo_lancamento === 'COMISSAO' && h.servicos_pagos && h.servicos_pagos.length > 0) {
                                         const items = h.servicos_pagos.map((s: any) => ({
@@ -276,13 +335,6 @@ export const PagamentoEquipePage = () => {
                                             parent: h,
                                             item: s
                                         }));
-                                        // Add Extra/Premium row if exists separately? 
-                                        // User wants to see lines. If there is extra value, it should be a separate line or attached to header?
-                                        // Let's show a header line ONLY if there is extra value or global obs, otherwise just items?
-                                        // User wants "3 OSs, linha a linha".
-                                        // If I show items, I obscure the total payment event.
-                                        // But I can show a summary row if needed.
-                                        // For now, let's show items. And if there is "Premio", show a separate row for Prize?
                                         if (Number(h.premio_valor) > 0) {
                                             items.push({ type: 'PREMIO', parent: h });
                                         }
@@ -342,8 +394,12 @@ export const PagamentoEquipePage = () => {
                                                 </td>
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <span className="bg-neutral-800 text-white text-[10px] font-black px-1.5 rounded">OS #{os.id_os}</span>
-                                                        <span className="text-xs font-bold text-neutral-600">{os.veiculo?.modelo} <span className="font-normal text-neutral-400">({os.veiculo?.placa})</span></span>
+                                                        <span className="bg-neutral-100 text-neutral-700 border border-neutral-200 text-[10px] font-black px-1.5 rounded">OS #{os.id_os}</span>
+                                                        <span className="text-xs font-bold text-neutral-600">
+                                                            {os.veiculo?.modelo} 
+                                                            <span className="font-normal text-neutral-400"> ({os.veiculo?.placa})</span>
+                                                            {os.veiculo?.cor && <span className="font-normal text-neutral-400"> • {os.veiculo.cor}</span>}
+                                                        </span>
                                                     </div>
                                                     <div className="text-[10px] text-neutral-500 leading-relaxed max-w-md">
                                                         {os.defeito_relatado && <div><span className="font-bold">Defeito:</span> {os.defeito_relatado}</div>}

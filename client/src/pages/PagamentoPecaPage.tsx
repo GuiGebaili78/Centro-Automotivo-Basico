@@ -266,9 +266,7 @@ export const PagamentoPecaPage = () => {
         .filter(p => selectedIds.includes(p.id_pagamento_peca))
         .reduce((acc, p) => acc + Number(p.custo_real), 0);
 
-    const totalPaid = filteredPayments
-        .filter(p => p.pago_ao_fornecedor)
-        .reduce((acc, p) => acc + Number(p.custo_real), 0);
+
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -395,38 +393,58 @@ export const PagamentoPecaPage = () => {
 
                 {/* Totals Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 flex items-center justify-between relative overflow-hidden group">
-                        <div className="relative z-10 transition-all duration-300">
-                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Total Pendente (Selecionado)</p>
-                            <p className="text-3xl font-black text-blue-600 tracking-tighter">
-                                R$ {totalSelected.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                            <p className="text-[10px] font-bold text-blue-300 mt-2">
-                                {selectedIds.length} itens selecionados para baixa
-                            </p>
-                        </div>
-                        <div className="z-10 flex flex-col items-center gap-2">
-                             <div className="p-3 bg-white rounded-xl text-blue-200 shadow-sm"><Square size={24} /></div>
-                             {selectedIds.length > 0 && (
-                                 <button 
+                    {/* CARD 1: SELETOR DE BAIXA (Checkboxes) - Show only if items selected */}
+                    {selectedIds.length > 0 ? (
+                        <div className="bg-blue-600 p-6 rounded-2xl flex items-center justify-between shadow-xl shadow-blue-500/20 text-white animate-in zoom-in duration-300">
+                             <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">Selecionado para Baixa ({selectedIds.length})</p>
+                                <p className="text-3xl font-black tracking-tighter">
+                                    R$ {totalSelected.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
+                             </div>
+                             <div className="flex flex-col items-end gap-2">
+                                <button 
                                     onClick={handleBatchConfirm}
-                                    className="px-4 py-2 bg-blue-600 text-white text-xs font-black uppercase rounded-lg shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-                                 >
-                                     <Save size={14} />
-                                     Salvar Pagamento
-                                 </button>
-                             )}
+                                    className="px-4 py-2 bg-white text-blue-600 text-xs font-black uppercase rounded-lg shadow hover:bg-neutral-50 active:scale-95 transition-all flex items-center gap-2"
+                                >
+                                    <Save size={14} />
+                                    Confirmar Baixa
+                                </button>
+                             </div>
                         </div>
-                        {/* Background Decor */}
-                        <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-blue-100/50 rounded-full blur-2xl group-hover:bg-blue-200/50 transition-colors"></div>
-                    </div>
+                    ) : (
+                        // Placeholder or Info when nothing selected? Or keep hidden?
+                        // Let's show TOTAL FILTRADO (PENDENTE + PAGO displayed)
+                         <div className="bg-white p-6 rounded-2xl border border-neutral-100 flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Total Listado (Status Atual)</p>
+                                <p className="text-3xl font-black text-neutral-800">
+                                    R$ {filteredPayments.reduce((acc, p) => acc + Number(p.custo_real), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
+                                <p className="text-[10px] font-bold text-neutral-300 mt-2">{filteredPayments.length} registros encontrados</p>
+                            </div>
+                            <div className="p-3 bg-neutral-50 rounded-xl text-neutral-300"><Search size={24} /></div>
+                        </div>
+                    )}
 
-                    <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 flex items-center justify-between">
+                    {/* CARD 2: TOTAL PAGO (Only filtered paid items) - OR GENERAL STATS */}
+                    {/* User requested simple "Total Selecionado" summing filtered values. 
+                        If filter is PENDING, sums pending. If PAID, sums paid. If ALL, sums ALL.
+                        The card above does exactly this (sums filteredPayments).
+                        
+                        Let's refine:
+                        Card 1 (Left): Total Filtrado (Soma do que está na tela). "Total Selecionado" label as requested.
+                        Card 2 (Right): Total Pendente de Baixa (Checkboxes) - if any. OR Total Pago Histórico Global?
+                    */}
+                    
+                    <div className="bg-neutral-900 text-white p-6 rounded-2xl flex items-center justify-between shadow-lg">
                         <div>
-                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Total Pago (Selecionado)</p>
-                            <p className="text-2xl font-black text-blue-600">R$ {totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total Selecionado (Filtro)</p>
+                            <p className="text-3xl font-black">
+                                R$ {filteredPayments.reduce((acc, p) => acc + Number(p.custo_real), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
                         </div>
-                        <div className="p-3 bg-white rounded-xl text-blue-200"><CheckSquare size={24} /></div>
+                         <div className="p-3 bg-white/10 rounded-xl text-white/50"><DollarSign size={24} /></div>
                     </div>
                 </div>
 
