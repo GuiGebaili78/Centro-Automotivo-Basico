@@ -33,7 +33,7 @@ interface Category {
 
 export const LivroCaixaPage = () => {
     const [cashBookEntries, setCashBookEntries] = useState<CashBookEntry[]>([]);
-    const [loading, setLoading] = useState(true);
+
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
     
     // Filters
@@ -79,7 +79,7 @@ export const LivroCaixaPage = () => {
 
     const loadData = async () => {
         try {
-            setLoading(true);
+
             const [manualRes, paymentsRes, inflowsRes] = await Promise.all([
                 api.get('/livro-caixa'),
                 api.get('/pagamento-peca'), // Outflows
@@ -161,8 +161,6 @@ export const LivroCaixaPage = () => {
         } catch (error) {
             console.error(error);
             setStatusMsg({ type: 'error', text: 'Erro ao carregar dados financeiros.' });
-        } finally {
-            setLoading(false);
         }
     };
 
