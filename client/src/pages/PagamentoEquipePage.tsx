@@ -132,6 +132,7 @@ export const PagamentoEquipePage = () => {
             setObsPagamento('');
             setSelectedFuncionarioId('');
             loadAllPendentes(); // Refresh
+            loadHistorico(); // Refresh History too
         } catch (error) {
             setStatusMsg({ type: 'error', text: 'Erro ao processar pagamento.' });
         }
@@ -163,6 +164,18 @@ export const PagamentoEquipePage = () => {
     // Filtro Tab Historico
     const filteredHistorico = useMemo(() => {
         return historico.filter(h => {
+             const term = searchTerm.toLowerCase();
+
+             // 0. General Search Term - BRUTE FORCE JSON
+             if (term) {
+                 const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                 // Using JSON Stringify to catch ALL nested properties (vehicle, client, OS, etc) safely
+                 const fullRecord = normalize(JSON.stringify(h));
+                 
+                 const keywords = normalize(term).split(/\s+/).filter(k => k.length > 0);
+                 if (!keywords.every(kw => fullRecord.includes(kw))) return false;
+             }
+
              // 1. Colaborador
              if (filterHistColab && String(h.id_funcionario) !== filterHistColab) return false;
 
@@ -176,7 +189,7 @@ export const PagamentoEquipePage = () => {
              }
              return true;
         });
-    }, [historico, filterHistColab, filterHistStart, filterHistEnd]);
+    }, [historico, filterHistColab, filterHistStart, filterHistEnd, searchTerm]);
 
     const totalHistorico = useMemo(() => {
         return filteredHistorico.reduce((acc, h) => acc + (Number(h.valor_total) || 0) + (Number(h.premio_valor) || 0), 0);
@@ -274,6 +287,7 @@ export const PagamentoEquipePage = () => {
                                     <th className="p-4">Colaborador</th>
                                     <th className="p-4">Veículo / Cliente</th>
                                     <th className="p-4 text-right">Valor Comissão</th>
+                                    <th className="p-4 text-center">Status OS</th>
                                     <th className="p-4 text-center">Status</th>
                                 </tr>
                             </thead>
@@ -303,6 +317,16 @@ export const PagamentoEquipePage = () => {
                                                     <span className="font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded">R$ {Number(item.valor).toFixed(2)}</span>
                                                 </td>
                                                 <td className="p-4 text-center">
+                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase border ${
+                                                        item.ordem_de_servico?.status === 'ABERTA' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                        item.ordem_de_servico?.status === 'FINALIZADA' ? 'bg-green-100 text-green-700 border-green-200' :
+                                                        item.ordem_de_servico?.status === 'CANCELADA' ? 'bg-red-100 text-red-700 border-red-200' :
+                                                        'bg-gray-100 text-gray-700 border-gray-200'
+                                                    }`}>
+                                                        {item.ordem_de_servico?.status || 'N/A'}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-center">
                                                     <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-1 rounded uppercase">Pendente</span>
                                                 </td>
                                             </tr>
@@ -323,6 +347,7 @@ export const PagamentoEquipePage = () => {
                                     <th className="p-4">Colaborador</th>
                                     <th className="p-4">Referência / OS</th>
                                     <th className="p-4">Valor</th>
+                                    <th className="p-4 text-center">Status OS</th>
                                     <th className="p-4 text-center">Ações</th>
                                 </tr>
                             </thead>
@@ -371,6 +396,9 @@ export const PagamentoEquipePage = () => {
                                                     R$ {Number(isPremio ? parent.premio_valor : parent.valor_total).toFixed(2)}
                                                 </td>
                                                 <td className="p-4 text-center">
+                                                    <span className="text-neutral-300 text-xs">-</span>
+                                                </td>
+                                                <td className="p-4 text-center">
                                                     <span className="text-neutral-300">-</span>
                                                 </td>
                                             </tr>
@@ -408,6 +436,16 @@ export const PagamentoEquipePage = () => {
                                                 </td>
                                                 <td className="p-4">
                                                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded text-xs">R$ {Number(item.valor).toFixed(2)}</span>
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                     <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase border ${
+                                                        os.status === 'ABERTA' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                        os.status === 'FINALIZADA' ? 'bg-green-100 text-green-700 border-green-200' :
+                                                        os.status === 'CANCELADA' ? 'bg-red-100 text-red-700 border-red-200' :
+                                                        'bg-gray-100 text-gray-700 border-gray-200'
+                                                    }`}>
+                                                        {os.status || 'N/A'}
+                                                    </span>
                                                 </td>
                                                 <td className="p-4 text-center">
                                                     <button 
