@@ -308,11 +308,12 @@ export const ContasAPagarPage = () => {
                                     <td className="p-4">
                                         <div className="font-bold text-neutral-700 text-sm flex items-center gap-2">
                                             <Calendar size={14} className="text-neutral-400" />
-                                            {new Date(conta.dt_vencimento).toLocaleDateString()}
+                                            {/* Fix Timezone Display: Use UTC to calculate date */}
+                                            {new Date(conta.dt_vencimento).getUTCDate().toString().padStart(2, '0')}/{ (new Date(conta.dt_vencimento).getUTCMonth() + 1).toString().padStart(2, '0') }/{ new Date(conta.dt_vencimento).getUTCFullYear() }
                                         </div>
                                         {conta.dt_pagamento && conta.status === 'PAGO' && (
                                             <div className="text-[10px] text-success-600 font-bold mt-1">
-                                                Pago em {new Date(conta.dt_pagamento).toLocaleDateString()}
+                                                Pago em {new Date(conta.dt_pagamento).getUTCDate().toString().padStart(2, '0')}/{ (new Date(conta.dt_pagamento).getUTCMonth() + 1).toString().padStart(2, '0') }
                                             </div>
                                         )}
                                     </td>

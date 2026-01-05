@@ -92,8 +92,12 @@ export const PagamentoEquipePage = () => {
         try {
             const res = await api.get(`/pagamento-equipe/pendentes/${id}`);
             setFuncPendentes(res.data);
-            // Auto-select all
-            setSelectedItems(res.data.map((i: any) => i.id_servico_mao_de_obra));
+            // Auto-select ONLY Finalized items
+            setSelectedItems(
+                res.data
+                    .filter((i: any) => i.ordem_de_servico?.status === 'FINALIZADA')
+                    .map((i: any) => i.id_servico_mao_de_obra)
+            );
         } catch (error) { console.error(error); }
     };
 
@@ -528,10 +532,17 @@ const PayModalContent = ({
     }, [funcPendentes, filterStart, filterEnd, tipoLancamento]);
 
     const handleSelectAll = () => {
-        if (selectedItems.length === filteredItems.length && filteredItems.length > 0) {
+        // Only select payables (FINALIZADA)
+        const payables = filteredItems.filter((i: any) => i.ordem_de_servico?.status === 'FINALIZADA');
+        
+        // If all payables are selected, deselect all. Otherwise, select all payables.
+        // Check intersection
+        const allPayablesSelected = payables.length > 0 && payables.every((p: any) => selectedItems.includes(p.id_servico_mao_de_obra));
+
+        if (allPayablesSelected) {
             setSelectedItems([]);
         } else {
-            setSelectedItems(filteredItems.map((i: any) => i.id_servico_mao_de_obra));
+            setSelectedItems(payables.map((i: any) => i.id_servico_mao_de_obra));
         }
     };
 
@@ -614,13 +625,23 @@ const PayModalContent = ({
                                     <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-2">Até</label>
                                     <input type="date" value={filterEnd} onChange={e => setFilterEnd(e.target.value)} className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-primary-500/20" />
                                 </div>
-                            </div>
+                                </div>
+
 
                             <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden flex flex-col max-h-[400px]">
                                 <div className="p-3 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        <input type="checkbox" className="w-5 h-5 accent-primary-600 rounded-md cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} />
-                                        <span className="text-xs font-black text-neutral-500 uppercase tracking-widest">{isAllSelected ? 'Desmarcar Todos' : 'Marcar Todos'}</span>
+                                        <input 
+                                          type="checkbox" 
+                                          className="w-5 h-5 accent-primary-600 rounded-md cursor-pointer" 
+                                          checked={isAllSelected} 
+                                          onChange={handleSelectAll} 
+                                          disabled={filteredItems.some((i: any) => i.ordem_de_servico?.status !== 'FINALIZADA')}
+                                          title={filteredItems.some((i: any) => i.ordem_de_servico?.status !== 'FINALIZADA') ? 'Existem itens não finalizados que não podem ser selecionados' : ''}
+                                        />
+                                        <span className={`text-xs font-black uppercase tracking-widest ${filteredItems.some((i: any) => i.ordem_de_servico?.status !== 'FINALIZADA') ? 'text-neutral-300' : 'text-neutral-500'}`}>
+                                            {isAllSelected ? 'Desmarcar Todos' : 'Marcar Todos (Finalizados)'}
+                                        </span>
                                     </div>
                                     <span className="text-xs font-bold text-neutral-400">{filteredItems.length} itens encontrados</span>
                                 </div>
@@ -636,24 +657,35 @@ const PayModalContent = ({
                                             // AVOID DIVISION BY ZERO
                                             const baseLabor = comissaoPercent > 0 ? (valorComissao / (comissaoPercent / 100)) : 0; 
 
+
+                                            const osStatus = item.ordem_de_servico?.status || 'ABERTA';
+                                            const isPayable = osStatus === 'FINALIZADA';
+
                                             return (
-                                                <label key={item.id_servico_mao_de_obra} className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
+                                                <label key={item.id_servico_mao_de_obra} className={`flex items-start gap-4 p-4 rounded-xl border transition-all ${
                                                     selectedItems.includes(item.id_servico_mao_de_obra)
                                                     ? 'bg-primary-50 border-primary-200 ring-1 ring-primary-200'
-                                                    : 'bg-white border-neutral-100 hover:border-primary-200'
+                                                    : !isPayable ? 'bg-neutral-100 border-neutral-100 opacity-70 cursor-not-allowed' : 'bg-white border-neutral-100 hover:border-primary-200 cursor-pointer'
                                                 }`}>
                                                     <input 
                                                         type="checkbox"
-                                                        className="mt-1 w-5 h-5 accent-primary-600 rounded-md"
+                                                        className="mt-1 w-5 h-5 accent-primary-600 rounded-md disabled:opacity-50"
                                                         checked={selectedItems.includes(item.id_servico_mao_de_obra)}
+                                                        disabled={!isPayable}
                                                         onChange={(e) => {
-                                                            if (e.target.checked) setSelectedItems([...selectedItems, item.id_servico_mao_de_obra]);
-                                                            else setSelectedItems(selectedItems.filter((id: number) => id !== item.id_servico_mao_de_obra));
+                                                            if (e.target.checked && isPayable) setSelectedItems([...selectedItems, item.id_servico_mao_de_obra]);
+                                                            else if (!e.target.checked) setSelectedItems(selectedItems.filter((id: number) => id !== item.id_servico_mao_de_obra));
                                                         }}
                                                     />
                                                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 flex-wrap">
                                                             <span className="bg-neutral-200 text-neutral-800 text-[10px] font-black px-1.5 rounded">OS #{item.id_os}</span>
+                                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase border ${
+                                                                osStatus === 'FINALIZADA' ? 'bg-green-100 text-green-700 border-green-200' :
+                                                                'bg-blue-100 text-blue-700 border-blue-200'
+                                                            }`}>
+                                                                {osStatus}
+                                                            </span>
                                                             <span className="text-xs font-bold text-neutral-700">
                                                                 {new Date(item.ordem_de_servico?.dt_entrega || item.ordem_de_servico?.dt_abertura).toLocaleDateString()}
                                                             </span>
@@ -674,7 +706,7 @@ const PayModalContent = ({
                                                             {item.ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome || item.ordem_de_servico?.cliente?.pessoa_juridica?.razao_social}
                                                         </div>
                                                         
-                                                        <div className="col-span-1 md:col-span-2 text-xs text-neutral-800">
+                                                        <div className="col-span-1 md:col-span-2 text-xs text-neutral-800 mt-1">
                                                             <span className="font-bold">{item.ordem_de_servico?.veiculo?.modelo}</span> • {item.ordem_de_servico?.veiculo?.cor} • {item.ordem_de_servico?.veiculo?.placa}
                                                         </div>
 
@@ -701,13 +733,20 @@ const PayModalContent = ({
                                                                 {item.ordem_de_servico?.defeito_relatado && <span className="mr-2"><span className="font-bold">Defeito:</span> {item.ordem_de_servico.defeito_relatado}</span>}
                                                             </div>
                                                         )}
+
+                                                        {!isPayable && (
+                                                            <div className="col-span-1 md:col-span-2 mt-2 text-[10px] font-bold text-blue-600 flex items-center gap-1">
+                                                                ⚠️ OS não finalizada. Finalize a OS para liberar o pagamento.
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div className="flex flex-col items-end justify-center h-full">
                                                         <input 
                                                             type="checkbox" 
                                                             checked={selectedItems.includes(item.id_servico_mao_de_obra)} 
                                                             readOnly 
-                                                            className="w-5 h-5 accent-emerald-500 pointer-events-none" 
+                                                            className="w-5 h-5 accent-emerald-500 pointer-events-none disabled:opacity-50" 
+                                                            disabled={!isPayable}
                                                         />
                                                     </div>
                                                 </label>

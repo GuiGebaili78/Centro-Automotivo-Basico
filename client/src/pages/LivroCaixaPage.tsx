@@ -96,7 +96,7 @@ export const LivroCaixaPage = () => {
                 value: Number(e.valor),
                 category: e.categoria,
                 obs: e.obs,
-                source: 'MANUAL',
+                source: e.origem === 'AUTOMATICA' ? 'AUTO' : 'MANUAL',
                 deleted_at: e.deleted_at,
                 originalData: e
             }));
@@ -116,7 +116,7 @@ export const LivroCaixaPage = () => {
                         id: `out-${p.id_pagamento_peca}`,
                         rawId: p.id_pagamento_peca,
                         date: p.data_pagamento_fornecedor || p.data_compra,
-                        description: `Pagamento Fornecedor - ${p.item_os?.descricao || 'Peça'}`,
+                        description: `Fornecedor: ${p.item_os?.descricao || 'Peça'}`,
                         type: 'OUT',
                         value: Number(p.custo_real),
                         category:  'FORNECEDOR', // Implicit category
@@ -142,7 +142,7 @@ export const LivroCaixaPage = () => {
                     id: `in-${p.id_pagamento_cliente}`,
                     rawId: p.id_pagamento_cliente,
                     date: p.data_pagamento,
-                    description: `Recebimento OS #${p.id_os}`,
+                    description: `Recebimento: OS #${p.id_os}`,
                     type: 'IN',
                     value: Number(p.valor),
                     category: 'RECEITA_SERVICO', // Implicit category
@@ -472,7 +472,11 @@ export const LivroCaixaPage = () => {
                                         <td className="p-5">
                                             <div className={`flex items-center gap-2 font-bold text-xs ${entry.deleted_at ? 'line-through text-neutral-400' : 'text-neutral-600'}`}>
                                                 <Calendar size={14} />
-                                                {new Date(entry.date).toLocaleDateString()}
+                                                {/* Show Date and Time */}
+                                                {new Date(entry.date).toLocaleString('pt-BR', { 
+                                                    day: '2-digit', month: '2-digit', year: 'numeric',
+                                                    hour: '2-digit', minute: '2-digit'
+                                                })}
                                             </div>
                                         </td>
                                         <td className={`p-5 font-bold ${entry.deleted_at ? 'line-through text-neutral-400' : 'text-neutral-900'}`}>

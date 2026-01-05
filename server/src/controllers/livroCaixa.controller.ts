@@ -4,6 +4,7 @@ import { prisma } from '../prisma.js';
 export const getAll = async (req: Request, res: Response) => {
     try {
         const registros = await prisma.livroCaixa.findMany({
+            where: { deleted_at: null },
             orderBy: { dt_movimentacao: 'desc' }
         });
         res.json(registros);

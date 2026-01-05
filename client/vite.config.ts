@@ -12,8 +12,8 @@ export default defineConfig({
     port: 5173,
     watch: {
       usePolling: true, 
-      interval: 100, // Check files every 100ms
-      binaryInterval: 300, // Check binary files less often
+      interval: 1000, // Check files every 1000ms (Reduced Load)
+      binaryInterval: 2000, // Check binary files less often
     },
     hmr: {
       clientPort: 5173, // Ensures simple WebSocket connection from browser
