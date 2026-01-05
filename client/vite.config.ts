@@ -11,7 +11,9 @@ export default defineConfig({
     strictPort: true,
     port: 5173,
     watch: {
-      usePolling: true, // Fixes file watching in Docker/WSL2
+      usePolling: true, 
+      interval: 100, // Check files every 100ms
+      binaryInterval: 300, // Check binary files less often
     },
     hmr: {
       clientPort: 5173, // Ensures simple WebSocket connection from browser

@@ -11,7 +11,8 @@ export const getPendentesByFuncionario = async (req: Request, res: Response) => 
         const servicos = await prisma.servicoMaoDeObra.findMany({
             where: {
                 id_funcionario: Number(id_funcionario),
-                status_pagamento: 'PENDENTE'
+                status_pagamento: 'PENDENTE',
+                deleted_at: null
             },
             include: {
                 ordem_de_servico: {
@@ -80,7 +81,8 @@ export const createPagamento = async (req: Request, res: Response) => {
             if (servicos_ids && servicos_ids.length > 0) {
                 await tx.servicoMaoDeObra.updateMany({
                     where: {
-                        id_servico_mao_de_obra: { in: servicos_ids }
+                        id_servico_mao_de_obra: { in: servicos_ids },
+                        deleted_at: null
                     },
                     data: {
                         status_pagamento: 'PAGO',
