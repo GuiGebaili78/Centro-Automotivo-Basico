@@ -119,7 +119,7 @@ export const LivroCaixaPage = () => {
                         description: `Fornecedor: ${p.item_os?.descricao || 'Peça'}`,
                         type: 'OUT',
                         value: Number(p.custo_real),
-                        category:  'FORNECEDOR', // Implicit category
+                        category:  'Auto Peças', // Implicit category
                         vehicle: vehicleText,
                         client: clientName,
                         supplier: supplierName, // Added Supplier
@@ -145,7 +145,7 @@ export const LivroCaixaPage = () => {
                     description: `Recebimento: OS #${p.id_os}`,
                     type: 'IN',
                     value: Number(p.valor),
-                    category: 'RECEITA_SERVICO', // Implicit category
+                    category: 'Receita de Serviços', // Implicit category
                     vehicle: vehicleText,
                     client: clientName,
                     obs: p.observacao || '', 
