@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Search, Plus, Trash2, Edit, MapPin, Phone, Mail, User, Wrench } from 'lucide-react';
-import { ClienteForm } from '../components/forms/ClienteForm';
 import { VeiculoForm } from '../components/forms/VeiculoForm';
 import { Modal } from '../components/ui/Modal';
 import { StatusBanner } from '../components/ui/StatusBanner';
@@ -50,9 +49,7 @@ export const ClientePage = () => {
   const [clientes, setClientes] = useState<IClienteView[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showModal, setShowModal] = useState(false);
 
-  const [editingClient, setEditingClient] = useState<IClienteView | undefined>(undefined);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [selectedClientIdForVehicle, setSelectedClientIdForVehicle] = useState<number | null>(null);
@@ -123,13 +120,11 @@ export const ClientePage = () => {
   };
 
   const openCreateModal = () => {
-      setEditingClient(undefined);
-      setShowModal(true);
+      navigate('/novo-cadastro');
   };
 
   const openEditModal = (client: IClienteView) => {
-      setEditingClient(client);
-      setShowModal(true);
+      navigate(`/cadastro/${client.id_cliente}`);
   };
 
    const openEditVehicleModal = (vehicle: any, clientId: number) => {
@@ -147,8 +142,7 @@ export const ClientePage = () => {
 
   const handleRegisterVehicle = (clientId: number) => {
     setSelectedClientIdForVehicle(clientId);
-    setEditingVehicle(null);
-    setShowModal(false);
+    setEditingVehicle(undefined);
     setShowVehicleModal(true);
   };
 
@@ -400,23 +394,6 @@ export const ClientePage = () => {
           </div>
         )}
       </div>
-
-      {showModal && (
-        <Modal title={editingClient ? "Editar Cliente" : "Novo Cliente"} onClose={() => setShowModal(false)}>
-            <ClienteForm 
-                clientId={editingClient?.id_cliente}
-                initialData={editingClient}
-                onSuccess={() => {
-                    setShowModal(false);
-                    loadClientes();
-                }}
-                onRegisterVehicle={(data) => {
-                    handleRegisterVehicle(data.id_cliente);
-                }}
-                onCancel={() => setShowModal(false)}
-            />
-        </Modal>
-      )}
 
       {showVehicleModal && selectedClientIdForVehicle && (
         <Modal title={editingVehicle ? "Editar Veículo" : "Cadastrar Veículo para Cliente"} onClose={() => setShowVehicleModal(false)}>

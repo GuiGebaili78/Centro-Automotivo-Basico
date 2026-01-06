@@ -7,6 +7,9 @@ import { ClientePage } from './pages/ClientePage';
 // Importe suas páginas antigas aqui enquanto não refatora todas
 import { VeiculoPage } from './pages/VeiculoPage';
 import { OrdemDeServicoPage } from './pages/OrdemDeServicoPage';
+import { OrdemDeServicoDetalhePage } from './pages/OrdemDeServicoDetalhePage';
+import { CadastroUnificadoPage } from './pages/CadastroUnificadoPage';
+
 import { PecasEstoquePage } from './pages/PecasEstoquePage';
 import { FuncionarioPage } from './pages/FuncionarioPage';
 import { PessoaPage } from './pages/PessoaPage';
@@ -35,6 +38,11 @@ function App() {
           {/* Páginas Legadas (Ainda funcionam dentro do layout novo!) */}
           <Route path="/veiculo" element={<VeiculoPage />} />
           <Route path="/ordem-de-servico" element={<OrdemDeServicoPage />} />
+          <Route path="/ordem-de-servico/:id" element={<OrdemDeServicoDetalhePage />} />
+          {/* Unified Registration Routes */}
+          <Route path="/novo-cadastro" element={<CadastroUnificadoPage />} />
+          <Route path="/cadastro/:clienteId" element={<CadastroUnificadoPage />} />
+
           <Route path="/pecas-estoque" element={<PecasEstoquePage />} />
           <Route path="/funcionario" element={<FuncionarioPage />} />
           <Route path="/pessoa" element={<PessoaPage />} />
