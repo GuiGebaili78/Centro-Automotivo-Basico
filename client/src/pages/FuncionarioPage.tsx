@@ -66,7 +66,7 @@ export const FuncionarioPage = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Tem certeza que deseja excluir este funcionário?')) return;
+        if (!confirm('Tem certeza que deseja excluir este colaborador?')) return;
         try {
             await api.delete(`/funcionario/${id}`);
             setStatusMsg({ type: 'success', text: 'Colaborador removido com sucesso!' });
@@ -92,7 +92,7 @@ export const FuncionarioPage = () => {
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-black text-neutral-900 tracking-tight">Equipe e Funcionários</h1>
+                    <h1 className="text-2xl font-black text-neutral-900 tracking-tight">Equipe e Colaboradores</h1>
                     <p className="text-neutral-500">Gestão de colaboradores e acesso ao sistema.</p>
                 </div>
                 <button 
@@ -100,7 +100,7 @@ export const FuncionarioPage = () => {
                     className="group bg-neutral-900 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-black/10 flex items-center gap-2 active:scale-95"
                 >
                     <Plus size={20} className="group-hover:rotate-90 transition-transform" />
-                    Novo Funcionário
+                    Novo Colaborador
                 </button>
             </div>
 
@@ -122,7 +122,7 @@ export const FuncionarioPage = () => {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                            <th className="p-6">Funcionário</th>
+                            <th className="p-6">Colaborador</th>
                             <th className="p-6">Cargo</th>
                             <th className="p-6">Admissão</th>
                             <th className="p-6">Status</th>
@@ -137,7 +137,7 @@ export const FuncionarioPage = () => {
                                         <div className="bg-neutral-50 p-6 rounded-full text-neutral-200">
                                             <Briefcase size={40} />
                                         </div>
-                                        <p className="font-bold text-neutral-400">Nenhum funcionário encontrado.</p>
+                                        <p className="font-bold text-neutral-400">Nenhum colaborador encontrado.</p>
                                     </div>
                                 </td>
                             </tr>
@@ -228,7 +228,7 @@ export const FuncionarioPage = () => {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-[10px] font-black text-neutral-500 uppercase block mb-1">Salário (R$)</label>
+                                        <label className="text-[10px] font-black text-neutral-500 uppercase block mb-1">Pagamento (R$)</label>
                                         <input 
                                             type="number"
                                             value={editSalario} 

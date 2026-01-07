@@ -51,16 +51,37 @@ export const getPendentesByFuncionario = async (req: Request, res: Response) => 
     }
 };
 
+export const getValesPendentesByFuncionario = async (req: Request, res: Response) => {
+    try {
+        const { id_funcionario } = req.params;
+        const vales = await prisma.pagamentoEquipe.findMany({
+            where: {
+                id_funcionario: Number(id_funcionario),
+                tipo_lancamento: 'VALE',
+                descontado: false
+            },
+            orderBy: {
+                dt_pagamento: 'desc'
+            }
+        });
+        res.json(vales);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao buscar vales pendentes' });
+    }
+};
+
 export const createPagamento = async (req: Request, res: Response) => {
     try {
         const { 
-            id_funcionario, servicos_ids, valor_total, obs, 
+            id_funcionario, servicos_ids, vales_ids, valor_total, obs, 
             forma_pagamento, premio_valor, premio_descricao,
             tipo_lancamento, referencia_inicio, referencia_fim
         } = req.body;
 
         const result = await prisma.$transaction(async (tx) => {
             // 1. Criar Registro de Pagamento
+            // Se for VALE, ele nasce nao descontado (descontado: false). Se for SALARIO/COMISSAO, nao se aplica (false).
             const pagamento = await tx.pagamentoEquipe.create({
                 data: {
                     id_funcionario: Number(id_funcionario),
@@ -71,7 +92,8 @@ export const createPagamento = async (req: Request, res: Response) => {
                     tipo_lancamento: tipo_lancamento || 'COMISSAO',
                     referencia_inicio: referencia_inicio ? new Date(referencia_inicio) : null,
                     referencia_fim: referencia_fim ? new Date(referencia_fim) : null,
-                    obs: obs
+                    obs: obs,
+                    descontado: false // Default
                 }
             });
 
@@ -86,6 +108,22 @@ export const createPagamento = async (req: Request, res: Response) => {
                         status_pagamento: 'PAGO',
                         id_pagamento_equipe: pagamento.id_pagamento_equipe
                     }
+                });
+            }
+
+            // 3. Deduzir Vales (Se houver IDs de vales selecionados para desconto)
+            if (vales_ids && vales_ids.length > 0) {
+                await tx.pagamentoEquipe.updateMany({
+                   where: {
+                       id_pagamento_equipe: { in: vales_ids },
+                       id_funcionario: Number(id_funcionario),
+                       tipo_lancamento: 'VALE',
+                       descontado: false
+                   },
+                   data: {
+                       descontado: true,
+                       id_pagamento_deducao: pagamento.id_pagamento_equipe
+                   }
                 });
             }
 

@@ -20,7 +20,7 @@ const menuItems = [
         { path: '/cliente', label: 'Clientes' },
         { path: '/veiculo', label: 'Veículos' },
         { path: '/fornecedor', label: 'Fornecedores' },
-        { path: '/funcionario', label: 'Funcionários' }
+        { path: '/funcionario', label: 'Colaboradores' }
     ]
   },
   { path: '/ordem-de-servico', label: 'Ordens de Serviço', icon: Wrench },

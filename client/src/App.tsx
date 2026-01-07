@@ -22,6 +22,7 @@ import { LivroCaixaPage } from './pages/LivroCaixaPage';
 import { ContasAPagarPage } from './pages/ContasAPagarPage';
 import { SearchClientePage } from './pages/SearchClientePage';
 import { SearchVeiculoPage } from './pages/SearchVeiculoPage';
+import { NovoPagamentoPage } from './pages/NovoPagamentoPage';
 import { PagamentoEquipePage } from './pages/PagamentoEquipePage';
 
 function App() {
@@ -53,6 +54,8 @@ function App() {
           <Route path="/financeiro/pagamento-pecas" element={<PagamentoPecaPage />} />
           <Route path="/financeiro/contas-pagar" element={<ContasAPagarPage />} />
           <Route path="/financeiro/equipe" element={<PagamentoEquipePage />} /> {/* Nova Rota */}
+          <Route path="/pagamento-equipe" element={<PagamentoEquipePage />} />
+          <Route path="/pagamento-equipe/novo" element={<NovoPagamentoPage />} />
 
           <Route path="/fornecedor" element={<FornecedorPage />} />
           <Route path="/pagamento-peca" element={<PagamentoPecaPage />} />

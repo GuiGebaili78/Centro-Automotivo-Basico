@@ -403,6 +403,12 @@ model PagamentoEquipe {
     referencia_fim      DateTime? @db.Date // Para Salário/Vale
     
     obs                 String?  @db.VarChar(500)
+
+    // Controle de Vales/Adiantamentos (Novo)
+    descontado          Boolean  @default(false) // Indica se esse VALE já foi descontado de um salário futuro
+    id_pagamento_deducao Int?     // ID do pagamento que descontou este vale
+    pagamento_deducao   PagamentoEquipe? @relation("DeducaoVale", fields: [id_pagamento_deducao], references: [id_pagamento_equipe])
+    vales_deduzidos     PagamentoEquipe[] @relation("DeducaoVale")
     
     // Relações
     funcionario         Funcionario @relation(fields: [id_funcionario], references: [id_funcionario])
