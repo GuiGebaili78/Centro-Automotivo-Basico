@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { StatusBanner } from '../components/ui/StatusBanner';
 import { User, ArrowRight, Calculator, CheckCircle2, Circle, DollarSign, CheckSquare, Square } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export const NovoPagamentoPage = () => {
     const navigate = useNavigate();
@@ -11,6 +11,8 @@ export const NovoPagamentoPage = () => {
     // --- STATE ---
     const [funcionarios, setFuncionarios] = useState<any[]>([]);
     const [selectedFuncionarioId, setSelectedFuncionarioId] = useState('');
+    const location = useLocation();
+
     const [funcPendentes, setFuncPendentes] = useState<any[]>([]); // Comissões Pendentes
     const [valesPendentes, setValesPendentes] = useState<any[]>([]); // Vales Pendentes
 
@@ -44,6 +46,15 @@ export const NovoPagamentoPage = () => {
     useEffect(() => {
         loadFuncionarios();
     }, []);
+
+    // Auto-select from navigation state
+    useEffect(() => {
+        if (location.state?.funcionarioId && funcionarios.length > 0) {
+            setSelectedFuncionarioId(String(location.state.funcionarioId));
+            // Clear state to avoid re-triggering if needed, but react-router handles this cleanly ideally
+            // window.history.replaceState({}, document.title); 
+        }
+    }, [location.state, funcionarios]);
 
     useEffect(() => {
         if (selectedFuncionarioId) {
@@ -108,11 +119,21 @@ export const NovoPagamentoPage = () => {
     }, [funcPendentes, filterStart, filterEnd]);
 
     // --- TOTALS (Mode PAGAMENTO) ---
+    // Helper to calculate commission value per item
+    const getCommissionValue = (itemVal: number) => {
+        const func = funcionarios.find(f => String(f.id_funcionario) === String(selectedFuncionarioId));
+        const pct = func?.comissao || 0;
+        return (itemVal * pct) / 100;
+    };
+
     const totalComissoes = useMemo(() => {
         return funcPendentes
             .filter(i => selectedItems.includes(i.id_servico_mao_de_obra))
-            .reduce((acc, curr) => acc + Number(curr.valor), 0);
-    }, [funcPendentes, selectedItems]);
+            .reduce((acc, curr) => {
+                const comissao = getCommissionValue(Number(curr.valor));
+                return acc + comissao;
+            }, 0);
+    }, [funcPendentes, selectedItems, funcionarios, selectedFuncionarioId]);
 
     const totalDescontos = useMemo(() => {
         // Sum of SELECTED Vales to deduct
@@ -258,6 +279,9 @@ export const NovoPagamentoPage = () => {
                                 <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
                                     <h3 className="font-black text-neutral-700 flex items-center gap-2">
                                         <Calculator size={18} className="text-primary-500" /> Comissões
+                                        <span className="text-xs font-normal text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-full">
+                                            {funcionarios.find(f => String(f.id_funcionario) === String(selectedFuncionarioId))?.comissao || 0}%
+                                        </span>
                                     </h3>
                                     <div className="flex items-center gap-3">
                                         <button onClick={handleSelectAllComissoes} className="text-[10px] font-black uppercase tracking-widest text-primary-600 hover:text-primary-700">
@@ -285,6 +309,7 @@ export const NovoPagamentoPage = () => {
                                             const isPayable = item.ordem_de_servico?.status === 'FINALIZADA';
                                             const isSelected = selectedItems.includes(item.id_servico_mao_de_obra);
                                             const os = item.ordem_de_servico;
+                                            const valorComissao = getCommissionValue(Number(item.valor));
                                             
                                             return (
                                                 <div 
@@ -300,13 +325,19 @@ export const NovoPagamentoPage = () => {
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-xs font-black bg-neutral-100 px-2 py-0.5 rounded text-neutral-600 uppercase">OS #{item.id_os}</span>
-                                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${
-                                                                    os?.status === 'FINALIZADA' ? 'bg-green-100 text-green-700' :
-                                                                    os?.status === 'ABERTA' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
-                                                                }`}>{os?.status || 'N/A'}</span>
+                                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase border ${
+                                                                    os?.status === 'FINALIZADA' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                                    os?.status === 'ABERTA' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
+                                                                    os?.status === 'CANCELADA' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                    os?.status === 'PAGA_CLIENTE' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
+                                                                    'bg-gray-50 text-gray-500 border-gray-100'
+                                                                }`}>{os?.status ? os.status.replace(/_/g, ' ') : 'N/A'}</span>
                                                                 {!isPayable && <span className="text-[10px] font-bold text-red-400 uppercase ml-2">(Não Finalizada)</span>}
                                                             </div>
-                                                            <span className="font-black text-emerald-600 text-base">R$ {Number(item.valor).toFixed(2)}</span>
+                                                            <div className="text-right">
+                                                                <span className="font-black text-emerald-600 text-lg">R$ {valorComissao.toFixed(2)}</span>
+                                                                <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wide">Valor Serviço: R$ {Number(item.valor).toFixed(2)}</div>
+                                                            </div>
                                                         </div>
 
                                                         {/* ROW 2: Vehicle */}
