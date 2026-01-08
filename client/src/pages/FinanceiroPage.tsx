@@ -258,7 +258,7 @@ export const FinanceiroPage = () => {
                     onClick={() => navigate('/financeiro?tab=LIVRO_CAIXA')}
                     className={`pb-4 px-2 font-black text-sm uppercase tracking-widest transition-colors relative whitespace-nowrap ${activeTab === 'LIVRO_CAIXA' ? 'text-neutral-900' : 'text-neutral-400 hover:text-neutral-600'}`}
                 >
-                     Livro Caixa (Fluxo)
+                     Movimentação de Caixa (Fluxo)
                      {activeTab === 'LIVRO_CAIXA' && <div className="absolute bottom-0 left-0 w-full h-1 bg-success-500 rounded-t-full" />}
                 </button>
             </div>

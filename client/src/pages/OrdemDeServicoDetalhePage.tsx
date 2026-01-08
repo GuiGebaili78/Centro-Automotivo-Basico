@@ -6,7 +6,7 @@ import { api } from '../services/api';
 import type { IOrdemDeServico } from '../types/backend';
 import { 
     Search, Plus, PenTool, X,
-    Package, Wrench, CheckCircle, BadgeCheck, DollarSign, ArrowLeft
+    Package, Wrench, CheckCircle, BadgeCheck, DollarSign, ArrowLeft, Save
 } from 'lucide-react';
 
 import { StatusBanner } from '../components/ui/StatusBanner';
@@ -26,6 +26,7 @@ export const OrdemDeServicoDetalhePage = () => {
     const [employees, setEmployees] = useState<any[]>([]);
     const [availableParts, setAvailableParts] = useState<any[]>([]);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
+    const [isDirty, setIsDirty] = useState(false);
 
     // Confirm Modal
     const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
@@ -103,6 +104,7 @@ export const OrdemDeServicoDetalhePage = () => {
          try {
              setOs(prev => prev ? ({ ...prev, [field]: value }) : null);
              await api.put(`/ordem-de-servico/${os.id_os}`, { [field]: value });
+             setIsDirty(false);
          } catch (error) {
              setStatusMsg({ type: 'error', text: 'Erro ao salvar alteração.' });
          }
@@ -130,6 +132,7 @@ export const OrdemDeServicoDetalhePage = () => {
         setPartSearch(p.nome);
         setPartResults([]);
         setHighlightIndex(-1);
+        setIsDirty(true);
         requestAnimationFrame(() => referenceInputRef.current?.focus());
     };
 
@@ -204,6 +207,17 @@ export const OrdemDeServicoDetalhePage = () => {
 
     const handleFinishService = async () => {
         if (!os) return;
+
+        setConfirmModal({
+            isOpen: true,
+            title: 'Finalizar OS',
+            message: 'Deseja Finalizar a OS? Isso irá gerar o financeiro e mudar o status.',
+            onConfirm: async () => executeFinish()
+        });
+    };
+
+    const executeFinish = async () => {
+        if (!os) return;
         const totalItems = osItems.reduce((acc, item) => acc + Number(item.valor_total), 0);
         
         const sumLaborServices = laborServices.reduce((acc, l) => acc + Number(l.valor), 0);
@@ -218,11 +232,45 @@ export const OrdemDeServicoDetalhePage = () => {
                 dt_entrega: os.dt_entrega ? new Date(os.dt_entrega).toISOString() : new Date().toISOString()
             });
             setStatusMsg({ type: 'success', text: 'OS Finalizada! Enviada para Financeiro.' });
+            setIsDirty(false);
+            setConfirmModal(prev => ({ ...prev, isOpen: false }));
             setTimeout(() => {
                 setStatusMsg({ type: null, text: '' });
                 navigate('/ordem-de-servico');
-            }, 1500);
+            }, 1000);
         } catch (e) { setStatusMsg({ type: 'error', text: 'Erro ao finalizar OS.' }); }
+    };
+
+    const handleSaveAndClose = async () => {
+        if (!os) return;
+        try {
+            await api.put(`/ordem-de-servico/${os.id_os}`, { 
+                defeito_relatado: os.defeito_relatado,
+                diagnostico: os.diagnostico,
+                km_entrada: os.km_entrada
+            });
+            setIsDirty(false);
+            setStatusMsg({ type: 'success', text: 'Alterações Salvas!' });
+            setTimeout(() => navigate('/ordem-de-servico'), 500);
+        } catch (e) {
+            setStatusMsg({ type: 'error', text: 'Erro ao salvar.' });
+        }
+    };
+
+    const handleBack = () => {
+        if (isDirty) {
+            setConfirmModal({
+                isOpen: true,
+                title: 'Alterações Pendentes',
+                message: 'Deseja Salvar as alterações?',
+                onConfirm: () => {
+                    setConfirmModal(prev => ({...prev, isOpen: false}));
+                    handleSaveAndClose();
+                }
+            });
+        } else {
+            navigate('/ordem-de-servico');
+        }
     };
 
     const getStatusStyle = (status: string) => {
@@ -250,7 +298,7 @@ export const OrdemDeServicoDetalhePage = () => {
 
             {/* HEADER with Back Button */}
             <div className="flex items-center gap-4">
-                 <button onClick={() => navigate('/ordem-de-servico')} className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-600">
+                 <button onClick={handleBack} className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-600">
                      <ArrowLeft size={24} />
                  </button>
                  <div className="flex-1">
@@ -346,7 +394,10 @@ export const OrdemDeServicoDetalhePage = () => {
                             className="w-full bg-red-50/20 p-3 rounded-xl border border-red-100 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
                             placeholder="Descreva o defeito..."
                             value={os.defeito_relatado || ''}
-                            onChange={e => setOs({...os, defeito_relatado: e.target.value})}
+                            onChange={e => {
+                                setOs({...os, defeito_relatado: e.target.value});
+                                setIsDirty(true);
+                            }}
                             onBlur={e => updateOSField('defeito_relatado', e.target.value)}
                         />
                         </div>
@@ -358,7 +409,10 @@ export const OrdemDeServicoDetalhePage = () => {
                             className="w-full bg-blue-50/20 p-3 rounded-xl border border-blue-100 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
                             placeholder="Insira o diagnóstico..."
                             value={os.diagnostico || ''}
-                            onChange={e => setOs({...os, diagnostico: e.target.value})}
+                            onChange={e => {
+                                setOs({...os, diagnostico: e.target.value});
+                                setIsDirty(true);
+                            }}
                             onBlur={e => updateOSField('diagnostico', e.target.value)}
                         />
                         </div>
@@ -508,6 +562,19 @@ export const OrdemDeServicoDetalhePage = () => {
                             </table>
                     </div>
                 </div>
+
+                {/* SAVE & CLOSE BUTTON (New) */}
+                {['ABERTA', 'EM_ANDAMENTO'].includes(os.status) && (
+                    <div className="flex justify-end">
+                        <Button 
+                            variant="secondary" 
+                            onClick={handleSaveAndClose}
+                            className="bg-neutral-800 text-neutral-200 border border-neutral-700 hover:bg-neutral-900 shadow-lg px-8 py-4 text-sm font-bold uppercase tracking-wider flex items-center gap-2"
+                        >
+                            <Save size={18} /> Salvar e Fechar
+                        </Button>
+                    </div>
+                )}
 
                 {/* Totals & Actions - Keep as is (below everything) */}
                 <div className="relative overflow-hidden rounded-3xl bg-neutral-900 border border-neutral-800 shadow-2xl">

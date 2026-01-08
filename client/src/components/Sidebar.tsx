@@ -30,7 +30,7 @@ const menuItems = [
     icon: DollarSign,
     path: '/financeiro', // Base path for checking active state
     subItems: [
-        { path: '/financeiro/livro-caixa', label: 'Livro Caixa' },
+        { path: '/financeiro/livro-caixa', label: 'Movimentação de Caixa' },
         { path: '/financeiro/equipe', label: 'Pagamento de Equipe' },
         { path: '/financeiro/pagamento-pecas', label: 'Pagamento Auto Peças' },
         { path: '/financeiro/contas-pagar', label: 'Contas a Pagar (Geral)' },

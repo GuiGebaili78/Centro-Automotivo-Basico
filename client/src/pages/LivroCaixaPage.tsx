@@ -327,7 +327,7 @@ export const LivroCaixaPage = () => {
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-black text-neutral-900 tracking-tight">Livro Caixa</h1>
+                    <h1 className="text-2xl font-black text-neutral-900 tracking-tight">Movimentação de Caixa</h1>
                     <p className="text-neutral-500">Fluxo de caixa consolidado (Manual e Automático).</p>
                 </div>
                 <button 

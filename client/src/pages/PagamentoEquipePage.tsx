@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { StatusBanner } from '../components/ui/StatusBanner';
-import { DollarSign, ExternalLink, Calendar, CheckCircle2, User } from 'lucide-react';
+import { DollarSign, CheckCircle2, User, Search, AlertCircle } from 'lucide-react';
 
 import { useNavigate } from 'react-router-dom';
 
@@ -15,6 +15,7 @@ export const PagamentoEquipePage = () => {
     // Data States
     const [funcionarios, setFuncionarios] = useState<any[]>([]);
     const [pendentes, setPendentes] = useState<any[]>([]); 
+    const [valesPendentes, setValesPendentes] = useState<any[]>([]);
     const [historico, setHistorico] = useState<any[]>([]);
     
     // UI
@@ -23,6 +24,7 @@ export const PagamentoEquipePage = () => {
     // Filters (History Tab)
     const [filterHistStart, setFilterHistStart] = useState('');
     const [filterHistEnd, setFilterHistEnd] = useState('');
+    const [historySearchTerm, setHistorySearchTerm] = useState('');
 
     // --- EFFECTS ---
     useEffect(() => {
@@ -32,12 +34,14 @@ export const PagamentoEquipePage = () => {
     useEffect(() => {
         if (!selectedFuncId) {
             setPendentes([]);
+            setValesPendentes([]);
             setHistorico([]);
             return;
         }
         
         if (activeTab === 'PENDENTE') {
             loadPendentes(selectedFuncId);
+            loadVales(selectedFuncId);
         } else {
             loadHistorico(selectedFuncId);
         }
@@ -51,17 +55,19 @@ export const PagamentoEquipePage = () => {
     const loadPendentes = async (id: string) => {
         try {
             const res = await api.get(`/pagamento-equipe/pendentes/${id}`);
-            // Ensure we have the full functionality of the mapping if needed, 
-            // but the basic endpoint returns ServicoMaoDeObra with relations.
             setPendentes(res.data);
+        } catch (e) { console.error(e); }
+    };
+
+    const loadVales = async (id: string) => {
+        try {
+            const res = await api.get(`/pagamento-equipe/vales/${id}`);
+            setValesPendentes(res.data);
         } catch (e) { console.error(e); }
     };
 
     const loadHistorico = async (id: string) => {
         try {
-            // Fetch ALL and filter in memory OR fetch by ID if endpoint exists. 
-            // Currently endpoint /pagamento-equipe returns all. 
-            // We can filter client-side for now as per previous logic.
             const res = await api.get('/pagamento-equipe'); 
             const filtered = res.data.filter((h: any) => String(h.id_funcionario) === String(id));
             setHistorico(filtered); 
@@ -76,21 +82,98 @@ export const PagamentoEquipePage = () => {
         return { porcentagem, valorComissao };
     };
 
-    // --- FILTERS ---
-    const filteredHistorico = useMemo(() => {
-        return historico.filter(h => {
-             if (filterHistStart || filterHistEnd) {
-                 const dtPagStr = h.dt_pagamento ? h.dt_pagamento.split('T')[0] : '';
-                 if (filterHistStart && dtPagStr < filterHistStart) return false;
-                 if (filterHistEnd && dtPagStr > filterHistEnd) return false;
-             }
-             return true;
-        });
-    }, [historico, filterHistStart, filterHistEnd]);
+    // --- FILTERS & FLATTENING ---
+    const flattenedHistorico = useMemo(() => {
+        const flatList: any[] = [];
+        
+        historico.forEach(h => {
+            const dtPagamento = h.dt_pagamento ? h.dt_pagamento.split('T')[0] : '';
+            
+            // Check Date Range Filter
+            if (filterHistStart && dtPagamento < filterHistStart) return;
+            if (filterHistEnd && dtPagamento > filterHistEnd) return;
 
+            // 1. Add Commission Items (OSs)
+            if (h.servicos_pagos && h.servicos_pagos.length > 0) {
+                h.servicos_pagos.forEach((s: any) => {
+                    flatList.push({
+                        type: 'COMISSAO',
+                        id: s.id_servico_mao_de_obra,
+                        date: h.dt_pagamento,
+                        os: s.ordem_de_servico,
+                        value: s.valor, // Base labor value
+                        commissionValue: getComissaoInfo(selectedFuncId, Number(s.valor)).valorComissao,
+                        percentage: getComissaoInfo(selectedFuncId, Number(s.valor)).porcentagem,
+                        paymentId: h.id_pagamento_equipe,
+                        paymentMethod: h.forma_pagamento
+                    });
+                });
+            }
+
+            // 2. Add Bonus (Prêmio) if exists
+            if (Number(h.premio_valor) > 0) {
+                flatList.push({
+                    type: 'PREMIO',
+                    id: `premio-${h.id_pagamento_equipe}`,
+                    date: h.dt_pagamento,
+                    description: h.premio_descricao || 'Prêmio / Bônus',
+                    value: Number(h.premio_valor),
+                    paymentId: h.id_pagamento_equipe,
+                    paymentMethod: h.forma_pagamento
+                });
+            }
+
+            // 3. Add Vales (Adiantamentos) paid (Wait, `pagamento_equipe` table stores Vales as entries too)
+            // If the record itself IS a Vale payment (tipo_lancamento === 'VALE'), it's a dedicated row
+            if (h.tipo_lancamento === 'VALE') {
+                 flatList.push({
+                    type: 'VALE',
+                    id: `vale-${h.id_pagamento_equipe}`,
+                    date: h.dt_pagamento,
+                    description: `Adiantamento (Vale)${h.obs ? ' - ' + h.obs : ''}`,
+                    value: Number(h.valor_total),
+                    paymentId: h.id_pagamento_equipe,
+                    paymentMethod: h.forma_pagamento
+                });
+            }
+        });
+
+        // Search Filter
+        if (!historySearchTerm) return flatList;
+
+        const lowSearch = historySearchTerm.toLowerCase();
+
+        return flatList.filter(item => {
+            // Common fields
+            if (item.date && item.date.includes(lowSearch)) return true;
+            if (String(item.value).includes(lowSearch)) return true;
+            if (item.paymentMethod && item.paymentMethod.toLowerCase().includes(lowSearch)) return true;
+
+            // OS Specific
+            if (item.type === 'COMISSAO' && item.os) {
+                if (String(item.os.id_os).includes(lowSearch)) return true;
+                if (item.os.veiculo?.placa?.toLowerCase().includes(lowSearch)) return true;
+                if (item.os.veiculo?.modelo?.toLowerCase().includes(lowSearch)) return true;
+                if (item.os.veiculo?.cor?.toLowerCase().includes(lowSearch)) return true;
+                if (item.os.cliente?.pessoa_fisica?.pessoa?.nome?.toLowerCase().includes(lowSearch)) return true;
+                if (item.os.cliente?.pessoa_juridica?.razao_social?.toLowerCase().includes(lowSearch)) return true;
+            }
+
+            // Description Specific (Vale/Premio)
+            if (item.description && item.description.toLowerCase().includes(lowSearch)) return true;
+
+            return false;
+        });
+
+    }, [historico, filterHistStart, filterHistEnd, historySearchTerm, selectedFuncId, funcionarios]);
+
+    // Recalculate total based on filtered view
     const totalHistorico = useMemo(() => {
-        return filteredHistorico.reduce((acc, h) => acc + (Number(h.valor_total) || 0) + (Number(h.premio_valor) || 0), 0);
-    }, [filteredHistorico]);
+        return flattenedHistorico.reduce((acc, item) => {
+            if (item.type === 'COMISSAO') return acc + (item.commissionValue || 0);
+            return acc + (item.value || 0);
+        }, 0);
+    }, [flattenedHistorico]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -157,82 +240,131 @@ export const PagamentoEquipePage = () => {
                         
                         {/* TAB: PENDENTE */}
                         {activeTab === 'PENDENTE' && (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                                        <tr>
-                                            <th className="p-4">OS / Data</th>
-                                            <th className="p-4">Veículo / Cliente</th>
-                                            <th className="p-4 text-right">Valor Serviço</th>
-                                            <th className="p-4 text-center">%</th>
-                                            <th className="p-4 text-right">Valor A Receber</th>
-                                            <th className="p-4 text-center">Status OS</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-neutral-50">
-                                        {pendentes.length === 0 ? (
-                                            <tr><td colSpan={6} className="p-12 text-center text-neutral-400 font-bold">Nenhuma pendência encontrada para este colaborador.</td></tr>
-                                        ) : (
-                                            pendentes.map((item, idx) => {
-                                                const { porcentagem, valorComissao } = getComissaoInfo(selectedFuncId, Number(item.valor));
-                                                return (
-                                                    <tr key={`${item.id_os}-${idx}`} className="hover:bg-neutral-50 transition-colors">
-                                                        <td className="p-4">
-                                                            <div className="font-black text-neutral-800">#{item.id_os}</div>
-                                                            <div className="text-[10px] text-neutral-400">{new Date(item.ordem_de_servico?.dt_abertura).toLocaleDateString()}</div>
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <div className="text-xs font-bold text-neutral-800">
-                                                                {item.ordem_de_servico?.veiculo?.modelo} 
-                                                                {item.ordem_de_servico?.veiculo?.cor && <span className="text-neutral-500 font-normal ml-1">• {item.ordem_de_servico?.veiculo?.cor}</span>}
-                                                            </div>
-                                                            <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mt-0.5">{item.ordem_de_servico?.veiculo?.placa}</div>
-                                                            <div className="text-[10px] text-neutral-400 mt-0.5">{item.ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome || item.ordem_de_servico?.cliente?.pessoa_juridica?.razao_social}</div>
-                                                        </td>
-                                                        <td className="p-4 text-right">
-                                                            <span className="text-xs font-bold text-neutral-400">R$ {Number(item.valor).toFixed(2)}</span>
-                                                        </td>
-                                                        <td className="p-4 text-center">
-                                                            <span className="text-xs font-bold text-neutral-500 bg-neutral-100 px-2 py-1 rounded">{porcentagem}%</span>
-                                                        </td>
-                                                        <td className="p-4 text-right">
-                                                            <span className="font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded">R$ {valorComissao.toFixed(2)}</span>
-                                                        </td>
-                                                        <td className="p-4 text-center">
-                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase border ${
-                                                                item.ordem_de_servico?.status === 'ABERTA' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                item.ordem_de_servico?.status === 'FINALIZADA' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                                item.ordem_de_servico?.status === 'CANCELADA' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                                item.ordem_de_servico?.status === 'PRONTO_PARA_FINANCEIRO' ? 'bg-violet-50 text-violet-600 border-violet-100' :
-                                                                item.ordem_de_servico?.status === 'PAGA_CLIENTE' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
-                                                                'bg-gray-50 text-gray-600 border-gray-100'
-                                                            }`}>
-                                                                {item.ordem_de_servico?.status ? item.ordem_de_servico.status.replace(/_/g, ' ') : 'N/A'}
-                                                            </span>
-                                                        </td>
+                            <div className="p-0">
+                                {/* ADIANTAMENTOS EM ABERTO */}
+                                {valesPendentes.length > 0 && (
+                                    <div className="mb-6 border-b border-neutral-100 pb-2">
+                                        <div className="px-6 py-4 bg-amber-50/50 flex items-center gap-2">
+                                            <AlertCircle size={16} className="text-amber-500" />
+                                            <h3 className="text-xs font-black text-amber-700 uppercase tracking-widest">Adiantamentos (Vales) em Aberto</h3>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead className="bg-white text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                                                    <tr>
+                                                        <th className="px-6 py-2">Data</th>
+                                                        <th className="px-6 py-2">Descrição</th>
+                                                        <th className="px-6 py-2 text-right">Valor</th>
                                                     </tr>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
+                                                </thead>
+                                                <tbody className="divide-y divide-neutral-50">
+                                                    {valesPendentes.map((vale, idx) => (
+                                                        <tr key={`vale-${idx}`} className="text-sm">
+                                                            <td className="px-6 py-3">{new Date(vale.dt_pagamento).toLocaleDateString()}</td>
+                                                            <td className="px-6 py-3 text-neutral-600">{vale.obs || 'Adiantamento (Sem descrição)'}</td>
+                                                            <td className="px-6 py-3 text-right font-black text-amber-600">R$ {Number(vale.valor_total).toFixed(2)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="px-6 py-4 bg-neutral-50/50 border-b border-neutral-100">
+                                    <h3 className="text-xs font-black text-neutral-500 uppercase tracking-widest">Comissões Pendentes</h3>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                                            <tr>
+                                                <th className="p-4">OS / Data</th>
+                                                <th className="p-4">Veículo / Cliente</th>
+                                                <th className="p-4 text-right">Valor Serviço</th>
+                                                <th className="p-4 text-center">%</th>
+                                                <th className="p-4 text-right">Valor A Receber</th>
+                                                <th className="p-4 text-center">Status OS</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-neutral-50">
+                                            {pendentes.length === 0 ? (
+                                                <tr><td colSpan={6} className="p-12 text-center text-neutral-400 font-bold">Nenhuma comissão pendente encontrada.</td></tr>
+                                            ) : (
+                                                pendentes.map((item, idx) => {
+                                                    const { porcentagem, valorComissao } = getComissaoInfo(selectedFuncId, Number(item.valor));
+                                                    return (
+                                                        <tr key={`${item.id_os}-${idx}`} className="hover:bg-neutral-50 transition-colors">
+                                                            <td className="p-4">
+                                                                <div className="font-black text-neutral-800">#{item.id_os}</div>
+                                                                <div className="text-[10px] text-neutral-400">{new Date(item.ordem_de_servico?.dt_abertura).toLocaleDateString()}</div>
+                                                            </td>
+                                                            <td className="p-4">
+                                                                <div className="text-xs font-bold text-neutral-800">
+                                                                    {item.ordem_de_servico?.veiculo?.modelo} 
+                                                                    {item.ordem_de_servico?.veiculo?.cor && <span className="text-neutral-500 font-normal ml-1">• {item.ordem_de_servico?.veiculo?.cor}</span>}
+                                                                </div>
+                                                                <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mt-0.5">{item.ordem_de_servico?.veiculo?.placa}</div>
+                                                                <div className="text-[10px] text-neutral-400 mt-0.5">{item.ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome || item.ordem_de_servico?.cliente?.pessoa_juridica?.razao_social}</div>
+                                                            </td>
+                                                            <td className="p-4 text-right">
+                                                                <span className="text-xs font-bold text-neutral-400">R$ {Number(item.valor).toFixed(2)}</span>
+                                                            </td>
+                                                            <td className="p-4 text-center">
+                                                                <span className="text-xs font-bold text-neutral-500 bg-neutral-100 px-2 py-1 rounded">{porcentagem ? porcentagem : '0'}%</span>
+                                                            </td>
+                                                            <td className="p-4 text-right">
+                                                                <span className="font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded">R$ {valorComissao.toFixed(2)}</span>
+                                                            </td>
+                                                            <td className="p-4 text-center">
+                                                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase border ${
+                                                                    item.ordem_de_servico?.status === 'ABERTA' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                    item.ordem_de_servico?.status === 'FINALIZADA' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                                    item.ordem_de_servico?.status === 'CANCELADA' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                    item.ordem_de_servico?.status === 'PRONTO_PARA_FINANCEIRO' ? 'bg-violet-50 text-violet-600 border-violet-100' :
+                                                                    item.ordem_de_servico?.status === 'PAGA_CLIENTE' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
+                                                                    'bg-gray-50 text-gray-600 border-gray-100'
+                                                                }`}>
+                                                                    {item.ordem_de_servico?.status ? item.ordem_de_servico.status.replace(/_/g, ' ') : 'N/A'}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
-                        {/* TAB: PAGO */}
+                        {/* TAB: PAGO (HISTORICO) */}
                         {activeTab === 'PAGO' && (
                             <div>
-                                {/* FILTROS HISTORICO */}
-                                <div className="p-4 border-b border-neutral-100 flex gap-4 items-end bg-neutral-50/50">
-                                    <div>
-                                        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">De</label>
-                                        <input type="date" value={filterHistStart} onChange={e => setFilterHistStart(e.target.value)} className="px-3 py-2 bg-white border border-neutral-200 rounded-lg text-xs font-bold outline-none" />
+                                {/* FILTROS E BUSCA */}
+                                <div className="p-4 border-b border-neutral-100 flex flex-col md:flex-row gap-4 items-end bg-neutral-50/50">
+                                    <div className="flex gap-4 w-full md:w-auto">
+                                        <div>
+                                            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">De</label>
+                                            <input type="date" value={filterHistStart} onChange={e => setFilterHistStart(e.target.value)} className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-xs font-bold outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">Até</label>
+                                            <input type="date" value={filterHistEnd} onChange={e => setFilterHistEnd(e.target.value)} className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-xs font-bold outline-none" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">Até</label>
-                                        <input type="date" value={filterHistEnd} onChange={e => setFilterHistEnd(e.target.value)} className="px-3 py-2 bg-white border border-neutral-200 rounded-lg text-xs font-bold outline-none" />
+                                    
+                                    <div className="w-full relative">
+                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Buscar por OS, Placa, Cliente, Veículo..." 
+                                            value={historySearchTerm}
+                                            onChange={(e) => setHistorySearchTerm(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 bg-white border border-neutral-200 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-primary-500/20"
+                                        />
                                     </div>
-                                    <div className="ml-auto flex flex-col items-end">
+
+                                    <div className="ml-auto flex flex-col items-end min-w-max">
                                         <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400">Total Pago no Período</span>
                                         <span className="text-lg font-black text-neutral-900">R$ {totalHistorico.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                     </div>
@@ -243,76 +375,75 @@ export const PagamentoEquipePage = () => {
                                         <thead className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
                                             <tr>
                                                 <th className="p-4">Data Pagto</th>
-                                                <th className="p-4">Referência / Detalhes</th>
-                                                <th className="p-4">Valor Pago</th>
-                                                <th className="p-4 text-center">Status</th>
+                                                <th className="p-4">Tipo</th>
+                                                <th className="p-4">OS / Detalhe</th>
+                                                <th className="p-4">Veículo</th>
+                                                <th className="p-4">Cliente</th>
+                                                <th className="p-4 text-right">Valor Pago</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-neutral-50">
-                                            {filteredHistorico.length === 0 ? (
-                                                <tr><td colSpan={4} className="p-12 text-center text-neutral-400 font-bold">Nenhum histórico encontrado.</td></tr>
+                                            {flattenedHistorico.length === 0 ? (
+                                                <tr><td colSpan={6} className="p-12 text-center text-neutral-400 font-bold">Nenhum histórico encontrado.</td></tr>
                                             ) : (
-                                                filteredHistorico.flatMap(h => {
-                                                    // Flatten logic similar to before but simpler for single employee view
-                                                    if (h.tipo_lancamento === 'COMISSAO' && h.servicos_pagos?.length > 0) {
-                                                        const items = h.servicos_pagos.map((s: any) => ({ type: 'ITEM', parent: h, item: s }));
-                                                        if (Number(h.premio_valor) > 0) items.push({ type: 'PREMIO', parent: h });
-                                                        // Also show Discounted Vales if any (complex, maybe just show net total in header row?)
-                                                        // Let's show HEAD row anyway for summary
-                                                        return [{ type: 'HEAD', parent: h }, ...items];
-                                                    }
-                                                    return [{ type: 'HEAD', parent: h }];
-                                                }).map((row: any, idx) => {
-                                                    // RENDER ROWS
-                                                    if (row.type === 'HEAD') {
-                                                        const h = row.parent;
-                                                        const isVale = h.tipo_lancamento === 'VALE';
-                                                        return (
-                                                            <tr key={`head-${h.id_pagamento_equipe}-${idx}`} className="bg-neutral-50/30">
-                                                                <td className="p-4">
-                                                                    <div className="font-bold text-neutral-800">{new Date(h.dt_pagamento).toLocaleDateString()}</div>
-                                                                    <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider">{h.forma_pagamento}</div>
-                                                                </td>
-                                                                <td className="p-4">
-                                                                    <div className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded w-fit ${isVale ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                                        {isVale ? 'ADIANTAMENTO (VALE)' : 'PAGAMENTO / COMISSÃO'}
-                                                                    </div>
-                                                                    {h.obs && <div className="text-xs text-neutral-500 italic mt-1">{h.obs}</div>}
-                                                                </td>
-                                                                <td className="p-4 font-black">
-                                                                    R$ {Number(h.valor_total).toFixed(2)}
-                                                                </td>
-                                                                <td className="p-4 text-center">
-                                                                    <CheckCircle2 size={16} className="mx-auto text-emerald-500" />
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    } else if (row.type === 'ITEM') {
-                                                         const { item, parent } = row;
-                                                         const { valorComissao, porcentagem } = getComissaoInfo(selectedFuncId, Number(item.valor));
-                                                         return (
-                                                            <tr key={`item-${item.id_servico_mao_de_obra}-${idx}`} className="hover:bg-neutral-50 border-l-4 border-l-transparent hover:border-l-primary-500">
-                                                                <td className="p-4 pl-8 opacity-50 text-[10px]">↳ Detalhe OS</td>
-                                                                <td className="p-4">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="font-bold text-xs text-neutral-700">OS #{item.ordem_de_servico?.id_os}</span>
-                                                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
-                                                                           item.ordem_de_servico?.status === 'FINALIZADA' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-500'
-                                                                        }`}>
-                                                                            {item.ordem_de_servico?.status}
-                                                                        </span>
-                                                                    </div>
-                                                                </td>
-                                                                <td className="p-4 text-xs">
-                                                                    <span className="font-bold text-emerald-600">R$ {valorComissao.toFixed(2)}</span>
-                                                                    <span className="text-neutral-400 text-[10px] ml-1">({porcentagem}%)</span>
-                                                                </td>
-                                                                <td className="p-4"></td>
-                                                            </tr>
-                                                         )
-                                                    }
-                                                    return null;
-                                                }) 
+                                                flattenedHistorico.map((item, idx) => (
+                                                    <tr key={`${item.id}-${idx}`} className="hover:bg-neutral-50 transition-colors">
+                                                        <td className="p-4 text-xs font-bold text-neutral-600">
+                                                            {new Date(item.date).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider ${
+                                                                item.type === 'COMISSAO' ? 'bg-emerald-50 text-emerald-600' :
+                                                                item.type === 'VALE' ? 'bg-amber-50 text-amber-600' :
+                                                                'bg-blue-50 text-blue-600'
+                                                            }`}>
+                                                                {item.type}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            {item.type === 'COMISSAO' ? (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className="font-black text-neutral-800">OS #{item.os.id_os}</span>
+                                                                    {(item.os.defeito_relatado || item.os.diagnostico) && (
+                                                                        <div className="text-[10px] text-neutral-500 leading-tight bg-neutral-100/50 p-1.5 rounded-md border border-neutral-100 max-w-[200px]">
+                                                                            {item.os.defeito_relatado && <div className="mb-0.5"><span className="font-bold text-neutral-600">Def:</span> {item.os.defeito_relatado}</div>}
+                                                                            {item.os.diagnostico && <div><span className="font-bold text-neutral-600">Diag:</span> {item.os.diagnostico}</div>}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs font-medium text-neutral-600">{item.description}</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            {item.type === 'COMISSAO' ? (
+                                                                <div className="text-xs">
+                                                                    <div className="font-bold text-neutral-800">{item.os.veiculo?.modelo}</div>
+                                                                    <div className="text-[10px] text-neutral-500">{item.os.veiculo?.placa} • {item.os.veiculo?.cor}</div>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-neutral-300 transform scale-150 block w-4 h-[1px] bg-neutral-200 is-dash"></span>
+                                                            )}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            {item.type === 'COMISSAO' ? (
+                                                                <div className="text-xs font-medium text-neutral-700">
+                                                                    {item.os.cliente?.pessoa_fisica?.pessoa?.nome || item.os.cliente?.pessoa_juridica?.razao_social}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-neutral-300 transform scale-150 block w-4 h-[1px] bg-neutral-200 is-dash"></span>
+                                                            )}
+                                                        </td>
+                                                        <td className="p-4 text-right">
+                                                            <div className="font-black text-neutral-800 text-xs">
+                                                                R$ {(item.type === 'COMISSAO' ? item.commissionValue : item.value).toFixed(2)}
+                                                            </div>
+                                                            {item.type === 'COMISSAO' && (
+                                                                <div className="text-[9px] text-neutral-400">({item.percentage}%)</div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))
                                             )}
                                         </tbody>
                                     </table>
@@ -337,4 +468,3 @@ export const PagamentoEquipePage = () => {
         </div>
     );
 };
-

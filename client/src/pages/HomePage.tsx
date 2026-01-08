@@ -186,7 +186,7 @@ export function HomePage() {
             subtext="Geral / Fixas"
         />
         <StatCard 
-            title="Livro Caixa" 
+            title="Movimentação de Caixa" 
             value={stats.livroCaixaEntries + stats.livroCaixaExits} 
             color="bg-neutral-900" 
             onClick={() => navigate('/financeiro/livro-caixa')}
@@ -244,6 +244,7 @@ export function HomePage() {
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">OS / Data</th>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">Veículo</th>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">Diagnóstico</th>
+                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">Colaborador</th>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">Cliente</th>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest text-center">Status</th>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest text-right">Ações</th>
@@ -270,17 +271,11 @@ export function HomePage() {
                     <td className="p-4">
                         <div className="flex flex-col">
                             <span className="font-bold text-neutral-700 uppercase text-xs">
-                                {os.veiculo?.modelo || 'Modelo N/I'}
+                                {os.veiculo?.modelo || 'Modelo N/I'} {os.veiculo?.cor ? os.veiculo.cor : ''}
                             </span>
                             <span className="text-[10px] font-black text-neutral-400 uppercase">
                                 {os.veiculo?.placa || '---'}
                             </span>
-                             {os.veiculo?.cor && (
-                                <span className="text-[9px] font-bold text-neutral-500 uppercase flex items-center gap-1 mt-0.5">
-                                    <span className="w-2 h-2 rounded-full border border-neutral-200" style={{backgroundColor: os.veiculo.cor === 'PRATA' ? '#ccc' : os.veiculo.cor === 'BRANCO' ? '#fff' : os.veiculo.cor === 'PRETO' ? '#000' : 'gray'}}></span>
-                                    {os.veiculo.cor}
-                                </span>
-                            )}
                         </div>
                     </td>
                     <td className="p-4 max-w-[250px]">
@@ -289,8 +284,22 @@ export function HomePage() {
                         </p>
                     </td>
                     <td className="p-4">
+                        <p className="text-[10px] font-bold text-neutral-600 uppercase">
+                            {(() => {
+                                // @ts-ignore
+                                const mechanics = os.servicos_mao_de_obra?.map(s => s.funcionario?.pessoa_fisica?.pessoa?.nome?.split(' ')[0]).filter(Boolean);
+                                const uniqueMechanics = [...new Set(mechanics || [])];
+                                if (uniqueMechanics.length > 0) return uniqueMechanics.join(', ');
+                                return <span className="text-neutral-300">---</span>;
+                            })()}
+                        </p>
+                    </td>
+                    <td className="p-4">
                         <div className="font-bold text-neutral-700 text-xs truncate max-w-[150px]">
                             {os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.razao_social}
+                        </div>
+                        <div className="text-[10px] text-neutral-400 font-medium">
+                            {os.cliente?.telefone_1 || ''}
                         </div>
                     </td>
                     <td className="p-4 text-center">
