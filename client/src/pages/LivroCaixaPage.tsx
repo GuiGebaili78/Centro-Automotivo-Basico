@@ -116,7 +116,7 @@ export const LivroCaixaPage = () => {
                         id: `out-${p.id_pagamento_peca}`,
                         rawId: p.id_pagamento_peca,
                         date: p.data_pagamento_fornecedor || p.data_compra,
-                        description: `Fornecedor: ${p.item_os?.descricao || 'Peça'}`,
+                        description: `OS #${p.item_os?.id_os || '?'} - ${veh?.modelo || 'V'} ${veh?.cor || ''} (${veh?.placa || '?'}) - ${p.item_os?.descricao || 'Peça'}`,
                         type: 'OUT',
                         value: Number(p.custo_real),
                         category:  'Auto Peças', // Implicit category
@@ -413,11 +413,14 @@ export const LivroCaixaPage = () => {
                         
                         <div className="md:col-span-2">
                             <button 
-                                className="w-full bg-neutral-900 text-white px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-neutral-800 transition-transform hover:-translate-y-0.5 whitespace-nowrap"
+                                className="w-full bg-neutral-900 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl hover:bg-neutral-800 transition-all hover:scale-[1.02] active:scale-95 whitespace-nowrap text-sm tracking-wide"
                                 onClick={handleOpenCreate}
                             >
-                                <Plus size={24} />
-                                Novo Lançamento
+                                <Plus size={32} strokeWidth={3} />
+                                <div className="flex flex-col items-start leading-tight">
+                                    <span>NOVO</span>
+                                    <span className="text-[10px] opacity-70 font-medium">LANÇAMENTO</span>
+                                </div>
                             </button>
                         </div>
 

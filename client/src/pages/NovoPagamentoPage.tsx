@@ -25,6 +25,7 @@ export const NovoPagamentoPage = () => {
 
     // Values
     const [valorSalario, setValorSalario] = useState(''); // Salário Base (Editable)
+    const [includeSalary, setIncludeSalary] = useState(false); // Checkbox state
     const [valorPremio, setValorPremio] = useState('');   // Prêmio Extra
     
     // Common Inputs
@@ -143,10 +144,10 @@ export const NovoPagamentoPage = () => {
     }, [valesPendentes, selectedVales]);
 
     const finalTotalPagamento = useMemo(() => {
-        const salario = Number(valorSalario) || 0;
+        const salario = includeSalary ? (Number(valorSalario) || 0) : 0;
         const premios = Number(valorPremio) || 0;
         return (salario + totalComissoes + premios) - totalDescontos;
-    }, [valorSalario, totalComissoes, valorPremio, totalDescontos]);
+    }, [valorSalario, totalComissoes, valorPremio, totalDescontos, includeSalary]);
 
 
     // --- HANDLERS ---
@@ -191,7 +192,8 @@ export const NovoPagamentoPage = () => {
                     premio_valor: valorPremio || null,
                     premio_descricao: obsExtra || null,
                     tipo_lancamento: 'COMISSAO', // Or 'PAGAMENTO' if backend supports, keeping 'COMISSAO' for now as it consolidates OSs
-                    referencia_inicio: null
+                    referencia_inicio: null,
+                    include_salary: includeSalary // Helper for backend if needed, or simply logic handles it by value passed
                 });
             }
 
@@ -437,12 +439,24 @@ export const NovoPagamentoPage = () => {
                                 <>
                                     {/* PAGAMENTO MODE INPUTS */}
                                     <div>
-                                        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">Pagamento (Base Salarial R$)</label>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <input 
+                                                type="checkbox" 
+                                                id="chkSalary"
+                                                checked={includeSalary}
+                                                onChange={e => setIncludeSalary(e.target.checked)}
+                                                className="w-4 h-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                                            />
+                                            <label htmlFor="chkSalary" className="text-[10px] font-black text-neutral-400 uppercase tracking-widest cursor-pointer select-none">
+                                                Incluir Pagamento de Contrato?
+                                            </label>
+                                        </div>
                                         <input 
                                             type="number"
+                                            disabled={!includeSalary}
                                             value={valorSalario}
                                             onChange={e => setValorSalario(e.target.value)}
-                                            className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold outline-none focus:ring-2 focus:ring-primary-500/20"
+                                            className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:bg-neutral-100"
                                             placeholder="0.00"
                                         />
                                     </div>
@@ -510,7 +524,9 @@ export const NovoPagamentoPage = () => {
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-xs text-neutral-400">
                                         <span>(+) Pagamento</span>
-                                        <span className="font-bold text-emerald-400">R$ {(Number(valorSalario)||0).toFixed(2)}</span>
+                                        <span className={`font-bold ${includeSalary ? 'text-emerald-400' : 'text-neutral-600 line-through opacity-50'}`}>
+                                            R$ {includeSalary ? (Number(valorSalario)||0).toFixed(2) : '0.00'}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between text-xs text-neutral-400">
                                         <span>(+) Comissões</span>

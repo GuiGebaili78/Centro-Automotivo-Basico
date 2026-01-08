@@ -29,6 +29,9 @@ export const CategoryManager = ({ isOpen, onClose, onUpdate }: CategoryManagerPr
     const [editName, setEditName] = useState('');
     const [editType, setEditType] = useState('AMBOS');
 
+    // UI State
+    const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+
     useEffect(() => {
         if (isOpen) {
              loadCategories(); // This will hit the backend which now syncs
@@ -62,8 +65,7 @@ export const CategoryManager = ({ isOpen, onClose, onUpdate }: CategoryManagerPr
     };
 
     const handleDelete = async (id: number, replacement?: string) => {
-        if (!replacement && !confirm('Tem certeza que deseja excluir esta categoria?')) return;
-        
+        // Direct delete (called from confirm UI)
         try {
             // Need to pass replacement in body if it exists. Note: axios delete config for body is distinct.
             await api.delete(`/categoria-financeira/${id}`, { 
@@ -77,6 +79,7 @@ export const CategoryManager = ({ isOpen, onClose, onUpdate }: CategoryManagerPr
             onUpdate();
         } catch (error: any) {
             if (error.response && error.response.status === 409) {
+                setDeleteConfirmId(null); // Close simple delete confirm
                 setConflictData({
                     id,
                     message: error.response.data.message,
@@ -87,8 +90,10 @@ export const CategoryManager = ({ isOpen, onClose, onUpdate }: CategoryManagerPr
                 if (firstAvailable) setReplacementCat(firstAvailable.nome);
             } else {
                 console.error(error);
-                alert('Erro ao excluir categoria');
+                // alert('Erro ao excluir categoria'); // Replaced with console error for now, or could use a toast if available
             }
+        } finally {
+             // clean up state if needed
         }
     };
 
@@ -109,7 +114,6 @@ export const CategoryManager = ({ isOpen, onClose, onUpdate }: CategoryManagerPr
             onUpdate();
         } catch (error) {
             console.error(error);
-            alert('Erro ao editar categoria');
             loadCategories(); // Revert on error
         }
     };
@@ -147,6 +151,18 @@ export const CategoryManager = ({ isOpen, onClose, onUpdate }: CategoryManagerPr
                         <div className="flex gap-2">
                             <button onClick={() => setConflictData(null)} className="flex-1 py-2 font-bold text-neutral-500 hover:bg-white rounded-lg transition-colors">Cancelar</button>
                             <button onClick={() => handleDelete(conflictData.id, replacementCat)} className="flex-1 py-2 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 transition-colors">Confirmar Troca</button>
+                        </div>
+                    </div>
+                ) : deleteConfirmId ? (
+                    <div className="bg-red-50 border border-red-100 p-4 rounded-xl mb-6 animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center gap-3 text-red-600 mb-2">
+                            <Trash2 size={20} />
+                            <h3 className="font-bold">Excluir Categoria?</h3>
+                        </div>
+                        <p className="text-sm text-neutral-600 mb-4">Esta ação não pode ser desfeita. Se houver lançamentos vinculados, você precisará escolher um substituto.</p>
+                        <div className="flex gap-2">
+                             <button onClick={() => setDeleteConfirmId(null)} className="flex-1 py-2 font-bold text-neutral-500 hover:bg-white rounded-lg transition-colors">Cancelar</button>
+                             <button onClick={() => handleDelete(deleteConfirmId)} className="flex-1 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors">Sim, Excluir</button>
                         </div>
                     </div>
                 ) : (
@@ -218,7 +234,7 @@ export const CategoryManager = ({ isOpen, onClose, onUpdate }: CategoryManagerPr
                                                     <Edit2 size={16} />
                                                 </button>
                                                 <button 
-                                                    onClick={() => handleDelete(cat.id_categoria)}
+                                                    onClick={() => setDeleteConfirmId(cat.id_categoria)}
                                                     className="text-neutral-300 hover:text-red-500 transition-colors p-2"
                                                 >
                                                     <Trash2 size={16} />
