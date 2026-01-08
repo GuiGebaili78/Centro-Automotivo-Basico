@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { StatusBanner } from '../components/ui/StatusBanner';
-import { DollarSign, CheckCircle2, User, Search, AlertCircle } from 'lucide-react';
+import { DollarSign, User, Search, AlertCircle } from 'lucide-react';
 
 import { useNavigate } from 'react-router-dom';
 
