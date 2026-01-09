@@ -458,6 +458,7 @@ export const PagamentoPecaPage = () => {
                                 <th className="p-5">Peça</th>
                                 <th className="p-5">Fornecedor</th>
                                 <th className="p-5">Veículo / OS</th>
+                                <th className="p-5">Status OS</th>
                                 <th className="p-5 text-right w-32">Valor Custo</th>
                                 <th className="p-5 text-center w-24">Pagar</th>
                                 <th className="p-5 text-center w-16">Editar</th>
@@ -494,11 +495,15 @@ export const PagamentoPecaPage = () => {
                                             </div>
                                         </td>
                                         <td className="p-5">
-                                            <div>
+                                            <div className="flex flex-col">
                                                 <p className="font-black text-neutral-800 text-xs uppercase tracking-widest bg-neutral-100 px-2 py-1 rounded w-fit">
-                                                    {p.item_os?.ordem_de_servico?.veiculo?.placa || '---'} - {p.item_os?.ordem_de_servico?.veiculo?.modelo || 'N/A'}
+                                                    {p.item_os?.ordem_de_servico?.veiculo?.placa || '---'}
                                                 </p>
-                                                <p className="text-[10px] text-neutral-400 font-bold mt-1">OS #{p.item_os?.id_os}</p>
+                                                <p className="text-[10px] text-neutral-500 font-bold mt-1 uppercase">
+                                                    {p.item_os?.ordem_de_servico?.veiculo?.modelo || 'N/A'} {p.item_os?.ordem_de_servico?.veiculo?.cor ? `• ${p.item_os.ordem_de_servico.veiculo.cor}` : ''}
+                                                </p>
+                                                
+                                                <p className="text-[10px] text-neutral-400 font-bold mt-0.5">OS #{p.item_os?.id_os}</p>
                                                 {/* Optional: Show OS Finish Date if available */}
                                                 {p.item_os?.ordem_de_servico?.dt_entrega && (
                                                     <p className="text-[9px] text-green-600 font-bold mt-1">
@@ -506,6 +511,26 @@ export const PagamentoPecaPage = () => {
                                                     </p>
                                                 )}
                                             </div>
+                                        </td>
+                                        <td className="p-5">
+                                             {(() => {
+                                                 const st = p.item_os?.ordem_de_servico?.status || 'ABERTA';
+                                                 const styles: Record<string, string> = {
+                                                    'FINALIZADA': 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+                                                    'PAGA_CLIENTE': 'bg-neutral-100 text-neutral-600 ring-neutral-200',
+                                                    'PRONTO PARA FINANCEIRO': 'bg-amber-100 text-amber-700 ring-amber-200',
+                                                    'ABERTA': 'bg-blue-100 text-blue-700 ring-blue-200',
+                                                    'EM_ANDAMENTO': 'bg-cyan-100 text-cyan-700 ring-cyan-200',
+                                                    'CANCELADA': 'bg-red-100 text-red-700 ring-red-200'
+                                                 };
+                                                 const style = styles[st] || 'bg-gray-50 text-gray-500 ring-gray-200';
+                                                 
+                                                 return (
+                                                     <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ring-1 whitespace-nowrap ${style}`}>
+                                                         {st.replace(/_/g, ' ')}
+                                                     </span>
+                                                 );
+                                             })()}
                                         </td>
                                         <td className="p-5 text-right font-black text-neutral-900">
                                             R$ {Number(p.custo_real).toFixed(2)}

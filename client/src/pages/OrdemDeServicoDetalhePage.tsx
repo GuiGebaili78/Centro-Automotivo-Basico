@@ -535,7 +535,15 @@ export const OrdemDeServicoDetalhePage = () => {
                                 {osItems.map(item => (
                                     <tr key={item.id_iten} className="hover:bg-neutral-50/50 transition-colors group">
                                         <td className="p-3 pl-4">
-                                            <div className="font-bold text-sm text-neutral-700">{item.descricao}</div>
+                                            <div className="font-bold text-sm text-neutral-700">
+                                                {item.descricao}
+                                                {/* STATUS PAGO */}
+                                                {item.pagamentos_peca && item.pagamentos_peca.length > 0 && item.pagamentos_peca.some((pp: any) => pp.pago_ao_fornecedor) && (
+                                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-green-100 text-green-700 tracking-wider border border-green-200">
+                                                        PAGO
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="p-3">
                                             <div className="text-[10px] text-neutral-400 font-medium font-mono bg-neutral-100 px-2 py-0.5 rounded-md w-fit">{item.codigo_referencia || '-'}</div>
@@ -546,8 +554,17 @@ export const OrdemDeServicoDetalhePage = () => {
                                         <td className="p-3 text-right pr-4">
                                                 {os.status !== 'FINALIZADA' && os.status !== 'PAGA_CLIENTE' && (
                                                 <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => handleEditItem(item)} className="p-1.5 hover:bg-blue-50 text-neutral-400 hover:text-blue-600 rounded-md transition-colors"><PenTool size={14} /></button>
-                                                    <button onClick={() => handleDeleteItem(item.id_iten)} className="p-1.5 hover:bg-red-50 text-neutral-400 hover:text-red-600 rounded-md transition-colors"><X size={14} /></button>
+                                                    {/* Lock actions if paid */}
+                                                    {item.pagamentos_peca && item.pagamentos_peca.length > 0 && item.pagamentos_peca.some((pp: any) => pp.pago_ao_fornecedor) ? (
+                                                        <span className="text-[9px] font-bold text-neutral-400 uppercase flex items-center gap-1">
+                                                            <DollarSign size={10} /> Pago
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={() => handleEditItem(item)} className="p-1.5 hover:bg-blue-50 text-neutral-400 hover:text-blue-600 rounded-md transition-colors"><PenTool size={14} /></button>
+                                                            <button onClick={() => handleDeleteItem(item.id_iten)} className="p-1.5 hover:bg-red-50 text-neutral-400 hover:text-red-600 rounded-md transition-colors"><X size={14} /></button>
+                                                        </>
+                                                    )}
                                                 </div>
                                                 )}
                                         </td>

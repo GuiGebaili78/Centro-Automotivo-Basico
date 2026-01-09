@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { FechamentoFinanceiroForm } from '../components/forms/FechamentoFinanceiroForm';
+// Removed FechamentoFinanceiroForm import
 import { Modal } from '../components/ui/Modal';
 import { Search, Trash2, Edit } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { StatusBanner } from '../components/ui/StatusBanner';
 
 interface IFechamentoFinanceiro {
@@ -41,17 +41,18 @@ interface IOS {
 
 export const FechamentoFinanceiroPage = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const [fechamentos, setFechamentos] = useState<IFechamentoFinanceiro[]>([]);
     const [pendingOss, setPendingOss] = useState<IOS[]>([]);
-    const [showModal, setShowModal] = useState(false);
-    const [selectedOsId, setSelectedOsId] = useState<number | null>(null);
+    // Removed showModal state
+    // Removed selectedOsId state
     const [searchTerm, setSearchTerm] = useState('');
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
     const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
     
     // Date Filters
-    const [filterStart, setFilterStart] = useState('');
-    const [filterEnd, setFilterEnd] = useState('');
+    const [filterStart, setFilterStart] = useState(new Date().toLocaleDateString('en-CA'));
+    const [filterEnd, setFilterEnd] = useState(new Date().toLocaleDateString('en-CA'));
 
     useEffect(() => {
         loadData();
@@ -74,12 +75,11 @@ export const FechamentoFinanceiroPage = () => {
             
             setFechamentos(fechamentosRes.data);
             
-            // Filter OSs that are ready for finance but don't have a closing record yet
             const allOss = osRes.data;
-            // Also include FINALIZADA because sometimes they might need closing adjustments? 
-            // The prompt says "Aguardando Consolidação" -> Usually PRONTO PARA FINANCEIRO
+            // Filter OSs: Em Andamento, Aberta, Pronto Para Financeiro (and Finalizada if pending logic applies, usually Finalizada has fechamento)
+            // But if Finalizada DOES NOT have Fechamento, we show it too.
             const pending = allOss.filter((os: IOS) => 
-                (os.status === 'PRONTO PARA FINANCEIRO' || os.status === 'FINALIZADA') && 
+                ['ABERTA', 'EM_ANDAMENTO', 'PRONTO PARA FINANCEIRO', 'FINALIZADA'].includes(os.status) && 
                 !os.fechamento_financeiro &&
                 !fechamentosRes.data.some((f: IFechamentoFinanceiro) => f.id_os === os.id_os)
             );
@@ -92,13 +92,11 @@ export const FechamentoFinanceiroPage = () => {
     };
 
     const handleOpenFechamento = (id_os: number) => {
-        setSelectedOsId(id_os);
-        setShowModal(true);
+        navigate(`/fechamento-financeiro/${id_os}`);
     };
 
     const handleEditFechamento = (fechamento: IFechamentoFinanceiro) => {
-        setSelectedOsId(fechamento.id_os);
-        setShowModal(true);
+        navigate(`/fechamento-financeiro/${fechamento.id_os}`);
     };
 
     const handleDelete = async (id: number) => {
@@ -119,23 +117,7 @@ export const FechamentoFinanceiroPage = () => {
         });
     };
 
-    const handleReopenOs = async (id_os: number) => {
-        setConfirmModal({
-            isOpen: true,
-            title: 'Reabrir OS',
-            message: "Deseja reabrir esta OS para edição? Ela voltará para o status 'ABERTA'.",
-            onConfirm: async () => {
-                try {
-                    await api.put(`/ordem-de-servico/${id_os}`, { status: 'ABERTA' });
-                    setStatusMsg({ type: 'success', text: 'OS reaberta com sucesso!' });
-                    loadData();
-                    setConfirmModal(prev => ({...prev, isOpen: false}));
-                } catch (error) {
-                    setStatusMsg({ type: 'error', text: 'Erro ao reabrir OS.' });
-                }
-            }
-        });
-    };
+
 
     const getClientName = (os: IOS) => {
         return os.cliente?.pessoa_fisica?.pessoa?.nome || 
@@ -145,7 +127,7 @@ export const FechamentoFinanceiroPage = () => {
 
     const applyQuickFilter = (type: 'TODAY' | 'WEEK' | 'MONTH') => {
         const now = new Date();
-        const todayStr = now.toLocaleDateString('en-CA'); // Local YYYY-MM-DD
+        const todayStr = now.toLocaleDateString('en-CA');
         
         if (type === 'TODAY') {
             setFilterStart(todayStr);
@@ -163,14 +145,9 @@ export const FechamentoFinanceiroPage = () => {
     };
 
     const filteredFechamentos = fechamentos.filter(f => {
-        // Date Filter
         if (filterStart) {
-            // Fix: Compare using Local Date Strings to avoid Timezone shifts (e.g. UTC-3)
-            // 'filterStart' is YYYY-MM-DD from input. 
-            // We must convert the record's ISO timestamp to YYYY-MM-DD in Local Time.
             const recordDate = new Date(f.data_fechamento_financeiro);
-            const recordDateLocal = recordDate.toLocaleDateString('en-CA'); // YYYY-MM-DD Local
-            
+            const recordDateLocal = recordDate.toLocaleDateString('en-CA');
             if (recordDateLocal < filterStart) return false;
         }
         if (filterEnd) {
@@ -240,19 +217,17 @@ export const FechamentoFinanceiroPage = () => {
                                             </div>
                                         </td>
                                         <td className="p-5">
-                                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700 uppercase">
-                                                {os.status}
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                                                os.status === 'ABERTA' ? 'bg-blue-100 text-blue-700' : 
+                                                os.status === 'FINALIZADA' ? 'bg-emerald-100 text-emerald-700' :
+                                                'bg-orange-100 text-orange-700'
+                                            }`}>
+                                                {os.status.replace(/_/g, ' ')}
                                             </span>
                                         </td>
                                         <td className="p-5 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button 
-                                                    onClick={() => handleReopenOs(os.id_os)}
-                                                    className="bg-white border border-gray-200 text-gray-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                                                    title="Reabrir OS para edição"
-                                                >
-                                                    Reabrir OS
-                                                </button>
+                                                {/* Reopen OS currently ONLY makes sense if it was FINALIZED but not Closed financially? Or logic in handleReopen handles it. */}
                                                 <button 
                                                     onClick={() => handleOpenFechamento(os.id_os)}
                                                     className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-gray-800 transition-all hover:-translate-y-0.5"
@@ -399,21 +374,6 @@ export const FechamentoFinanceiroPage = () => {
                     </table>
                 </div>
             </div>
-
-            {showModal && (
-                <Modal title={selectedOsId ? "Detalhes do Fechamento" : "Novo Fechamento"} onClose={() => setShowModal(false)} className="max-w-5xl">
-                    <FechamentoFinanceiroForm 
-                        preSelectedOsId={selectedOsId}
-                        onSuccess={() => {
-                            setShowModal(false);
-                            loadData();
-                            setStatusMsg({ type: 'success', text: 'Operação realizada com sucesso!' });
-                            setTimeout(() => setStatusMsg({type: null, text: ''}), 3000);
-                        }}
-                        onCancel={() => setShowModal(false)}
-                    />
-                </Modal>
-            )}
 
             {confirmModal.isOpen && (
                 <Modal title={confirmModal.title} onClose={() => setConfirmModal(prev => ({...prev, isOpen: false}))}>

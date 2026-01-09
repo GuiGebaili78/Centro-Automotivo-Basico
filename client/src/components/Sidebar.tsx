@@ -34,7 +34,7 @@ const menuItems = [
         { path: '/financeiro/equipe', label: 'Pagamento de Equipe' },
         { path: '/financeiro/pagamento-pecas', label: 'Pagamento Auto Peças' },
         { path: '/financeiro/contas-pagar', label: 'Contas a Pagar (Geral)' },
-        { path: '/fechamento-financeiro', label: 'Detalhes Fechamento (OS)' }
+        { path: '/fechamento-financeiro', label: 'Gestão Financeira' }
     ]
   },
 ];

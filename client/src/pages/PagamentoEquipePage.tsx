@@ -123,8 +123,7 @@ export const PagamentoEquipePage = () => {
                 });
             }
 
-            // 3. Add Vales (Adiantamentos) paid (Wait, `pagamento_equipe` table stores Vales as entries too)
-            // If the record itself IS a Vale payment (tipo_lancamento === 'VALE'), it's a dedicated row
+            // 3. Add Vales (Adiantamentos) paid 
             if (h.tipo_lancamento === 'VALE') {
                  flatList.push({
                     type: 'VALE',
@@ -135,6 +134,30 @@ export const PagamentoEquipePage = () => {
                     paymentId: h.id_pagamento_equipe,
                     paymentMethod: h.forma_pagamento
                 });
+            }
+
+            // 4. Add Salary/Other Check (Residual Value)
+            // If the payment total is greater than the sum of commissions + bonuses, the remainder is Salário/Contrato
+            const commissionTotal = h.servicos_pagos ? h.servicos_pagos.reduce((acc: number, s: any) => acc + Number(s.valor), 0) : 0;
+            const premioVal = Number(h.premio_valor) || 0;
+            // valeVal was unused
+            
+            // If it is NOT a Vale record, we check for residuals
+            if (h.tipo_lancamento !== 'VALE') {
+                const totalExplained = commissionTotal + premioVal;
+                const residual = Number(h.valor_total) - totalExplained;
+
+                if (residual > 0.05) { // Tolerance for float math
+                    flatList.push({
+                        type: 'SALARIO',
+                        id: `salario-${h.id_pagamento_equipe}`,
+                        date: h.dt_pagamento,
+                        description: h.obs || 'Pagamento / Salário',
+                        value: residual,
+                        paymentId: h.id_pagamento_equipe,
+                        paymentMethod: h.forma_pagamento
+                    });
+                }
             }
         });
 
@@ -422,7 +445,7 @@ export const PagamentoEquipePage = () => {
                                                                     <div className="text-[10px] text-neutral-500">{item.os.veiculo?.placa} • {item.os.veiculo?.cor}</div>
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-neutral-300 transform scale-150 block w-4 h-[1px] bg-neutral-200 is-dash"></span>
+                                                                <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash"></span>
                                                             )}
                                                         </td>
                                                         <td className="p-4">
@@ -431,7 +454,7 @@ export const PagamentoEquipePage = () => {
                                                                     {item.os.cliente?.pessoa_fisica?.pessoa?.nome || item.os.cliente?.pessoa_juridica?.razao_social}
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-neutral-300 transform scale-150 block w-4 h-[1px] bg-neutral-200 is-dash"></span>
+                                                                <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash"></span>
                                                             )}
                                                         </td>
                                                         <td className="p-4 text-right">

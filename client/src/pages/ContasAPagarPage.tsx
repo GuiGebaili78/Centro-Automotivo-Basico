@@ -16,8 +16,8 @@ export const ContasAPagarPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Date Filters
-    const [filterStart, setFilterStart] = useState('');
-    const [filterEnd, setFilterEnd] = useState('');
+    const [filterStart, setFilterStart] = useState(new Date().toLocaleDateString('en-CA'));
+    const [filterEnd, setFilterEnd] = useState(new Date().toLocaleDateString('en-CA'));
 
     // Modal & Form
     const [modalOpen, setModalOpen] = useState(false);

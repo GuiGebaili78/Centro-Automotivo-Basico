@@ -38,8 +38,8 @@ export const LivroCaixaPage = () => {
     
     // Filters
     const [cashSearch, setCashSearch] = useState('');
-    const [cashFilterStart, setCashFilterStart] = useState('');
-    const [cashFilterEnd, setCashFilterEnd] = useState('');
+    const [cashFilterStart, setCashFilterStart] = useState(new Date().toLocaleDateString('en-CA'));
+    const [cashFilterEnd, setCashFilterEnd] = useState(new Date().toLocaleDateString('en-CA'));
     const [filterSource, setFilterSource] = useState<'ALL' | 'MANUAL' | 'AUTO'>('ALL');
     const [filterCategory, setFilterCategory] = useState<string>('ALL');
 
