@@ -13,7 +13,7 @@ export const PecasEstoqueForm = ({ onSuccess, onCancel }: PecasEstoqueFormProps)
     // Form States
     const [nome, setNome] = useState('');
     const [descricao, setDescricao] = useState('');
-    const [fabricante, setFabricante] = useState('');
+
     const [unidadeMedida, setUnidadeMedida] = useState('');
     const [valorCusto, setValorCusto] = useState('');
     const [valorVenda, setValorVenda] = useState('');
