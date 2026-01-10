@@ -16,8 +16,13 @@ export const ContasAPagarPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Date Filters
-    const [filterStart, setFilterStart] = useState(new Date().toLocaleDateString('en-CA'));
-    const [filterEnd, setFilterEnd] = useState(new Date().toLocaleDateString('en-CA'));
+    // Date Filters - Default to Current Month
+    const date = new Date();
+    const firstDayCurrent = new Date(date.getFullYear(), date.getMonth(), 1).toLocaleDateString('en-CA');
+    const lastDayCurrent = new Date(date.getFullYear(), date.getMonth() + 1, 0).toLocaleDateString('en-CA');
+
+    const [filterStart, setFilterStart] = useState(firstDayCurrent);
+    const [filterEnd, setFilterEnd] = useState(lastDayCurrent);
 
     // Modal & Form
     const [modalOpen, setModalOpen] = useState(false);
@@ -140,14 +145,17 @@ export const ContasAPagarPage = () => {
             setFilterStart(todayStr);
             setFilterEnd(todayStr);
         } else if (type === 'WEEK') {
-             const weekAgo = new Date(now);
-             weekAgo.setDate(now.getDate() - 7);
-             setFilterStart(weekAgo.toLocaleDateString('en-CA'));
-             setFilterEnd(todayStr);
+             const weekStart = new Date(now);
+             weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+             const weekEnd = new Date(now);
+             weekEnd.setDate(weekStart.getDate() + 6); // End of week
+             setFilterStart(weekStart.toLocaleDateString('en-CA'));
+             setFilterEnd(weekEnd.toLocaleDateString('en-CA'));
         } else if (type === 'MONTH') {
              const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+             const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
              setFilterStart(firstDay.toLocaleDateString('en-CA'));
-             setFilterEnd(todayStr);
+             setFilterEnd(lastDay.toLocaleDateString('en-CA'));
         }
     };
 

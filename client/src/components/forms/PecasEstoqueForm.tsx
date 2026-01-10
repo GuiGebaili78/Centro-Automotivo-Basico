@@ -27,7 +27,6 @@ export const PecasEstoqueForm = ({ onSuccess, onCancel }: PecasEstoqueFormProps)
             const payload = {
                 nome,
                 descricao,
-                fabricante,
                 unidade_medida: unidadeMedida,
                 valor_custo: Number(valorCusto),
                 valor_venda: Number(valorVenda),
@@ -58,10 +57,6 @@ export const PecasEstoqueForm = ({ onSuccess, onCancel }: PecasEstoqueFormProps)
                     <input value={descricao} onChange={e => setDescricao(e.target.value)} className="w-full border p-2 rounded border-gray-300" required />
                 </div>
                 
-                <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Fabricante</label>
-                    <input value={fabricante} onChange={e => setFabricante(e.target.value)} className="w-full border p-2 rounded border-gray-300" />
-                </div>
                 <div>
                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Unidade Medida</label>
                     <input value={unidadeMedida} onChange={e => setUnidadeMedida(e.target.value)} className="w-full border p-2 rounded border-gray-300" placeholder="Ex: UN, KG, LT" />

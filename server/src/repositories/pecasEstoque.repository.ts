@@ -9,7 +9,20 @@ export class PecasEstoqueRepository {
   }
 
   async findAll() {
-    return await prisma.pecasEstoque.findMany();
+    return await prisma.pecasEstoque.findMany({
+        include: {
+            itens_entrada: {
+                take: 1,
+                orderBy: { id_item_entrada: 'desc' },
+                include: {
+                    entrada: {
+                        include: { fornecedor: true }
+                    }
+                }
+            }
+        },
+        orderBy: { nome: 'asc' }
+    });
   }
 
   async findById(id: number) {
@@ -36,11 +49,21 @@ export class PecasEstoqueRepository {
       where: {
         OR: [
           { nome: { contains: query, mode: 'insensitive' } },
-          { fabricante: { contains: query, mode: 'insensitive' } },
           { descricao: { contains: query, mode: 'insensitive' } },
         ]
       },
-      take: 20
+      take: 20,
+      include: {
+          itens_entrada: {
+              take: 1,
+              orderBy: { id_item_entrada: 'desc' },
+              include: {
+                  entrada: {
+                      include: { fornecedor: true }
+                  }
+              }
+          }
+      },
     });
   }
 
@@ -82,7 +105,6 @@ export class PecasEstoqueRepository {
                       data: {
                           nome: item.new_part_data.nome,
                           descricao: item.new_part_data.descricao || item.new_part_data.nome,
-                          fabricante: item.new_part_data.fabricante || 'Genérico',
                           unidade_medida: item.new_part_data.unidade_medida || 'UN',
                           estoque_atual: 0, // Will act increment below
                           valor_custo: item.valor_custo,
@@ -124,6 +146,39 @@ export class PecasEstoqueRepository {
               });
           }
           
+    // 3. Process Financials (Contas a Pagar + Livro Caixa)
+          // We check if 'financeiro' data was passed in the 'data' argument (need to update type definition first)
+          if ((data as any).financeiro) {
+              const fin = (data as any).financeiro;
+              
+              const conta = await tx.contasPagar.create({
+                  data: {
+                      descricao: fin.descricao,
+                      valor: fin.valor,
+                      dt_vencimento: new Date(fin.dt_vencimento),
+                      dt_pagamento: fin.status === 'PAGO' ? new Date(fin.dt_pagamento) : null,
+                      status: fin.status,
+                      categoria: 'PEÇAS',
+                      obs: `Ref. Entrada Estoque #${entrada.id_entrada}`
+                  }
+              });
+
+              // If PAID, create Livro Caixa movement
+              if (fin.status === 'PAGO') {
+                  await tx.livroCaixa.create({
+                      data: {
+                          descricao: `Pagamento Compra Peças - ${fin.descricao}`,
+                          valor: fin.valor,
+                          tipo_movimentacao: 'SAIDA',
+                          categoria: 'FORNECEDOR',
+                          origem: 'AUTOMATICA',
+                          dt_movimentacao: new Date(fin.dt_pagamento),
+                          obs: `Vinculado a Conta Pagar #${conta.id_conta_pagar}`
+                      }
+                  });
+              }
+          }
+          
           return entrada;
       });
   }
@@ -131,7 +186,7 @@ export class PecasEstoqueRepository {
   async getAvailability(id: number) {
       const part = await prisma.pecasEstoque.findUnique({
           where: { id_pecas_estoque: id },
-          select: { estoque_atual: true, nome: true }
+          select: { estoque_atual: true, nome: true, valor_venda: true, id_pecas_estoque: true }
       });
       
       if (!part) return null;

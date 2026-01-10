@@ -97,32 +97,49 @@ export const PecasEstoquePage = () => {
                         <tr>
                             <th className="p-4 text-xs font-bold text-neutral-500 uppercase">ID</th>
                             <th className="p-4 text-xs font-bold text-neutral-500 uppercase">Produto/Peça</th>
-                            <th className="p-4 text-xs font-bold text-neutral-500 uppercase">Fabricante</th>
-                            <th className="p-4 text-xs font-bold text-neutral-500 uppercase">Estoque</th>
-                            <th className="p-4 text-xs font-bold text-neutral-500 uppercase">Valor</th>
+                            <th className="p-4 text-xs font-bold text-neutral-500 uppercase">Fornecedor / Data</th>
+                            <th className="p-4 text-xs font-bold text-neutral-500 uppercase text-right">Estoque</th>
+                            <th className="p-4 text-xs font-bold text-neutral-500 uppercase text-right">Custo Unit.</th>
+                            <th className="p-4 text-xs font-bold text-neutral-500 uppercase text-right">Valor Venda</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100">
-                        {pecas.map((p) => (
-                            <tr key={p.id_pecas_estoque} className="hover:bg-neutral-50">
-                                <td className="p-4 text-neutral-500 font-mono">#{p.id_pecas_estoque}</td>
-                                <td className="p-4 font-medium">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-info-50 p-2 rounded-lg text-info-600">
-                                            <Package size={18} />
+                        {pecas.map((p) => {
+                            const lastEntry = (p as any).itens_entrada?.[0]?.entrada;
+                            const fornecedorName = lastEntry?.fornecedor?.nome || '-';
+                            const dataCompra = lastEntry?.data_compra ? new Date(lastEntry.data_compra).toLocaleDateString() : '-';
+                            const nf = lastEntry?.nota_fiscal || '-';
+
+                            return (
+                                <tr key={p.id_pecas_estoque} className="hover:bg-neutral-50">
+                                    <td className="p-4 text-neutral-500 font-mono">#{p.id_pecas_estoque}</td>
+                                    <td className="p-4 font-medium">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-info-50 p-2 rounded-lg text-info-600">
+                                                <Package size={18} />
+                                            </div>
+                                            <div>
+                                                <div className="text-neutral-900">{p.nome}</div>
+                                                <div className="text-xs text-neutral-500">{p.descricao}</div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="text-neutral-900">{p.nome}</div>
-                                            <div className="text-xs text-neutral-500">{p.descricao}</div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="text-xs">
+                                            <div className="font-bold text-gray-700">{fornecedorName}</div>
+                                            <div className="text-gray-500">{dataCompra} • NF: {nf}</div>
                                         </div>
-                                    </div>
-                                </td>
-                                <td className="p-4 border-gray-100 text-right font-medium text-slate-700">{p.estoque_atual} {p.unidade_medida}</td>
-                                <td className="p-4 border-gray-100 text-right font-bold text-green-600">
-                                    R$ {Number(p.valor_venda).toFixed(2)}
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                    <td className="p-4 border-gray-100 text-right font-medium text-slate-700">{p.estoque_atual} {p.unidade_medida}</td>
+                                    <td className="p-4 border-gray-100 text-right font-medium text-red-600">
+                                        R$ {Number(p.valor_custo).toFixed(2)}
+                                    </td>
+                                    <td className="p-4 border-gray-100 text-right font-bold text-green-600">
+                                        R$ {Number(p.valor_venda).toFixed(2)}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -164,6 +181,26 @@ export const PecasEstoquePage = () => {
                                      type="number"
                                      value={editData.estoque_atual} 
                                      onChange={(e) => setEditData({...editData, estoque_atual: Number(e.target.value)})} 
+                                     className="border p-2 w-full rounded" 
+                                 />
+                             </div>
+                             <div>
+                                 <label className="text-xs font-bold block mb-1">Custo Unitário (R$)</label>
+                                 <input 
+                                     type="number"
+                                     step="0.01"
+                                     value={editData.valor_custo} 
+                                     onChange={(e) => setEditData({...editData, valor_custo: Number(e.target.value)})} 
+                                     className="border p-2 w-full rounded" 
+                                 />
+                             </div>
+                             <div>
+                                 <label className="text-xs font-bold block mb-1">Valor Venda (R$)</label>
+                                 <input 
+                                     type="number"
+                                     step="0.01"
+                                     value={editData.valor_venda} 
+                                     onChange={(e) => setEditData({...editData, valor_venda: Number(e.target.value)})} 
                                      className="border p-2 w-full rounded" 
                                  />
                              </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Calculator, Save, Truck, Plus, BadgeCheck, Palette, Trash2 } from 'lucide-react';
+import { Calculator, Save, Truck, Plus, BadgeCheck, Palette, Trash2, Pen } from 'lucide-react';
 import { PagamentoClienteForm } from './PagamentoClienteForm';
 import { FornecedorForm } from './FornecedorForm';
 import { LaborManager } from '../os/LaborManager';
@@ -17,6 +17,7 @@ interface FechamentoFinanceiroFormProps {
 
 interface ItemOS {
     id_iten: number;
+    id_pecas_estoque?: number;
     valor_total: number;
     descricao: string;
     quantidade: number;
@@ -57,6 +58,7 @@ interface OSData {
     cliente: {
         pessoa_fisica?: { pessoa: { nome: string } };
         pessoa_juridica?: { nome_fantasia: string };
+        telefone_1?: string;
     };
     veiculo: {
         placa: string;
@@ -174,9 +176,9 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                 const existingPayment = item.pagamentos_peca && item.pagamentos_peca.length > 0 ? item.pagamentos_peca[0] : null;
 
                 const initialCost = existingPayment 
-                    ? String(existingPayment.custo_real)
+                    ? Number(existingPayment.custo_real).toFixed(2)
                     : item.pecas_estoque?.valor_custo 
-                        ? (Number(item.pecas_estoque.valor_custo) * item.quantidade).toFixed(2) 
+                        ? '0.00' // Stock parts are already paid, so cost for this closing is 0
                         : '';
                 
                 initialItemsState[item.id_iten] = {
@@ -204,6 +206,9 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
     // Auto-save logic
     const saveItemCost = async (id_iten: number, partialState: ItemFinanceiroState) => {
          const item = osData?.itens_os.find(i => i.id_iten === id_iten);
+         // Don't save if stock item (double check)
+         if (item?.pecas_estoque) return;
+         
          if (!item || !partialState.id_fornecedor || !partialState.custo_real) return;
 
          try {
@@ -239,21 +244,26 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                     [field]: value
                 }
             };
-            
-            // Auto-save trigger (debounced 500ms effectively by user typing speed, but for simplicity here we just call it)
-            // Ideally we should debounce. For now, let's just trigger it. 
-            // Actually, flooding the API on every keypress for 'custo_real' is bad.
-            // Let's rely on onBlur for inputs, but the user might click 'Novo Pagamento' without blurring properly?
-            // User said "costs were blank again... did not persist".
-            // Let's add onBlur to the inputs to trigger save.
-            
             return newState;
         });
     };
 
     const handleItemBlur = (id_iten: number) => {
-        const state = itemsState[id_iten];
-        if (state) saveItemCost(id_iten, state);
+        let state = itemsState[id_iten];
+        if (state) {
+             // Format to 2 decimals
+             if (state.custo_real && !isNaN(Number(state.custo_real))) {
+                 const formatted = Number(state.custo_real).toFixed(2);
+                 if (formatted !== state.custo_real) {
+                      setItemsState(prev => ({
+                        ...prev,
+                        [id_iten]: { ...prev[id_iten], custo_real: formatted }
+                     }));
+                     state = { ...state, custo_real: formatted };
+                 }
+             }
+             saveItemCost(id_iten, state);
+        }
     };
 
 
@@ -341,15 +351,13 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
             const pagamentoPromises = osData.itens_os.map(async (item) => {
                 const st = itemsState[item.id_iten];
                 
-                // Validação de preenchimento dos custos
-                if (!st || !st.id_fornecedor || !st.custo_real || Number(st.custo_real) <= 0) {
-                     // Se não tiver fornecedor ou custo real, vamos apenas ignorar se for um item sem custo (opcional)
-                     // Mas o usuário pediu aviso se esquecer.
-                     // Vamos lançar erro se houver items sem custo definido.
+                // Validação de preenchimento dos custos (Ignorar se for peça de estoque)
+                if ((!st || !st.id_fornecedor || !st.custo_real || Number(st.custo_real) <= 0) && !item.pecas_estoque) {
                      throw new Error(`Item "${item.descricao}" está sem Fornecedor ou Custo Real definido.`);
                 }
 
-                if (st && st.id_fornecedor && Number(st.custo_real) > 0) {
+                // Salvar apenas se NÃO for peca de estoque
+                if (st && st.id_fornecedor && Number(st.custo_real) > 0 && !item.pecas_estoque) {
                     const payload = {
                         id_item_os: item.id_iten,
                         id_fornecedor: Number(st.id_fornecedor),
@@ -452,6 +460,7 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                                     <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase bg-green-100 text-green-700 tracking-wide">{osData.status}</span>
                                 </div>
                                 <h3 className="font-black text-xl text-gray-900 leading-tight">{getClientName()}</h3>
+                                <p className="text-sm font-bold text-gray-400 mt-0.5">{osData.cliente.telefone_1 || 'Sem telefone'}</p>
                                 <div className="mt-3 bg-gray-50 border border-gray-100 rounded-xl p-3">
                                     <div className="flex items-center gap-2 mb-1">
                                         <Truck size={18} className="text-gray-400" />
@@ -549,6 +558,7 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                                     <th className="p-4">Ref / Nota</th>
                                     <th className="p-4">Fornecedor (Origem)</th>
                                     <th className="p-4 w-32">Custo Real (R$)</th>
+                                    <th className="p-4 text-center w-20">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
@@ -562,56 +572,81 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                                                         Qtd: {item.quantidade} x R$ {Number(Number(item.valor_total) / item.quantidade).toFixed(2)} = <span className="text-green-600 font-bold">R$ {Number(item.valor_total).toFixed(2)}</span>
                                                     </p>
                                                 </div>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setEditItem({...item, valor_venda_unitario: Number(item.valor_total) / item.quantidade} as any)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-opacity"
-                                                    title="Editar Item"
-                                                >
-                                                    <BadgeCheck size={16} />
-                                                </button>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => handleDeleteItemOS(item.id_iten)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
-                                                    title="Excluir Item"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
                                             </div>
                                         </td>
                                         <td className="p-4 text-xs font-mono font-bold text-gray-500">
                                             {item.codigo_referencia || '-'}
                                         </td>
                                         <td className="p-4">
-                                            <select 
-                                                className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                                                value={itemsState[item.id_iten]?.id_fornecedor || ''}
-                                                onChange={e => handleItemChange(item.id_iten, 'id_fornecedor', e.target.value)}
-                                                onBlur={() => handleItemBlur(item.id_iten)}
-                                            >
-                                                <option value="">-- Selecione --</option>
-                                                {fornecedores.map(f => (
-                                                    <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
-                                                ))}
-                                            </select>
+                                            {(item.pecas_estoque || item.id_pecas_estoque) ? (
+                                                <div className="flex items-center gap-2 px-3 py-2 bg-neutral-100 rounded-lg border border-neutral-200 text-neutral-500 font-bold text-xs uppercase tracking-wider justify-center">
+                                                    <Truck size={14} /> Estoque Próprio
+                                                </div>
+                                            ) : (
+                                                <select 
+                                                    className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                                    value={itemsState[item.id_iten]?.id_fornecedor || ''}
+                                                    onChange={e => handleItemChange(item.id_iten, 'id_fornecedor', e.target.value)}
+                                                    onBlur={() => handleItemBlur(item.id_iten)}
+                                                >
+                                                    <option value="">-- Selecione --</option>
+                                                    {fornecedores.map(f => (
+                                                        <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                                                    ))}
+                                                </select>
+                                            )}
                                         </td>
                                         <td className="p-4">
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
-                                                <input 
-                                                    type="number" 
-                                                    step="0.01"
-                                                    value={itemsState[item.id_iten]?.custo_real}
-                                                    onChange={e => handleItemChange(item.id_iten, 'custo_real', e.target.value)}
-                                                    onBlur={() => handleItemBlur(item.id_iten)}
-                                                    className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm font-bold text-red-600 focus:ring-2 focus:ring-red-500 outline-none"
-                                                    placeholder="0.00"
-                                                />
+                                            {(item.pecas_estoque || item.id_pecas_estoque) ? (
+                                                 <div className="relative opacity-50">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                                    <input 
+                                                        disabled
+                                                        value="0.00"
+                                                        className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-400 bg-gray-50 cursor-not-allowed"
+                                                    />
+                                                    <div className="text-[9px] text-gray-400 mt-1 text-center font-medium">
+                                                        {item.pecas_estoque ? `Custo Orig: R$ ${Number(item.pecas_estoque.valor_custo).toFixed(2)}` : 'Estoque'}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                                    <input 
+                                                        type="number" 
+                                                        step="0.01"
+                                                        value={itemsState[item.id_iten]?.custo_real}
+                                                        onChange={e => handleItemChange(item.id_iten, 'custo_real', e.target.value)}
+                                                        onBlur={() => handleItemBlur(item.id_iten)}
+                                                        className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm font-bold text-red-600 focus:ring-2 focus:ring-red-500 outline-none"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setEditItem({...item, valor_venda_unitario: Number(item.valor_total) / item.quantidade} as any)}
+                                                    className="p-2 text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 rounded-lg"
+                                                    title="Editar Item"
+                                                >
+                                                    <Pen size={16} />
+                                                </button>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => handleDeleteItemOS(item.id_iten)}
+                                                    className="p-2 text-red-600 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 rounded-lg"
+                                                    title="Excluir Item"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
+
                             </tbody>
                         </table>
                         {osData.itens_os.length === 0 && (

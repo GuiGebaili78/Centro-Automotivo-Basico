@@ -50,6 +50,8 @@ export const OrdemDeServicoDetalhePage = () => {
     // Payment Modal
     const [showPaymentModal, setShowPaymentModal] = useState(false);
 
+    const [selectedStockInfo, setSelectedStockInfo] = useState<{qtd: number, reserved: number} | null>(null);
+
     // --- LOADING ---
     const loadOsData = async () => {
         if (!id) return;
@@ -160,6 +162,7 @@ export const OrdemDeServicoDetalhePage = () => {
                 setStatusMsg({ type: 'success', text: 'Item adicionado!' });
             }
             setNewItem({ id_pecas_estoque: '', quantidade: '1', valor_venda: '', descricao: '', codigo_referencia: '', id_fornecedor: '' });
+            setSelectedStockInfo(null);
             setPartSearch('');
             setEditingItemId(null);
             loadOsItems(os.id_os);
@@ -197,7 +200,8 @@ export const OrdemDeServicoDetalhePage = () => {
                 valor_venda: val, 
                 valor_total: qtd * val,
                 codigo_referencia: editingItemData.codigo_referencia, 
-                id_fornecedor: editingItemData.id_fornecedor ? Number(editingItemData.id_fornecedor) : null
+                id_fornecedor: editingItemData.id_fornecedor ? Number(editingItemData.id_fornecedor) : null,
+                id_pecas_estoque: editingItemData.id_pecas_estoque ? Number(editingItemData.id_pecas_estoque) : null
             });
             loadOsItems(os.id_os);
             setEditItemModalOpen(false);
@@ -464,9 +468,16 @@ export const OrdemDeServicoDetalhePage = () => {
                                              onChange={e => setNewItem({...newItem, descricao: e.target.value})}
                                          />
                                          {newItem.id_pecas_estoque && (
-                                             <span className="absolute right-2 top-6 text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-green-200">
-                                                 Estoque
-                                             </span>
+                                             <div className="absolute right-2 top-6 flex items-center gap-1">
+                                                 {selectedStockInfo && (
+                                                     <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-blue-200">
+                                                         Disp: {selectedStockInfo.qtd}
+                                                     </span>
+                                                 )}
+                                                 <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-green-200">
+                                                     Estoque
+                                                 </span>
+                                             </div>
                                          )}
                                     </div>
 
@@ -567,6 +578,8 @@ export const OrdemDeServicoDetalhePage = () => {
                                                             });
 
                                                             const freeStock = (partDetails.estoque_atual || 0) - (partDetails.reserved || 0);
+                                                            setSelectedStockInfo({ qtd: freeStock, reserved: partDetails.reserved }); // Store stock info
+
                                                             if (freeStock < 2) {
                                                                 setStatusMsg({ type: 'error', text: `⚠️ Estoque Baixo! Disp: ${freeStock} (Reservado: ${partDetails.reserved || 0})` });
                                                             } else if (partDetails.reserved > 0) {
@@ -583,7 +596,12 @@ export const OrdemDeServicoDetalhePage = () => {
                                                     }} 
                                                     className={`w-full text-left p-3 text-sm font-medium border-b border-neutral-50 flex justify-between group/item transition-colors ${idx === highlightIndex ? 'bg-blue-50 ring-1 ring-inset ring-blue-100 z-10' : 'hover:bg-neutral-50'}`}
                                                 >
-                                                    <span className="text-neutral-700 group-hover/item:text-blue-900">{p.nome}</span>
+                                                    <span className="text-neutral-700 group-hover/item:text-blue-900 flex-1">{p.nome}</span>
+                                                    {p.estoque_atual !== undefined && (
+                                                        <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded mr-2">
+                                                            Qt: {p.estoque_atual}
+                                                        </span>
+                                                    )}
                                                     <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">R$ {Number(p.valor_venda).toFixed(2)}</span>
                                                 </button>
                                             ))}

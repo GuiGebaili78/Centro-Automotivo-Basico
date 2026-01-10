@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { StatusBanner } from '../components/ui/StatusBanner';
 import { Button } from '../components/ui/Button';
-import { Plus, Search, Trash2, Save, ShoppingCart } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
+import { FornecedorForm } from '../components/forms/FornecedorForm';
+import { Plus, Search, Trash2, Save, ShoppingCart, Edit } from 'lucide-react';
 
 export const EntradaEstoquePage = () => {    
     // Header State
@@ -11,6 +13,7 @@ export const EntradaEstoquePage = () => {
     const [invoice, setInvoice] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [obs, setObs] = useState('');
+    const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
 
     // Items Logic
     const [items, setItems] = useState<any[]>([]);
@@ -132,7 +135,49 @@ export const EntradaEstoquePage = () => {
         setItems(items.filter(i => i.tempId !== tempId));
     };
 
-    const handleSubmit = async () => {
+    const handleEditItem = (item: any) => {
+        // Load item back into inputs
+        if (item.new_part_data) {
+            setIsNewPart(true);
+            setPartSearch(item.new_part_data.nome);
+            setNewPartName(item.new_part_data.nome);
+            setNewPartFab(item.new_part_data.fabricante || '');
+            setNewPartUnit(item.new_part_data.unidade_medida || 'UN');
+            setSelectedStockPart(null);
+        } else {
+            setIsNewPart(false);
+            setPartSearch(item.displayName);
+            setSelectedStockPart({ 
+                id_pecas_estoque: item.id_pecas_estoque, 
+                nome: item.displayName, 
+                // We don't have all original stock part data here, but enough for ID and Name
+                // If we needed original stock/cost values we might need to store them or re-fetch.
+                // For now, this is enough to re-select.
+                valor_custo: item.valor_custo, // Preserve these
+                valor_venda: item.valor_venda
+            });
+        }
+        
+        setRowQtd(String(item.quantidade));
+        setRowCost(String(item.valor_custo));
+        setRowMargin(String(item.margem_lucro));
+        setRowSale(String(item.valor_venda));
+        setRowRef(item.ref_cod || '');
+        setRowObs(item.obs || '');
+
+        // Remove from list so it can be re-added
+        handleRemoveItem(item.tempId);
+    };
+
+    // --- FINANCIAL MODAL STATE ---
+    const [showFinancialModal, setShowFinancialModal] = useState(false);
+    const [finDesc, setFinDesc] = useState('');
+    const [finValue, setFinValue] = useState('');
+    const [finDueDate, setFinDueDate] = useState('');
+    const [finPaid, setFinPaid] = useState(false);
+    const [finPayDate, setFinPayDate] = useState('');
+
+    const handlePreSubmit = () => {
         if (!selectedSupplierId) {
             setStatusMsg({type: 'error', text: 'Selecione um Fornecedor.'});
             return;
@@ -142,25 +187,46 @@ export const EntradaEstoquePage = () => {
             return;
         }
 
-        try {
+        // Pre-fill Financial Data
+        const supplierName = suppliers.find(s => s.id_fornecedor === Number(selectedSupplierId))?.nome || 'Fornecedor';
+        setFinDesc(`Compra Estoque - NF ${invoice || 'S/N'} - ${supplierName}`);
+        const total = items.reduce((acc, i) => acc + (i.quantidade * i.valor_custo), 0);
+        setFinValue(total.toFixed(2));
+        setFinDueDate(date); // Default due date = purchase date
+        setFinPayDate(new Date().toISOString().split('T')[0]); // Default pay date = today
+        setFinPaid(false); // Default to Unpaid as per user request
+
+        setShowFinancialModal(true);
+    };
+
+    const handleFinalSubmit = async () => {
+         try {
             const payload = {
                 id_fornecedor: Number(selectedSupplierId),
                 nota_fiscal: invoice,
                 data_compra: new Date(date),
                 obs: obs,
-                itens: items
+                itens: items,
+                financeiro: {
+                    descricao: finDesc,
+                    valor: Number(finValue),
+                    dt_vencimento: finDueDate,
+                    dt_pagamento: finPaid ? finPayDate : null,
+                    status: finPaid ? 'PAGO' : 'PENDENTE'
+                }
             };
 
             await api.post('/pecas-estoque/entry', payload);
             
-            setStatusMsg({type: 'success', text: 'Entrada Registrada com Sucesso!'});
+            setStatusMsg({type: 'success', text: 'Entrada e Financeiro Registrados com Sucesso!'});
+            setShowFinancialModal(false);
             
             // Clear All
             setItems([]);
             setInvoice('');
             setObs('');
-            // Optional: navigate away or stay
         } catch (e) {
+            console.error(e);
             setStatusMsg({type: 'error', text: 'Erro ao processar entrada.'});
         }
     };
@@ -173,6 +239,63 @@ export const EntradaEstoquePage = () => {
                 </div>
             )}
 
+            {/* ... (Existing JSX up to buttons) ... */}
+            
+            {/* NEW FINANCIAL MODAL */}
+            {showFinancialModal && (
+                <Modal title="Registrar Contas a Pagar / Pagamento" onClose={() => setShowFinancialModal(false)}>
+                    <div className="space-y-4">
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4">
+                            <p className="text-sm text-blue-800 font-bold">Confirme os dados financeiros desta compra.</p>
+                            <p className="text-xs text-blue-600">Isso irá gerar um registro em Contas a Pagar e, se pago, no Livro Caixa.</p>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Descrição</label>
+                            <input value={finDesc} onChange={e => setFinDesc(e.target.value)} className="w-full border p-3 rounded-xl outline-none focus:border-blue-500 font-medium" />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                             <div>
+                                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Valor Total (R$)</label>
+                                <input type="number" value={finValue} readOnly className="w-full border p-3 rounded-xl bg-neutral-100 font-bold text-neutral-600 outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Vencimento</label>
+                                <input type="date" value={finDueDate} onChange={e => setFinDueDate(e.target.value)} className="w-full border p-3 rounded-xl outline-none focus:border-blue-500 font-medium" />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 p-4 border border-neutral-100 rounded-xl bg-neutral-50">
+                             <input 
+                                type="checkbox" 
+                                id="chkPaid" 
+                                checked={finPaid} 
+                                onChange={e => setFinPaid(e.target.checked)} 
+                                className="w-5 h-5 accent-blue-600 rounded"
+                             />
+                             <label htmlFor="chkPaid" className="font-bold text-neutral-700 cursor-pointer select-none">
+                                 Á vista / Já Pago?
+                             </label>
+                        </div>
+
+                        {finPaid && (
+                             <div className="animate-in fade-in slide-in-from-top-2">
+                                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Data do Pagamento</label>
+                                <input type="date" value={finPayDate} onChange={e => setFinPayDate(e.target.value)} className="w-full border p-3 rounded-xl outline-none focus:border-green-500 font-medium border-green-200 bg-green-50" />
+                            </div>
+                        )}
+
+                        <div className="flex justify-end pt-4 gap-2">
+                            <Button variant="ghost" onClick={() => setShowFinancialModal(false)}>Cancelar</Button>
+                            <Button variant="success" onClick={handleFinalSubmit}>
+                                CONFIRMAR TUDO
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
             <div className="space-y-2">
                 <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
                     <ShoppingCart className="text-primary-600" /> Nova Compra / Entrada de Estoque
@@ -182,8 +305,13 @@ export const EntradaEstoquePage = () => {
 
             {/* HEADER CARD */}
             <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">Fornecedor</label>
+                <div className="md:col-span-2 relative">
+                    <div className="flex justify-between items-baseline mb-1">
+                        <label className="block text-xs font-bold text-neutral-400 uppercase">Fornecedor</label>
+                        <button onClick={() => setShowNewSupplierModal(true)} className="text-[10px] font-bold text-primary-600 hover:text-primary-800 flex items-center gap-1 uppercase bg-primary-50 px-2 py-0.5 rounded cursor-pointer transition-colors">
+                            <Plus size={10} /> Novo Fornecedor
+                        </button>
+                    </div>
                     <select 
                         className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-700 outline-none focus:border-primary-500 transition-all"
                         value={selectedSupplierId}
@@ -258,7 +386,7 @@ export const EntradaEstoquePage = () => {
                                     </button>
                                 </div>
                             )}
-                            {partResults.length === 0 && partSearch.length > 2 && !selectedStockPart && (
+                            {partResults.length === 0 && partSearch.length > 2 && !selectedStockPart && !isNewPart && (
                                 <div className="absolute w-full mt-2 bg-white border border-neutral-100 rounded-xl shadow-xl p-2 z-50">
                                      <button 
                                         onClick={() => {
@@ -365,6 +493,7 @@ export const EntradaEstoquePage = () => {
                                 <td className="p-3 text-right font-black text-neutral-800">R$ {i.valor_venda.toFixed(2)}</td>
                                 <td className="p-3 text-right text-neutral-500">R$ {(i.quantidade * i.valor_custo).toFixed(2)}</td>
                                 <td className="p-3 text-right">
+                                    <button onClick={() => handleEditItem(i)} className="text-primary-400 hover:text-primary-600 p-1 mr-2"><Edit size={16} /></button>
                                     <button onClick={() => handleRemoveItem(i.tempId)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={16} /></button>
                                 </td>
                             </tr>
@@ -381,12 +510,27 @@ export const EntradaEstoquePage = () => {
                             <p className="text-xs font-bold text-neutral-500 uppercase">Total da Compra</p>
                             <p className="text-2xl font-black text-neutral-800">R$ {items.reduce((acc, i) => acc + (i.quantidade * i.valor_custo), 0).toFixed(2)}</p>
                         </div>
-                        <Button onClick={handleSubmit} variant="success" className="h-12 px-8 text-lg shadow-xl shadow-green-500/20">
+                        <Button onClick={handlePreSubmit} variant="success" className="h-12 px-8 text-lg shadow-xl shadow-green-500/20">
                             <Save className="mr-2" /> FINALIZAR ENTRADA
                         </Button>
                     </div>
                 )}
             </div>
+
+            {/* NEW SUPPLIER MODAL */}
+            {showNewSupplierModal && (
+                <Modal title="Novo Fornecedor" onClose={() => setShowNewSupplierModal(false)}>
+                    <FornecedorForm 
+                        onSuccess={(newSupplier) => {
+                            setSuppliers(prev => [...prev, newSupplier]);
+                            setSelectedSupplierId(String(newSupplier.id_fornecedor));
+                            setShowNewSupplierModal(false);
+                            setStatusMsg({ type: 'success', text: 'Fornecedor Cadastrado e Selecionado!' });
+                        }}
+                        onCancel={() => setShowNewSupplierModal(false)}
+                    />
+                </Modal>
+            )}
 
         </div>
     );

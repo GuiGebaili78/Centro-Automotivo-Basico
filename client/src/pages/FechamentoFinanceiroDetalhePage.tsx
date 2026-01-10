@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { api } from '../services/api';
-import { Save, Plus, BadgeCheck, Trash2, ArrowLeft, Edit, AlertCircle } from 'lucide-react';
+import { Save, Plus, BadgeCheck, Trash2, ArrowLeft, Edit, AlertCircle, Truck, Pen } from 'lucide-react';
 import { PagamentoClienteForm } from '../components/forms/PagamentoClienteForm';
 import { FornecedorForm } from '../components/forms/FornecedorForm';
 import { LaborManager } from '../components/os/LaborManager';
@@ -12,6 +12,7 @@ import { Button } from '../components/ui/Button';
 
 interface ItemOS {
     id_iten: number;
+    id_pecas_estoque?: number;
     valor_total: number;
     valor_venda: number;
     descricao: string;
@@ -226,6 +227,25 @@ export const FechamentoFinanceiroDetalhePage = () => {
             codigo_referencia: item.codigo_referencia || ''
         });
         setEditItemModal({ isOpen: true, item });
+    };
+
+    const handleDeleteItemOS = async (itemId: number) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Excluir Item',
+            message: 'Tem certeza que deseja excluir este item da OS?',
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/itens-os/${itemId}`);
+                    setStatusMsg({ type: 'success', text: 'Item removido com sucesso!' });
+                    if (osData) fetchOsData(osData.id_os);
+                } catch (error) {
+                    console.error(error);
+                    setStatusMsg({ type: 'error', text: 'Erro ao excluir item.' });
+                }
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            }
+        });
     };
 
     const handleSaveEditItem = async () => {
@@ -462,47 +482,92 @@ export const FechamentoFinanceiroDetalhePage = () => {
                     <thead className="bg-gray-50/50 text-xs font-bold text-gray-400 uppercase">
                         <tr>
                             <th className="p-4 w-1/3">Peça</th>
+                            <th className="p-4">Ref / Nota</th>
                             <th className="p-4">Fornecedor</th>
                             <th className="p-4 w-32">Custo (R$)</th>
+                            <th className="p-4 text-center w-20">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {osData.itens_os.map(item => (
-                            <tr key={item.id_iten} className="hover:bg-gray-50/50 transition-colors">
-                                <td className="p-4">
-                                    <p className="font-bold text-gray-800 text-sm">{item.descricao}</p>
-                                    <div className="flex justify-between items-center text-xs text-gray-400">
-                                        <span>Qtd: {item.quantidade} | Venda: R$ {Number(item.valor_total).toFixed(2)}</span>
-                                        <button 
-                                            onClick={() => handleOpenEditItem(item)}
-                                            className="ml-2 text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
-                                            title="Editar Item"
-                                        >
-                                            <Edit size={14} />
-                                        </button>
+                            <tr key={item.id_iten} className="hover:bg-gray-50/50 transition-colors group">
+                                <td className="p-4 relative">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-bold text-gray-800 text-sm">{item.descricao}</p>
+                                            <p className="text-xs text-gray-400">
+                                                Qtd: {item.quantidade} x R$ {Number(Number(item.valor_total) / item.quantidade).toFixed(2)} = <span className="text-green-600 font-bold">R$ {Number(item.valor_total).toFixed(2)}</span>
+                                            </p>
+                                        </div>
                                     </div>
                                 </td>
-                                <td className="p-4">
-                                    <select 
-                                        className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={itemsState[item.id_iten]?.id_fornecedor || ''}
-                                        onChange={e => handleItemChange(item.id_iten, 'id_fornecedor', e.target.value)}
-                                    >
-                                        <option value="">-- Selecione --</option>
-                                        {fornecedores.map(f => (
-                                            <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
-                                        ))}
-                                    </select>
+                                <td className="p-4 text-xs font-mono font-bold text-gray-500">
+                                    {item.codigo_referencia || '-'}
                                 </td>
                                 <td className="p-4">
-                                    <input 
-                                        type="number" 
-                                        step="0.01"
-                                        value={itemsState[item.id_iten]?.custo_real}
-                                        onChange={e => handleItemChange(item.id_iten, 'custo_real', e.target.value)}
-                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold text-red-600 focus:ring-2 focus:ring-red-500 outline-none"
-                                        placeholder="0.00"
-                                    />
+                                    {(item.pecas_estoque || item.id_pecas_estoque) ? (
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-neutral-100 rounded-lg border border-neutral-200 text-neutral-500 font-bold text-xs uppercase tracking-wider justify-center">
+                                            <Truck size={14} /> Estoque Próprio
+                                        </div>
+                                    ) : (
+                                        <select 
+                                            className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                                            value={itemsState[item.id_iten]?.id_fornecedor || ''}
+                                            onChange={e => handleItemChange(item.id_iten, 'id_fornecedor', e.target.value)}
+                                        >
+                                            <option value="">-- Selecione --</option>
+                                            {fornecedores.map(f => (
+                                                <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </td>
+                                <td className="p-4">
+                                    {(item.pecas_estoque || item.id_pecas_estoque) ? (
+                                         <div className="relative opacity-50">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                            <input 
+                                                disabled
+                                                value="0.00"
+                                                className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-400 bg-gray-50 cursor-not-allowed"
+                                            />
+                                            <div className="text-[9px] text-gray-400 mt-1 text-center font-medium">
+                                                {item.pecas_estoque ? `Custo Orig: R$ ${Number(item.pecas_estoque.valor_custo).toFixed(2)}` : 'Estoque'}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                            <input 
+                                                type="number" 
+                                                step="0.01"
+                                                value={itemsState[item.id_iten]?.custo_real}
+                                                onChange={e => handleItemChange(item.id_iten, 'custo_real', e.target.value)}
+                                                className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm font-bold text-red-600 focus:ring-2 focus:ring-red-500 outline-none"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="p-4 text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <button 
+                                            type="button"
+                                            onClick={() => handleOpenEditItem(item)}
+                                            className="p-2 text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 rounded-lg"
+                                            title="Editar Item"
+                                        >
+                                            <Pen size={16} />
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => handleDeleteItemOS(item.id_iten)}
+                                            className="p-2 text-red-600 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 rounded-lg"
+                                            title="Excluir Item"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
