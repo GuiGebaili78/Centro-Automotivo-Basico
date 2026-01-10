@@ -37,6 +37,8 @@ interface IOS {
             }
         }
     }[];
+    defeito_relatado?: string;
+    diagnostico?: string;
 }
 
 export const FechamentoFinanceiroPage = () => {
@@ -201,6 +203,7 @@ export const FechamentoFinanceiroPage = () => {
                                     <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">OS ID</th>
                                     <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Cliente</th>
                                     <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Veículo</th>
+                                    <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider w-1/4">Defeito / Diagnóstico</th>
                                     <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Ação</th>
                                 </tr>
@@ -214,6 +217,18 @@ export const FechamentoFinanceiroPage = () => {
                                             <div className="flex flex-col">
                                                 <span className="font-bold text-gray-800 uppercase">{os.veiculo?.placa}</span>
                                                 <span className="text-xs text-gray-400">{os.veiculo?.modelo}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-5">
+                                            <div className="flex flex-col gap-2 max-w-xs">
+                                                <div className="leading-tight">
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase block">Defeito</span>
+                                                    <span className="text-xs text-gray-700 font-medium line-clamp-2" title={os.defeito_relatado}>{os.defeito_relatado || '-'}</span>
+                                                </div>
+                                                <div className="leading-tight">
+                                                    <span className="text-[10px] font-bold text-blue-400 uppercase block">Diagnóstico</span>
+                                                    <span className="text-xs text-blue-700 font-medium line-clamp-2" title={os.diagnostico}>{os.diagnostico || '-'}</span>
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="p-5">

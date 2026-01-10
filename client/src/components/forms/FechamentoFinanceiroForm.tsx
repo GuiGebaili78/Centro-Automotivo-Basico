@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Calculator, Save, Truck, Plus, BadgeCheck, Palette, Trash2, Pen } from 'lucide-react';
+import { Calculator, Save, Truck, Plus, BadgeCheck, Palette, Trash2, Pen, User, Car, AlertCircle, Wrench } from 'lucide-react';
 import { PagamentoClienteForm } from './PagamentoClienteForm';
 import { FornecedorForm } from './FornecedorForm';
 import { LaborManager } from '../os/LaborManager';
@@ -48,6 +48,7 @@ interface ItemFinanceiroState {
 
 interface OSData {
     id_os: number;
+    dt_abertura: string;
     status: string;
     valor_total_cliente: number;
     valor_mao_de_obra: number;
@@ -451,90 +452,115 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
                 <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                     
                     {/* OS Summary Card */}
-                    <div className="bg-white border-2 border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-                        <div className="flex flex-col md:flex-row gap-6 items-start">
-                            {/* LEFT: Client & Vehicle Info */}
-                            <div className="flex-1 min-w-[200px]">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase bg-gray-100 text-gray-600 tracking-wide">OS #{osData.id_os}</span>
-                                    <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase bg-green-100 text-green-700 tracking-wide">{osData.status}</span>
-                                </div>
-                                <h3 className="font-black text-xl text-gray-900 leading-tight">{getClientName()}</h3>
-                                <p className="text-sm font-bold text-gray-400 mt-0.5">{osData.cliente.telefone_1 || 'Sem telefone'}</p>
-                                <div className="mt-3 bg-gray-50 border border-gray-100 rounded-xl p-3">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Truck size={18} className="text-gray-400" />
-                                        <span className="font-black text-gray-800 text-base uppercase">{osData.veiculo.placa}</span>
-                                        <span className="text-gray-300">|</span>
-                                        <span className="font-bold text-gray-600 text-sm uppercase">{osData.veiculo.modelo}</span>
-                                    </div>
-                                    {osData.veiculo.cor && (
-                                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase pl-1">
-                                            <Palette size={14} />
-                                            <span className="capitalize">{osData.veiculo.cor}</span>
-                                        </div>
-                                    )}
-                                </div>
+                    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                        {/* HEADER */}
+                        <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase bg-gray-900 text-white tracking-wide">OS #{osData.id_os}</span>
+                                <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase bg-green-100 text-green-700 tracking-wide">{osData.status.replace(/_/g, ' ')}</span>
                             </div>
-                            
-                            {/* CENTER: Defect & Diagnosis */}
-                            <div className="flex-1 w-full md:border-l md:border-r border-gray-100 md:px-6 border-dashed">
-                                <div className="flex flex-col gap-3">
-                                    <div>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-wider">Defeito Relatado</p>
-                                        <p className="text-sm font-medium text-gray-700 leading-relaxed">
-                                            {osData.defeito_relatado || <span className="italic text-gray-400">Não informado</span>}
-                                        </p>
-                                    </div>
-                                    <div className="h-px bg-gray-100 w-full" />
-                                    <div>
-                                        <p className="text-[10px] font-black text-blue-400 uppercase mb-1 tracking-wider">Diagnóstico Técnico</p>
-                                        <p className="text-sm font-medium text-gray-700 leading-relaxed">
-                                            {osData.diagnostico || <span className="italic text-gray-400">Não informado</span>}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* RIGHT: Revenue */}
-                            <div className="md:text-right min-w-[150px]">
-                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Receita Total</p>
-                                <p className="text-3xl font-black text-green-600 tracking-tight">
-                                    R$ {Number(totalReceita).toFixed(2)}
-                                </p>
+                            <div className="text-right">
+                                <span className="text-[10px] font-bold uppercase text-gray-400">Data de Entrada: </span>
+                                <span className="text-xs font-bold text-gray-700">{new Date(osData.dt_abertura || new Date()).toLocaleDateString()}</span>
                             </div>
                         </div>
 
-                        {/* Detalhamento de Mão de Obra (LaborManager) - Full Width */}
-                        <div className="mt-2 border border-blue-100 rounded-xl overflow-hidden text-left bg-blue-50/30">
-                            <div className="px-4 py-2 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center">
-                                <span className="text-xs font-black uppercase text-blue-600 flex items-center gap-2">
-                                    <BadgeCheck size={14} /> Mão de Obra (Execução)
-                                </span>
+                        {/* GRID INFO */}
+                        <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                            
+                            {/* COL 1: Client & Vehicle (Span 5) */}
+                            <div className="lg:col-span-5 space-y-6">
+                                <div className="flex gap-4">
+                                    <div className="bg-blue-50 p-3 rounded-xl h-fit">
+                                        <User className="text-blue-600" size={24} /> 
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Cliente</p>
+                                        <h3 className="font-black text-lg text-gray-900 leading-tight">{getClientName()}</h3>
+                                        <p className="text-sm font-medium text-gray-500 mt-1">{osData.cliente.telefone_1 || 'Sem telefone'}</p>
+                                    </div>
+                                </div>
+                                <div className="h-px bg-gray-100 w-full" />
+                                <div className="flex gap-4">
+                                        <div className="bg-orange-50 p-3 rounded-xl h-fit">
+                                        <Car className="text-orange-600" size={24} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Veículo</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="font-black text-xl text-gray-800 uppercase">{osData.veiculo.placa}</span>
+                                            <span className="text-sm font-bold text-gray-500 uppercase">{osData.veiculo.modelo}</span>
+                                        </div>
+                                         {osData.veiculo.cor && (
+                                            <div className="flex items-center gap-1 mt-1">
+                                                <div className="w-2 h-2 rounded-full bg-gray-400" />
+                                                <span className="text-xs font-bold text-gray-500 uppercase">{osData.veiculo.cor}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="p-3">
-                                {/* Prevent form submission from inner buttons by intercepting onSubmit if possible, 
-                                    but simpler is assuming LaborManager buttons might need fixing. 
-                                    However, typically we can just rely on LaborManager being well behaved. 
-                                    If it submits, it's a bug in LaborManager or we need to ensure this form doesn't catch it. 
-                                    We can try to assist by making this a div not a form? No, it needs to submit. 
-                                    We will assume LaborManager is being fixed or we add a note to fix it.
-                                    For layout: Full width container.
-                                */}
-                                <LaborManager 
-                                    osId={osData.id_os}
-                                    mode="api" 
-                                    employees={employees}
-                                    initialData={osData.servicos_mao_de_obra as any[]} 
-                                    onChange={() => fetchOsData(osData.id_os)} 
-                                    readOnly={false}
-                                    onTotalChange={(total) => {
-                                        setOsData(prev => {
-                                            if (!prev || prev.valor_mao_de_obra === total) return prev;
-                                            return { ...prev, valor_mao_de_obra: total };
-                                        });
-                                    }}
-                                />
+
+                            {/* COL 2: Defect & Diagnosis (Span 4) */}
+                            <div className="lg:col-span-4 space-y-4 lg:border-l lg:border-gray-100 lg:pl-8 lg:border-dashed">
+                                <div>
+                                    <p className="text-[10px] font-black text-red-400 uppercase mb-1 tracking-wider flex items-center gap-2">
+                                        <AlertCircle size={12} /> Defeito Relatado
+                                    </p>
+                                    <div className="text-sm font-medium text-gray-700 leading-relaxed bg-red-50/30 p-3 rounded-lg border border-red-50">
+                                        {osData.defeito_relatado || <span className="italic text-gray-400">Não informado</span>}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-blue-400 uppercase mb-1 tracking-wider flex items-center gap-2">
+                                        <Wrench size={12} /> Diagnóstico Técnico
+                                    </p>
+                                    <div className="text-sm font-medium text-gray-700 leading-relaxed bg-blue-50/30 p-3 rounded-lg border border-blue-50">
+                                        {osData.diagnostico || <span className="italic text-gray-400">Não informado</span>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* COL 3: Revenue (Span 3) */}
+                            <div className="lg:col-span-3 flex flex-col justify-center items-end text-right lg:border-l lg:border-gray-100 lg:border-dashed lg:pl-8">
+                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Receita Total</p>
+                                <div className="bg-green-50 px-4 py-2 rounded-xl border border-green-100 mb-2">
+                                    <p className="text-4xl font-black text-green-600 tracking-tight">
+                                        R$ {Number(totalReceita).toFixed(2)}
+                                    </p>
+                                </div>
+                                <p className="text-[10px] font-bold text-gray-400">Valor Final (Peças + Mão de Obra)</p>
+                            </div>
+
+                        </div>
+
+                        {/* SEPARATOR */}
+                        <div className="h-px bg-gray-100 mx-6 mb-6" />
+
+                        {/* LABOR MANAGER */}
+                        <div className="px-6 pb-6">
+                                <div className="border border-blue-100 rounded-xl overflow-hidden text-left bg-blue-50/30">
+                                <div className="px-4 py-2 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center">
+                                    <span className="text-xs font-black uppercase text-blue-600 flex items-center gap-2">
+                                        <BadgeCheck size={14} /> Mão de Obra (Execução)
+                                    </span>
+                                </div>
+                                <div className="p-3">
+                                    <LaborManager 
+                                        osId={osData.id_os}
+                                        mode="api" 
+                                        employees={employees}
+                                        initialData={osData.servicos_mao_de_obra as any[]} 
+                                        onChange={() => fetchOsData(osData.id_os)} 
+                                        readOnly={false}
+                                        onTotalChange={(total) => {
+                                            setOsData(prev => {
+                                                if (!prev || prev.valor_mao_de_obra === total) return prev;
+                                                return { ...prev, valor_mao_de_obra: total };
+                                            });
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>

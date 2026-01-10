@@ -1,8 +1,8 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { api } from '../services/api';
-import { Save, Plus, BadgeCheck, Trash2, ArrowLeft, Edit, AlertCircle, Truck, Pen } from 'lucide-react';
+import { Save, Plus, BadgeCheck, Trash2, ArrowLeft, Edit, AlertCircle, Truck, Pen, Phone } from 'lucide-react';
 import { PagamentoClienteForm } from '../components/forms/PagamentoClienteForm';
 import { FornecedorForm } from '../components/forms/FornecedorForm';
 import { LaborManager } from '../components/os/LaborManager';
@@ -44,6 +44,7 @@ interface ItemFinanceiroState {
 
 interface OSData {
     id_os: number;
+    dt_abertura: string;
     status: string;
     valor_total_cliente: number;
     valor_mao_de_obra: number;
@@ -54,6 +55,7 @@ interface OSData {
     cliente: {
         pessoa_fisica?: { pessoa: { nome: string } };
         pessoa_juridica?: { nome_fantasia: string };
+        telefone_1?: string;
     };
     veiculo: {
         placa: string;
@@ -122,6 +124,10 @@ export const FechamentoFinanceiroDetalhePage = () => {
     }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
     const [employees, setEmployees] = useState<any[]>([]);
+
+    const handleLaborTotalChange = useCallback((total: number) => {
+         setOsData(prev => prev ? ({ ...prev, valor_mao_de_obra: total, valor_total_cliente: (prev.valor_pecas || 0) + total }) : null);
+    }, []);
 
 
     useEffect(() => {
@@ -421,49 +427,65 @@ export const FechamentoFinanceiroDetalhePage = () => {
                  </div>
              </div>
 
-             {/* SUMMARY CARD */}
-             <div className="bg-white border text-sm border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-                    <div className="flex flex-col md:flex-row gap-6 items-start">
-                        {/* LEFT: Client & Vehicle Info */}
-                        <div className="flex-1 min-w-[200px]">
-                            <h3 className="font-black text-xl text-gray-900 leading-tight mb-2">{getClientName()}</h3>
-                            <div className="flex gap-2 mb-2">
-                                <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 inline-flex flex-col">
-                                    <span className="font-black text-gray-800 text-base uppercase">{osData.veiculo.placa}</span>
-                                    <span className="font-bold text-gray-600 text-xs uppercase">{osData.veiculo.modelo} {osData.veiculo.cor && `• ${osData.veiculo.cor}`}</span>
-                                </div>
-                                {osData.cliente_telefone && (
-                                     <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 inline-flex flex-col justify-center">
-                                        <span className="font-bold text-gray-500 text-[10px] uppercase">Contato</span>
-                                        <span className="font-bold text-gray-800 text-sm">{osData.cliente_telefone}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+             <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                     {/* Col 1: Vehicle */}
+                     <div>
+                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Veículo</p>
+                         <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                             {osData.veiculo.modelo} 
+                             <span className="text-gray-400 text-xs font-normal uppercase px-1.5 py-0.5 bg-gray-100 rounded">
+                                 {osData.veiculo.cor}
+                             </span>
+                         </h3>
+                         <p className="font-black text-2xl text-gray-900 uppercase mt-1 tracking-tight">{osData.veiculo.placa}</p>
+                     </div>
+
+                     {/* Col 2: Client */}
+                     <div className="md:border-l md:border-gray-100 md:pl-8">
+                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Cliente</p>
+                         <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">{getClientName()}</h3>
+                         <p className="text-gray-600 font-medium text-sm flex items-center gap-2">
+                             <Phone size={14} className="text-gray-400" /> 
+                             {osData.cliente.telefone_1 || 'Sem telefone'}
+                         </p>
+                     </div>
+
+                     {/* Col 3: Defect / Diagnosis */}
+                     <div className="md:border-l md:border-gray-100 md:pl-8 space-y-4">
+                         <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Defeito</p>
+                            <p className="text-sm font-medium text-gray-700 leading-snug">{osData.defeito_relatado || <span className="text-gray-300 italic">Não informado</span>}</p>
+                         </div>
+                         <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Diagnóstico</p>
+                            <p className="text-sm font-medium text-blue-700 leading-snug">{osData.diagnostico || <span className="text-gray-300 italic">Não informado</span>}</p>
+                         </div>
+                     </div>
+                 </div>
              </div>
 
-             {/* LABOR (Editable if Permissions allow, or just managing here) */}
-             <div className="mt-2 border border-blue-100 rounded-xl overflow-hidden text-left bg-blue-50/30">
-                <div className="px-4 py-2 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center">
-                    <span className="text-xs font-black uppercase text-blue-600 flex items-center gap-2">
-                        <BadgeCheck size={14} /> Mão de Obra
-                    </span>
-                </div>
-                <div className="p-3">
-                    <LaborManager 
-                        osId={osData.id_os}
-                        mode="api" 
-                        employees={employees}
-                        initialData={osData.servicos_mao_de_obra as any[]} 
-                        onChange={() => {
-                            fetchOsData(osData.id_os);
-                            setIsDirty(true); // Assuming LaborManager uses API directly, but we might want to flag change
-                        }} 
-                        readOnly={false}
-                        onTotalChange={() => {}} // Could update locals
-                    />
-                </div>
+             {/* LABOR MANAGER (Separated) */}
+             <div className="mt-4 border border-blue-100 rounded-xl overflow-hidden text-left bg-blue-50/30">
+                 <div className="px-4 py-2 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center">
+                     <span className="text-xs font-black uppercase text-blue-600 flex items-center gap-2">
+                         <BadgeCheck size={14} /> Mão de Obra (Execução)
+                     </span>
+                 </div>
+                 <div className="p-3">
+                     <LaborManager 
+                         osId={osData.id_os}
+                         mode="api" 
+                         employees={employees}
+                         initialData={osData.servicos_mao_de_obra as any[]} 
+                         onChange={() => {
+                             fetchOsData(osData.id_os);
+                             setIsDirty(true);
+                         }} 
+                         readOnly={false}
+                         onTotalChange={handleLaborTotalChange}
+                     />
+                 </div>
              </div>
 
              {/* PARTS COSTS */}
@@ -484,7 +506,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                             <th className="p-4 w-1/3">Peça</th>
                             <th className="p-4">Ref / Nota</th>
                             <th className="p-4">Fornecedor</th>
-                            <th className="p-4 w-32">Custo (R$)</th>
+                            <th className="p-4 w-44">Custo (R$)</th>
                             <th className="p-4 text-center w-20">Ações</th>
                         </tr>
                     </thead>
@@ -524,26 +546,32 @@ export const FechamentoFinanceiroDetalhePage = () => {
                                 </td>
                                 <td className="p-4">
                                     {(item.pecas_estoque || item.id_pecas_estoque) ? (
-                                         <div className="relative opacity-50">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
-                                            <input 
-                                                disabled
-                                                value="0.00"
-                                                className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-400 bg-gray-50 cursor-not-allowed"
-                                            />
+                                         <div className="opacity-50">
+                                            <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 px-3 py-2 w-full">
+                                                <span className="text-gray-400 text-xs font-bold mr-2">R$</span>
+                                                <input 
+                                                    disabled
+                                                    value="0.00"
+                                                    className="w-full bg-transparent text-sm font-bold text-gray-400 cursor-not-allowed outline-none"
+                                                />
+                                            </div>
                                             <div className="text-[9px] text-gray-400 mt-1 text-center font-medium">
                                                 {item.pecas_estoque ? `Custo Orig: R$ ${Number(item.pecas_estoque.valor_custo).toFixed(2)}` : 'Estoque'}
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                        <div className="flex items-center border border-gray-200 rounded-lg bg-white px-3 py-2 w-full focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition-all shadow-sm">
+                                            <span className="text-gray-400 text-xs font-bold mr-2">R$</span>
                                             <input 
                                                 type="number" 
                                                 step="0.01"
                                                 value={itemsState[item.id_iten]?.custo_real}
                                                 onChange={e => handleItemChange(item.id_iten, 'custo_real', e.target.value)}
-                                                className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm font-bold text-red-600 focus:ring-2 focus:ring-red-500 outline-none"
+                                                onBlur={e => {
+                                                    const val = parseFloat(e.target.value);
+                                                    if (!isNaN(val)) handleItemChange(item.id_iten, 'custo_real', val.toFixed(2));
+                                                }}
+                                                className="w-full text-sm font-bold text-red-600 outline-none placeholder-gray-300"
                                                 placeholder="0.00"
                                             />
                                         </div>
