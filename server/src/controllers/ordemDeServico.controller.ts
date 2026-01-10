@@ -61,6 +61,29 @@ export class OrdemDeServicoController {
   async update(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
+
+      // STOCK MANAGEMENT LOGIC
+      if (req.body.status) {
+          const current = await repository.findById(id);
+          if (current) {
+               const oldStatus = current.status;
+               const newStatus = req.body.status;
+               
+               const closedStatuses = ['PRONTO PARA FINANCEIRO', 'FINALIZADA', 'PAGA_CLIENTE'];
+               const isClosing = closedStatuses.includes(newStatus);
+               const wasClosed = closedStatuses.includes(oldStatus);
+               
+               // If moving TO closed state FROM open state -> DEDUCT
+               if (isClosing && !wasClosed) {
+                   await repository.adjustStockForOS(id, 'DEDUCT');
+               } 
+               // If moving FROM closed state TO open state -> RETURN
+               else if (!isClosing && wasClosed) {
+                   await repository.adjustStockForOS(id, 'RETURN');
+               }
+          }
+      }
+
       const os = await repository.update(id, req.body);
       res.json(os);
     } catch (error) {

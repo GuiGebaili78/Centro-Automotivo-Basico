@@ -11,6 +11,7 @@ import { OrdemDeServicoDetalhePage } from './pages/OrdemDeServicoDetalhePage';
 import { CadastroUnificadoPage } from './pages/CadastroUnificadoPage';
 
 import { PecasEstoquePage } from './pages/PecasEstoquePage';
+import { EntradaEstoquePage } from './pages/EntradaEstoquePage';
 import { FuncionarioPage } from './pages/FuncionarioPage';
 import { PessoaPage } from './pages/PessoaPage';
 import { TipoPage } from './pages/TipoPage';
@@ -43,6 +44,7 @@ const router = createBrowserRouter(
       <Route path="/cadastro/:clienteId" element={<CadastroUnificadoPage />} />
 
       <Route path="/pecas-estoque" element={<PecasEstoquePage />} />
+      <Route path="/entrada-estoque" element={<EntradaEstoquePage />} />
       <Route path="/funcionario" element={<FuncionarioPage />} />
       <Route path="/pessoa" element={<PessoaPage />} />
       <Route path="/tipo" element={<TipoPage />} />

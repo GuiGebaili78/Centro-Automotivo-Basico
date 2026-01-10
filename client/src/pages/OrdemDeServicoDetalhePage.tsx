@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { IOrdemDeServico } from '../types/backend';
 import { 
-    Search, Plus, PenTool, X,
+    Search, Plus, PenTool, X, Trash2,
     Package, Wrench, CheckCircle, BadgeCheck, DollarSign, ArrowLeft, Save
 } from 'lucide-react';
 
@@ -446,76 +446,152 @@ export const OrdemDeServicoDetalhePage = () => {
                     </h3>
                     {/* Form Add Item */}
                     {os.status !== 'FINALIZADA' && os.status !== 'PAGA_CLIENTE' && (
-                        <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 shadow-sm">
-                                <div className="relative group mb-3">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-primary-500 transition-colors" size={18} />
-                                <input 
-                                    ref={partInputRef}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 font-bold text-sm bg-white transition-all shadow-sm"
-                                    placeholder="Buscar peça no estoque..."
-                                    value={partSearch}
-                                    onChange={e => {
-                                        handlePartSearch(e.target.value);
-                                        setHighlightIndex(-1);
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (partResults.length === 0) return;
-                                        if (e.key === 'ArrowDown') {
-                                            e.preventDefault();
-                                            setHighlightIndex(prev => Math.min(prev + 1, partResults.length - 1));
-                                        } else if (e.key === 'ArrowUp') {
-                                            e.preventDefault();
-                                            setHighlightIndex(prev => Math.max(prev - 1, -1)); // -1 means input focus
-                                        } else if (e.key === 'Enter') {
-                                            if (highlightIndex >= 0 && partResults[highlightIndex]) {
-                                                e.preventDefault();
-                                                selectPart(partResults[highlightIndex]);
-                                                setHighlightIndex(-1);
-                                            }
-                                        }
-                                    }}
-                                />
-                                {partResults.length > 0 && (
-                                    <div className="absolute z-50 w-full mt-2 bg-white border border-neutral-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2">
-                                        {partResults.map((p, idx) => (
-                                            <button 
-                                                key={p.id_pecas_estoque || p.nome} 
-                                                onClick={() => selectPart(p)} 
-                                                className={`w-full text-left p-3 text-sm font-medium border-b border-neutral-50 flex justify-between group/item transition-colors ${idx === highlightIndex ? 'bg-primary-50 ring-1 ring-inset ring-primary-100 z-10' : 'hover:bg-neutral-50'}`}
-                                            >
-                                                <span className="text-neutral-700 group-hover/item:text-neutral-900">{p.nome}</span>
-                                                <span className="font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md">R$ {Number(p.valor_venda).toFixed(2)}</span>
-                                            </button>
-                                        ))}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            
+                            {/* LEFT: MANUAL FORM / SELECTED ITEM */}
+                            <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 shadow-sm relative">
+                                <h4 className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <Package size={14} /> Item a Inserir
+                                </h4>
+                                <form onSubmit={handleAddItem} className="space-y-3">
+                                    <div className="relative">
+                                         <label className="text-[9px] font-bold text-neutral-400 uppercase">Descrição / Nome</label>
+                                         <input 
+                                             ref={partInputRef}
+                                             className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all"
+                                             placeholder="Nome do Item ou Serviço"
+                                             value={newItem.descricao}
+                                             onChange={e => setNewItem({...newItem, descricao: e.target.value})}
+                                         />
+                                         {newItem.id_pecas_estoque && (
+                                             <span className="absolute right-2 top-6 text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-green-200">
+                                                 Estoque
+                                             </span>
+                                         )}
                                     </div>
-                                )}
-                                </div>
-                                <form onSubmit={handleAddItem} className="flex gap-2">
-                                    <input 
-                                        ref={referenceInputRef}
-                                        className="w-32 p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-50" 
-                                        placeholder="Ref (Opcional)" 
-                                        value={newItem.codigo_referencia} 
-                                        onChange={e => setNewItem({...newItem, codigo_referencia: e.target.value})} 
-                                    />
-                                    <input 
-                                        ref={quantityInputRef}
-                                        className="w-24 p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-center text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-50" 
-                                        placeholder="Qtd" 
-                                        value={newItem.quantidade} 
-                                        onChange={e => setNewItem({...newItem, quantidade: e.target.value})} 
-                                    />
-                                    <input 
-                                        className="w-48 p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-50" 
-                                        placeholder="Valor Unit." 
-                                        value={newItem.valor_venda} 
-                                        onChange={e => setNewItem({...newItem, valor_venda: e.target.value})} 
-                                    />
-                                    <div className="flex-1 flex items-center justify-end px-4 text-xs font-bold text-neutral-400 uppercase tracking-wider">
-                                        Total: R$ {(Number(newItem.quantidade) * Number(newItem.valor_venda || 0)).toFixed(2)}
+
+                                    <div className="flex gap-2">
+                                        <div className="w-1/3">
+                                            <label className="text-[9px] font-bold text-neutral-400 uppercase">Ref / Obs</label>
+                                            <input 
+                                                ref={referenceInputRef}
+                                                className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-sm outline-none focus:border-primary-500" 
+                                                placeholder="..." 
+                                                value={newItem.codigo_referencia} 
+                                                onChange={e => setNewItem({...newItem, codigo_referencia: e.target.value})} 
+                                            />
+                                        </div>
+                                        <div className="w-1/4">
+                                            <label className="text-[9px] font-bold text-neutral-400 uppercase">Qtd</label>
+                                            <input 
+                                                ref={quantityInputRef}
+                                                type="number"
+                                                className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-center text-sm outline-none focus:border-primary-500" 
+                                                placeholder="1" 
+                                                value={newItem.quantidade} 
+                                                onChange={e => setNewItem({...newItem, quantidade: e.target.value})} 
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="text-[9px] font-bold text-neutral-400 uppercase">Valor (R$)</label>
+                                            <input 
+                                                type="number"
+                                                className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-right text-sm outline-none focus:border-primary-500" 
+                                                placeholder="0.00" 
+                                                value={newItem.valor_venda} 
+                                                onChange={e => setNewItem({...newItem, valor_venda: e.target.value})} 
+                                            />
+                                        </div>
                                     </div>
-                                    <button type="submit" className="bg-neutral-900 text-white px-6 py-2 rounded-xl hover:bg-black hover:scale-105 transition-all shadow-lg shadow-neutral-900/20 font-bold uppercase text-xs flex items-center gap-2"><Plus size={16} /> Adicionar</button>
+                                    
+                                    <div className="flex items-center justify-between pt-1">
+                                         <div className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+                                            Total: R$ {(Number(newItem.quantidade) * Number(newItem.valor_venda || 0)).toFixed(2)}
+                                         </div>
+                                         <button type="submit" className="bg-neutral-900 text-white px-6 py-2 rounded-xl hover:bg-black hover:scale-105 transition-all shadow-lg shadow-neutral-900/20 font-bold uppercase text-xs flex items-center gap-2">
+                                            <Plus size={16} /> Adicionar
+                                         </button>
+                                    </div>
                                 </form>
+                            </div>
+
+                            {/* RIGHT: STOCK SEARCH */}
+                            <div className="p-4 rounded-2xl border border-blue-100 bg-blue-50/30 shadow-sm relative">
+                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <Search size={14} /> Buscar no Estoque
+                                </h4>
+                                <div className="relative group">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 group-focus-within:text-blue-500 transition-colors" size={18} />
+                                    <input 
+                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-blue-100 bg-white outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 font-bold text-sm text-blue-900 transition-all shadow-sm placeholder:text-blue-200"
+                                        placeholder="Digite para buscar peças..."
+                                        value={partSearch}
+                                        onChange={e => {
+                                            handlePartSearch(e.target.value);
+                                            setHighlightIndex(-1);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (partResults.length === 0) return;
+                                            if (e.key === 'ArrowDown') {
+                                                e.preventDefault();
+                                                setHighlightIndex(prev => Math.min(prev + 1, partResults.length - 1));
+                                            } else if (e.key === 'ArrowUp') {
+                                                e.preventDefault();
+                                                setHighlightIndex(prev => Math.max(prev - 1, -1)); // -1 means input focus
+                                            } else if (e.key === 'Enter') {
+                                                if (highlightIndex >= 0 && partResults[highlightIndex]) {
+                                                    e.preventDefault();
+                                                    selectPart(partResults[highlightIndex]);
+                                                    setHighlightIndex(-1);
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    {partResults.length > 0 && (
+                                        <div className="absolute z-50 w-full mt-2 bg-white border border-blue-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2">
+                                            {partResults.map((p, idx) => (
+                                                <button 
+                                                    key={p.id_pecas_estoque || p.nome} 
+                                                    onClick={async () => {
+                                                        // Custom Select Logic for Stock Items
+                                                        try {
+                                                            const res = await api.get(`/pecas-estoque/${p.id_pecas_estoque}/availability`);
+                                                            const partDetails = res.data;
+                                                            
+                                                            setNewItem({ 
+                                                                ...newItem, 
+                                                                id_pecas_estoque: String(partDetails.id_pecas_estoque), 
+                                                                valor_venda: Number(partDetails.valor_venda).toFixed(2), 
+                                                                descricao: partDetails.nome,
+                                                                codigo_referencia: '' 
+                                                            });
+
+                                                            const freeStock = (partDetails.estoque_atual || 0) - (partDetails.reserved || 0);
+                                                            if (freeStock < 2) {
+                                                                setStatusMsg({ type: 'error', text: `⚠️ Estoque Baixo! Disp: ${freeStock} (Reservado: ${partDetails.reserved || 0})` });
+                                                            } else if (partDetails.reserved > 0) {
+                                                                setStatusMsg({ type: 'success', text: `Item selecionado. Disp: ${freeStock} (Reservado em outras OS: ${partDetails.reserved})` });
+                                                            } else {
+                                                                setStatusMsg({ type: 'success', text: `Item selecionado do estoque.` });
+                                                                setTimeout(() => setStatusMsg({type:null, text:''}), 1500);
+                                                            }
+                                                            
+                                                            setPartSearch(''); 
+                                                            setPartResults([]);
+                                                            requestAnimationFrame(() => referenceInputRef.current?.focus());
+                                                        } catch(e) { console.error(e); }
+                                                    }} 
+                                                    className={`w-full text-left p-3 text-sm font-medium border-b border-neutral-50 flex justify-between group/item transition-colors ${idx === highlightIndex ? 'bg-blue-50 ring-1 ring-inset ring-blue-100 z-10' : 'hover:bg-neutral-50'}`}
+                                                >
+                                                    <span className="text-neutral-700 group-hover/item:text-blue-900">{p.nome}</span>
+                                                    <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">R$ {Number(p.valor_venda).toFixed(2)}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-2 text-[9px] text-blue-400 font-medium">Use as setas para navegar e Enter para selecionar.</div>
+                            </div>
                         </div>
                     )}
                     {/* List Items */}
@@ -591,6 +667,33 @@ export const OrdemDeServicoDetalhePage = () => {
                             <Save size={18} /> Salvar e Fechar
                         </Button>
                     </div>
+                )}
+                
+                {os.status !== 'CANCELADA' && (
+                     <div className="mt-8 pt-8 border-t border-dashed border-red-200 flex justify-center opacity-50 hover:opacity-100 transition-opacity">
+                        <button 
+                            onClick={() => {
+                                setConfirmModal({
+                                    isOpen: true,
+                                    title: 'Cancelar Ordem de Serviço',
+                                    message: 'Tem certeza que deseja CANCELAR esta OS? Todos os itens serão devolvidos ao estoque automaticamente.',
+                                    onConfirm: async () => {
+                                        try {
+                                             await api.put(`/ordem-de-servico/${os.id_os}`, { status: 'CANCELADA' });
+                                             setStatusMsg({ type: 'success', text: 'OS Cancelada e Estoque Estornado.' });
+                                             loadOsData();
+                                        } catch(e) { 
+                                            setStatusMsg({ type: 'error', text: 'Erro ao cancelar.' }); 
+                                        }
+                                        setConfirmModal(prev => ({...prev, isOpen: false}));
+                                    }
+                                });
+                            }}
+                            className="text-red-500 font-bold text-xs uppercase hover:text-red-700 flex items-center gap-2"
+                        >
+                            <Trash2 size={14} /> Cancelar OS (Apenas Financeiro)
+                        </button>
+                     </div>
                 )}
 
                 {/* Totals & Actions - Keep as is (below everything) */}

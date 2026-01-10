@@ -24,7 +24,15 @@ const menuItems = [
     ]
   },
   { path: '/ordem-de-servico', label: 'Ordens de Serviço', icon: Wrench },
-  { path: '/pecas-estoque', label: 'Estoque', icon: Package },
+  { 
+    label: 'Estoque', 
+    icon: Package,
+    path: '/estoque',
+    subItems: [
+        { path: '/pecas-estoque', label: 'Visão Geral / Consulta' },
+        { path: '/entrada-estoque', label: 'Nova Compra (Entrada)' }
+    ]
+  },
   { 
     label: 'Financeiro', 
     icon: DollarSign,

@@ -13,6 +13,27 @@ export class PecasEstoqueController {
     }
   }
 
+  async createEntry(req: Request, res: Response) {
+    try {
+        const entry = await repository.createEntry(req.body);
+        res.status(201).json(entry);
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({ error: 'Failed to create entry', details: error });
+    }
+  }
+
+  async getAvailability(req: Request, res: Response) {
+      try {
+          const id = Number(req.params.id);
+          const result = await repository.getAvailability(id);
+          if (!result) return res.status(404).json({error: 'Part not found'});
+          res.json(result);
+      } catch (error) {
+          res.status(500).json({ error: 'Failed to fetch availability' });
+      }
+  }
+
   async findAll(req: Request, res: Response) {
     try {
       const pecas = await repository.findAll();

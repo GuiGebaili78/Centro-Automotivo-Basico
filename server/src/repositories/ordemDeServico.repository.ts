@@ -289,7 +289,6 @@ export class OrdemDeServicoRepository {
     return updated;
   }
 
-  // Recalculates the total values for the OS based on active items and labor
   async recalculateTotals(id_os: number) {
     const items = await prisma.itensOs.aggregate({
         where: { id_os, deleted_at: null },
@@ -317,5 +316,27 @@ export class OrdemDeServicoRepository {
     });
 
     return { valor_pecas, valor_mao_de_obra, valor_total_cliente };
+  }
+
+  async adjustStockForOS(id_os: number, action: 'DEDUCT' | 'RETURN') {
+      const items = await prisma.itensOs.findMany({
+          where: { id_os, id_pecas_estoque: { not: null }, deleted_at: null }
+      });
+
+      for (const item of items) {
+          if (!item.id_pecas_estoque) continue;
+
+          if (action === 'DEDUCT') {
+              await prisma.pecasEstoque.update({
+                  where: { id_pecas_estoque: item.id_pecas_estoque },
+                  data: { estoque_atual: { decrement: item.quantidade } }
+              });
+          } else {
+              await prisma.pecasEstoque.update({
+                  where: { id_pecas_estoque: item.id_pecas_estoque },
+                  data: { estoque_atual: { increment: item.quantidade } }
+              });
+          }
+      }
   }
 }

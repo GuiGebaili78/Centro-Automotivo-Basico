@@ -7,7 +7,8 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "db:migrate": "docker compose exec api npx prisma migrate dev",
-    "db:studio": "docker compose exec api npx prisma studio"
+    "db:studio": "docker compose exec api npx prisma studio",
+    "generate:context": "powershell -ExecutionPolicy Bypass -File ./generate_context.ps1"
   },
   "keywords": [],
   "author": "",
