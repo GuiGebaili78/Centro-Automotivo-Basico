@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Calculator, Save, Truck, Plus, BadgeCheck, Palette, Trash2, Pen, User, Car, AlertCircle, Wrench } from 'lucide-react';
+import { Calculator, Save, Truck, Plus, BadgeCheck, Trash2, Pen, User, Car, AlertCircle, Wrench } from 'lucide-react';
 import { PagamentoClienteForm } from './PagamentoClienteForm';
 import { FornecedorForm } from './FornecedorForm';
 import { LaborManager } from '../os/LaborManager';
