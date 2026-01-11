@@ -522,10 +522,15 @@ export const EntradaEstoquePage = () => {
                 <Modal title="Novo Fornecedor" onClose={() => setShowNewSupplierModal(false)}>
                     <FornecedorForm 
                         onSuccess={(newSupplier) => {
-                            setSuppliers(prev => [...prev, newSupplier]);
-                            setSelectedSupplierId(String(newSupplier.id_fornecedor));
+                            if (newSupplier) {
+                                setSuppliers(prev => [...prev, newSupplier]);
+                                setSelectedSupplierId(String(newSupplier.id_fornecedor));
+                                setStatusMsg({ type: 'success', text: 'Fornecedor Cadastrado e Selecionado!' });
+                            } else {
+                                // Fallback reload if no data returned
+                                api.get('/fornecedor').then(res => setSuppliers(res.data)).catch(console.error);
+                            }
                             setShowNewSupplierModal(false);
-                            setStatusMsg({ type: 'success', text: 'Fornecedor Cadastrado e Selecionado!' });
                         }}
                         onCancel={() => setShowNewSupplierModal(false)}
                     />

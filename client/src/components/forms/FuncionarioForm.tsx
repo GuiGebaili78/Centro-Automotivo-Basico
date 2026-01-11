@@ -1,8 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '../../services/api';
 import { 
-    User, Briefcase, MapPin, DollarSign, FileText, BadgeCheck, 
-    ArrowLeft, Search, Building2, Smartphone, ShieldCheck, CreditCard
+    User, Briefcase, MapPin, DollarSign, BadgeCheck, 
+    ArrowLeft, Search, Smartphone, ShieldCheck
 } from 'lucide-react';
 import type { IFuncionario } from '../../types/backend';
 
@@ -154,7 +154,7 @@ export const FuncionarioForm = ({ initialData, onSuccess, onCancel }: Funcionari
         setLoading(true);
         try {
             // Payload helper
-            const getFuncionarioPayload = (pId?: number, pfId?: number) => ({
+            const getFuncionarioPayload = (_pId?: number, pfId?: number) => ({
                 // Relations if new
                 ...(pfId ? { id_pessoa_fisica: pfId } : {}),
                 

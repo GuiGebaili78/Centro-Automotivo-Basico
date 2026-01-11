@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { FuncionarioForm } from '../components/forms/FuncionarioForm';
 import { StatusBanner } from '../components/ui/StatusBanner';
 import { 
-    Plus, Search, Trash2, Edit, Users, UserCog, User, Briefcase, Phone
+    Plus, Search, Trash2, Edit, Users, User, Briefcase, Phone
 } from 'lucide-react';
 import type { IFuncionario } from '../types/backend';
 

@@ -8,7 +8,7 @@ import type { IFornecedor } from '../../types/backend';
 
 interface FornecedorFormProps {
     initialData?: IFornecedor | null;
-    onSuccess: () => void;
+    onSuccess: (data?: IFornecedor) => void;
     onCancel: () => void;
 }
 
@@ -116,12 +116,13 @@ export const FornecedorForm = ({ initialData, onSuccess, onCancel }: FornecedorF
         e.preventDefault();
         setLoading(true);
         try {
+            let res;
             if (initialData?.id_fornecedor) {
-                await api.put(`/fornecedor/${initialData.id_fornecedor}`, formData);
+                res = await api.put(`/fornecedor/${initialData.id_fornecedor}`, formData);
             } else {
-                await api.post('/fornecedor', formData);
+                res = await api.post('/fornecedor', formData);
             }
-            onSuccess();
+            onSuccess(res.data);
         } catch (error) {
             console.error(error);
             alert('Erro ao salvar fornecedor.');
