@@ -58,13 +58,52 @@ export interface IFuncionario {
     id_pessoa_fisica: number;
     ativo: string;
     cargo: string;
+    
+    // Antigos
     salario?: number | null;
-    comissao?: number | null;
+    comissao?: number | null; // Mão de Obra
+    
     dt_admissao: string;
     dt_recisao?: string | null;
     motivo_saida?: string | null;
     obs?: string | null;
     dt_cadastro: string;
+    
+    // MEI / Identificação
+    razao_social?: string | null;
+    nome_fantasia?: string | null;
+    cnpj_mei?: string | null;
+    inscricao_municipal?: string | null;
+
+    // Dados Pessoais / Endereço
+    rg?: string | null;
+    cep?: string | null;
+    logradouro?: string | null;
+    numero?: string | null;
+    complemento?: string | null;
+    bairro?: string | null;
+    cidade?: string | null;
+    uf?: string | null;
+    telefone_pessoal?: string | null;
+    email_pessoal?: string | null;
+
+    // Operacional / Financeiro Extra
+    especialidade?: string | null;
+    tipo_pagamento?: string | null;
+    valor_pagamento?: number | null;
+    comissao_pecas?: number | null;
+
+    banco?: string | null;
+    agencia?: string | null;
+    conta?: string | null;
+    chave_pix?: string | null;
+    periodicidade_pagamento?: string | null;
+    dia_vencimento?: number | null;
+
+    // Docs
+    url_ccmei?: string | null;
+    url_cnh?: string | null;
+    equipamentos_epis?: string | null;
 
     // Optional Joins
     pessoa_fisica?: IPessoaFisica & { pessoa: IPessoa };
@@ -182,9 +221,38 @@ export interface IFechamentoFinanceiro {
 
 export interface IFornecedor {
     id_fornecedor: number;
+    // Identificação
+    tipo_pessoa?: string | null;
     nome: string;
+    nome_fantasia?: string | null;
     documento?: string | null;
+    inscricao_estadual?: string | null;
+    inscricao_municipal?: string | null;
+
+    // Contato
     contato?: string | null;
+    telefone?: string | null;
+    whatsapp?: string | null;
+    email?: string | null;
+
+    // Endereço
+    cep?: string | null;
+    logradouro?: string | null;
+    numero?: string | null;
+    complemento?: string | null;
+    bairro?: string | null;
+    cidade?: string | null;
+    uf?: string | null;
+
+    // Financeiro
+    banco?: string | null;
+    agencia?: string | null;
+    conta?: string | null;
+    chave_pix?: string | null;
+    condicoes_pagamento?: string | null;
+    categoria_produto?: string | null;
+
+    obs?: string | null;
     dt_cadastro: string;
 }
 
@@ -198,3 +266,22 @@ export interface IPagamentoPeca {
     pago_ao_fornecedor: boolean;
 }
 
+export interface IContasPagar {
+    id_conta_pagar: number;
+    descricao: string;
+    valor: number;
+    dt_vencimento: string;
+    dt_pagamento?: string | null;
+    status: string;
+    categoria?: string | null;
+    
+    // New
+    credor?: string | null;
+    dt_emissao?: string | null;
+    num_documento?: string | null;
+    forma_pagamento?: string | null;
+    url_anexo?: string | null;
+    
+    obs?: string | null;
+    dt_cadastro: string;
+}

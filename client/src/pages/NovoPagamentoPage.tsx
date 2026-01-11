@@ -63,8 +63,9 @@ export const NovoPagamentoPage = () => {
             
             // Auto-fill Salary from selected Funcionario
             const func = funcionarios.find(f => String(f.id_funcionario) === String(selectedFuncionarioId));
-            if (func && func.salario) {
-                setValorSalario(String(func.salario));
+            if (func) {
+                const val = func.valor_pagamento || func.salario;
+                setValorSalario(val ? String(val) : '');
             } else {
                 setValorSalario('');
             }

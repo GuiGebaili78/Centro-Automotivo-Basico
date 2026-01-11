@@ -119,18 +119,58 @@ model Cliente {
 }
 
 // Tabela 6: Funcionário
+// Tabela 6: Funcionário
 model Funcionario {
   id_funcionario      Int      @id @default(autoincrement())
   id_pessoa_fisica    Int      @unique 
-  ativo               String   @db.Char(1) // Seu SQL usa CHAR(1) para boolean/status
+  ativo               String   @db.Char(1) 
   cargo               String   @db.VarChar(50)
-  salario             Decimal?   @db.Decimal(10, 2)
-  comissao            Int?     
   dt_admissao         DateTime @db.Timestamp()
   dt_recisao          DateTime? @db.Timestamp()
   motivo_saida        String?  @db.VarChar(200)
-  obs                 String?  @db.VarChar(500)
+  obs                 String?  @db.VarChar(500) // Observações gerais
   dt_cadastro         DateTime @default(now()) @db.Timestamp()
+  
+  // Identificação Profissional (MEI)
+  razao_social        String?  @db.VarChar(100)
+  nome_fantasia       String?  @db.VarChar(100)
+  cnpj_mei            String?  @db.VarChar(20)
+  inscricao_municipal String?  @db.VarChar(50)
+
+  // Dados Pessoais Extras (Endereço e Docs)
+  rg                  String?  @db.VarChar(20)
+  cep                 String?  @db.VarChar(10)
+  logradouro          String?  @db.VarChar(150)
+  numero              String?  @db.VarChar(20)
+  complemento         String?  @db.VarChar(100)
+  bairro              String?  @db.VarChar(100)
+  cidade              String?  @db.VarChar(100)
+  uf                  String?  @db.Char(2)
+  telefone_pessoal    String?  @db.VarChar(20)
+  email_pessoal       String?  @db.VarChar(100)
+
+  // Operacional
+  especialidade       String?  @db.VarChar(100)
+  tipo_pagamento      String?  @db.VarChar(50) // 'HORA', 'FIXO_MENSAL'
+  valor_pagamento     Decimal? @db.Decimal(10, 2)
+  
+  // Comissões
+  salario             Decimal? @db.Decimal(10, 2) // Mantido como referência base se necessário
+  comissao            Int?     // Mantido (Comissão Mão de Obra %)
+  comissao_pecas      Decimal? @db.Decimal(5, 2) // Novo (Comissão Peças %)
+
+  // Financeiro e Pagamento
+  banco               String?  @db.VarChar(50)
+  agencia             String?  @db.VarChar(20)
+  conta               String?  @db.VarChar(20)
+  chave_pix           String?  @db.VarChar(100)
+  periodicidade_pagamento String? @db.VarChar(50)
+  dia_vencimento      Int?
+  
+  // Documentação (Links)
+  url_ccmei           String?  @db.VarChar(500)
+  url_cnh             String?  @db.VarChar(500)
+  equipamentos_epis   String?  @db.Text
   
   // Relacionamento 1:1 com PessoaFisica
   pessoa_fisica       PessoaFisica @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
@@ -271,13 +311,44 @@ model ItensOs {
 // Nova Entidade: Fornecedor
 model Fornecedor {
     id_fornecedor Int      @id @default(autoincrement())
-    nome          String   @db.VarChar(100)
-    documento     String?  @db.VarChar(20)
-    contato       String?  @db.VarChar(100)
+    
+    // Identificação
+    tipo_pessoa   String?  @default("JURIDICA") @db.VarChar(20) // FISICA ou JURIDICA
+    nome          String   @db.VarChar(100) // Razão Social / Nome Completo
+    nome_fantasia String?  @db.VarChar(100)
+    documento     String?  @db.VarChar(20) // CPF ou CNPJ
+    inscricao_estadual String? @db.VarChar(50)
+    inscricao_municipal String? @db.VarChar(50)
+
+    // Contato
+    contato       String?  @db.VarChar(100) // Nome do vendedor/contato
+    telefone      String?  @db.VarChar(20)
+    whatsapp      String?  @db.VarChar(20)
+    email         String?  @db.VarChar(100)
+
+    // Endereço
+    cep           String?  @db.VarChar(10)
+    logradouro    String?  @db.VarChar(150)
+    numero        String?  @db.VarChar(20)
+    complemento   String?  @db.VarChar(100)
+    bairro        String?  @db.VarChar(100)
+    cidade        String?  @db.VarChar(100)
+    uf            String?  @db.Char(2)
+
+    // Financeiro
+    banco         String?  @db.VarChar(50)
+    agencia       String?  @db.VarChar(20)
+    conta         String?  @db.VarChar(20)
+    chave_pix     String?  @db.VarChar(100)
+    condicoes_pagamento String? @db.VarChar(100)
+    categoria_produto   String? @db.VarChar(100)
+
+    // Extras
+    obs           String?  @db.VarChar(500)
     dt_cadastro   DateTime @default(now()) @db.Timestamp()
     
     pagamentos_peca PagamentoPeca[]
-    entradas_estoque EntradaEstoque[] // Entradas compradas deste fornecedor
+    entradas_estoque EntradaEstoque[] 
 
     @@map("fornecedor")
 }
@@ -376,6 +447,14 @@ model ContasPagar {
     dt_pagamento        DateTime? @db.Date
     status              String   @db.VarChar(20) // 'PENDENTE', 'PAGO'
     categoria           String?  @db.VarChar(50) // 'AGUA', 'LUZ', 'ALUGUEL', 'INTERNET', 'OUTROS'
+    
+    // Novos campos
+    credor              String?  @db.VarChar(100)
+    dt_emissao          DateTime? @db.Date
+    num_documento       String?  @db.VarChar(50)
+    forma_pagamento     String?  @db.VarChar(50)
+    url_anexo           String?  @db.VarChar(500)
+    
     obs                 String?  @db.VarChar(500)
     
     dt_cadastro         DateTime @default(now()) @db.Timestamp()

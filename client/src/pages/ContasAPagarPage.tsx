@@ -3,11 +3,12 @@ import { api } from '../services/api';
 import { StatusBanner } from '../components/ui/StatusBanner';
 import { Modal } from '../components/ui/Modal';
 import { 
-    Plus, Calendar, CheckCircle, Search, Trash2, Edit
+    Plus, Calendar, CheckCircle, Search, Trash2, Edit, FileText, Upload, User, Link
 } from 'lucide-react';
+import type { IContasPagar } from '../types/backend';
 
 export const ContasAPagarPage = () => {
-    const [contas, setContas] = useState<any[]>([]);
+    const [contas, setContas] = useState<IContasPagar[]>([]);
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
     
@@ -15,7 +16,6 @@ export const ContasAPagarPage = () => {
     const [filterStatus, setFilterStatus] = useState('TODOS'); // TODOS, PENDENTE, PAGO
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Date Filters
     // Date Filters - Default to Current Month
     const date = new Date();
     const firstDayCurrent = new Date(date.getFullYear(), date.getMonth(), 1).toLocaleDateString('en-CA');
@@ -29,11 +29,16 @@ export const ContasAPagarPage = () => {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState({
         descricao: '',
-        valor: '',
-        dt_vencimento: '',
-        dt_pagamento: '',
-        status: 'PENDENTE',
+        credor: '',
         categoria: 'OUTROS',
+        valor: '',
+        dt_emissao: '',
+        dt_vencimento: '',
+        num_documento: '',
+        status: 'PENDENTE',
+        forma_pagamento: '',
+        dt_pagamento: '',
+        url_anexo: '',
         obs: ''
     });
 
@@ -63,7 +68,8 @@ export const ContasAPagarPage = () => {
                 dt_pagamento: formData.status === 'PAGO' 
                     ? (formData.dt_pagamento ? new Date(formData.dt_pagamento).toISOString() : new Date().toISOString()) 
                     : null,
-                dt_vencimento: new Date(formData.dt_vencimento).toISOString()
+                dt_vencimento: new Date(formData.dt_vencimento).toISOString(),
+                dt_emissao: formData.dt_emissao ? new Date(formData.dt_emissao).toISOString() : null
             };
 
             if (editingId) {
@@ -77,6 +83,7 @@ export const ContasAPagarPage = () => {
             resetForm();
             loadContas();
         } catch (error) {
+            console.error(error);
             setStatusMsg({ type: 'error', text: 'Erro ao salvar conta.' });
         }
     };
@@ -105,15 +112,20 @@ export const ContasAPagarPage = () => {
         }
     };
 
-    const handleEdit = (conta: any) => {
+    const handleEdit = (conta: IContasPagar) => {
         setEditingId(conta.id_conta_pagar);
         setFormData({
             descricao: conta.descricao,
-            valor: Number(conta.valor).toFixed(2),
-            dt_vencimento: conta.dt_vencimento ? new Date(conta.dt_vencimento).toISOString().split('T')[0] : '',
-            dt_pagamento: conta.dt_pagamento ? new Date(conta.dt_pagamento).toISOString().split('T')[0] : '',
-            status: conta.status,
+            credor: conta.credor || '',
             categoria: conta.categoria || 'OUTROS',
+            valor: Number(conta.valor).toFixed(2),
+            dt_emissao: conta.dt_emissao ? new Date(conta.dt_emissao).toISOString().split('T')[0] : '',
+            dt_vencimento: new Date(conta.dt_vencimento).toISOString().split('T')[0],
+            num_documento: conta.num_documento || '',
+            status: conta.status,
+            forma_pagamento: conta.forma_pagamento || '',
+            dt_pagamento: conta.dt_pagamento ? new Date(conta.dt_pagamento).toISOString().split('T')[0] : '',
+            url_anexo: conta.url_anexo || '',
             obs: conta.obs || ''
         });
         setModalOpen(true);
@@ -123,11 +135,16 @@ export const ContasAPagarPage = () => {
         setEditingId(null);
         setFormData({
             descricao: '',
-            valor: '',
-            dt_vencimento: new Date().toISOString().split('T')[0],
-            dt_pagamento: '',
-            status: 'PENDENTE',
+            credor: '',
             categoria: 'OUTROS',
+            valor: '',
+            dt_emissao: new Date().toISOString().split('T')[0],
+            dt_vencimento: new Date().toISOString().split('T')[0],
+            num_documento: '',
+            status: 'PENDENTE',
+            forma_pagamento: '',
+            dt_pagamento: '',
+            url_anexo: '',
             obs: ''
         });
     };
@@ -163,13 +180,9 @@ export const ContasAPagarPage = () => {
     const filteredContas = contas.filter(c => {
         // Date Filter (Vencimento)
         if (filterStart) {
-            // Compare Date Strings YYYY-MM-DD
             if (c.dt_vencimento < filterStart) return false;
         }
         if (filterEnd) {
-             // For end date, we need to ensure match includes the day. 
-             // c.dt_vencimento is ISO string potentially with time or T00:00.
-             // Best to take YYYY-MM-DD part and compare strings.
              const vencC = c.dt_vencimento.split('T')[0];
              if (vencC > filterEnd) return false;
         }
@@ -177,7 +190,7 @@ export const ContasAPagarPage = () => {
         if (filterStatus !== 'TODOS' && c.status !== filterStatus) return false;
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
-            return c.descricao.toLowerCase().includes(term) || c.categoria?.toLowerCase().includes(term);
+            return c.descricao.toLowerCase().includes(term) || c.categoria?.toLowerCase().includes(term) || c.credor?.toLowerCase().includes(term);
         }
         return true;
     });
@@ -232,7 +245,7 @@ export const ContasAPagarPage = () => {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                                 <input 
                                     className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm focus:border-primary-500 outline-none"
-                                    placeholder="Descrição..."
+                                    placeholder="Descrição, Credor..."
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
                                 />
@@ -298,8 +311,8 @@ export const ContasAPagarPage = () => {
                     <thead className="bg-neutral-50 border-b border-neutral-100">
                         <tr>
                             <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Vencimento</th>
-                            <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Descrição / Categoria</th>
-                            <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Obs</th>
+                            <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Descrição</th>
+                            <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Credor / Docs</th>
                             <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">Valor</th>
                             <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-center">Status</th>
                             <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">Ações</th>
@@ -330,9 +343,24 @@ export const ContasAPagarPage = () => {
                                         <div className="text-[10px] font-bold text-neutral-400 uppercase bg-neutral-100 px-2 py-0.5 rounded w-fit mt-1">
                                             {conta.categoria}
                                         </div>
+                                        {conta.obs && <div className="text-[10px] text-neutral-500 mt-1 italic max-w-[200px] truncate">{conta.obs}</div>}
                                     </td>
-                                    <td className="p-4 text-xs font-medium text-neutral-500 max-w-[200px] truncate">
-                                        {conta.obs || '-'}
+                                    <td className="p-4">
+                                        {conta.credor && (
+                                            <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-700 mb-1">
+                                                <User size={12} className="text-neutral-400" /> {conta.credor}
+                                            </div>
+                                        )}
+                                        {conta.num_documento && (
+                                            <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 font-bold">
+                                                <FileText size={12} className="text-neutral-400" /> Doc: {conta.num_documento}
+                                            </div>
+                                        )}
+                                        {conta.url_anexo && (
+                                            <a href={conta.url_anexo} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[10px] text-blue-500 font-bold hover:underline mt-1">
+                                                <Link size={12} /> Ver Anexo
+                                            </a>
+                                        )}
                                     </td>
                                     <td className="p-4 text-right font-black text-neutral-800">
                                         R$ {Number(conta.valor).toFixed(2)}
@@ -374,47 +402,94 @@ export const ContasAPagarPage = () => {
                 <Modal 
                     title={editingId ? 'Editar Conta' : 'Nova Conta a Pagar'} 
                     onClose={() => setModalOpen(false)}
-                    className="max-w-xl"
+                    className="max-w-2xl"
                 >
-                    <form onSubmit={handleSave} className="space-y-4 pt-4">
-                        <div className="grid grid-cols-2 gap-4">
+                    <form onSubmit={handleSave} className="space-y-6 pt-4">
+                        
+                        {/* 1. Descrição & Credor */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Descrição</label>
+                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Descrição / Título</label>
                                 <input 
                                     required
                                     className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold"
                                     value={formData.descricao}
                                     onChange={e => setFormData({...formData, descricao: e.target.value})}
-                                    placeholder="Ex: Conta de Luz"
+                                    placeholder="Ex: Compra Material Limpeza"
                                 />
                             </div>
                             <div>
+                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Credor</label>
+                                <input 
+                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold"
+                                    value={formData.credor}
+                                    onChange={e => setFormData({...formData, credor: e.target.value})}
+                                    placeholder="Ex: Fornecedor X"
+                                />
+                            </div>
+                        </div>
+
+                        {/* 2. Categoria & Valor */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
                                 <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Categoria</label>
                                 <select 
-                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm"
+                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm h-[50px]"
                                     value={formData.categoria}
                                     onChange={e => setFormData({...formData, categoria: e.target.value})}
                                 >
                                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Valor</label>
+                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Valor do Título (R$)</label>
                                 <input 
                                     type="number" step="0.01" required
-                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold"
+                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-black text-neutral-800"
                                     value={formData.valor}
                                     onChange={e => setFormData({...formData, valor: e.target.value})}
                                     placeholder="0.00"
                                 />
                             </div>
+                        </div>
+
+                        {/* 3. Datas */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Data de Emissão</label>
+                                <input 
+                                    type="date"
+                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm"
+                                    value={formData.dt_emissao}
+                                    onChange={e => setFormData({...formData, dt_emissao: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Data de Vencimento</label>
+                                <input 
+                                    type="date" required
+                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm"
+                                    value={formData.dt_vencimento}
+                                    onChange={e => setFormData({...formData, dt_vencimento: e.target.value})}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 4. Documento & Status */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Número do Documento</label>
+                                <input 
+                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold"
+                                    value={formData.num_documento}
+                                    onChange={e => setFormData({...formData, num_documento: e.target.value})}
+                                    placeholder="Nota Fiscal / Boleto"
+                                />
+                            </div>
                             <div>
                                 <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Status</label>
                                 <select 
-                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm"
+                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm h-[50px]"
                                     value={formData.status}
                                     onChange={e => setFormData({...formData, status: e.target.value})}
                                 >
@@ -424,27 +499,38 @@ export const ContasAPagarPage = () => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Vencimento</label>
-                                <input 
-                                    type="date" required
-                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm"
-                                    value={formData.dt_vencimento}
-                                    onChange={e => setFormData({...formData, dt_vencimento: e.target.value})}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Pagamento (Opcional)</label>
-                                <input 
-                                    type="date"
-                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm"
-                                    value={formData.dt_pagamento}
-                                    disabled={formData.status !== 'PAGO'}
-                                    onChange={e => setFormData({...formData, dt_pagamento: e.target.value})}
-                                />
-                            </div>
-                        </div>
+                        {/* 5. Forma Pagto & Anexos */}
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div>
+                                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Forma de Pagamento Prevista</label>
+                                <select 
+                                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm h-[50px]"
+                                    value={formData.forma_pagamento}
+                                    onChange={e => setFormData({...formData, forma_pagamento: e.target.value})}
+                                >
+                                    <option value="">Selecione...</option>
+                                    <option value="BOLETO">Boleto</option>
+                                    <option value="PIX">Pix</option>
+                                    <option value="DINHEIRO">Dinheiro</option>
+                                    <option value="TRANSFERENCIA">Transferência</option>
+                                    <option value="CARTAO">Cartão</option>
+                                </select>
+                             </div>
+                             <div>
+                                 <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase flex gap-2">
+                                     Arquivos / Anexos <span className="text-neutral-300 font-normal">(Link URL por enquanto)</span>
+                                 </label>
+                                 <div className="relative">
+                                    <Upload className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                                    <input 
+                                        className="w-full pl-10 pr-3 py-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm"
+                                        value={formData.url_anexo}
+                                        onChange={e => setFormData({...formData, url_anexo: e.target.value})}
+                                        placeholder="http://..."
+                                    />
+                                 </div>
+                             </div>
+                         </div>
 
                         <div>
                             <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Observações</label>
@@ -452,11 +538,12 @@ export const ContasAPagarPage = () => {
                                 className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-medium text-sm h-20 resize-none"
                                 value={formData.obs}
                                 onChange={e => setFormData({...formData, obs: e.target.value})}
+                                placeholder="Observações adicionais..."
                             />
                         </div>
 
-                        <button className="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white font-black uppercase rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 mt-2">
-                            Salvar Conta
+                        <button className="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white font-black uppercase rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 mt-2 flex items-center justify-center gap-2">
+                            <CheckCircle size={20} /> Salvar Conta
                         </button>
                     </form>
                 </Modal>
