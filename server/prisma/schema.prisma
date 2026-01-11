@@ -271,6 +271,7 @@ model OrdemDeServico {
     servicos_mao_de_obra ServicoMaoDeObra[]
     fechamento_financeiro FechamentoFinanceiro?
     pagamentos_cliente  PagamentoCliente[]
+    recebiveis_cartao   RecebivelCartao[]
 
     @@map("ordem_de_servico")
     
@@ -365,6 +366,9 @@ model PagamentoPeca {
     pago_ao_fornecedor    Boolean  @default(false)
     deleted_at            DateTime? @db.Timestamp()
     
+    id_livro_caixa        Int?     @unique
+    livro_caixa           LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
+
     item_os               ItensOs  @relation(fields: [id_item_os], references: [id_iten])
     fornecedor            Fornecedor @relation(fields: [id_fornecedor], references: [id_fornecedor])
 
@@ -513,10 +517,15 @@ model LivroCaixa {
     origem              String   @default("MANUAL") @db.VarChar(20) // 'MANUAL' or 'AUTOMATICA'
     deleted_at          DateTime? @db.Timestamp()
 
+    id_conta_bancaria   Int?
+    conta               ContaBancaria? @relation(fields: [id_conta_bancaria], references: [id_conta])
+
     // Rastreabilidade (Opcional)
     id_pagamento_equipe Int?
     pagamento_equipe    PagamentoEquipe? @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
     
+    pagamento_peca      PagamentoPeca?
+
     @@map("livro_caixa")
 }
 
@@ -570,4 +579,75 @@ model ItemEntrada {
     peca              PecasEstoque   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
 
     @@map("item_entrada")
+}
+
+// ---------------------------------------------------------
+// MÓDULO INTELIGÊNCIA FINANCEIRA (MULTICONTAS E CARTÕES)
+// ---------------------------------------------------------
+
+model ContaBancaria {
+  id_conta        Int          @id @default(autoincrement())
+  nome            String       @db.VarChar(50) // "Caixa Geral", "Itaú Empresas"
+  banco           String?      @db.VarChar(50)
+  agencia         String?      @db.VarChar(20)
+  conta           String?      @db.VarChar(20)
+  saldo_atual     Decimal      @default(0) @db.Decimal(12, 2)
+  ativo           Boolean      @default(true)
+  
+  dt_cadastro     DateTime     @default(now()) @db.Timestamp()
+
+  movimentacoes   LivroCaixa[]      
+  operadoras      OperadoraCartao[] 
+  
+  @@map("conta_bancaria")
+}
+
+model OperadoraCartao {
+  id_operadora          Int      @id @default(autoincrement())
+  nome                  String   @db.VarChar(50) // "Stone", "Cielo"
+  
+  // Taxas e Prazos
+  taxa_debito           Decimal  @default(0) @db.Decimal(5, 2)
+  prazo_debito          Int      @default(1) // Dias
+  
+  taxa_credito_vista    Decimal  @default(0) @db.Decimal(5, 2)
+  prazo_credito_vista   Int      @default(30)
+  
+  taxa_credito_parc     Decimal  @default(0) @db.Decimal(5, 2)
+  prazo_credito_parc    Int      @default(30)
+  
+  taxa_antecipacao      Decimal  @default(0) @db.Decimal(5, 2)
+  antecipacao_auto      Boolean  @default(false)
+  
+  // Destino Automático
+  id_conta_destino      Int
+  conta_destino         ContaBancaria @relation(fields: [id_conta_destino], references: [id_conta])
+  
+  recebiveis            RecebivelCartao[]
+
+  @@map("operadora_cartao")
+}
+
+model RecebivelCartao {
+  id_recebivel      Int      @id @default(autoincrement())
+  id_os             Int?     
+  id_operadora      Int
+  
+  num_parcela       Int      @default(1)
+  total_parcelas    Int      @default(1)
+  
+  valor_bruto       Decimal  @db.Decimal(10, 2)
+  valor_liquido     Decimal  @db.Decimal(10, 2) 
+  taxa_aplicada     Decimal  @db.Decimal(10, 2)
+  
+  data_venda        DateTime @default(now()) @db.Date
+  data_prevista     DateTime @db.Date 
+  data_recebimento  DateTime? @db.Date 
+  
+  status            String   @default("PENDENTE") // 'PENDENTE', 'RECEBIDO'
+  
+  operadora         OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
+  ordem_de_servico  OrdemDeServico? @relation(fields: [id_os], references: [id_os])
+
+  @@map("recebivel_cartao")
 }

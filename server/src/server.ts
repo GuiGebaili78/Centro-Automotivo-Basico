@@ -62,6 +62,14 @@ app.use('/api/pagamento-equipe', pagamentoEquipeRoutes);
 app.use('/api/livro-caixa', livroCaixaRoutes);
 app.use('/api/categoria-financeira', categoriaFinanceiraRoutes);
 
+import { contaBancariaRoutes } from './routes/contaBancaria.routes.js';
+import { operadoraRoutes } from './routes/operadoraCartao.routes.js';
+import { recebivelRoutes } from './routes/recebivelCartao.routes.js';
+
+app.use('/api/conta-bancaria', contaBancariaRoutes);
+app.use('/api/operadora-cartao', operadoraRoutes);
+app.use('/api/recebivel-cartao', recebivelRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

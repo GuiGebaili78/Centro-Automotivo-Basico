@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { StatusBanner } from '../components/ui/StatusBanner';
@@ -9,11 +10,13 @@ import { Modal } from '../components/ui/Modal';
 
 export const PagamentoPecaPage = () => {
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
-    const [, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     // --- STATES FOR ACCOUNTS PAYABLE (PEÇAS) ---
     const [payments, setPayments] = useState<any[]>([]);
     const [fornecedores, setFornecedores] = useState<any[]>([]);
+    const [accounts, setAccounts] = useState<any[]>([]); // Bank Accounts
+
     const [filterSupplier, setFilterSupplier] = useState('');
     const [filterPlate, setFilterPlate] = useState('');
     const [filterStatus, setFilterStatus] = useState<'PENDING' | 'PAID' | 'ALL'>('PENDING');
@@ -30,6 +33,13 @@ export const PagamentoPecaPage = () => {
     const [editPayment, setEditPayment] = useState<any | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [confirmModal, setConfirmModal] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+    
+    // Payment Confirmation Modal
+    const [paymentModal, setPaymentModal] = useState({ 
+        isOpen: false, 
+        accountId: '', 
+        date: new Date().toISOString().split('T')[0] 
+    });
 
     useEffect(() => {
         loadData();
@@ -43,12 +53,14 @@ export const PagamentoPecaPage = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [paymentsRes, fornecedoresRes] = await Promise.all([
+            const [paymentsRes, fornecedoresRes, accountsRes] = await Promise.all([
                 api.get('/pagamento-peca'),
-                api.get('/fornecedor')
+                api.get('/fornecedor'),
+                api.get('/conta-bancaria')
             ]);
             setPayments(paymentsRes.data);
             setFornecedores(fornecedoresRes.data);
+            setAccounts(accountsRes.data.filter((a: any) => a.ativo));
         } catch (error) {
             console.error(error);
             setStatusMsg({ type: 'error', text: 'Erro ao carregar dados financeiros.' });
@@ -77,15 +89,16 @@ export const PagamentoPecaPage = () => {
     };
 
     const handleUnpay = async (id: number) => {
+        if (!window.confirm("Deseja realmente estornar este pagamento? O valor retornará para a conta e o registro sairá do Livro Caixa.")) return;
+
         try {
             setLoading(true);
             await api.put(`/pagamento-peca/${id}`, {
                 pago_ao_fornecedor: false,
-                data_pagamento_fornecedor: null
+                // revert: true // Backend logic handles default 'false' as revert if implemented properly or explicit flag
             });
-            setStatusMsg({ type: 'success', text: 'Pagamento desfeito! Item voltou para Pendente.' });
+            setStatusMsg({ type: 'success', text: 'Pagamento estornado com sucesso!' });
             loadData();
-            setTimeout(() => setStatusMsg({ type: null, text: '' }), 3000);
         } catch (error) {
             console.error(error);
             setStatusMsg({ type: 'error', text: 'Erro ao desfazer pagamento.' });
@@ -94,10 +107,18 @@ export const PagamentoPecaPage = () => {
         }
     };
 
-    const handleBatchConfirm = async () => {
+    const handleBatchConfirmClick = () => {
         if (selectedIds.length === 0) {
             setStatusMsg({ type: 'error', text: 'Nenhum item selecionado para pagamento.' });
             return;
+        }
+        setPaymentModal(prev => ({ ...prev, isOpen: true }));
+    };
+
+    const processBatchPayment = async () => {
+        if (!paymentModal.accountId) {
+             setStatusMsg({ type: 'error', text: 'Selecione uma conta bancária de origem.' });
+             return;
         }
 
         try {
@@ -107,22 +128,25 @@ export const PagamentoPecaPage = () => {
             await Promise.all(selectedIds.map(id => {
                 return api.put(`/pagamento-peca/${id}`, {
                     pago_ao_fornecedor: true,
-                    data_pagamento_fornecedor: new Date() // Saves current timestamp
+                    id_conta_bancaria: Number(paymentModal.accountId),
+                    data_pagamento_fornecedor: paymentModal.date 
                 });
             }));
 
-            setStatusMsg({ type: 'success', text: `${selectedIds.length} pagamentos confirmados com sucesso!` });
+            setStatusMsg({ type: 'success', text: `${selectedIds.length} pagamentos confirmados e debitados!` });
             
             // Clear selection and reload
             setSelectedIds([]);
+            setPaymentModal(prev => ({...prev, isOpen: false}));
             loadData();
         } catch (error) {
             console.error(error);
-            setStatusMsg({ type: 'error', text: 'Erro ao processar pagamentos em lote.' });
+            setStatusMsg({ type: 'error', text: 'Erro ao processar pagamentos.' });
         } finally {
             setLoading(false);
         }
     };
+
 
     const handleDeletePayment = (id: number) => {
         setConfirmModal({
@@ -248,7 +272,7 @@ export const PagamentoPecaPage = () => {
             const plate = p.item_os?.ordem_de_servico?.veiculo?.placa?.toLowerCase() || '';
             const model = p.item_os?.ordem_de_servico?.veiculo?.modelo?.toLowerCase() || '';
             const color = p.item_os?.ordem_de_servico?.veiculo?.cor?.toLowerCase() || '';
-            const supplier = p.fornecedor?.nome?.toLowerCase() || '';
+            const supplier = (p.fornecedor?.nome_fantasia || p.fornecedor?.nome || '').toLowerCase();
             const desc = p.item_os?.descricao?.toLowerCase() || '';
             const osId = String(p.item_os?.id_os || '');
             const fullOsId = `#${osId}`;
@@ -301,7 +325,7 @@ export const PagamentoPecaPage = () => {
                         >
                             <option value="">Todos</option>
                             {fornecedores.map(f => (
-                                <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                                <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome_fantasia || f.nome}</option>
                             ))}
                         </select>
                     </div>
@@ -404,7 +428,7 @@ export const PagamentoPecaPage = () => {
                              </div>
                              <div className="flex flex-col items-end gap-2">
                                 <button 
-                                    onClick={handleBatchConfirm}
+                                    onClick={handleBatchConfirmClick}
                                     className="px-4 py-2 bg-white text-blue-600 text-xs font-black uppercase rounded-lg shadow hover:bg-neutral-50 active:scale-95 transition-all flex items-center gap-2"
                                 >
                                     <Save size={14} />
@@ -428,15 +452,6 @@ export const PagamentoPecaPage = () => {
                     )}
 
                     {/* CARD 2: TOTAL PAGO (Only filtered paid items) - OR GENERAL STATS */}
-                    {/* User requested simple "Total Selecionado" summing filtered values. 
-                        If filter is PENDING, sums pending. If PAID, sums paid. If ALL, sums ALL.
-                        The card above does exactly this (sums filteredPayments).
-                        
-                        Let's refine:
-                        Card 1 (Left): Total Filtrado (Soma do que está na tela). "Total Selecionado" label as requested.
-                        Card 2 (Right): Total Pendente de Baixa (Checkboxes) - if any. OR Total Pago Histórico Global?
-                    */}
-                    
                     <div className="bg-neutral-900 text-white p-6 rounded-2xl flex items-center justify-between shadow-lg">
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total Selecionado (Filtro)</p>
@@ -491,7 +506,7 @@ export const PagamentoPecaPage = () => {
                                         <td className="p-5">
                                             <div className="flex items-center gap-2">
                                                 <Truck size={14} className="text-orange-500" />
-                                                <span className="font-bold text-neutral-700 text-xs uppercase">{p.fornecedor?.nome}</span>
+                                                <span className="font-bold text-neutral-700 text-xs uppercase">{p.fornecedor?.nome_fantasia || p.fornecedor?.nome}</span>
                                             </div>
                                         </td>
                                         <td className="p-5">
@@ -667,7 +682,7 @@ export const PagamentoPecaPage = () => {
                                     className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400"
                                 >
                                     {fornecedores.map(f => (
-                                        <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                                        <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome_fantasia || f.nome}</option>
                                     ))}
                                 </select>
                             </div>
@@ -685,6 +700,64 @@ export const PagamentoPecaPage = () => {
                                 className="flex-1 py-3 bg-neutral-900 text-white font-bold rounded-xl hover:bg-neutral-800 transition-colors shadow-lg"
                             >
                                 Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* CONFIRM PAYMENT MODAL (WITH ACCOUNT SELECTION) */}
+            {paymentModal.isOpen && (
+                <Modal title="Confirmar Pagamento e Baixa" onClose={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}>
+                    <div className="space-y-6">
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <p className="text-sm font-bold text-blue-800 mb-1">Resumo da Operação</p>
+                            <p className="text-xs text-blue-600">
+                                Você está confirmando <strong>{selectedIds.length}</strong> pagamentos no valor total de <strong>R$ {totalSelected.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>.
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Data do Pagamento</label>
+                                <input 
+                                    type="date" 
+                                    value={paymentModal.date} 
+                                    onChange={(e) => setPaymentModal({ ...paymentModal, date: e.target.value })}
+                                    className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-blue-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Conta de Origem (Débito)</label>
+                                <select 
+                                    value={paymentModal.accountId} 
+                                    onChange={(e) => setPaymentModal({ ...paymentModal, accountId: e.target.value })}
+                                    className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-blue-500"
+                                >
+                                    <option value="">Selecione uma conta...</option>
+                                    {accounts.map(acc => (
+                                        <option key={acc.id_conta} value={acc.id_conta}>
+                                            {acc.nome} {acc.banco ? `(${acc.banco})` : ''} - Saldo: R$ {Number(acc.saldo_atual).toFixed(2)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 flex gap-3">
+                            <button 
+                                onClick={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}
+                                className="flex-1 py-3 font-bold text-neutral-500 hover:bg-neutral-100 rounded-xl"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={processBatchPayment}
+                                disabled={loading}
+                                className={`flex-1 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                {loading ? 'Processando...' : <><DollarSign size={18} /> Confirmar Pagamento</>}
                             </button>
                         </div>
                     </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '../../services/api';
 import { CreditCard, DollarSign, CheckCircle, Smartphone } from 'lucide-react';
+import type { IOperadoraCartao } from '../../types/backend';
 
 interface PagamentoClienteFormProps {
     osId: number;
@@ -27,7 +28,23 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
         }
     }, [initialData]);
 
+    const [operadoras, setOperadoras] = useState<IOperadoraCartao[]>([]);
+    const [idOperadora, setIdOperadora] = useState(0);
+
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        loadOperadoras();
+    }, []);
+
+    const loadOperadoras = async () => {
+        try {
+            const res = await api.get('/operadora-cartao');
+            setOperadoras(res.data);
+        } catch (error) {
+            console.error("Erro ao carregar operadoras");
+        }
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -49,7 +66,8 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                 data_pagamento: initialData?.data_pagamento || new Date().toISOString(),
                 bandeira_cartao: (metodo === 'CREDITO' || metodo === 'DEBITO') ? bandeira : null,
                 codigo_transacao: codigoTransacao || null,
-                qtd_parcelas: metodo === 'CREDITO' ? Number(parcelas) : 1
+                qtd_parcelas: metodo === 'CREDITO' ? Number(parcelas) : 1,
+                id_operadora: (metodo === 'CREDITO' || metodo === 'DEBITO') ? idOperadora : undefined
             };
 
             let response;
@@ -147,6 +165,20 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                                 </select>
                             </div>
                         )}
+                        <div className="md:col-span-2">
+                             <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Maquininha / Operadora</label>
+                             <select
+                                value={idOperadora}
+                                onChange={e => setIdOperadora(Number(e.target.value))}
+                                className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-green-500 font-bold text-gray-700"
+                            >
+                                <option value={0}>Selecione a Maquininha...</option>
+                                {operadoras.map(op => (
+                                    <option key={op.id_operadora} value={op.id_operadora}>{op.nome}</option>
+                                ))}
+                            </select>
+                            <p className="text-[10px] text-gray-400 mt-1">Necessário para cálculo de taxas e recebíveis.</p>
+                        </div>
                     </>
                 )}
 

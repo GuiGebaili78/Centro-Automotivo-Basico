@@ -59,10 +59,14 @@ export const FornecedorPage = () => {
         setTimeout(() => setStatusMsg({ type: null, text: '' }), 3000);
     };
 
-    const filteredFornecedores = fornecedores.filter(f => 
-        f.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        (f.documento && f.documento.includes(searchTerm))
-    );
+    const filteredFornecedores = fornecedores.filter(f => {
+        const searchText = searchTerm.toLowerCase();
+        return (
+            (f.nome && f.nome.toLowerCase().includes(searchText)) || 
+            (f.nome_fantasia && f.nome_fantasia.toLowerCase().includes(searchText)) ||
+            (f.documento && f.documento.includes(searchTerm))
+        );
+    });
 
     // RENDER: FORM VIEW
     if (view === 'form') {
@@ -142,8 +146,10 @@ export const FornecedorPage = () => {
                                                     {f.tipo_pessoa === 'FISICA' ? <User size={20} /> : <Truck size={20} />}
                                                 </div>
                                                 <div>
-                                                    <p className="font-black text-neutral-900">{f.nome}</p>
-                                                    {f.nome_fantasia && <p className="text-xs text-neutral-500 font-medium">{f.nome_fantasia}</p>}
+                                                    <p className="font-black text-neutral-900">{f.nome_fantasia || f.nome}</p>
+                                                    {f.nome_fantasia && f.nome_fantasia !== f.nome && (
+                                                        <p className="text-xs text-neutral-500 font-medium">{f.nome}</p>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>

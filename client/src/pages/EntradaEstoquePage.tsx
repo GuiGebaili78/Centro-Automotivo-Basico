@@ -188,7 +188,8 @@ export const EntradaEstoquePage = () => {
         }
 
         // Pre-fill Financial Data
-        const supplierName = suppliers.find(s => s.id_fornecedor === Number(selectedSupplierId))?.nome || 'Fornecedor';
+        const supplierObj = suppliers.find(s => s.id_fornecedor === Number(selectedSupplierId));
+        const supplierName = supplierObj?.nome_fantasia || supplierObj?.nome || 'Fornecedor';
         setFinDesc(`Compra Estoque - NF ${invoice || 'S/N'} - ${supplierName}`);
         const total = items.reduce((acc, i) => acc + (i.quantidade * i.valor_custo), 0);
         setFinValue(total.toFixed(2));
@@ -318,7 +319,7 @@ export const EntradaEstoquePage = () => {
                         onChange={e => setSelectedSupplierId(e.target.value)}
                     >
                         <option value="">Selecione...</option>
-                        {suppliers.map(s => <option key={s.id_fornecedor} value={s.id_fornecedor}>{s.nome}</option>)}
+                        {suppliers.map(s => <option key={s.id_fornecedor} value={s.id_fornecedor}>{s.nome_fantasia || s.nome}</option>)}
                     </select>
                 </div>
                 
@@ -519,7 +520,7 @@ export const EntradaEstoquePage = () => {
 
             {/* NEW SUPPLIER MODAL */}
             {showNewSupplierModal && (
-                <Modal title="Novo Fornecedor" onClose={() => setShowNewSupplierModal(false)}>
+                <Modal title="Novo Fornecedor" onClose={() => setShowNewSupplierModal(false)} className="max-w-5xl">
                     <FornecedorForm 
                         onSuccess={(newSupplier) => {
                             if (newSupplier) {

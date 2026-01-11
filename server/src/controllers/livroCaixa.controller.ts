@@ -4,8 +4,9 @@ import { prisma } from '../prisma.js';
 export const getAll = async (req: Request, res: Response) => {
     try {
         const registros = await prisma.livroCaixa.findMany({
-            where: { deleted_at: null },
-            orderBy: { dt_movimentacao: 'desc' }
+            include: { conta: true },
+            orderBy: { dt_movimentacao: 'desc' },
+            take: 200 // Limit to last 200 for performance? Or pagination later.
         });
         res.json(registros);
     } catch (error) {
@@ -15,19 +16,41 @@ export const getAll = async (req: Request, res: Response) => {
 
 export const create = async (req: Request, res: Response) => {
     try {
-        const { descricao, valor, tipo_movimentacao, categoria, obs, origem } = req.body;
-        const registro = await prisma.livroCaixa.create({
-            data: { 
-                descricao, 
-                valor, 
-                tipo_movimentacao, 
-                categoria,
-                obs,
-                origem: origem || 'MANUAL'
+        const { descricao, valor, tipo_movimentacao, categoria, obs, origem, id_conta_bancaria } = req.body;
+        
+        // Transaction to update balance if account provided
+        const result = await prisma.$transaction(async (tx) => {
+             const registro = await tx.livroCaixa.create({
+                data: { 
+                    descricao, 
+                    valor, 
+                    tipo_movimentacao, 
+                    categoria,
+                    obs,
+                    origem: origem || 'MANUAL',
+                    id_conta_bancaria: id_conta_bancaria ? Number(id_conta_bancaria) : null
+                }
+            });
+
+            if (id_conta_bancaria) {
+                 if (tipo_movimentacao === 'ENTRADA') {
+                     await tx.contaBancaria.update({
+                         where: { id_conta: Number(id_conta_bancaria) },
+                         data: { saldo_atual: { increment: valor } }
+                     });
+                 } else {
+                     await tx.contaBancaria.update({
+                         where: { id_conta: Number(id_conta_bancaria) },
+                         data: { saldo_atual: { decrement: valor } }
+                     });
+                 }
             }
+            return registro;
         });
-        res.status(201).json(registro);
+
+        res.status(201).json(result);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Erro ao criar registro' });
     }
 };

@@ -285,3 +285,73 @@ export interface IContasPagar {
     obs?: string | null;
     dt_cadastro: string;
 }
+
+// ---------------------------------------------------------
+// INTELIGÊNCIA FINANCEIRA
+// ---------------------------------------------------------
+
+export interface IContaBancaria {
+    id_conta: number;
+    nome: string;
+    banco?: string | null;
+    agencia?: string | null;
+    conta?: string | null;
+    saldo_atual: number;
+    ativo: boolean;
+    dt_cadastro: string;
+}
+
+export interface IOperadoraCartao {
+    id_operadora: number;
+    nome: string;
+    
+    taxa_debito: number;
+    prazo_debito: number;
+
+    taxa_credito_vista: number;
+    prazo_credito_vista: number;
+
+    taxa_credito_parc: number;
+    prazo_credito_parc: number;
+
+    taxa_antecipacao: number;
+    antecipacao_auto: boolean;
+
+    id_conta_destino: number;
+    conta_destino?: IContaBancaria;
+}
+
+export interface IRecebivelCartao {
+    id_recebivel: number;
+    id_os?: number | null;
+    id_operadora: number;
+    
+    num_parcela: number;
+    total_parcelas: number;
+    
+    valor_bruto: number;
+    valor_liquido: number;
+    taxa_aplicada: number;
+    
+    data_venda: string;
+    data_prevista: string;
+    data_recebimento?: string | null;
+    
+    status: string; // 'PENDENTE', 'RECEBIDO'
+    
+    operadora?: IOperadoraCartao;
+    ordem_de_servico?: IOrdemDeServico;
+}
+
+export interface ILivroCaixa {
+    id_livro_caixa: number;
+    descricao: string;
+    valor: number; // Decimal string in UI usually, but number here
+    tipo_movimentacao: string; // 'ENTRADA' | 'SAIDA'
+    categoria: string;
+    dt_movimentacao: string;
+    obs?: string | null;
+    origem: string;
+    id_conta_bancaria?: number | null;
+    conta?: IContaBancaria;
+}
