@@ -455,8 +455,8 @@ export const EntradaEstoquePage = () => {
                 
                 {/* Extra Details Row */}
                 <div className="grid grid-cols-2 gap-4">
-                     <input className="p-2 border-b border-neutral-200 bg-transparent text-sm placeholder:text-neutral-400 outline-none focus:border-primary-500" placeholder="Código Ref/Fabricante (Opcional)" value={rowRef} onChange={e => setRowRef(e.target.value)} />
-                     <input className="p-2 border-b border-neutral-200 bg-transparent text-sm placeholder:text-neutral-400 outline-none focus:border-primary-500" placeholder="Observações do item (Opcional)" value={rowObs} onChange={e => setRowObs(e.target.value)} />
+                     <input className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-medium text-sm outline-none focus:border-primary-500" placeholder="Código Ref/Fabricante (Opcional)" value={rowRef} onChange={e => setRowRef(e.target.value)} />
+                     <input className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-medium text-sm outline-none focus:border-primary-500" placeholder="Observações do item (Opcional)" value={rowObs} onChange={e => setRowObs(e.target.value)} />
                 </div>
             </div>
 

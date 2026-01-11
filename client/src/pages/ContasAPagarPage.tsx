@@ -517,7 +517,7 @@ export const ContasAPagarPage = () => {
                                 </select>
                              </div>
                              <div>
-                                 <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase flex gap-2">
+                                 <label className="text-xs font-bold text-neutral-500 mb-1 uppercase flex gap-2">
                                      Arquivos / Anexos <span className="text-neutral-300 font-normal">(Link URL por enquanto)</span>
                                  </label>
                                  <div className="relative">
