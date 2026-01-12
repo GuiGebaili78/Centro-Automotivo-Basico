@@ -5,17 +5,18 @@ const recebivelCartaoRoutes = Router();
 const controller = new RecebivelCartaoController();
 
 // CRUD básico
+// Rotas específicas (DEVEM vir antes de /:id)
+recebivelCartaoRoutes.get('/resumo', controller.getResumo);
+recebivelCartaoRoutes.get('/date-range', controller.findByDateRange);
+recebivelCartaoRoutes.get('/operadora/:idOperadora', controller.findByOperadora);
+recebivelCartaoRoutes.get('/status/:status', controller.findByStatus);
+
+// CRUD básico e rotas parametrizadas por ID
 recebivelCartaoRoutes.post('/', controller.create);
 recebivelCartaoRoutes.get('/', controller.findAll);
-recebivelCartaoRoutes.get('/resumo', controller.getResumo);
 recebivelCartaoRoutes.get('/:id', controller.findById);
 recebivelCartaoRoutes.put('/:id', controller.update);
 recebivelCartaoRoutes.delete('/:id', controller.delete);
-
-// Filtros específicos
-recebivelCartaoRoutes.get('/operadora/:idOperadora', controller.findByOperadora);
-recebivelCartaoRoutes.get('/status/:status', controller.findByStatus);
-recebivelCartaoRoutes.get('/date-range', controller.findByDateRange);
 
 // Ações
 recebivelCartaoRoutes.post('/confirmar', controller.confirmarRecebimentoLote);

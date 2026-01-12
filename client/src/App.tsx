@@ -26,7 +26,7 @@ import { SearchClientePage } from './pages/SearchClientePage';
 import { SearchVeiculoPage } from './pages/SearchVeiculoPage';
 import { NovoPagamentoPage } from './pages/NovoPagamentoPage';
 import { PagamentoEquipePage } from './pages/PagamentoEquipePage';
-import { RecebivelCartaoPage } from './pages/RecebivelCartaoPage';
+import { ExtratoBancarioPage } from './pages/ExtratoBancarioPage';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -55,7 +55,7 @@ const router = createBrowserRouter(
       <Route path="/financeiro/livro-caixa" element={<LivroCaixaPage />} />
       <Route path="/financeiro/pagamento-pecas" element={<PagamentoPecaPage />} />
       <Route path="/financeiro/contas-pagar" element={<ContasAPagarPage />} />
-      <Route path="/financeiro/recebiveis" element={<RecebivelCartaoPage />} />
+      <Route path="/financeiro/extrato/:idConta" element={<ExtratoBancarioPage />} />
       <Route path="/financeiro/equipe" element={<PagamentoEquipePage />} /> {/* Nova Rota */}
       <Route path="/pagamento-equipe" element={<PagamentoEquipePage />} />
       <Route path="/pagamento-equipe/novo" element={<NovoPagamentoPage />} />

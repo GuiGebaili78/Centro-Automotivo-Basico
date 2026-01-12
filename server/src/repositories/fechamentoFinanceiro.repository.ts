@@ -91,8 +91,17 @@ export class FechamentoFinanceiroRepository {
       });
 
       // 3. Processar cada pagamento do cliente
+      console.log('🔍 [CONSOLIDAÇÃO] Iniciando processamento de', os.pagamentos_cliente.length, 'pagamento(s)');
+      
       for (const pagamento of os.pagamentos_cliente) {
         const metodo = pagamento.metodo_pagamento.toUpperCase();
+        
+        console.log('💰 [PAGAMENTO]', {
+          metodo,
+          valor: pagamento.valor,
+          id_operadora: pagamento.id_operadora,
+          id_conta_bancaria: pagamento.id_conta_bancaria
+        });
 
         if (metodo === 'PIX') {
           // PIX: Lançamento no caixa + Atualiza saldo bancário
@@ -161,6 +170,7 @@ export class FechamentoFinanceiroRepository {
 
         } else if (metodo === 'DEBITO' || metodo === 'CREDITO') {
           // CARTÃO: Lançamento no caixa (faturamento) + Cria recebível
+          console.log('💳 [CARTÃO] Criando lançamento no caixa...');
           
           // 1. Lançamento no caixa (valor total - faturamento)
           const livroCaixa = await tx.livroCaixa.create({
@@ -175,6 +185,8 @@ export class FechamentoFinanceiroRepository {
               id_pagamento_cliente: pagamento.id_pagamento_cliente
             }
           });
+          
+          console.log('✅ [CARTÃO] Lançamento criado no caixa:', livroCaixa.id_livro_caixa);
 
           await tx.pagamentoCliente.update({
             where: { id_pagamento_cliente: pagamento.id_pagamento_cliente },

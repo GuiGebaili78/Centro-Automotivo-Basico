@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { 
-    Plus, Edit2, Trash2, Landmark, Eye, EyeOff, FileText, ArrowUpCircle, ArrowDownCircle 
+    Plus, Edit2, Trash2, Landmark, Eye, EyeOff, FileText 
 } from 'lucide-react';
 import type { IContaBancaria } from '../../types/backend';
 import { StatusBanner } from '../ui/StatusBanner';
 
 export const ContasTab = () => {
+    const navigate = useNavigate();
     const [accounts, setAccounts] = useState<IContaBancaria[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState<IContaBancaria | null>(null);
@@ -20,11 +22,6 @@ export const ContasTab = () => {
     });
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
     const [showBalance, setShowBalance] = useState<Record<number, boolean>>({});
-
-    // Statement State
-    const [statementModalOpen, setStatementModalOpen] = useState(false);
-    const [statementLines, setStatementLines] = useState<any[]>([]);
-    const [selectedAccount, setSelectedAccount] = useState<IContaBancaria | null>(null);
 
     useEffect(() => {
         loadAccounts();
@@ -66,20 +63,8 @@ export const ContasTab = () => {
         setIsModalOpen(true);
     };
 
-    const handleOpenStatement = async (acc: IContaBancaria) => {
-        setSelectedAccount(acc);
-        try {
-            // Fetch ALL transactions and filter by account (MVP)
-            const res = await api.get('/livro-caixa');
-            // Backend returns all entries ordered by date desc. 
-            // We filter manually here.
-            const filtered = res.data.filter((m: any) => m.id_conta_bancaria === acc.id_conta);
-            setStatementLines(filtered);
-            setStatementModalOpen(true);
-        } catch (error) {
-            console.error(error);
-            setStatusMsg({ type: 'error', text: 'Erro ao carregar extrato.' });
-        }
+    const handleOpenStatement = (acc: IContaBancaria) => {
+        navigate(`/financeiro/extrato/${acc.id_conta}`);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -253,81 +238,7 @@ export const ContasTab = () => {
                 </div>
             )}
 
-            {/* STATEMENT MODAL */}
-            {statementModalOpen && selectedAccount && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-4xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
-                        <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <h2 className="text-xl font-black text-neutral-900">Extrato Bancário</h2>
-                                <p className="text-neutral-500 font-bold">{selectedAccount.nome} - {selectedAccount.banco}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[10px] font-black text-neutral-400 uppercase">Saldo Atual</p>
-                                <p className={`text-2xl font-black ${Number(selectedAccount.saldo_atual) < 0 ? 'text-red-600' : 'text-neutral-900'}`}>
-                                    R$ {Number(selectedAccount.saldo_atual).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="flex-1 overflow-auto border border-neutral-100 rounded-xl">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="sticky top-0 bg-neutral-50 z-10">
-                                    <tr className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                                        <th className="p-4">Data</th>
-                                        <th className="p-4">Descrição</th>
-                                        <th className="p-4">Categoria</th>
-                                        <th className="p-4 text-center">Tipo</th>
-                                        <th className="p-4 text-right">Valor</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-neutral-50">
-                                    {statementLines.length === 0 ? (
-                                        <tr><td colSpan={5} className="p-8 text-center text-neutral-400">Nenhuma movimentação registrada.</td></tr>
-                                    ) : (
-                                        statementLines.map((line: any) => (
-                                            <tr key={line.id_livro_caixa} className="hover:bg-neutral-25">
-                                                <td className="p-4 text-xs font-bold text-neutral-600">
-                                                    {new Date(line.dt_movimentacao).toLocaleDateString()}<br/>
-                                                    <span className="text-[10px] font-medium opacity-60">
-                                                        {new Date(line.dt_movimentacao).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 text-sm font-bold text-neutral-900">
-                                                    {line.descricao}
-                                                    {line.obs && <p className="text-[10px] text-neutral-400 font-normal mt-0.5">{line.obs}</p>}
-                                                </td>
-                                                <td className="p-4 text-xs text-neutral-500">
-                                                    <span className="bg-neutral-100 px-2 py-1 rounded-md">
-                                                        {line.categoria}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    {line.tipo_movimentacao === 'ENTRADA' ? (
-                                                        <div className="flex justify-center text-green-500"><ArrowUpCircle size={18} /></div>
-                                                    ) : (
-                                                        <div className="flex justify-center text-red-500"><ArrowDownCircle size={18} /></div>
-                                                    )}
-                                                </td>
-                                                <td className={`p-4 text-right font-black text-sm ${line.tipo_movimentacao === 'ENTRADA' ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {line.tipo_movimentacao === 'SAIDA' ? '- ' : '+ '}
-                                                    R$ {Number(line.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div className="mt-6 flex justify-end">
-                            <button onClick={() => setStatementModalOpen(false)} className="px-6 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 font-bold rounded-xl transition-colors">
-                                Fechar Extrato
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

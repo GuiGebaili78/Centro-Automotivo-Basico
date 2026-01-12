@@ -58,12 +58,28 @@ export class RecebivelCartaoController {
   async findByDateRange(req: Request, res: Response) {
     try {
       const { dataInicio, dataFim } = req.query;
-      const recebiveis = await repository.findByDateRange(
-        new Date(dataInicio as string),
-        new Date(dataFim as string)
-      );
+
+      if (!dataInicio || !dataFim) {
+        return res.status(400).json({ error: 'Data de início e fim são obrigatórias' });
+      }
+
+      // Ensure full day coverage by setting hours
+      const start = new Date(dataInicio as string);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(dataFim as string);
+      end.setHours(23, 59, 59, 999);
+
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          return res.status(400).json({ error: 'Datas inválidas fornecidas' });
+      }
+      
+      console.log(`Buscando recebíveis de ${start.toISOString()} até ${end.toISOString()}`);
+
+      const recebiveis = await repository.findByDateRange(start, end);
       res.json(recebiveis);
     } catch (error) {
+      console.error('Error in findByDateRange:', error); 
       res.status(500).json({ error: 'Failed to fetch Recebíveis by Date Range' });
     }
   }

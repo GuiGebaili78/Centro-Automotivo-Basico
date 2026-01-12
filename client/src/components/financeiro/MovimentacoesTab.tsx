@@ -25,6 +25,7 @@ interface CashBookEntry {
     originalData?: any;
     // New fields
     conta_bancaria?: string;
+    paymentMethod?: string;
 }
 
 interface Category {
@@ -132,15 +133,22 @@ export const MovimentacoesTab = () => {
                     };
                 });
 
-            // 3. Auto Inflows (Payments from Clients)
+                // 3. Auto Inflows (Payments from Clients)
             const inflows = (inflowsRes.data || [])
-                .filter((p: any) => p.metodo_pagamento !== 'CREDITO' && p.metodo_pagamento !== 'DEBITO')
+                // Removed filter to show all payment methods (Credit, Debit, Pix, Cash) as requested
+                // .filter((p: any) => p.metodo_pagamento !== 'CREDITO' && p.metodo_pagamento !== 'DEBITO')
                 .map((p: any) => {
                 const os = p.ordem_de_servico;
                 const veh = os?.veiculo;
                 const cli = os?.cliente;
                 const clientName = cli?.pessoa_fisica?.pessoa?.nome || cli?.pessoa_juridica?.nome_fantasia || cli?.pessoa_juridica?.razao_social || 'Desconhecido';
                 const vehicleText = veh ? `${veh.placa} - ${veh.modelo} (${veh.cor})` : '';
+                
+                // Determine display method
+                let methodDisplay = p.metodo_pagamento;
+                if (methodDisplay === 'CREDITO') methodDisplay = `CRÉDITO ${p.bandeira_cartao || ''}`;
+                if (methodDisplay === 'DEBITO') methodDisplay = `DÉBITO ${p.bandeira_cartao || ''}`;
+                const contaDisplay = p.conta_bancaria ? p.conta_bancaria.nome : null;
 
                 return {
                     id: `in-${p.id_pagamento_cliente}`,
@@ -155,7 +163,10 @@ export const MovimentacoesTab = () => {
                     obs: p.observacao || '', 
                     source: 'AUTO',
                     deleted_at: p.deleted_at,
-                    originalData: p
+                    originalData: p,
+                    // Store method + account for display
+                    paymentMethod: methodDisplay,
+                    conta_bancaria: contaDisplay
                 };
             });
 
@@ -178,7 +189,7 @@ export const MovimentacoesTab = () => {
         }
 
         if (cashSearch) {
-             const searchLower = cashSearch.toLowerCase();
+             const searchTerms = cashSearch.toLowerCase().split(' ').filter(term => term.length > 0);
              const searchableText = [
                  entry.description, 
                  entry.category, 
@@ -187,10 +198,14 @@ export const MovimentacoesTab = () => {
                  entry.obs,
                  `#${entry.rawId}`,
                  String(entry.value),
-                 entry.conta_bancaria
+                 entry.conta_bancaria,
+                 entry.supplier,
+                 entry.paymentMethod,
+                 (entry.type === 'IN' ? 'Entrada' : 'Saída')
              ].join(' ').toLowerCase();
 
-             return searchableText.includes(searchLower);
+             // Check if ALL search terms are present in the searchable text
+             return searchTerms.every(term => searchableText.includes(term));
         }
 
         const recordDateLocal = new Date(entry.date).toLocaleDateString('en-CA');
@@ -514,12 +529,25 @@ export const MovimentacoesTab = () => {
                                             </span>
                                         </td>
                                         <td className="p-5">
-                                            {entry.conta_bancaria ? (
-                                                <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md uppercase">
-                                                    {entry.conta_bancaria}
-                                                </span>
+                                            {entry.paymentMethod ? (
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[10px] font-black text-neutral-600 uppercase">
+                                                        {entry.paymentMethod}
+                                                    </span>
+                                                    {entry.conta_bancaria && (
+                                                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded w-fit">
+                                                            {entry.conta_bancaria}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             ) : (
-                                                <span className="text-[10px] text-neutral-400">Caixa Geral</span>
+                                                entry.conta_bancaria ? (
+                                                    <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md uppercase">
+                                                        {entry.conta_bancaria}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] text-neutral-400">Caixa Geral</span>
+                                                )
                                             )}
                                         </td>
                                         <td className={`p-5 text-right font-black ${entry.deleted_at ? 'line-through text-neutral-400' : 'text-neutral-900'}`}>
