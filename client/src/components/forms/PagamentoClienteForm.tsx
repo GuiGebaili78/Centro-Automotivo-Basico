@@ -30,19 +30,40 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
 
     const [operadoras, setOperadoras] = useState<IOperadoraCartao[]>([]);
     const [idOperadora, setIdOperadora] = useState(0);
+    
+    const [contasBancarias, setContasBancarias] = useState<any[]>([]);
+    const [idContaBancaria, setIdContaBancaria] = useState(0);
 
     const [error, setError] = useState('');
 
     useEffect(() => {
         loadOperadoras();
+        loadContasBancarias();
     }, []);
 
     const loadOperadoras = async () => {
         try {
             const res = await api.get('/operadora-cartao');
             setOperadoras(res.data);
+            // Se houver apenas uma operadora, seleciona automaticamente
+            if (res.data.length === 1) {
+                setIdOperadora(res.data[0].id_operadora);
+            }
         } catch (error) {
             console.error("Erro ao carregar operadoras");
+        }
+    };
+
+    const loadContasBancarias = async () => {
+        try {
+            const res = await api.get('/conta-bancaria');
+            setContasBancarias(res.data.filter((c: any) => c.ativo));
+            // Se houver apenas uma conta, seleciona automaticamente
+            if (res.data.length === 1) {
+                setIdContaBancaria(res.data[0].id_conta);
+            }
+        } catch (error) {
+            console.error("Erro ao carregar contas bancárias");
         }
     };
 
@@ -67,7 +88,8 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                 bandeira_cartao: (metodo === 'CREDITO' || metodo === 'DEBITO') ? bandeira : null,
                 codigo_transacao: codigoTransacao || null,
                 qtd_parcelas: metodo === 'CREDITO' ? Number(parcelas) : 1,
-                id_operadora: (metodo === 'CREDITO' || metodo === 'DEBITO') ? idOperadora : undefined
+                id_operadora: (metodo === 'CREDITO' || metodo === 'DEBITO') ? idOperadora : undefined,
+                id_conta_bancaria: (metodo === 'PIX' || metodo === 'DINHEIRO') ? idContaBancaria : undefined
             };
 
             let response;
@@ -180,6 +202,25 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                             <p className="text-[10px] text-gray-400 mt-1">Necessário para cálculo de taxas e recebíveis.</p>
                         </div>
                     </>
+                )}
+
+                {(metodo === 'PIX' || metodo === 'DINHEIRO') && (
+                    <div className="md:col-span-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Conta Bancária / Destino</label>
+                        <select
+                            value={idContaBancaria}
+                            onChange={e => setIdContaBancaria(Number(e.target.value))}
+                            className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-green-500 font-bold text-gray-700"
+                        >
+                            <option value={0}>Selecione a Conta...</option>
+                            {contasBancarias.map(conta => (
+                                <option key={conta.id_conta} value={conta.id_conta}>
+                                    {conta.nome} {conta.banco ? `- ${conta.banco}` : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-[10px] text-gray-400 mt-1">Conta onde o valor será depositado.</p>
+                    </div>
                 )}
 
                 <div className="md:col-span-2">

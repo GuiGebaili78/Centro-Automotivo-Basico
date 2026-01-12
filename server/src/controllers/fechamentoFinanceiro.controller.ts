@@ -54,4 +54,26 @@ export class FechamentoFinanceiroController {
       res.status(400).json({ error: 'Failed to delete Fechamento Financeiro' });
     }
   }
+
+  async consolidarOS(req: Request, res: Response) {
+    try {
+      const { idOs, custoTotalPecasReal } = req.body;
+      
+      if (!idOs) {
+        return res.status(400).json({ error: 'ID da OS é obrigatório' });
+      }
+
+      const fechamento = await repository.consolidarOS(
+        Number(idOs),
+        Number(custoTotalPecasReal) || 0
+      );
+      
+      res.status(201).json(fechamento);
+    } catch (error: any) {
+      res.status(400).json({ 
+        error: 'Failed to consolidate OS', 
+        details: error.message 
+      });
+    }
+  }
 }

@@ -1,81 +1,144 @@
 import { Request, Response } from 'express';
-import { prisma } from '../prisma.js';
+import { RecebivelCartaoRepository } from '../repositories/recebivelCartao.repository.js';
 
-export const getAll = async (req: Request, res: Response) => {
+const repository = new RecebivelCartaoRepository();
+
+export class RecebivelCartaoController {
+  async create(req: Request, res: Response) {
     try {
-        const { status, startDate, endDate } = req.query;
-        
-        const where: any = {};
-        if (status) where.status = String(status);
-        if (startDate && endDate) {
-            where.data_prevista = {
-                gte: new Date(String(startDate)),
-                lte: new Date(String(endDate))
-            };
-        }
-
-        const recebiveis = await prisma.recebivelCartao.findMany({
-            where,
-            include: { operadora: true, ordem_de_servico: true },
-            orderBy: { data_prevista: 'asc' }
-        });
-        res.json(recebiveis);
+      const recebivel = await repository.create(req.body);
+      res.status(201).json(recebivel);
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar recebíveis' });
+      res.status(400).json({ error: 'Failed to create Recebível', details: error });
     }
-};
+  }
 
-export const confirmarRecebimento = async (req: Request, res: Response) => {
-    const { ids } = req.body; // Array of IDs
-    if (!ids || !Array.isArray(ids)) {
+  async findAll(req: Request, res: Response) {
+    try {
+      const recebiveis = await repository.findAll();
+      res.json(recebiveis);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Recebíveis' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const recebivel = await repository.findById(id);
+      if (!recebivel) {
+        return res.status(404).json({ error: 'Recebível not found' });
+      }
+      res.json(recebivel);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Recebível' });
+    }
+  }
+
+  async findByOperadora(req: Request, res: Response) {
+    try {
+      const idOperadora = Number(req.params.idOperadora);
+      const recebiveis = await repository.findByOperadora(idOperadora);
+      res.json(recebiveis);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Recebíveis by Operadora' });
+    }
+  }
+
+  async findByStatus(req: Request, res: Response) {
+    try {
+      const { status } = req.params;
+      const recebiveis = await repository.findByStatus(status);
+      res.json(recebiveis);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Recebíveis by Status' });
+    }
+  }
+
+  async findByDateRange(req: Request, res: Response) {
+    try {
+      const { dataInicio, dataFim } = req.query;
+      const recebiveis = await repository.findByDateRange(
+        new Date(dataInicio as string),
+        new Date(dataFim as string)
+      );
+      res.json(recebiveis);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Recebíveis by Date Range' });
+    }
+  }
+
+  async confirmarRecebimento(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const { confirmadoPor } = req.body;
+      
+      const recebivel = await repository.confirmarRecebimento(id, confirmadoPor || 'Sistema');
+      res.json(recebivel);
+    } catch (error: any) {
+      res.status(400).json({ error: 'Failed to confirm Recebível', details: error.message });
+    }
+  }
+
+  async estornarRecebimento(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const recebivel = await repository.estornarRecebimento(id);
+      res.json(recebivel);
+    } catch (error: any) {
+      res.status(400).json({ error: 'Failed to reverse Recebível', details: error.message });
+    }
+  }
+
+  async getResumo(req: Request, res: Response) {
+    try {
+      const resumo = await repository.getResumo();
+      res.json(resumo);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Resumo' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const recebivel = await repository.update(id, req.body);
+      res.json(recebivel);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Recebível' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Recebível' });
+    }
+  }
+
+  async confirmarRecebimentoLote(req: Request, res: Response) {
+    try {
+      const { ids } = req.body;
+      
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ error: 'IDs inválidos' });
+      }
+
+      const confirmadoPor = req.body.confirmadoPor || 'Sistema';
+      const resultados = await repository.confirmarRecebimentoLote(ids, confirmadoPor);
+      
+      res.json({ 
+        message: `${resultados.length} recebimento(s) confirmado(s) com sucesso`,
+        resultados 
+      });
+    } catch (error: any) {
+      res.status(400).json({ 
+        error: 'Failed to confirm Recebíveis', 
+        details: error.message 
+      });
     }
-
-    try {
-        // Transaction to ensure consistency
-        await prisma.$transaction(async (tx) => {
-            const recebiveis = await tx.recebivelCartao.findMany({
-                where: { id_recebivel: { in: ids } },
-                include: { operadora: true }
-            });
-
-            for (const r of recebiveis) {
-                if (r.status === 'RECEBIDO') continue;
-
-                // 1. Update Recebivel Status
-                await tx.recebivelCartao.update({
-                    where: { id_recebivel: r.id_recebivel },
-                    data: { 
-                        status: 'RECEBIDO',
-                        data_recebimento: new Date()
-                    }
-                });
-
-                // 2. Add to Livro Caixa
-                await tx.livroCaixa.create({
-                    data: {
-                        descricao: `Recebimento Cartão - OS #${r.id_os || '?'} (${r.operadora.nome})`,
-                        valor: r.valor_liquido,
-                        tipo_movimentacao: 'ENTRADA',
-                        categoria: 'VENDA',
-                        origem: 'AUTOMATICA',
-                        id_conta_bancaria: r.operadora.id_conta_destino
-                    }
-                });
-
-                // 3. Update Account Balance
-                await tx.contaBancaria.update({
-                    where: { id_conta: r.operadora.id_conta_destino },
-                    data: {
-                        saldo_atual: { increment: r.valor_liquido }
-                    }
-                });
-            }
-        });
-
-        res.json({ message: 'Recebimentos confirmados e conciliados.' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Erro ao confirmar recebimentos' });
-    }
-};
+  }
+}

@@ -402,6 +402,12 @@ model PagamentoCliente {
     bandeira_cartao       String?  @db.VarChar(50) // 'VISA', 'MASTER', 'ELO'
     codigo_transacao      String?  @db.VarChar(100) // NSU, ID PIX
     qtd_parcelas          Int      @default(1)
+    id_operadora          Int?     // Operadora de cartão (se aplicável)
+    id_conta_bancaria     Int?     // Conta bancária (para PIX e Dinheiro)
+    
+    // Vínculo com Livro Caixa (lançamento de faturamento)
+    id_livro_caixa        Int?     @unique
+    livro_caixa           LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
     
     ordem_de_servico      OrdemDeServico @relation(fields: [id_os], references: [id_os])
 
@@ -525,6 +531,7 @@ model LivroCaixa {
     pagamento_equipe    PagamentoEquipe? @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
     
     pagamento_peca      PagamentoPeca?
+    pagamento_cliente   PagamentoCliente?
 
     @@map("livro_caixa")
 }
@@ -593,6 +600,7 @@ model ContaBancaria {
   conta           String?      @db.VarChar(20)
   saldo_atual     Decimal      @default(0) @db.Decimal(12, 2)
   ativo           Boolean      @default(true)
+  vincular_caixa  Boolean      @default(false) // Se TRUE, movimentações geram lançamento no Livro Caixa
   
   dt_cadastro     DateTime     @default(now()) @db.Timestamp()
 
@@ -605,6 +613,7 @@ model ContaBancaria {
 model OperadoraCartao {
   id_operadora          Int      @id @default(autoincrement())
   nome                  String   @db.VarChar(50) // "Stone", "Cielo"
+  vincular_caixa        Boolean  @default(false) // Se TRUE, ativa gestão de recebíveis
   
   // Taxas e Prazos
   taxa_debito           Decimal  @default(0) @db.Decimal(5, 2)
@@ -645,6 +654,10 @@ model RecebivelCartao {
   data_recebimento  DateTime? @db.Date 
   
   status            String   @default("PENDENTE") // 'PENDENTE', 'RECEBIDO'
+  
+  // Rastreabilidade de confirmação
+  confirmado_em     DateTime? @db.Timestamp()
+  confirmado_por    String?   @db.VarChar(100)
   
   operadora         OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
   ordem_de_servico  OrdemDeServico? @relation(fields: [id_os], references: [id_os])

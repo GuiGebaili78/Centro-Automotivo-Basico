@@ -378,27 +378,35 @@ export const FechamentoFinanceiroForm = ({ preSelectedOsId, onSuccess, onCancel 
 
             await Promise.all(pagamentoPromises);
 
-            // 2. Salvar Fechamento (Upsert)
-            const fechamentoPayload = {
-                id_os: Number(idOs),
-                custo_total_pecas_real: totalCusto
+            // 2. Atualizar status da OS para PRONTO PARA FINANCEIRO (ANTES de consolidar)
+            if (osData.status !== 'FINALIZADA' && osData.status !== 'PRONTO PARA FINANCEIRO') {
+                 try {
+                      await api.put(`/ordem-de-servico/${idOs}`, { 
+                          status: 'PRONTO PARA FINANCEIRO',
+                          valor_final: totalReceita,
+                          valor_pecas: totalItemsRevenue
+                        });
+                 } catch (err) { 
+                    console.error('Erro ao atualizar status da OS:', err);
+                 }
+            }
+
+            // 3. CONSOLIDAR FINANCEIRAMENTE (Novo endpoint que faz TUDO)
+            const consolidarPayload = {
+                idOs: Number(idOs),
+                custoTotalPecasReal: totalCusto
             };
 
             let response;
             if (osData.fechamento_financeiro) {
-                 response = await api.put(`/fechamento-financeiro/${osData.fechamento_financeiro.id_fechamento_financeiro}`, fechamentoPayload);
+                // Se já existe fechamento, apenas atualiza os custos
+                response = await api.put(`/fechamento-financeiro/${osData.fechamento_financeiro.id_fechamento_financeiro}`, {
+                    id_os: Number(idOs),
+                    custo_total_pecas_real: totalCusto
+                });
             } else {
-                 response = await api.post('/fechamento-financeiro', fechamentoPayload);
-            }
-            
-            if (osData.status !== 'FINALIZADA') {
-                 try {
-                      await api.put(`/ordem-de-servico/${idOs}`, { 
-                          status: 'FINALIZADA',
-                          valor_final: totalReceita,
-                          valor_pecas: totalItemsRevenue
-                        });
-                 } catch (err) { }
+                // Se não existe, CONSOLIDA (cria fechamento + lançamentos no caixa + atualiza saldos + cria recebíveis)
+                response = await api.post('/fechamento-financeiro/consolidar', consolidarPayload);
             }
 
             onSuccess(response.data);

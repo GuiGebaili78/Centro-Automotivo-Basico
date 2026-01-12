@@ -5,6 +5,7 @@ const fechamentoFinanceiroRoutes = Router();
 const controller = new FechamentoFinanceiroController();
 
 fechamentoFinanceiroRoutes.post('/', controller.create);
+fechamentoFinanceiroRoutes.post('/consolidar', controller.consolidarOS);
 fechamentoFinanceiroRoutes.get('/', controller.findAll);
 fechamentoFinanceiroRoutes.get('/:id', controller.findById);
 fechamentoFinanceiroRoutes.put('/:id', controller.update);
