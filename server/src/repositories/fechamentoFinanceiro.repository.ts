@@ -91,11 +91,14 @@ export class FechamentoFinanceiroRepository {
       });
 
       // 3. Processar cada pagamento do cliente
-      console.log('🔍 [CONSOLIDAÇÃO] Iniciando processamento de', os.pagamentos_cliente.length, 'pagamento(s)');
+      console.log(`🔍 [CONSOLIDAÇÃO] Iniciando processamento de ${os.pagamentos_cliente.length} pagamento(s) para OS #${idOs}`);
       
       for (const pagamento of os.pagamentos_cliente) {
-        const metodo = pagamento.metodo_pagamento.toUpperCase();
-        
+        const metodo = (pagamento.metodo_pagamento || '').trim().toUpperCase();
+        const valorPagamento = Number(pagamento.valor);
+        const idContaBancaria = (pagamento as any).id_conta_bancaria;
+        const idPagamentoCliente = pagamento.id_pagamento_cliente;
+
         // Buscar operadora para descrição (se houver)
         let operadoraNome = '';
         if (pagamento.id_operadora) {
@@ -103,79 +106,51 @@ export class FechamentoFinanceiroRepository {
           operadoraNome = op?.nome || '';
         }
 
-        if (metodo === 'PIX') {
-          // PIX: Lançamento no caixa + Atualiza saldo bancário + Aparece no Extrato
-          console.log(`💰 [CONSOLIDAÇÃO] Processando PIX: R$ ${pagamento.valor} na conta ${(pagamento as any).id_conta_bancaria}`);
-          
+        console.log(`   🔸 Pagamento ${idPagamentoCliente}: ${metodo} | R$ ${valorPagamento} | Conta: ${idContaBancaria}`);
+
+        if (metodo === 'PIX' || metodo === 'DINHEIRO') {
+          // PIX/DINHEIRO: Lançamento no caixa + Atualiza saldo bancário (se conta informada)
           const livroCaixa = await tx.livroCaixa.create({
             data: {
-              descricao: `Venda PIX - OS #${idOs}`,
-              valor: pagamento.valor,
+              descricao: `Venda ${metodo} - OS #${idOs}`,
+              valor: valorPagamento,
               tipo_movimentacao: 'ENTRADA',
               categoria: 'VENDA',
               dt_movimentacao: new Date(),
               origem: 'AUTOMATICA',
-              id_conta_bancaria: (pagamento as any).id_conta_bancaria
+              id_conta_bancaria: idContaBancaria
             }
           });
 
           await tx.pagamentoCliente.update({
-            where: { id_pagamento_cliente: pagamento.id_pagamento_cliente },
+            where: { id_pagamento_cliente: idPagamentoCliente },
             data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any
           });
 
-          if ((pagamento as any).id_conta_bancaria) {
+          if (idContaBancaria) {
             await tx.contaBancaria.update({
-              where: { id_conta: (pagamento as any).id_conta_bancaria },
-              data: { saldo_atual: { increment: Number(pagamento.valor) } }
+              where: { id_conta: idContaBancaria },
+              data: { saldo_atual: { increment: valorPagamento } }
             });
-            console.log(`✅ [CONSOLIDAÇÃO] Saldo da conta ${(pagamento as any).id_conta_bancaria} incrementado.`);
+            console.log(`      ✅ [PIX/DIN] Saldo da conta ${idContaBancaria} atualizado (+ R$ ${valorPagamento})`);
           }
           
-        } else if (metodo === 'DINHEIRO') {
-          // DINHEIRO: Lançamento no caixa + Atualiza saldo (se conta informada)
-          console.log(`💵 [CONSOLIDAÇÃO] Processando DINHEIRO: R$ ${pagamento.valor}`);
-          const livroCaixa = await tx.livroCaixa.create({
-            data: {
-              descricao: `Venda Dinheiro - OS #${idOs}`,
-              valor: pagamento.valor,
-              tipo_movimentacao: 'ENTRADA',
-              categoria: 'VENDA',
-              dt_movimentacao: new Date(),
-              origem: 'AUTOMATICA',
-              id_conta_bancaria: (pagamento as any).id_conta_bancaria
-            }
-          });
-
-          await tx.pagamentoCliente.update({
-            where: { id_pagamento_cliente: pagamento.id_pagamento_cliente },
-            data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any
-          });
-
-          if ((pagamento as any).id_conta_bancaria) {
-            await tx.contaBancaria.update({
-              where: { id_conta: (pagamento as any).id_conta_bancaria },
-              data: { saldo_atual: { increment: Number(pagamento.valor) } }
-            });
-          }
-
         } else if (metodo === 'DEBITO' || metodo === 'CREDITO') {
-          // CARTÃO: Lançamento no caixa (faturamento bruto total) + Cria recebível
-          console.log(`💳 [CONSOLIDAÇÃO] Processando CARTÃO ${metodo}: R$ ${pagamento.valor}`);
+          // CARTÃO: Lançamento no caixa (faturamento bruto total) + Cria recebível (NÃO atualiza saldo bancário agora)
           const livroCaixa = await tx.livroCaixa.create({
             data: {
               descricao: `Venda Cartão ${metodo} ${operadoraNome ? `(${operadoraNome})` : ''} - OS #${idOs}`,
-              valor: pagamento.valor,
+              valor: valorPagamento,
               tipo_movimentacao: 'ENTRADA',
               categoria: 'VENDA',
               dt_movimentacao: new Date(),
               origem: 'AUTOMATICA',
-              id_conta_bancaria: null
+              id_conta_bancaria: null 
             }
           });
           
           await tx.pagamentoCliente.update({
-            where: { id_pagamento_cliente: pagamento.id_pagamento_cliente },
+            where: { id_pagamento_cliente: idPagamentoCliente },
             data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any
           });
 
@@ -186,27 +161,27 @@ export class FechamentoFinanceiroRepository {
 
             if (operadora) {
               const taxa = metodo === 'DEBITO' 
-                ? operadora.taxa_debito 
-                : (pagamento.qtd_parcelas === 1 ? operadora.taxa_credito_vista : operadora.taxa_credito_parc);
+                ? Number(operadora.taxa_debito) 
+                : (pagamento.qtd_parcelas === 1 ? Number(operadora.taxa_credito_vista) : Number(operadora.taxa_credito_parc));
               
               const prazo = metodo === 'DEBITO'
-                ? operadora.prazo_debito
-                : (pagamento.qtd_parcelas === 1 ? operadora.prazo_credito_vista : operadora.prazo_credito_parc);
+                ? Number(operadora.prazo_debito)
+                : (pagamento.qtd_parcelas === 1 ? Number(operadora.prazo_credito_vista) : Number(operadora.prazo_credito_parc));
 
-              const taxaAplicada = (Number(pagamento.valor) * Number(taxa)) / 100;
-              const valorLiquido = Number(pagamento.valor) - taxaAplicada;
+              const taxaAplicada = (valorPagamento * taxa) / 100;
+              const valorLiquido = valorPagamento - taxaAplicada;
 
-              const dataPrevista = new Date();
-              dataPrevista.setDate(dataPrevista.getDate() + prazo);
+              const dataPrevistaBase = new Date();
+              dataPrevistaBase.setDate(dataPrevistaBase.getDate() + prazo);
 
               const qtdParcelas = pagamento.qtd_parcelas || 1;
-              const valorPorParcela = Number(pagamento.valor) / qtdParcelas;
+              const valorPorParcela = valorPagamento / qtdParcelas;
               const valorLiquidoPorParcela = valorLiquido / qtdParcelas;
               const taxaPorParcela = taxaAplicada / qtdParcelas;
 
               for (let i = 1; i <= qtdParcelas; i++) {
-                const dataPrevisaParcela = new Date(dataPrevista);
-                dataPrevisaParcela.setMonth(dataPrevisaParcela.getMonth() + (i - 1));
+                const dataPrevistaParcela = new Date(dataPrevistaBase);
+                dataPrevistaParcela.setMonth(dataPrevistaParcela.getMonth() + (i - 1));
 
                 await tx.recebivelCartao.create({
                   data: {
@@ -218,11 +193,12 @@ export class FechamentoFinanceiroRepository {
                     valor_liquido: valorLiquidoPorParcela,
                     taxa_aplicada: taxaPorParcela,
                     data_venda: new Date(),
-                    data_prevista: dataPrevisaParcela,
+                    data_prevista: dataPrevistaParcela,
                     status: 'PENDENTE'
                   }
                 });
               }
+              console.log(`      ✅ [CARTÃO] ${qtdParcelas} recebível(eis) criado(s) para OS #${idOs}`);
             }
           }
         }

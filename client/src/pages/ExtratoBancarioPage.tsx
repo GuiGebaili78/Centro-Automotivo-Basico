@@ -78,7 +78,7 @@ export const ExtratoBancarioPage = () => {
                     paymentMethod: m.categoria === 'CONCILIACAO_CARTAO' ? 'CARTÃO' : (m.descricao.includes('PIX') ? 'PIX' : (m.origem === 'MANUAL' ? 'MANUAL' : 'OUTROS'))
                 }));
 
-            const allMovs = entriesLivro.sort((a,b) => new Date(b.dt_movimentacao).getTime() - new Date(a.dt_movimentacao).getTime());
+            const allMovs = entriesLivro.sort((a: any, b: any) => new Date(b.dt_movimentacao).getTime() - new Date(a.dt_movimentacao).getTime());
             
             setMovimentacoes(allMovs);
             
@@ -157,11 +157,11 @@ export const ExtratoBancarioPage = () => {
     // Apply Filters and Totals
      const totalEntradas = filteredMovimentacoes
         .filter(m => m.tipo_movimentacao === 'ENTRADA')
-        .reduce((acc, m) => acc + Number(m.valor), 0);
+        .reduce((acc: any, m: any) => acc + Number(m.valor), 0);
         
     const totalSaidas = filteredMovimentacoes
         .filter(m => m.tipo_movimentacao === 'SAIDA')
-        .reduce((acc, m) => acc + Number(m.valor), 0);
+        .reduce((acc: any, m: any) => acc + Number(m.valor), 0);
     
     return (
         <div className="min-h-screen bg-neutral-50 p-6">
