@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { 
     ArrowLeft, Search, Calendar, Filter, 
-    ArrowUpCircle, ArrowDownCircle
+    ArrowUpCircle, ArrowDownCircle, Plus, X
 } from 'lucide-react';
 import type { IContaBancaria } from '../types/backend';
 
@@ -23,81 +23,72 @@ export const ExtratoBancarioPage = () => {
     const [filterTipo, setFilterTipo] = useState('TODOS');
     const [filterCategoria, setFilterCategoria] = useState('TODOS');
 
+    // Modal & Form State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [categories, setCategories] = useState<any[]>([]);
+    const [formLoading, setFormLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        descricao: '',
+        valor: '',
+        tipo_movimentacao: 'SAIDA',
+        categoria: 'OUTROS',
+        obs: ''
+    });
+
     useEffect(() => {
         if (idConta) {
             loadData();
+            loadCategories();
         }
     }, [idConta]);
+
+    const loadCategories = async () => {
+        try {
+            const res = await api.get('/categoria-financeira');
+            setCategories(res.data);
+        } catch (error) {
+            console.error('Erro ao carregar categorias:', error);
+        }
+    };
 
     const loadData = async () => {
         try {
             setLoading(true);
-            const [contaRes, movRes, pCliRes] = await Promise.all([
+            const [contaRes, movRes] = await Promise.all([
                 api.get('/conta-bancaria'),
-                api.get('/livro-caixa'),
-                api.get('/pagamento-cliente'),
-                // api.get('/pagamento-peca') // Future use
+                api.get('/livro-caixa')
             ]);
 
             const contaFound = contaRes.data.find((c: any) => c.id_conta === Number(idConta));
             setConta(contaFound || null);
 
-            // 1. Livro Caixa (Manuais ou Automáticos que geraram registro)
+            // 1. Livro Caixa (Manuais ou Automáticos que geraram registro) - FONTE ÚNICA
             const entriesLivro = movRes.data
                 .filter((m: any) => m.id_conta_bancaria === Number(idConta))
                 .map((m: any) => ({
                     id: `cx-${m.id_livro_caixa}`,
+                    id_livro_caixa: m.id_livro_caixa,
                     dt_movimentacao: m.dt_movimentacao,
                     descricao: m.descricao,
                     categoria: m.categoria,
-                    tipo_movimentacao: m.tipo_movimentacao, // ENTRADA / SAIDA
+                    tipo_movimentacao: m.tipo_movimentacao,
                     valor: Number(m.valor),
                     obs: m.obs || '',
                     origem: 'LIVRO_CAIXA',
-                    paymentMethod: m.origem === 'MANUAL' ? 'MANUAL' : (m.descricao.includes('PIX') ? 'PIX' : 'OUTROS')
+                    paymentMethod: m.categoria === 'CONCILIACAO_CARTAO' ? 'CARTÃO' : (m.descricao.includes('PIX') ? 'PIX' : (m.origem === 'MANUAL' ? 'MANUAL' : 'OUTROS'))
                 }));
 
-            // 2. Pagamento Clientes (Entradas nessa conta)
-            // Filtra pagamentos que apontam explicitamente para esta conta
-            const entriesPCli = pCliRes.data
-                .filter((p: any) => p.id_conta_bancaria === Number(idConta))
-                .map((p: any) => {
-                    let methodDisplay = p.metodo_pagamento;
-                    if (methodDisplay === 'CREDITO') methodDisplay = `CRÉDITO ${p.bandeira_cartao || ''}`;
-                    if (methodDisplay === 'DEBITO') methodDisplay = `DÉBITO ${p.bandeira_cartao || ''}`;
-                    
-                    return {
-                        id: `in-${p.id_pagamento_cliente}`,
-                        dt_movimentacao: p.data_pagamento,
-                        descricao: `Recebimento OS #${p.id_os}`,
-                        categoria: 'Receita de Serviços',
-                        tipo_movimentacao: 'ENTRADA',
-                        valor: Number(p.valor),
-                        obs: p.observacao || '',
-                        origem: 'VENDA',
-                        paymentMethod: methodDisplay
-                    };
-                });
-
-            // 3. Pagamento Peças (Saídas dessa conta) - Se houver vínculo (por enquanto assumindo via livro caixa, mas se tiver lógica futura...)
-            // Nota: Se PagamentoPeca tiver id_conta_bancaria (não tem no schema atual, mas assumindo consistência futura ou ajuste de schema).
-            // Por hora, PagamentoPeca geralmente não tem conta direta no schema prisma fornecido anteriormente (PagamentoPeca relation LivroCaixa relation Conta). 
-            // Se já foi pego em 'entriesLivro' via id_livro_caixa, não duplicar.
-            // Para não duplicar: vamos checar IDs se necessário. Mas 'entriesLivro' já traz pelo id_conta.
-            // Então 'entriesPCli' traz o que NÃO gerou Livro Caixa mas tem conta.
-            
-            // Filtrar duplicatas (se PagamentoCliente gerou LivroCaixa e ambos vierem)
-            // Mas PagamentoCliente com id_conta_bancaria geralmente é direto.
-            
-            const allMovs = [...entriesLivro, ...entriesPCli].sort((a,b) => new Date(b.dt_movimentacao).getTime() - new Date(a.dt_movimentacao).getTime());
+            const allMovs = entriesLivro.sort((a,b) => new Date(b.dt_movimentacao).getTime() - new Date(a.dt_movimentacao).getTime());
             
             setMovimentacoes(allMovs);
             
             // Set default date range (current month)
-            const today = new Date();
-            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-            setDateRange({ start: firstDay, end: lastDay });
+            if (!dateRange.start) {
+                const today = new Date();
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+                const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+                setDateRange({ start: firstDay, end: lastDay });
+            }
 
         } catch (error) {
             console.error(error);
@@ -201,6 +192,17 @@ export const ExtratoBancarioPage = () => {
                             R$ {Number(conta.saldo_atual).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </p>
                     </div>
+
+                    <button 
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-neutral-900 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl hover:bg-neutral-800 transition-all hover:scale-[1.02] active:scale-95 whitespace-nowrap text-sm tracking-wide"
+                    >
+                        <Plus size={24} strokeWidth={3} />
+                        <div className="flex flex-col items-start leading-tight">
+                            <span>NOVO</span>
+                            <span className="text-[10px] opacity-70 font-medium tracking-widest">LANÇAMENTO</span>
+                        </div>
+                    </button>
                 </div>
             </div>
 
@@ -260,6 +262,7 @@ export const ExtratoBancarioPage = () => {
                         >
                             <option value="TODOS">Todas Categorias</option>
                             <option value="VENDA">Vendas</option>
+                            <option value="CONCILIACAO_CARTAO">Recebimentos (Cartão)</option>
                             <option value="COMPRA">Compras</option>
                             <option value="DESPESA">Despesas</option>
                             <option value="TRANSFERENCIA">Transferências</option>
@@ -333,7 +336,7 @@ export const ExtratoBancarioPage = () => {
                                     </td>
                                     <td className="p-4">
                                         <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-xs font-bold uppercase tracking-wide">
-                                            {mov.categoria}
+                                            {mov.categoria === 'CONCILIACAO_CARTAO' ? 'Recebimento (Cartão)' : (mov.categoria === 'VENDA' ? 'Faturamento / Venda' : mov.categoria)}
                                         </span>
                                     </td>
                                     <td className="p-4 text-center">
@@ -357,6 +360,115 @@ export const ExtratoBancarioPage = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* CREATE MODAL */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-black text-neutral-900">Novo Lançamento</h2>
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form 
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                try {
+                                    setFormLoading(true);
+                                    await api.post('/livro-caixa', {
+                                        ...formData,
+                                        id_conta_bancaria: Number(idConta),
+                                        origem: 'MANUAL'
+                                    });
+                                    setIsModalOpen(false);
+                                    setFormData({ descricao: '', valor: '', tipo_movimentacao: 'SAIDA', categoria: 'OUTROS', obs: '' });
+                                    loadData(); // Recarrega extrato e saldo
+                                } catch (error) {
+                                    console.error(error);
+                                    alert('Erro ao criar lançamento.');
+                                } finally {
+                                    setFormLoading(false);
+                                }
+                            }} 
+                            className="space-y-4"
+                        >
+                            <div>
+                                <label className="block text-[10px] font-black text-neutral-400 uppercase mb-1">Descrição</label>
+                                <input 
+                                    required 
+                                    type="text" 
+                                    placeholder="Ex: Taxa Bancária, Material de Limpeza..."
+                                    value={formData.descricao} 
+                                    onChange={e => setFormData({...formData, descricao: e.target.value})} 
+                                    className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-neutral-900 transition-colors" 
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-neutral-400 uppercase mb-1">Valor (R$)</label>
+                                    <input 
+                                        required 
+                                        type="number" 
+                                        step="0.01" 
+                                        value={formData.valor} 
+                                        onChange={e => setFormData({...formData, valor: e.target.value})} 
+                                        className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-neutral-900" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-neutral-400 uppercase mb-1">Tipo</label>
+                                    <select 
+                                        value={formData.tipo_movimentacao} 
+                                        onChange={e => setFormData({...formData, tipo_movimentacao: e.target.value})} 
+                                        className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-neutral-900 appearance-none cursor-pointer"
+                                    >
+                                        <option value="ENTRADA">Entrada (+)</option>
+                                        <option value="SAIDA">Saída (-)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-neutral-400 uppercase mb-1">Categoria</label>
+                                <select 
+                                    value={formData.categoria} 
+                                    onChange={e => setFormData({...formData, categoria: e.target.value})} 
+                                    className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-neutral-900 appearance-none cursor-pointer"
+                                >
+                                    {categories.map(cat => (
+                                        <option key={cat.id_categoria} value={cat.nome}>{cat.nome}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-neutral-400 uppercase mb-1">Observação (Opcional)</label>
+                                <textarea 
+                                    rows={3} 
+                                    value={formData.obs} 
+                                    onChange={e => setFormData({...formData, obs: e.target.value})} 
+                                    className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-medium text-neutral-900 outline-none focus:border-neutral-900" 
+                                />
+                            </div>
+                            <div className="pt-4 flex gap-3">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsModalOpen(false)} 
+                                    className="flex-1 py-3 font-bold text-neutral-500 hover:bg-neutral-100 rounded-xl transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={formLoading}
+                                    className="flex-1 py-3 bg-neutral-900 text-white font-black rounded-xl hover:bg-neutral-800 shadow-lg transition-all disabled:opacity-50"
+                                >
+                                    {formLoading ? 'Salvando...' : 'Confirmar'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

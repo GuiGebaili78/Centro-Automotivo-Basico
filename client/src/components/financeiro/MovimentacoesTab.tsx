@@ -88,21 +88,24 @@ export const MovimentacoesTab = () => {
                 api.get('/pagamento-cliente') 
             ]);
 
-            // 1. Manual Entries
-            const manual = manualRes.data.map((e: any) => ({
-                id: `man-${e.id_livro_caixa}`,
-                rawId: e.id_livro_caixa,
-                date: e.dt_movimentacao,
-                description: e.descricao,
-                type: e.tipo_movimentacao === 'ENTRADA' ? 'IN' : 'OUT',
-                value: Number(e.valor),
-                category: e.categoria,
-                obs: e.obs,
-                source: e.origem === 'AUTOMATICA' ? 'AUTO' : 'MANUAL',
-                deleted_at: e.deleted_at,
-                originalData: e,
-                conta_bancaria: e.conta ? e.conta.nome : null
-            }));
+            // 1. Manual Entries (from Libro Caixa)
+            // Filter out 'CONCILIACAO_CARTAO' because it's only for Bank Statement, not for Cash revenue (already counted on consolidation)
+            const manual = manualRes.data
+                .filter((e: any) => e.categoria !== 'CONCILIACAO_CARTAO')
+                .map((e: any) => ({
+                    id: `man-${e.id_livro_caixa}`,
+                    rawId: e.id_livro_caixa,
+                    date: e.dt_movimentacao,
+                    description: e.descricao,
+                    type: e.tipo_movimentacao === 'ENTRADA' ? 'IN' : 'OUT',
+                    value: Number(e.valor),
+                    category: e.category || e.categoria,
+                    obs: e.obs,
+                    source: e.origem === 'AUTOMATICA' ? 'AUTO' : 'MANUAL',
+                    deleted_at: e.deleted_at,
+                    originalData: e,
+                    conta_bancaria: e.conta ? e.conta.nome : null
+                }));
 
             // 2. Auto Outflows (Payments to Suppliers)
             const outflows = paymentsRes.data

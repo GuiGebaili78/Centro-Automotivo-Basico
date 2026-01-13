@@ -96,111 +96,95 @@ export class FechamentoFinanceiroRepository {
       for (const pagamento of os.pagamentos_cliente) {
         const metodo = pagamento.metodo_pagamento.toUpperCase();
         
-        console.log('💰 [PAGAMENTO]', {
-          metodo,
-          valor: pagamento.valor,
-          id_operadora: pagamento.id_operadora,
-          id_conta_bancaria: pagamento.id_conta_bancaria
-        });
+        // Buscar operadora para descrição (se houver)
+        let operadoraNome = '';
+        if (pagamento.id_operadora) {
+          const op = await tx.operadoraCartao.findUnique({ where: { id_operadora: pagamento.id_operadora } });
+          operadoraNome = op?.nome || '';
+        }
 
         if (metodo === 'PIX') {
-          // PIX: Lançamento no caixa + Atualiza saldo bancário
+          // PIX: Lançamento no caixa + Atualiza saldo bancário + Aparece no Extrato
+          console.log(`💰 [CONSOLIDAÇÃO] Processando PIX: R$ ${pagamento.valor} na conta ${(pagamento as any).id_conta_bancaria}`);
+          
           const livroCaixa = await tx.livroCaixa.create({
             data: {
-              descricao: `Recebimento PIX - OS #${idOs}`,
+              descricao: `Venda PIX - OS #${idOs}`,
               valor: pagamento.valor,
               tipo_movimentacao: 'ENTRADA',
               categoria: 'VENDA',
               dt_movimentacao: new Date(),
               origem: 'AUTOMATICA',
-              id_conta_bancaria: pagamento.id_conta_bancaria,
-              id_pagamento_cliente: pagamento.id_pagamento_cliente
+              id_conta_bancaria: (pagamento as any).id_conta_bancaria
             }
           });
 
-          // Vincular pagamento ao livro caixa
           await tx.pagamentoCliente.update({
             where: { id_pagamento_cliente: pagamento.id_pagamento_cliente },
-            data: { id_livro_caixa: livroCaixa.id_livro_caixa }
+            data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any
           });
 
-          // Atualizar saldo bancário (se tiver conta vinculada)
-          if (pagamento.id_conta_bancaria) {
+          if ((pagamento as any).id_conta_bancaria) {
             await tx.contaBancaria.update({
-              where: { id_conta: pagamento.id_conta_bancaria },
-              data: {
-                saldo_atual: {
-                  increment: pagamento.valor
-                }
-              }
+              where: { id_conta: (pagamento as any).id_conta_bancaria },
+              data: { saldo_atual: { increment: Number(pagamento.valor) } }
             });
+            console.log(`✅ [CONSOLIDAÇÃO] Saldo da conta ${(pagamento as any).id_conta_bancaria} incrementado.`);
           }
           
         } else if (metodo === 'DINHEIRO') {
-          // DINHEIRO: Apenas lançamento no caixa
+          // DINHEIRO: Lançamento no caixa + Atualiza saldo (se conta informada)
+          console.log(`💵 [CONSOLIDAÇÃO] Processando DINHEIRO: R$ ${pagamento.valor}`);
           const livroCaixa = await tx.livroCaixa.create({
             data: {
-              descricao: `Recebimento Dinheiro - OS #${idOs}`,
+              descricao: `Venda Dinheiro - OS #${idOs}`,
               valor: pagamento.valor,
               tipo_movimentacao: 'ENTRADA',
               categoria: 'VENDA',
               dt_movimentacao: new Date(),
               origem: 'AUTOMATICA',
-              id_conta_bancaria: pagamento.id_conta_bancaria, // Pode ser null (caixa físico)
-              id_pagamento_cliente: pagamento.id_pagamento_cliente
+              id_conta_bancaria: (pagamento as any).id_conta_bancaria
             }
           });
 
           await tx.pagamentoCliente.update({
             where: { id_pagamento_cliente: pagamento.id_pagamento_cliente },
-            data: { id_livro_caixa: livroCaixa.id_livro_caixa }
+            data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any
           });
 
-          // Atualizar saldo bancário (se tiver conta vinculada)
-          if (pagamento.id_conta_bancaria) {
+          if ((pagamento as any).id_conta_bancaria) {
             await tx.contaBancaria.update({
-              where: { id_conta: pagamento.id_conta_bancaria },
-              data: {
-                saldo_atual: {
-                  increment: pagamento.valor
-                }
-              }
+              where: { id_conta: (pagamento as any).id_conta_bancaria },
+              data: { saldo_atual: { increment: Number(pagamento.valor) } }
             });
           }
 
         } else if (metodo === 'DEBITO' || metodo === 'CREDITO') {
-          // CARTÃO: Lançamento no caixa (faturamento) + Cria recebível
-          console.log('💳 [CARTÃO] Criando lançamento no caixa...');
-          
-          // 1. Lançamento no caixa (valor total - faturamento)
+          // CARTÃO: Lançamento no caixa (faturamento bruto total) + Cria recebível
+          console.log(`💳 [CONSOLIDAÇÃO] Processando CARTÃO ${metodo}: R$ ${pagamento.valor}`);
           const livroCaixa = await tx.livroCaixa.create({
             data: {
-              descricao: `Faturamento ${metodo} - OS #${idOs}`,
+              descricao: `Venda Cartão ${metodo} ${operadoraNome ? `(${operadoraNome})` : ''} - OS #${idOs}`,
               valor: pagamento.valor,
               tipo_movimentacao: 'ENTRADA',
               categoria: 'VENDA',
               dt_movimentacao: new Date(),
               origem: 'AUTOMATICA',
-              id_conta_bancaria: null, // Não entra no banco ainda
-              id_pagamento_cliente: pagamento.id_pagamento_cliente
+              id_conta_bancaria: null
             }
           });
           
-          console.log('✅ [CARTÃO] Lançamento criado no caixa:', livroCaixa.id_livro_caixa);
-
           await tx.pagamentoCliente.update({
             where: { id_pagamento_cliente: pagamento.id_pagamento_cliente },
-            data: { id_livro_caixa: livroCaixa.id_livro_caixa }
+            data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any
           });
 
-          // 2. Buscar operadora (se informada)
           if (pagamento.id_operadora) {
             const operadora = await tx.operadoraCartao.findUnique({
               where: { id_operadora: pagamento.id_operadora }
             });
 
             if (operadora) {
-              // Calcular taxa e valor líquido
               const taxa = metodo === 'DEBITO' 
                 ? operadora.taxa_debito 
                 : (pagamento.qtd_parcelas === 1 ? operadora.taxa_credito_vista : operadora.taxa_credito_parc);
@@ -209,16 +193,14 @@ export class FechamentoFinanceiroRepository {
                 ? operadora.prazo_debito
                 : (pagamento.qtd_parcelas === 1 ? operadora.prazo_credito_vista : operadora.prazo_credito_parc);
 
-              const taxaAplicada = (pagamento.valor * Number(taxa)) / 100;
-              const valorLiquido = pagamento.valor - taxaAplicada;
+              const taxaAplicada = (Number(pagamento.valor) * Number(taxa)) / 100;
+              const valorLiquido = Number(pagamento.valor) - taxaAplicada;
 
-              // Calcular data prevista
               const dataPrevista = new Date();
               dataPrevista.setDate(dataPrevista.getDate() + prazo);
 
-              // Criar recebível(is) - um para cada parcela
               const qtdParcelas = pagamento.qtd_parcelas || 1;
-              const valorPorParcela = pagamento.valor / qtdParcelas;
+              const valorPorParcela = Number(pagamento.valor) / qtdParcelas;
               const valorLiquidoPorParcela = valorLiquido / qtdParcelas;
               const taxaPorParcela = taxaAplicada / qtdParcelas;
 
@@ -246,7 +228,6 @@ export class FechamentoFinanceiroRepository {
         }
       }
 
-      // 4. Atualizar status da OS
       await tx.ordemDeServico.update({
         where: { id_os: idOs },
         data: { status: 'FINALIZADA' }

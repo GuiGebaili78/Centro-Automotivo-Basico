@@ -136,7 +136,22 @@ export class RecebivelCartaoRepository {
         }
       });
 
-      // 3. Atualizar status do recebível
+      // 3. Criar lançamento no LivroCaixa APENAS para o extrato bancário
+      // Obs: id_conta_bancaria preenchido faz aparecer no extrato.
+      // Categoria diferenciada para não inflar faturamento diário se for filtrado.
+      await tx.livroCaixa.create({
+        data: {
+            descricao: `Rec. Confirmado - ${recebivel.operadora.nome} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas} [REC_ID:${id}]`,
+            valor: recebivel.valor_liquido,
+            tipo_movimentacao: 'ENTRADA',
+            categoria: 'CONCILIACAO_CARTAO',
+            dt_movimentacao: new Date(),
+            origem: 'AUTOMATICA',
+            id_conta_bancaria: recebivel.operadora.id_conta_destino
+        }
+      });
+
+      // 4. Atualizar status do recebível
       return await tx.recebivelCartao.update({
         where: { id_recebivel: id },
         data: {
@@ -144,7 +159,7 @@ export class RecebivelCartaoRepository {
           data_recebimento: new Date(),
           confirmado_em: new Date(),
           confirmado_por: confirmadoPor
-        }
+        } as any
       });
     });
   }
@@ -181,7 +196,17 @@ export class RecebivelCartaoRepository {
         }
       });
 
-      // 3. Reverter status do recebível
+      // 3. Remover registros de conciliação do LivroCaixa para este recebível
+      await tx.livroCaixa.deleteMany({
+          where: {
+              categoria: 'CONCILIACAO_CARTAO',
+              descricao: {
+                  contains: `[REC_ID:${id}]`
+              }
+          }
+      });
+
+      // 4. Reverter status do recebível
       return await tx.recebivelCartao.update({
         where: { id_recebivel: id },
         data: {
@@ -311,6 +336,19 @@ export class RecebivelCartaoRepository {
           }
         });
 
+        // Registrar no extrato (LivroCaixa com conta vinculada)
+        await tx.livroCaixa.create({
+            data: {
+                descricao: `Rec. Confirmado (Lote) - ${recebivel.operadora.nome} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas} [REC_ID:${id}]`,
+                valor: recebivel.valor_liquido,
+                tipo_movimentacao: 'ENTRADA',
+                categoria: 'CONCILIACAO_CARTAO',
+                dt_movimentacao: new Date(),
+                origem: 'AUTOMATICA',
+                id_conta_bancaria: recebivel.operadora.id_conta_destino
+            }
+        });
+
         // Atualizar status do recebível
         const updated = await tx.recebivelCartao.update({
           where: { id_recebivel: id },
@@ -319,7 +357,7 @@ export class RecebivelCartaoRepository {
             data_recebimento: new Date(),
             confirmado_em: new Date(),
             confirmado_por: confirmadoPor
-          }
+          } as any
         });
 
         resultados.push(updated);

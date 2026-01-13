@@ -80,6 +80,18 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                 return;
             }
 
+            if ((metodo === 'PIX' || metodo === 'DINHEIRO') && idContaBancaria === 0) {
+                setError('Selecione a conta bancária de destino.');
+                setLoading(false);
+                return;
+            }
+
+            if ((metodo === 'CREDITO' || metodo === 'DEBITO') && idOperadora === 0) {
+                setError('Selecione a operadora/maquininha.');
+                setLoading(false);
+                return;
+            }
+
             const payload = {
                 id_os: osId,
                 metodo_pagamento: metodo,
