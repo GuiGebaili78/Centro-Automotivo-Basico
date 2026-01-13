@@ -131,7 +131,7 @@ export class RecebivelCartaoRepository {
         where: { id_conta: recebivel.operadora.id_conta_destino },
         data: {
           saldo_atual: {
-            increment: recebivel.valor_liquido
+            increment: Number(recebivel.valor_liquido)
           }
         }
       });
@@ -191,7 +191,7 @@ export class RecebivelCartaoRepository {
         where: { id_conta: recebivel.operadora.id_conta_destino },
         data: {
           saldo_atual: {
-            decrement: recebivel.valor_liquido
+            decrement: Number(recebivel.valor_liquido)
           }
         }
       });
@@ -331,7 +331,7 @@ export class RecebivelCartaoRepository {
           where: { id_conta: recebivel.operadora.id_conta_destino },
           data: {
             saldo_atual: {
-              increment: recebivel.valor_liquido
+              increment: Number(recebivel.valor_liquido)
             }
           }
         });

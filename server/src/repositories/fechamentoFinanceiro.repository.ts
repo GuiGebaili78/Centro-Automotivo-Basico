@@ -90,26 +90,29 @@ export class FechamentoFinanceiroRepository {
         }
       });
 
-      // 3. Processar cada pagamento do cliente
-      console.log(`🔍 [CONSOLIDAÇÃO] Iniciando processamento de ${os.pagamentos_cliente.length} pagamento(s) para OS #${idOs}`);
+      // 3. Processar cada pagamento do cliente (STRICT MODE)
+      console.log(`🔍 [CONSOLIDAÇÃO STRICT] Processando ${os.pagamentos_cliente.length} pagamento(s) para OS #${idOs}`);
       
       for (const pagamento of os.pagamentos_cliente) {
         const metodo = (pagamento.metodo_pagamento || '').trim().toUpperCase();
         const valorPagamento = Number(pagamento.valor);
         const idContaBancaria = (pagamento as any).id_conta_bancaria;
+        const idOperadora = pagamento.id_operadora;
         const idPagamentoCliente = pagamento.id_pagamento_cliente;
 
-        // Buscar operadora para descrição (se houver)
-        let operadoraNome = '';
-        if (pagamento.id_operadora) {
-          const op = await tx.operadoraCartao.findUnique({ where: { id_operadora: pagamento.id_operadora } });
-          operadoraNome = op?.nome || '';
+        console.log(`   🔸 Pagamento ${idPagamentoCliente}: ${metodo} | R$ ${valorPagamento}`);
+
+        // VALIDAÇÃO PRÉVIA (FAIL FAST)
+        if ((metodo === 'PIX' || metodo === 'DINHEIRO') && !idContaBancaria) {
+            throw new Error(`Pagamento ${metodo} (R$ ${valorPagamento}) sem Conta Bancária definida!`);
+        }
+        if ((metodo === 'CREDITO' || metodo === 'DEBITO') && !idOperadora) {
+            throw new Error(`Pagamento ${metodo} (R$ ${valorPagamento}) sem Operadora definida!`);
         }
 
-        console.log(`   🔸 Pagamento ${idPagamentoCliente}: ${metodo} | R$ ${valorPagamento} | Conta: ${idContaBancaria}`);
-
+        // --- FLUXO 1: PIX / DINHEIRO (IMEDIATO) ---
         if (metodo === 'PIX' || metodo === 'DINHEIRO') {
-          // PIX/DINHEIRO: Lançamento no caixa + Atualiza saldo bancário (se conta informada)
+          // 1.1 Criar LivroCaixa (COM CONTA BANCÁRIA -> Aparece no Extrato)
           const livroCaixa = await tx.livroCaixa.create({
             data: {
               descricao: `Venda ${metodo} - OS #${idOs}`,
@@ -118,25 +121,34 @@ export class FechamentoFinanceiroRepository {
               categoria: 'VENDA',
               dt_movimentacao: new Date(),
               origem: 'AUTOMATICA',
-              id_conta_bancaria: idContaBancaria
+              id_conta_bancaria: idContaBancaria // VÍNCULO DIRETO
             }
           });
 
+          // 1.2 Vincular ao PagamentoCliente
           await tx.pagamentoCliente.update({
             where: { id_pagamento_cliente: idPagamentoCliente },
             data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any
           });
 
-          if (idContaBancaria) {
-            await tx.contaBancaria.update({
-              where: { id_conta: idContaBancaria },
-              data: { saldo_atual: { increment: valorPagamento } }
-            });
-            console.log(`      ✅ [PIX/DIN] Saldo da conta ${idContaBancaria} atualizado (+ R$ ${valorPagamento})`);
+          // 1.3 Atualizar Saldo Bancário (IMEDIATO)
+          await tx.contaBancaria.update({
+            where: { id_conta: idContaBancaria },
+            data: { saldo_atual: { increment: valorPagamento } }
+          });
+          console.log(`      ✅ [PIX/DIN] Saldo Conta ${idContaBancaria} += ${valorPagamento}`);
+        } 
+        
+        // --- FLUXO 2: CARTÃO (DIFERIDO) ---
+        else if (metodo === 'DEBITO' || metodo === 'CREDITO') {
+          // Prepara nome da operadora para descrição
+          let operadoraNome = '';
+          if (idOperadora) {
+             const op = await tx.operadoraCartao.findUnique({ where: { id_operadora: idOperadora } });
+             operadoraNome = op?.nome || '';
           }
-          
-        } else if (metodo === 'DEBITO' || metodo === 'CREDITO') {
-          // CARTÃO: Lançamento no caixa (faturamento bruto total) + Cria recebível (NÃO atualiza saldo bancário agora)
+
+          // 2.1 Criar LivroCaixa (SEM CONTA BANCÁRIA -> NÃO aparece no Extrato, apenas Faturamento)
           const livroCaixa = await tx.livroCaixa.create({
             data: {
               descricao: `Venda Cartão ${metodo} ${operadoraNome ? `(${operadoraNome})` : ''} - OS #${idOs}`,
@@ -145,19 +157,19 @@ export class FechamentoFinanceiroRepository {
               categoria: 'VENDA',
               dt_movimentacao: new Date(),
               origem: 'AUTOMATICA',
-              id_conta_bancaria: null 
+              id_conta_bancaria: null // NULL PARA NÃO AFETAR EXTRATO/SALDO AGORA
             }
           });
           
+          // 2.2 Vincular ao PagamentoCliente
           await tx.pagamentoCliente.update({
             where: { id_pagamento_cliente: idPagamentoCliente },
             data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any
           });
 
-          if (pagamento.id_operadora) {
-            const operadora = await tx.operadoraCartao.findUnique({
-              where: { id_operadora: pagamento.id_operadora }
-            });
+          // 2.3 Criar Recebíveis (Cálculo de Parcelas e Taxas)
+          if (idOperadora) {
+            const operadora = await tx.operadoraCartao.findUnique({ where: { id_operadora: idOperadora } });
 
             if (operadora) {
               const taxa = metodo === 'DEBITO' 
@@ -171,6 +183,7 @@ export class FechamentoFinanceiroRepository {
               const taxaAplicada = (valorPagamento * taxa) / 100;
               const valorLiquido = valorPagamento - taxaAplicada;
 
+              // Data base para vencimento
               const dataPrevistaBase = new Date();
               dataPrevistaBase.setDate(dataPrevistaBase.getDate() + prazo);
 
@@ -186,7 +199,7 @@ export class FechamentoFinanceiroRepository {
                 await tx.recebivelCartao.create({
                   data: {
                     id_os: idOs,
-                    id_operadora: pagamento.id_operadora,
+                    id_operadora: idOperadora,
                     num_parcela: i,
                     total_parcelas: qtdParcelas,
                     valor_bruto: valorPorParcela,
@@ -194,11 +207,11 @@ export class FechamentoFinanceiroRepository {
                     taxa_aplicada: taxaPorParcela,
                     data_venda: new Date(),
                     data_prevista: dataPrevistaParcela,
-                    status: 'PENDENTE'
+                    status: 'PENDENTE' // AGUARDANDO CONCILIAÇÃO
                   }
                 });
               }
-              console.log(`      ✅ [CARTÃO] ${qtdParcelas} recebível(eis) criado(s) para OS #${idOs}`);
+              console.log(`      ✅ [CARTÃO] ${qtdParcelas} parcela(s) criada(s) em Recebíveis.`);
             }
           }
         }

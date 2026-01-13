@@ -254,8 +254,12 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                 </button>
                 <button 
                     type="submit" 
-                    disabled={loading}
-                    className="flex-1 py-3 bg-green-600 text-white font-black uppercase text-xs rounded-xl hover:bg-green-700 shadow-xl shadow-green-200 transition-all flex items-center justify-center gap-2"
+                    disabled={
+                        loading || 
+                        ((metodo === 'PIX' || metodo === 'DINHEIRO') && idContaBancaria === 0) ||
+                        ((metodo === 'CREDITO' || metodo === 'DEBITO') && idOperadora === 0)
+                    }
+                    className="flex-1 py-3 bg-green-600 text-white font-black uppercase text-xs rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-green-200 transition-all flex items-center justify-center gap-2"
                 >
                     {loading ? 'Processando...' : <><CheckCircle size={18} /> {initialData ? 'Salvar Alterações' : 'Confirmar Pagamento'}</>}
                 </button>
