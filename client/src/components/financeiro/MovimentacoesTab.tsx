@@ -66,6 +66,8 @@ export const MovimentacoesTab = () => {
         // id_conta_bancaria could be added here later
     });
 
+    // Operators Cache - Removed state, now local in loadData
+
     useEffect(() => {
         loadData();
         loadCategories();
@@ -82,30 +84,66 @@ export const MovimentacoesTab = () => {
 
     const loadData = async () => {
         try {
-            const [manualRes, paymentsRes, inflowsRes] = await Promise.all([
+            const [manualRes, paymentsRes, inflowsRes, opsRes] = await Promise.all([
                 api.get('/livro-caixa'),
                 api.get('/pagamento-peca'), 
-                api.get('/pagamento-cliente') 
+                api.get('/pagamento-cliente'),
+                api.get('/operadora-cartao')
             ]);
 
+            // Build Operators Map
+            const opMap: Record<number, string> = {};
+            (opsRes.data || []).forEach((op: any) => {
+                opMap[op.id_operadora] = op.nome;
+            });
+
+            // (Previous block was duplicated, removing)
+
+            // Build Payment Map (Link LivroCaixa ID -> Payment Data)
+            const lcPaymentMap: Record<number, any> = {};
+            (inflowsRes.data || []).forEach((p: any) => {
+                if (p.id_livro_caixa) {
+                    lcPaymentMap[p.id_livro_caixa] = p;
+                }
+            });
+
             // 1. Manual Entries (from Libro Caixa)
-            // Filter out 'CONCILIACAO_CARTAO' because it's only for Bank Statement, not for Cash revenue (already counted on consolidation)
+            // Enrich with values from Linked Payment if available
             const manual = manualRes.data
                 .filter((e: any) => e.categoria !== 'CONCILIACAO_CARTAO')
-                .map((e: any) => ({
-                    id: `man-${e.id_livro_caixa}`,
-                    rawId: e.id_livro_caixa,
-                    date: e.dt_movimentacao,
-                    description: e.descricao,
-                    type: e.tipo_movimentacao === 'ENTRADA' ? 'IN' : 'OUT',
-                    value: Number(e.valor),
-                    category: e.category || e.categoria,
-                    obs: e.obs,
-                    source: e.origem === 'AUTOMATICA' ? 'AUTO' : 'MANUAL',
-                    deleted_at: e.deleted_at,
-                    originalData: e,
-                    conta_bancaria: e.conta ? e.conta.nome : null
-                }));
+                .map((e: any) => {
+                    const linkedP = lcPaymentMap[e.id_livro_caixa];
+                    let methodDisplay = null;
+                    
+                    if (linkedP) {
+                        // Enrich from Linked Payment
+                        const method = linkedP.metodo_pagamento;
+                        if (method === 'CREDITO') {
+                            const opName = opMap[linkedP.id_operadora] || linkedP.bandeira_cartao || 'Cartão';
+                            const parc = linkedP.qtd_parcelas > 1 ? ` (${linkedP.qtd_parcelas}x)` : ' (À Vista)';
+                            methodDisplay = `CRÉDITO ${opName}${parc}`;
+                        } else if (method === 'DEBITO') {
+                             const opName = opMap[linkedP.id_operadora] || linkedP.bandeira_cartao || 'Cartão';
+                             methodDisplay = `DÉBITO ${opName}`;
+                        }
+                    }
+
+                    return {
+                        id: `man-${e.id_livro_caixa}`,
+                        rawId: e.id_livro_caixa,
+                        date: e.dt_movimentacao,
+                        description: e.descricao,
+                        type: e.tipo_movimentacao === 'ENTRADA' ? 'IN' : 'OUT',
+                        value: Number(e.valor),
+                        category: e.category || e.categoria,
+                        obs: e.obs,
+                        source: e.origem === 'AUTOMATICA' ? 'AUTO' : 'MANUAL',
+                        deleted_at: e.deleted_at,
+                        originalData: e,
+                        conta_bancaria: e.conta ? e.conta.nome : null,
+                        paymentMethod: methodDisplay // Enriched info
+                    };
+                });
 
             // 2. Auto Outflows (Payments to Suppliers)
             const outflows = paymentsRes.data
@@ -136,10 +174,14 @@ export const MovimentacoesTab = () => {
                     };
                 });
 
-                // 3. Auto Inflows (Payments from Clients)
+            // 3. Auto Inflows (Payments from Clients)
+            // ONLY include payments that are NOT linked to a Livro Caixa entry (to avoid duplicates)
+            // or if we want to show non-consolidated items. 
+            // Usually, standard flow creates LC immediately for PIX/Cash.
+            // For Card, if it's NOT in LC, maybe we should show it? 
+            // But user asked for LC display adjustments.
             const inflows = (inflowsRes.data || [])
-                // Removed filter to show all payment methods (Credit, Debit, Pix, Cash) as requested
-                // .filter((p: any) => p.metodo_pagamento !== 'CREDITO' && p.metodo_pagamento !== 'DEBITO')
+                .filter((p: any) => !p.id_livro_caixa) // Prevent duplicates if already in LC
                 .map((p: any) => {
                 const os = p.ordem_de_servico;
                 const veh = os?.veiculo;
@@ -149,8 +191,29 @@ export const MovimentacoesTab = () => {
                 
                 // Determine display method
                 let methodDisplay = p.metodo_pagamento;
-                if (methodDisplay === 'CREDITO') methodDisplay = `CRÉDITO ${p.bandeira_cartao || ''}`;
-                if (methodDisplay === 'DEBITO') methodDisplay = `DÉBITO ${p.bandeira_cartao || ''}`;
+                // (Previous block was duplicated, removing)
+                
+                // Helper to format currency
+                // const fmt = (v: number) => `R$ ${v.toFixed(2)}`;
+
+                if (methodDisplay === 'CREDITO') {
+                    const opName = opMap[p.id_operadora] || p.bandeira_cartao || 'Cartão';
+                    const parc = p.qtd_parcelas > 1 ? ` (${p.qtd_parcelas}x)` : ' (À Vista)';
+                    const nsu = p.codigo_transacao ? ` | NSU/Aut: ${p.codigo_transacao}` : '';
+                    methodDisplay = `CRÉDITO ${opName}${parc} - ${p.bandeira_cartao || ''}${nsu}`;
+                }
+                if (methodDisplay === 'DEBITO') {
+                     const opName = opMap[p.id_operadora] || p.bandeira_cartao || 'Cartão';
+                     const nsu = p.codigo_transacao ? ` | NSU/Aut: ${p.codigo_transacao}` : '';
+                     methodDisplay = `DÉBITO ${opName} - ${p.bandeira_cartao || ''}${nsu}`;
+                }
+                if (methodDisplay === 'PIX') {
+                    const nsu = p.codigo_transacao ? ` | ID: ${p.codigo_transacao}` : '';
+                    methodDisplay = `PIX${nsu}`;
+                }
+                if (methodDisplay === 'DINHEIRO') {
+                     methodDisplay = 'DINHEIRO';
+                }
                 const contaDisplay = p.conta_bancaria ? p.conta_bancaria.nome : null;
 
                 return {

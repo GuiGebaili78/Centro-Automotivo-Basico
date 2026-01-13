@@ -88,10 +88,10 @@ export class PecasEstoqueRepository {
           const entrada = await tx.entradaEstoque.create({
               data: {
                   id_fornecedor: data.id_fornecedor,
-                  nota_fiscal: data.nota_fiscal,
+                  nota_fiscal: data.nota_fiscal || null,
                   data_compra: data.data_compra || new Date(),
                   valor_total: data.itens.reduce((acc, i) => acc + (Number(i.valor_custo) * Number(i.quantidade)), 0),
-                  obs: data.obs
+                  obs: data.obs || null
               }
           });
 
@@ -125,9 +125,9 @@ export class PecasEstoqueRepository {
                       quantidade: item.quantidade,
                       valor_custo: item.valor_custo,
                       valor_venda: item.valor_venda,
-                      margem_lucro: item.margem_lucro,
-                      ref_cod: item.ref_cod,
-                      obs: item.obs
+                      margem_lucro: item.margem_lucro || null,
+                      ref_cod: item.ref_cod || null,
+                      obs: item.obs || null
                   }
               });
 

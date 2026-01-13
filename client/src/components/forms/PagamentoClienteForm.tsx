@@ -25,6 +25,10 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
             setBandeira(initialData.bandeira_cartao || '');
             setParcelas(String(initialData.qtd_parcelas || 1));
             setCodigoTransacao(initialData.codigo_transacao || '');
+            
+            // FIX: Inicializar IDs corretamente para edição
+            if (initialData.id_operadora) setIdOperadora(Number(initialData.id_operadora));
+            if (initialData.id_conta_bancaria) setIdContaBancaria(Number(initialData.id_conta_bancaria));
         }
     }, [initialData]);
 
@@ -45,8 +49,11 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
         try {
             const res = await api.get('/operadora-cartao');
             setOperadoras(res.data);
-            // Se houver apenas uma operadora, seleciona automaticamente
-            if (res.data.length === 1) {
+            
+            // Priority: 1. Initial Data (Edit), 2. Single Operator Auto-Select
+            if (initialData?.id_operadora) {
+                setIdOperadora(Number(initialData.id_operadora));
+            } else if (res.data.length === 1) {
                 setIdOperadora(res.data[0].id_operadora);
             }
         } catch (error) {
@@ -80,7 +87,7 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                 return;
             }
 
-            if ((metodo === 'PIX' || metodo === 'DINHEIRO') && idContaBancaria === 0) {
+            if (metodo === 'PIX' && idContaBancaria === 0) {
                 setError('Selecione a conta bancária de destino.');
                 setLoading(false);
                 return;
@@ -101,7 +108,7 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                 codigo_transacao: codigoTransacao || null,
                 qtd_parcelas: metodo === 'CREDITO' ? Number(parcelas) : 1,
                 id_operadora: (metodo === 'CREDITO' || metodo === 'DEBITO') ? idOperadora : undefined,
-                id_conta_bancaria: (metodo === 'PIX' || metodo === 'DINHEIRO') ? idContaBancaria : undefined
+                id_conta_bancaria: metodo === 'PIX' ? idContaBancaria : undefined
             };
 
             let response;
@@ -216,7 +223,7 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                     </>
                 )}
 
-                {(metodo === 'PIX' || metodo === 'DINHEIRO') && (
+                {metodo === 'PIX' && (
                     <div className="md:col-span-2">
                         <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Conta Bancária / Destino</label>
                         <select
@@ -256,7 +263,7 @@ export const PagamentoClienteForm = ({ osId, valorTotal, initialData, onSuccess,
                     type="submit" 
                     disabled={
                         loading || 
-                        ((metodo === 'PIX' || metodo === 'DINHEIRO') && idContaBancaria === 0) ||
+                        (metodo === 'PIX' && idContaBancaria === 0) ||
                         ((metodo === 'CREDITO' || metodo === 'DEBITO') && idOperadora === 0)
                     }
                     className="flex-1 py-3 bg-green-600 text-white font-black uppercase text-xs rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-green-200 transition-all flex items-center justify-center gap-2"

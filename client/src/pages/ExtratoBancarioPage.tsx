@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { 
-    ArrowLeft, Search, Calendar, Filter, 
+    ArrowLeft, 
     ArrowUpCircle, ArrowDownCircle, Plus, X
 } from 'lucide-react';
 import type { IContaBancaria } from '../types/backend';
@@ -14,14 +14,11 @@ export const ExtratoBancarioPage = () => {
     // State
     const [conta, setConta] = useState<IContaBancaria | null>(null);
     const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
-    const [filteredMovimentacoes, setFilteredMovimentacoes] = useState<any[]>([]);
+    // const [filteredMovimentacoes, setFilteredMovimentacoes] = useState<any[]>([]); // Removed
     const [loading, setLoading] = useState(true);
 
     // Filters
-    const [searchText, setSearchText] = useState('');
-    const [dateRange, setDateRange] = useState({ start: '', end: '' });
-    const [filterTipo, setFilterTipo] = useState('TODOS');
-    const [filterCategoria, setFilterCategoria] = useState('TODOS');
+    // Filters removed as per request
 
     // Modal & Form State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -82,13 +79,9 @@ export const ExtratoBancarioPage = () => {
             
             setMovimentacoes(allMovs);
             
-            // Set default date range (current month)
-            if (!dateRange.start) {
-                const today = new Date();
-                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-                const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-                setDateRange({ start: firstDay, end: lastDay });
-            }
+            
+            // Default: No date range (Show All)
+            // if (!dateRange.start) { ... } removed as per user request
 
         } catch (error) {
             console.error(error);
@@ -98,43 +91,7 @@ export const ExtratoBancarioPage = () => {
     };
 
     // Apply Filters
-    useEffect(() => {
-        let filtered = [...movimentacoes];
-
-        // 1. Search Text (Descrição ou Categoria)
-        if (searchText) {
-            const lowerInfo = searchText.toLowerCase();
-            filtered = filtered.filter(m => 
-                m.descricao.toLowerCase().includes(lowerInfo) || 
-                (m.categoria && m.categoria.toLowerCase().includes(lowerInfo))
-            );
-        }
-
-        // 2. Date Range
-        if (dateRange.start && dateRange.end) {
-            const start = new Date(dateRange.start);
-            start.setHours(0,0,0,0);
-            const end = new Date(dateRange.end);
-            end.setHours(23,59,59,999);
-
-            filtered = filtered.filter(m => {
-                const d = new Date(m.dt_movimentacao);
-                return d >= start && d <= end;
-            });
-        }
-
-        // 3. Tipo
-        if (filterTipo !== 'TODOS') {
-            filtered = filtered.filter(m => m.tipo_movimentacao === filterTipo);
-        }
-
-        // 4. Categoria
-        if (filterCategoria !== 'TODOS') {
-            filtered = filtered.filter(m => m.categoria === filterCategoria);
-        }
-
-        setFilteredMovimentacoes(filtered);
-    }, [movimentacoes, searchText, dateRange, filterTipo, filterCategoria]);
+    // Filters removed - showing all data
 
 
     if (loading) {
@@ -154,12 +111,12 @@ export const ExtratoBancarioPage = () => {
         );
     }
 
-    // Apply Filters and Totals
-     const totalEntradas = filteredMovimentacoes
+    // Apply Totals
+     const totalEntradas = movimentacoes
         .filter(m => m.tipo_movimentacao === 'ENTRADA')
         .reduce((acc: any, m: any) => acc + Number(m.valor), 0);
         
-    const totalSaidas = filteredMovimentacoes
+    const totalSaidas = movimentacoes
         .filter(m => m.tipo_movimentacao === 'SAIDA')
         .reduce((acc: any, m: any) => acc + Number(m.valor), 0);
     
@@ -206,83 +163,26 @@ export const ExtratoBancarioPage = () => {
                 </div>
             </div>
 
-            {/* Filters Area */}
-            <div className="bg-white p-4 rounded-xl border border-neutral-100 shadow-sm mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar por descrição..." 
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-neutral-900 outline-none transition-all"
-                        />
-                    </div>
-
-                    {/* Date Range */}
-                    <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2">
-                        <Calendar size={18} className="text-neutral-400" />
-                        <input 
-                            type="date" 
-                            value={dateRange.start}
-                            onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
-                            className="bg-transparent text-sm font-medium outline-none w-full text-neutral-600"
-                        />
-                        <span className="text-neutral-300">|</span>
-                        <input 
-                            type="date" 
-                            value={dateRange.end}
-                            onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
-                            className="bg-transparent text-sm font-medium outline-none w-full text-neutral-600"
-                        />
-                    </div>
-
-                    {/* Type Filter */}
-                    <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                        <select 
-                            value={filterTipo}
-                            onChange={(e) => setFilterTipo(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-neutral-900 outline-none appearance-none cursor-pointer"
-                        >
-                            <option value="TODOS">Todas Movimentações</option>
-                            <option value="ENTRADA">Apenas Entradas</option>
-                            <option value="SAIDA">Apenas Saídas</option>
-                        </select>
-                    </div>
-
-                    {/* Category Filter */}
-                    <div className="relative">
-                        <select 
-                            value={filterCategoria}
-                            onChange={(e) => setFilterCategoria(e.target.value)}
-                            className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-neutral-900 outline-none appearance-none cursor-pointer"
-                        >
-                            <option value="TODOS">Todas Categorias</option>
-                            <option value="VENDA">Vendas</option>
-                            <option value="CONCILIACAO_CARTAO">Recebimentos (Cartão)</option>
-                            <option value="COMPRA">Compras</option>
-                            <option value="DESPESA">Despesas</option>
-                            <option value="TRANSFERENCIA">Transferências</option>
-                            <option value="OUTROS">Outros</option>
-                        </select>
+            {/* Summary Area */}
+            <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm mb-6 flex flex-col md:flex-row justify-end gap-8 text-sm">
+                <div className="flex items-center gap-3 text-green-600 font-bold">
+                    <div className="p-2 bg-green-50 rounded-full"><ArrowUpCircle size={20} /></div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider">Entradas</span>
+                        <span className="text-lg">{totalEntradas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                 </div>
-
-                {/* Filter Summary */}
-                <div className="mt-4 pt-4 border-t border-neutral-100 flex justify-end gap-6 text-sm">
-                    <div className="flex items-center gap-2 text-green-600 font-bold">
-                        <ArrowUpCircle size={16} />
-                        <span>Entradas: {totalEntradas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                <div className="flex items-center gap-3 text-red-600 font-bold">
+                     <div className="p-2 bg-red-50 rounded-full"><ArrowDownCircle size={20} /></div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider">Saídas</span>
+                        <span className="text-lg">{totalSaidas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-red-600 font-bold">
-                        <ArrowDownCircle size={16} />
-                        <span>Saídas: {totalSaidas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-neutral-900 font-black pl-6 border-l border-neutral-100">
-                        <span>Resultado: {(totalEntradas - totalSaidas).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+                <div className="flex items-center gap-3 text-neutral-900 font-black pl-8 border-l border-neutral-100">
+                     <div className="flex flex-col items-end">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider">Resultado do Período</span>
+                        <span className="text-2xl">{(totalEntradas - totalSaidas).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                 </div>
             </div>
@@ -301,17 +201,16 @@ export const ExtratoBancarioPage = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-50">
-                        {filteredMovimentacoes.length === 0 ? (
+                        {movimentacoes.length === 0 ? (
                             <tr>
                                 <td colSpan={6} className="p-12 text-center text-neutral-400">
                                     <div className="flex flex-col items-center gap-2">
-                                        <Filter size={32} className="opacity-20" />
-                                        <p>Nenhuma movimentação encontrada com os filtros selecionados.</p>
+                                        <p>Nenhuma movimentação registrada.</p>
                                     </div>
                                 </td>
                             </tr>
                         ) : (
-                            filteredMovimentacoes.map((mov) => (
+                            movimentacoes.map((mov) => (
                                 <tr key={mov.id_livro_caixa} className="hover:bg-neutral-25 transition-colors group">
                                     <td className="p-4">
                                         <div className="flex flex-col">

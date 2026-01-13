@@ -48,6 +48,9 @@ export class RecebivelCartaoController {
   async findByStatus(req: Request, res: Response) {
     try {
       const { status } = req.params;
+      if (!status) {
+        return res.status(400).json({ error: 'Status is required' });
+      }
       const recebiveis = await repository.findByStatus(status);
       res.json(recebiveis);
     } catch (error) {

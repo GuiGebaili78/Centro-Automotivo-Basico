@@ -11,7 +11,12 @@ export class PagamentoClienteController {
       
       const result = await prisma.$transaction(async (tx) => {
           // 1. Create PagamentoCliente
-          const pagamento = await tx.pagamentoCliente.create({ data });
+          const pagamento = await tx.pagamentoCliente.create({ 
+            data: { 
+                ...data,
+                id_operadora: id_operadora ? Number(id_operadora) : null 
+            } 
+          });
 
           // 2. If Operator selected, create Receivables
           if (id_operadora && (data.metodo_pagamento === 'CREDITO' || data.metodo_pagamento === 'DEBITO')) {

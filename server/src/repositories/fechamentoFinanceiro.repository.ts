@@ -112,7 +112,18 @@ export class FechamentoFinanceiroRepository {
 
         // --- FLUXO 1: PIX / DINHEIRO (IMEDIATO) ---
         if (metodo === 'PIX' || metodo === 'DINHEIRO') {
+          
+          // VERIFICA SE JÁ FOI PROCESSADO (Nova Funcionalidade: Processamento no Save)
+          if ((pagamento as any).id_livro_caixa) {
+              console.log(`      ⚠️ [SKIP] Pagamento ${idPagamentoCliente} já possui Livro Caixa #${(pagamento as any).id_livro_caixa}. Ignorando duplicação.`);
+              continue;
+          }
+
           // 1.1 Criar LivroCaixa (COM CONTA BANCÁRIA -> Aparece no Extrato)
+          // SE FOR DINHEIRO: Não vincula ao banco (id_conta = null) e não atualiza saldo.
+          const isPix = metodo === 'PIX';
+          const targetContaId = isPix ? idContaBancaria : null;
+
           const livroCaixa = await tx.livroCaixa.create({
             data: {
               descricao: `Venda ${metodo} - OS #${idOs}`,
@@ -121,7 +132,7 @@ export class FechamentoFinanceiroRepository {
               categoria: 'VENDA',
               dt_movimentacao: new Date(),
               origem: 'AUTOMATICA',
-              id_conta_bancaria: idContaBancaria // VÍNCULO DIRETO
+              id_conta_bancaria: targetContaId // VÍNCULO DIRETO SÓ SE FOR PIX
             }
           });
 
@@ -131,12 +142,19 @@ export class FechamentoFinanceiroRepository {
             data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any
           });
 
-          // 1.3 Atualizar Saldo Bancário (IMEDIATO)
-          await tx.contaBancaria.update({
-            where: { id_conta: idContaBancaria },
-            data: { saldo_atual: { increment: valorPagamento } }
-          });
-          console.log(`      ✅ [PIX/DIN] Saldo Conta ${idContaBancaria} += ${valorPagamento}`);
+          // 1.3 Atualizar Saldo Bancário (IMEDIATO) - SÓ SE FOR PIX
+          if (isPix && targetContaId) {
+            await tx.contaBancaria.update({
+              where: { id_conta: targetContaId },
+              data: { saldo_atual: { increment: valorPagamento } }
+            });
+          }
+          
+          if (isPix) {
+             console.log(`      ✅ [PIX] Saldo Conta ${targetContaId} += ${valorPagamento}`);
+          } else {
+             console.log(`      ✅ [DINHEIRO] Livro Caixa gerado (Sem impacto no Saldo Bancário)`);
+          }
         } 
         
         // --- FLUXO 2: CARTÃO (DIFERIDO) ---

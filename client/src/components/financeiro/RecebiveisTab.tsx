@@ -68,6 +68,11 @@ export const RecebiveisTab = () => {
         // 3. Search Term (Dynamic "letra a letra" in all relevant columns)
         if (search.trim()) {
             const term = search.toLowerCase();
+            const terms = term.split(' ').filter(t => t.trim() !== '');
+
+            // Helper para limpar termos de busca (ex: remover # para buscar numero OS)
+            const cleanTerm = (t: string) => t.replace('#', '');
+
             filtered = filtered.filter(r => {
                 const searchString = [
                     (r as any).codigo_autorizacao || '',
@@ -77,14 +82,16 @@ export const RecebiveisTab = () => {
                     (r as any).ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome || '',
                     (r as any).ordem_de_servico?.cliente?.pessoa_juridica?.razao_social || '',
                     (r as any).operadora?.nome || '',
-                    r.id_os?.toString() || '',
+                    `#${r.id_os}`, // Permite busca exata "#22"
+                    r.id_os?.toString() || '', // Permite busca "22"
                     r.valor_bruto?.toString() || '',
                     r.valor_liquido?.toString() || '',
                     r.num_parcela?.toString() || '',
                     new Date(r.data_prevista).toLocaleDateString('pt-BR')
                 ].join(' ').toLowerCase();
 
-                return searchString.includes(term);
+                // Verifica se TODOS os termos digitados estão na string de busca
+                return terms.every(t => searchString.includes(t) || searchString.includes(cleanTerm(t)));
             });
         }
 

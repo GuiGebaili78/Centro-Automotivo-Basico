@@ -43,7 +43,17 @@ export class RecebivelCartaoRepository {
             conta_destino: true
           }
         },
-        ordem_de_servico: true
+        ordem_de_servico: {
+          include: {
+            cliente: {
+              include: {
+                pessoa_fisica: { include: { pessoa: true } },
+                pessoa_juridica: true
+              }
+            },
+            veiculo: true
+          }
+        }
       }
     });
   }
@@ -57,7 +67,17 @@ export class RecebivelCartaoRepository {
             conta_destino: true
           }
         },
-        ordem_de_servico: true
+        ordem_de_servico: {
+            include: {
+              cliente: {
+                include: {
+                  pessoa_fisica: { include: { pessoa: true } },
+                  pessoa_juridica: true
+                }
+              },
+              veiculo: true
+            }
+          }
       },
       orderBy: {
         data_prevista: 'asc'
@@ -74,7 +94,17 @@ export class RecebivelCartaoRepository {
             conta_destino: true
           }
         },
-        ordem_de_servico: true
+        ordem_de_servico: {
+            include: {
+              cliente: {
+                include: {
+                  pessoa_fisica: { include: { pessoa: true } },
+                  pessoa_juridica: true
+                }
+              },
+              veiculo: true
+            }
+          }
       },
       orderBy: {
         data_prevista: 'asc'
@@ -96,7 +126,17 @@ export class RecebivelCartaoRepository {
             conta_destino: true
           }
         },
-        ordem_de_servico: true
+        ordem_de_servico: {
+            include: {
+              cliente: {
+                include: {
+                  pessoa_fisica: { include: { pessoa: true } },
+                  pessoa_juridica: true
+                }
+              },
+              veiculo: true
+            }
+          }
       },
       orderBy: {
         data_prevista: 'asc'
@@ -214,7 +254,7 @@ export class RecebivelCartaoRepository {
           data_recebimento: null,
           confirmado_em: null,
           confirmado_por: null
-        }
+        } as any
       });
     });
   }
