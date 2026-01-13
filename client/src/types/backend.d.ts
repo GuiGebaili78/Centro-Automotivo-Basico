@@ -198,6 +198,11 @@ export interface IPagamentoCliente {
     codigo_transacao?: string | null;
     qtd_parcelas: number;
     deleted_at?: string | null;
+
+    id_operadora?: number | null;
+    operadora?: IOperadoraCartao;
+    id_conta_bancaria?: number | null;
+    conta_bancaria?: IContaBancaria;
 }
 
 export interface IItensOs {

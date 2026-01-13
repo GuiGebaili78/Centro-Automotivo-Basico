@@ -403,7 +403,10 @@ model PagamentoCliente {
     codigo_transacao      String?  @db.VarChar(100) // NSU, ID PIX
     qtd_parcelas          Int      @default(1)
     id_operadora          Int?     // Operadora de cartão (se aplicável)
+    operadora             OperadoraCartao? @relation(fields: [id_operadora], references: [id_operadora])
+
     id_conta_bancaria     Int?     // Conta bancária (para PIX e Dinheiro)
+    conta_bancaria        ContaBancaria? @relation(fields: [id_conta_bancaria], references: [id_conta])
     
     // Vínculo com Livro Caixa (lançamento de faturamento)
     id_livro_caixa        Int?     @unique
@@ -606,6 +609,7 @@ model ContaBancaria {
 
   movimentacoes   LivroCaixa[]      
   operadoras      OperadoraCartao[] 
+  pagamentos_cliente PagamentoCliente[] 
   
   @@map("conta_bancaria")
 }
@@ -633,6 +637,7 @@ model OperadoraCartao {
   conta_destino         ContaBancaria @relation(fields: [id_conta_destino], references: [id_conta])
   
   recebiveis            RecebivelCartao[]
+  pagamentos_cliente    PagamentoCliente[]
 
   @@map("operadora_cartao")
 }

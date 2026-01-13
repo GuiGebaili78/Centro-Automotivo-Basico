@@ -906,7 +906,7 @@ export const OrdemDeServicoDetalhePage = () => {
                                         <tr>
                                             <th className="p-2 text-left">Data</th>
                                             <th className="p-2 text-left">Método</th>
-                                            <th className="p-2 text-left">Bandeira</th>
+                                            <th className="p-2 text-left">Detalhes (Banco / Operadora)</th>
                                             <th className="p-2 text-right">Valor</th>
                                         </tr>
                                     </thead>
@@ -917,7 +917,25 @@ export const OrdemDeServicoDetalhePage = () => {
                                                 <tr key={pag.id_pagamento_cliente} className={isDeleted ? 'bg-red-50 opacity-60' : ''}>
                                                     <td className={`p-2 ${isDeleted ? 'line-through' : ''}`}>{new Date(pag.data_pagamento).toLocaleDateString()}</td>
                                                     <td className={`p-2 font-bold ${isDeleted ? 'line-through' : ''}`}>{pag.metodo_pagamento}</td>
-                                                    <td className={`p-2 ${isDeleted ? 'line-through' : ''}`}>{pag.bandeira_cartao || '-'}</td>
+                                                    <td className={`p-2 ${isDeleted ? 'line-through' : ''}`}>
+                                                        {pag.metodo_pagamento === 'PIX' ? (
+                                                            pag.conta_bancaria ? (
+                                                                <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase">{pag.conta_bancaria.nome}</span>
+                                                            ) : <span className="text-neutral-400">-</span>
+                                                        ) : (pag.metodo_pagamento === 'CREDITO' || pag.metodo_pagamento === 'DEBITO') ? (
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold">{pag.operadora?.nome || 'Operadora N/I'}</span>
+                                                                <span className="text-[10px] text-neutral-500">
+                                                                    {pag.bandeira_cartao} {pag.qtd_parcelas > 1 ? `(${pag.qtd_parcelas}x)` : ''}
+                                                                </span>
+                                                            </div>
+                                                        ) : (pag.metodo_pagamento === 'DINHEIRO' && pag.conta_bancaria) ? (
+                                                             <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase">{pag.conta_bancaria.nome}</span>
+                                                        ) : (
+                                                            <span className="text-neutral-400">-</span>
+                                                        )}
+                                                        {pag.codigo_transacao && <div className="text-[9px] text-neutral-400 font-mono mt-0.5">ID: {pag.codigo_transacao}</div>}
+                                                    </td>
                                                     <td className={`p-2 text-right font-bold ${isDeleted ? 'line-through text-red-800' : 'text-green-600'}`}>R$ {Number(pag.valor).toFixed(2)}</td>
                                                 </tr>
                                             );

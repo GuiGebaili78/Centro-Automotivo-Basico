@@ -183,7 +183,13 @@ export class OrdemDeServicoRepository {
           }
         },
         fechamento_financeiro: true,
-        pagamentos_cliente: true,
+        pagamentos_cliente: {
+          include: {
+            // @ts-ignore: Prisma types delay
+            conta_bancaria: true,
+            operadora: true
+          } as any
+        },
         servicos_mao_de_obra: {
             where: { deleted_at: null },
             include: { funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } } }

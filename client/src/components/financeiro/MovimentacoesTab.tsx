@@ -125,6 +125,13 @@ export const MovimentacoesTab = () => {
                         } else if (method === 'DEBITO') {
                              const opName = opMap[linkedP.id_operadora] || linkedP.bandeira_cartao || 'Cartão';
                              methodDisplay = `DÉBITO ${opName}`;
+                        } else if (method === 'PIX') {
+                             const nsu = linkedP.codigo_transacao ? ` | ID: ${linkedP.codigo_transacao}` : '';
+                             const bankInfo = linkedP.conta_bancaria?.nome ? ` (${linkedP.conta_bancaria.nome})` : '';
+                             methodDisplay = `PIX${bankInfo}${nsu}`;
+                        } else if (method === 'DINHEIRO') {
+                             const bankInfo = linkedP.conta_bancaria?.nome ? ` (${linkedP.conta_bancaria.nome})` : '';
+                             methodDisplay = `DINHEIRO${bankInfo}`;
                         }
                     }
 
@@ -209,10 +216,12 @@ export const MovimentacoesTab = () => {
                 }
                 if (methodDisplay === 'PIX') {
                     const nsu = p.codigo_transacao ? ` | ID: ${p.codigo_transacao}` : '';
-                    methodDisplay = `PIX${nsu}`;
+                    const bankInfo = p.conta_bancaria?.nome ? ` (${p.conta_bancaria.nome})` : '';
+                    methodDisplay = `PIX${bankInfo}${nsu}`;
                 }
                 if (methodDisplay === 'DINHEIRO') {
-                     methodDisplay = 'DINHEIRO';
+                     const bankInfo = p.conta_bancaria?.nome ? ` (${p.conta_bancaria.nome})` : '';
+                     methodDisplay = `DINHEIRO${bankInfo}`;
                 }
                 const contaDisplay = p.conta_bancaria ? p.conta_bancaria.nome : null;
 

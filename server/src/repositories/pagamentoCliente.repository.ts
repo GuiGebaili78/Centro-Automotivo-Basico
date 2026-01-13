@@ -78,7 +78,11 @@ export class PagamentoClienteRepository {
                 }
               }
             }
-          }
+          },
+          // @ts-ignore
+          conta_bancaria: true,
+          // @ts-ignore
+          operadora: true
         }
     });
   }
