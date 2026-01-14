@@ -174,12 +174,12 @@ export const FechamentoFinanceiroPage = () => {
 
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto">
             <StatusBanner msg={statusMsg} onClose={() => setStatusMsg({type: null, text: ''})} />
 
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Gestão Financeira</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Consolidação</h1>
                     <p className="text-gray-500 mt-1">Consolidação de custos e serviços.</p>
                 </div>
             </div>
