@@ -58,7 +58,7 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="w-64 bg-sidebar text-neutral-400 flex flex-col h-screen fixed left-0 top-0 overflow-y-auto border-r border-neutral-800">
+    <aside className="w-64 bg-sidebar text-neutral-400 flex flex-col h-screen fixed left-0 top-0 overflow-y-auto border-r border-neutral-500">
       <div className="p-6 border-b border-neutral-800">
         <h1 className="text-2xl font-bold text-white tracking-tight">
           Auto<span className="text-primary-500">Center</span>
@@ -77,7 +77,7 @@ export const Sidebar = () => {
                         onClick={() => toggleMenu(item.label)}
                         className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer ${
                             isActive 
-                            ? 'bg-neutral-800 text-white' 
+                            ? 'bg-neutral-800 text-white shadow-lg shadow-primary-900/50' 
                             : 'hover:bg-neutral-800 hover:text-white'
                         }`}
                     >
@@ -92,7 +92,7 @@ export const Sidebar = () => {
                         to={item.path}
                         className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${
                             isActive 
-                            ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/50' 
+                            ? 'bg-neutral-800 text-neutral-400 shadow-lg shadow-primary-900/50' 
                             : 'hover:bg-neutral-800 hover:text-white'
                         }`}
                     >
@@ -112,8 +112,8 @@ export const Sidebar = () => {
                                     to={sub.path}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
                                         isSubActive 
-                                        ? 'text-primary-400 bg-primary-500/10 font-bold' 
-                                        : 'text-neutral-500 hover:text-neutral-300'
+                                        ? ' neutral-400 bg-neutral-800 shadow-lg shadow-primary-900/30 font-bold' 
+                                        : 'text-primary-500 hover:text-neutral-300'
                                     }`}
                                 >
                                     {sub.label}
@@ -130,7 +130,7 @@ export const Sidebar = () => {
       <div className="p-4 border-t border-neutral-800">
         <div className="bg-neutral-800/50 rounded-lg p-3">
           <p className="text-xs text-center text-neutral-500">
-            &copy; 2026 Centro Automotivo Guilherme Gebaili
+            &copy; 2026 Centro Automotivo <br/> Guilherme Gebaili <br/> https://github.com/GuiGebaili78
           </p>
         </div>
       </div>

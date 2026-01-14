@@ -112,12 +112,12 @@ export const VeiculoPage = () => {
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Gerenciar Veículos</h1>
+                    <h1 className="text-2xl font-bold text-neutral-500">Gerenciar Veículos</h1>
                     <p className="text-neutral-500">Cadastro e manutenção da frota de veículos.</p>
                 </div>
                 <button 
                     onClick={openCreateModal}
-                    className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
+                    className="flex items-center gap-2 bg-primary-900 hover:bg-primary-800 hover:scale-105 transition-all shadow-xl shadow-primary-500/20 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm"
                 >
                     <Plus size={20} />
                     Novo Veículo
@@ -132,7 +132,7 @@ export const VeiculoPage = () => {
                         ref={searchInputRef}
                         type="text"
                         placeholder="Buscar por placa, modelo ou marca..."
-                        className="w-full pl-10 pr-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-mono text-neutral-900"
+                        className="w-full pl-10 pr-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-mono text-neutral-500"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         onKeyDown={handleKeyDown}
@@ -148,7 +148,7 @@ export const VeiculoPage = () => {
                             <tr>
                                 <th className="p-4 text-xs font-bold text-neutral-500 uppercase">Veículo</th>
                                 <th className="p-4 text-xs font-bold text-neutral-500 uppercase">Placa</th>
-                                <th className="p-4 text-xs font-bold text-neutral-500 uppercase">Cliente (ID)</th>
+                                <th className="p-4 text-xs font-bold text-neutral-500 uppercase">Cliente</th>
                                 <th className="p-4 text-xs font-bold text-neutral-500 uppercase">Ações</th>
                             </tr>
                         </thead>
@@ -161,15 +161,15 @@ export const VeiculoPage = () => {
                                                 <Car size={18} />
                                             </div>
                                             <div>
-                                                <div className="font-medium text-neutral-900">{v.marca} {v.modelo}</div>
+                                                <div className="font-medium text-neutral-500">{v.marca} {v.modelo}</div>
                                                 <div className="text-xs text-neutral-500">{v.ano_modelo} • {v.combustivel}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="p-4 font-mono font-bold text-neutral-700">{v.placa} <span className="text-xs font-normal text-neutral-400 ml-2">({v.cor})</span></td>
+                                    <td className="p-4 font-mono font-bold text-neutral-500">{v.placa} </td>
                                     <td className="p-4">
                                         <div className="flex flex-col">
-                                            <span className="font-bold text-neutral-700">
+                                            <span className="font-bold text-neutral-500">
                                                 {(v.cliente as any)?.pessoa_fisica?.pessoa?.nome || (v.cliente as any)?.pessoa_juridica?.nome_fantasia || 'Cliente não identificado'}
                                             </span>
                                             <span className="text-xs text-neutral-500">

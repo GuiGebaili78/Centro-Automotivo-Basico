@@ -254,7 +254,7 @@ export const CadastroUnificadoPage = () => {
                      <ArrowLeft size={24} />
                  </button>
                  <div>
-                     <h1 className="text-2xl font-bold text-neutral-900">{isEditMode ? 'Editar Cadastro' : 'Novo Cadastro'}</h1>
+                     <h1 className="text-2xl font-bold text-neutral-500">{isEditMode ? 'Editar Cadastro' : 'Novo Cadastro'}</h1>
                      <p className="text-neutral-500 text-sm">{isEditMode ? 'Atualize os dados do cliente e seus veículos.' : 'Cadastre o cliente e o veículo para abrir a OS.'}</p>
                  </div>
             </div>
@@ -268,7 +268,7 @@ export const CadastroUnificadoPage = () => {
                             <div className="bg-primary-100 p-2 rounded-lg text-primary-600">
                                 <User size={20} />
                             </div>
-                            <h2 className="font-bold text-lg text-neutral-900">Dados do Cliente</h2>
+                            <h2 className="font-bold text-lg text-neutral-500">Dados do Cliente</h2>
                         </div>
 
                          {/* Tipo Pessoa Switch */}
@@ -296,31 +296,31 @@ export const CadastroUnificadoPage = () => {
                                 <>
                                     <div>
                                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Nome Completo *</label>
-                                        <input ref={nameRef} value={nome} onChange={e => setNome(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium" required disabled={isEditMode} />
+                                        <input ref={nameRef} value={nome} onChange={e => setNome(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium" required disabled={isEditMode} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">CPF</label>
-                                        <input value={cpf} onChange={e => setCpf(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" disabled={isEditMode} />
+                                        <input value={cpf} onChange={e => setCpf(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" disabled={isEditMode} />
                                     </div>
                                 </>
                             ) : (
                                 <>
                                     <div>
                                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Razão Social *</label>
-                                        <input ref={nameRef} value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-accent-500 focus:ring-4 focus:ring-accent-50 transition-all font-medium" required disabled={isEditMode} />
+                                        <input ref={nameRef} value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-accent-500 focus:ring-4 focus:ring-accent-50 transition-all font-medium" required disabled={isEditMode} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Nome Fantasia</label>
-                                        <input value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-accent-500 transition-all" disabled={isEditMode} />
+                                        <input value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-accent-500 transition-all" disabled={isEditMode} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">CNPJ</label>
-                                            <input value={cnpj} onChange={e => setCnpj(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-accent-500 transition-all" disabled={isEditMode} />
+                                            <input value={cnpj} onChange={e => setCnpj(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-accent-500 transition-all" disabled={isEditMode} />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">IE</label>
-                                            <input value={ie} onChange={e => setIe(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-accent-500 transition-all" disabled={isEditMode} />
+                                            <input value={ie} onChange={e => setIe(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-accent-500 transition-all" disabled={isEditMode} />
                                         </div>
                                     </div>
                                 </>
@@ -331,16 +331,16 @@ export const CadastroUnificadoPage = () => {
                              <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Telefone Principal *</label>
-                                    <input value={telefone} onChange={e => setTelefone(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" required />
+                                    <input value={telefone} onChange={e => setTelefone(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" required />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Telefone 2</label>
-                                    <input value={telefone2} onChange={e => setTelefone2(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
+                                    <input value={telefone2} onChange={e => setTelefone2(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
                                 </div>
                              </div>
                              <div>
                                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Email</label>
-                                <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
+                                <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
                             </div>
                         </div>
 
@@ -348,21 +348,21 @@ export const CadastroUnificadoPage = () => {
                              <div className="grid grid-cols-3 gap-4">
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Logradouro</label>
-                                    <input value={logradouro} onChange={e => setLogradouro(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
+                                    <input value={logradouro} onChange={e => setLogradouro(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Número</label>
-                                    <input value={numero} onChange={e => setNumero(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
+                                    <input value={numero} onChange={e => setNumero(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
                                 </div>
                              </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Bairro</label>
-                                    <input value={bairro} onChange={e => setBairro(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
+                                    <input value={bairro} onChange={e => setBairro(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Cidade</label>
-                                    <input value={cidade} onChange={e => setCidade(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
+                                    <input value={cidade} onChange={e => setCidade(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all" />
                                 </div>
                               </div>
                         </div>
@@ -377,7 +377,7 @@ export const CadastroUnificadoPage = () => {
                                 <div className="bg-primary-100 p-2 rounded-lg text-primary-600">
                                     <Car size={20} />
                                 </div>
-                                <h2 className="font-bold text-lg text-neutral-900">{isEditMode ? 'Veículos Cadastrados' : 'Dados do Veículo'}</h2>
+                                <h2 className="font-bold text-lg text-neutral-500">{isEditMode ? 'Veículos Cadastrados' : 'Dados do Veículo'}</h2>
                             </div>
                              {isEditMode && (
                                  <button 
@@ -396,7 +396,7 @@ export const CadastroUnificadoPage = () => {
                                 {veiculos.length > 0 ? veiculos.map(v => (
                                     <div key={v.id_veiculo} className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 flex justify-between items-center group hover:border-primary-300 hover:bg-white transition-all">
                                         <div>
-                                            <p className="font-bold text-neutral-900 uppercase font-mono">{v.placa}</p>
+                                            <p className="font-bold text-neutral-500 uppercase font-mono">{v.placa}</p>
                                             <p className="text-xs font-bold text-neutral-500 uppercase">{v.marca} {v.modelo} • {v.cor}</p>
                                         </div>
                                         <div className="flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -421,30 +421,30 @@ export const CadastroUnificadoPage = () => {
                                             value={placa} 
                                             onChange={e => setPlaca(e.target.value.toUpperCase())} 
                                             maxLength={7}
-                                            className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-mono font-bold tracking-wider uppercase" 
+                                            className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-mono font-bold tracking-wider uppercase" 
                                             placeholder="ABC1234"
                                             required={!isEditMode} // Required on creation
                                         />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Marca *</label>
-                                        <input value={marca} onChange={e => setMarca(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all font-medium" required={!isEditMode && !!placa} />
+                                        <input value={marca} onChange={e => setMarca(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all font-medium" required={!isEditMode && !!placa} />
                                     </div>
                                     <div className="col-span-2">
                                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Modelo *</label>
-                                        <input value={modelo} onChange={e => setModelo(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all font-medium" required={!isEditMode && !!placa} />
+                                        <input value={modelo} onChange={e => setModelo(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all font-medium" required={!isEditMode && !!placa} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Cor *</label>
-                                        <input value={cor} onChange={e => setCor(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all font-medium" required={!isEditMode && !!placa} />
+                                        <input value={cor} onChange={e => setCor(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all font-medium" required={!isEditMode && !!placa} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Ano</label>
-                                        <input type="number" value={anoModelo} onChange={e => setAnoModelo(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all font-medium" />
+                                        <input type="number" value={anoModelo} onChange={e => setAnoModelo(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all font-medium" />
                                     </div>
                                      <div className="col-span-2">
                                          <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Combustível</label>
-                                         <select value={combustivel} onChange={e => setCombustivel(e.target.value)} className="w-full border p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all font-medium">
+                                         <select value={combustivel} onChange={e => setCombustivel(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 transition-all font-medium">
                                             <option value="Flex">Flex</option>
                                             <option value="Gasolina">Gasolina</option>
                                             <option value="Etanol">Etanol</option>
@@ -463,7 +463,7 @@ export const CadastroUnificadoPage = () => {
                     <button 
                          type="submit" 
                          disabled={loading}
-                         className="px-8 py-4 bg-primary-600 text-white font-black rounded-xl hover:bg-primary-700 hover:scale-105 transition-all shadow-xl shadow-primary-500/20 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-3 text-lg"
+                         className="px-8 py-4 bg-primary-900 text-white font-black rounded-xl hover:bg-primary-800 hover:scale-105 transition-all shadow-xl shadow-primary-500/20 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-3 text-lg"
                     >
                         {loading ? 'Salvando...' : (
                             isEditMode ? <><Save size={24} /> SALVAR ALTERAÇÕES</> 

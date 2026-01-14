@@ -182,7 +182,7 @@ export const VeiculoForm = ({ clientId, vehicleId, initialData, onSuccess, onCan
                 <div className="space-y-3 p-4 bg-neutral-50 rounded-xl border border-neutral-200">
                     <div className="flex items-center gap-2 mb-2">
                         <User className="text-primary-600" size={20} />
-                        <h3 className="font-bold text-neutral-800">Proprietário do Veículo</h3>
+                        <h3 className="font-bold text-neutral-500">Proprietário do Veículo</h3>
                     </div>
 
                     {!selectedOwner ? (
@@ -192,7 +192,7 @@ export const VeiculoForm = ({ clientId, vehicleId, initialData, onSuccess, onCan
                                 ref={firstInputRef}
                                 type="text"
                                 placeholder="Buscar cliente por nome..."
-                                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-200 outline-none font-bold"
+                                className="w-full pl-10 pr-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-mono text-neutral-500"
                                 value={clientSearchTerm}
                                 onChange={(e) => handleSearchClient(e.target.value)}
                                 onKeyDown={handleKeyDown}
@@ -211,7 +211,7 @@ export const VeiculoForm = ({ clientId, vehicleId, initialData, onSuccess, onCan
                                                 onClick={() => selectClient(client)}
                                                 className={`w-full text-left p-3 hover:bg-primary-50 transition-colors border-b border-neutral-100 last:border-0 ${idx === clientActiveIndex ? 'bg-primary-100' : ''}`}
                                             >
-                                                <div className="font-bold text-sm text-neutral-800">{name}</div>
+                                                <div className="font-bold text-sm text-neutral-500">{name}</div>
                                                 <div className="text-xs text-neutral-500">{contact}</div>
                                             </button>
                                          );
@@ -262,7 +262,7 @@ export const VeiculoForm = ({ clientId, vehicleId, initialData, onSuccess, onCan
                 <div className="bg-primary-50 p-4 rounded-lg flex items-center gap-3">
                     <Car className="text-primary-600" size={24} />
                     <div>
-                        <h3 className="font-bold text-primary-900">Dados do Veículo</h3>
+                        <h3 className="font-bold text-neutral-500">Dados do Veículo</h3>
                         <p className="text-xs text-primary-700">Preencha as informações do veículo.</p>
                     </div>
                 </div>
@@ -275,30 +275,30 @@ export const VeiculoForm = ({ clientId, vehicleId, initialData, onSuccess, onCan
                             value={placa} 
                             onChange={e => setPlaca(e.target.value.toUpperCase())} 
                             maxLength={7}
-                            className="w-full border p-2 rounded focus:ring-2 focus:ring-primary-100 outline-none border-neutral-300 font-mono tracking-wider font-bold placeholder:text-neutral-300"
+                            className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium"
                             placeholder="ABC1234"
                             required 
                         />
                     </div>
                     <div>
                          <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Marca *</label>
-                         <input value={marca} onChange={e => setMarca(e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-primary-100 outline-none border-neutral-300 font-bold" required />
+                         <input value={marca} onChange={e => setMarca(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium" required />
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Modelo *</label>
-                        <input value={modelo} onChange={e => setModelo(e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-primary-100 outline-none border-neutral-300 font-bold" required />
+                        <input value={modelo} onChange={e => setModelo(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium" required />
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Cor *</label>
-                        <input value={cor} onChange={e => setCor(e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-primary-100 outline-none border-neutral-300 font-bold" required />
+                        <input value={cor} onChange={e => setCor(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium" required />
                     </div>
                      <div>
                         <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Ano Modelo (YYYY)</label>
-                        <input type="number" value={anoModelo} onChange={e => setAnoModelo(e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-primary-100 outline-none border-neutral-300 font-bold" />
+                        <input type="number" value={anoModelo} onChange={e => setAnoModelo(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium" />
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Combustível</label>
-                         <select value={combustivel} onChange={e => setCombustivel(e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-primary-100 outline-none border-neutral-300 font-bold">
+                         <select value={combustivel} onChange={e => setCombustivel(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium">
                             <option value="Flex">Flex</option>
                             <option value="Gasolina">Gasolina</option>
                             <option value="Etanol">Etanol</option>
@@ -309,7 +309,7 @@ export const VeiculoForm = ({ clientId, vehicleId, initialData, onSuccess, onCan
                     </div>
                     <div className="col-span-2">
                         <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Chassi</label>
-                        <input value={chassi} onChange={e => setChassi(e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-primary-100 outline-none border-neutral-300 font-mono font-bold" />
+                        <input value={chassi} onChange={e => setChassi(e.target.value)} className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium" />
                     </div>
                 </div>
             </div>
@@ -321,7 +321,7 @@ export const VeiculoForm = ({ clientId, vehicleId, initialData, onSuccess, onCan
                 <button 
                     type="submit" 
                     disabled={loading || (!clientId && !selectedOwner && !vehicleId)}
-                    className="flex-1 py-3 bg-primary-600 text-white font-black rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-primary-500/30"
+                    className="flex-1 py-3 bg-primary-900 hover:bg-primary-800 hover:scale-105 transition-all shadow-xl shadow-primary-500/20 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm"
                 >
                     {loading ? 'Salvando...' : (vehicleId ? 'Salvar Alterações' : 'Salvar Veículo')}
                 </button>

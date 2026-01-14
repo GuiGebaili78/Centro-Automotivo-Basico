@@ -191,18 +191,18 @@ export const ClientePage = () => {
   }, [searchTerm]);
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6">
 
       
       {/* Header da Página */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Clientes</h1>
+          <h1 className="text-2xl font-bold text-neutral-500">Clientes</h1>
           <p className="text-neutral-500">Gerencie sua base de clientes e contatos.</p>
         </div>
         <button 
             onClick={openCreateModal}
-            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm"
+            className="flex items-center gap-2 bg-primary-900 hover:bg-primary-800 hover:scale-105 transition-all shadow-xl shadow-primary-500/20 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm"
         >
           <Plus size={20} />
           Novo Cliente
@@ -270,29 +270,30 @@ export const ClientePage = () => {
                     <tr className={`transition-colors hover:bg-neutral-25 cursor-pointer ${idx === activeIndex ? 'bg-primary-50 ring-2 ring-primary-500 ring-inset' : ''}`}>
                       <td className="p-4 cursor-pointer" onClick={() => toggleRow(c.id_cliente)}>
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-full transition-colors ${expandedRows.has(c.id_cliente) ? 'bg-primary-600 text-white' : 'bg-primary-50 text-primary-600'}`}>
+                          <div className={`p-2 rounded-full transition-colors ${expandedRows.has(c.id_cliente) ? 'bg-primary-100 text-white' : 'bg-primary-50 text-primary-600'}`}>
                              <User size={16} />
                           </div>
                           <div>
-                              <span className="font-bold text-neutral-900 block">{getNome(c)}</span>
-                              <span className="text-xs text-neutral-500 font-bold">{c.telefone_1}</span>
+                              <span className="font-bold text-neutral-500 block">{getNome(c)}</span>                              
                           </div>
                         </div>
                       </td>
                       <td className="p-4">
                         <div className="flex flex-col gap-1">
                           {c.email && (
-                              <div className="flex items-center gap-2 text-sm text-neutral-600">
-                                  <Mail size={12} /> {c.email}
-                              </div>
-                          )}
-                          <div className="flex items-center gap-2 text-sm text-neutral-600">
+
+                              <div className="flex items-center gap-2 text-sm text-neutral-500">
                              <Phone size={12} /> {c.telefone_1}
                           </div>
+                              
+                          )}
+                          <div className="flex items-center gap-2 text-sm text-neutral-500">
+                                  <Mail size={12} /> {c.email}
+                              </div>
                         </div>
                       </td>
                       <td className="p-4">
-                        <div className="flex items-center gap-2 text-sm text-neutral-600">
+                        <div className="flex items-center gap-2 text-sm text-neutral-500">
                           <MapPin size={14} className="text-neutral-400" />
                           {c.cidade}, {c.estado}
                         </div>
@@ -308,7 +309,7 @@ export const ClientePage = () => {
                         <div className="flex items-center justify-end gap-2">
                           <button 
                               onClick={() => handleRegisterVehicle(c.id_cliente)}
-                              className="p-2 text-neutral-400 hover:text-success-600 hover:bg-success-50 rounded-lg transition-colors"
+                              className="p-2 text-neutral-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                               title="Adicionar Veículo"
                           >
                             <Plus size={18} />
@@ -345,7 +346,7 @@ export const ClientePage = () => {
                               {c.veiculos?.length ? c.veiculos.map(v => (
                                 <div key={v.id_veiculo} className="bg-white p-3 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between group hover:border-primary-300 transition-all">
                                   <div>
-                                    <p className="text-xs font-black text-neutral-800 tracking-widest uppercase">{v.placa}</p>
+                                    <p className="text-xs font-black text-neutral-500 tracking-widest uppercase">{v.placa}</p>
                                     <p className="text-[10px] text-neutral-500 font-bold uppercase">{v.marca} {v.modelo} • {v.cor}</p>
                                   </div>
                                   <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
