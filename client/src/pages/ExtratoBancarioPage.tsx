@@ -18,7 +18,13 @@ export const ExtratoBancarioPage = () => {
     const [loading, setLoading] = useState(true);
 
     // Filters
-    // Filters removed as per request
+    const [searchTerm, setSearchTerm] = useState('');
+    const [dateRange, setDateRange] = useState<{start: string, end: string}>({
+        start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0], // Last 30 days
+        end: new Date().toISOString().split('T')[0]
+    });
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [selectedType, setSelectedType] = useState('');
 
     // Modal & Form State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -78,10 +84,6 @@ export const ExtratoBancarioPage = () => {
             const allMovs = entriesLivro.sort((a: any, b: any) => new Date(b.dt_movimentacao).getTime() - new Date(a.dt_movimentacao).getTime());
             
             setMovimentacoes(allMovs);
-            
-            
-            // Default: No date range (Show All)
-            // if (!dateRange.start) { ... } removed as per user request
 
         } catch (error) {
             console.error(error);
@@ -91,8 +93,19 @@ export const ExtratoBancarioPage = () => {
     };
 
     // Apply Filters
-    // Filters removed - showing all data
+    const filteredMovimentacoes = movimentacoes.filter(mov => {
+        const matchesSearch = mov.descricao.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              (mov.obs && mov.obs.toLowerCase().includes(searchTerm.toLowerCase()));
+        
+        const matchesCategory = selectedCategory ? mov.categoria === selectedCategory : true;
+        const matchesType = selectedType ? mov.tipo_movimentacao === selectedType : true;
 
+        const movDate = new Date(mov.dt_movimentacao).toISOString().split('T')[0];
+        const matchesDate = (!dateRange.start || movDate >= dateRange.start) && 
+                            (!dateRange.end || movDate <= dateRange.end);
+
+        return matchesSearch && matchesCategory && matchesType && matchesDate;
+    });
 
     if (loading) {
         return (
@@ -111,12 +124,12 @@ export const ExtratoBancarioPage = () => {
         );
     }
 
-    // Apply Totals
-     const totalEntradas = movimentacoes
+    // Apply Totals (Based on Filtered Data)
+     const totalEntradas = filteredMovimentacoes
         .filter(m => m.tipo_movimentacao === 'ENTRADA')
         .reduce((acc: any, m: any) => acc + Number(m.valor), 0);
         
-    const totalSaidas = movimentacoes
+    const totalSaidas = filteredMovimentacoes
         .filter(m => m.tipo_movimentacao === 'SAIDA')
         .reduce((acc: any, m: any) => acc + Number(m.valor), 0);
     
@@ -163,6 +176,78 @@ export const ExtratoBancarioPage = () => {
                 </div>
             </div>
 
+            {/* Filter Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-neutral-100 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex-1 w-full md:w-auto">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1 block">Buscar</label>
+                    <input 
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        placeholder="Buscar por descrição..."
+                        className="w-full bg-neutral-50 border border-neutral-200 p-2.5 rounded-xl font-medium text-sm outline-none focus:border-neutral-900"
+                    />
+                </div>
+                <div>
+                     <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1 block">Período</label>
+                     <div className="flex items-center gap-2">
+                        <input 
+                            type="date"
+                            value={dateRange.start}
+                            onChange={e => setDateRange({...dateRange, start: e.target.value})}
+                            className="bg-neutral-50 border border-neutral-200 p-2.5 rounded-xl font-medium text-sm outline-none focus:border-neutral-900"
+                        />
+                        <span className="text-neutral-400">-</span>
+                        <input 
+                            type="date"
+                            value={dateRange.end}
+                            onChange={e => setDateRange({...dateRange, end: e.target.value})}
+                            className="bg-neutral-50 border border-neutral-200 p-2.5 rounded-xl font-medium text-sm outline-none focus:border-neutral-900"
+                        />
+                     </div>
+                </div>
+                 <div className="w-32">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1 block">Tipo</label>
+                    <select 
+                        value={selectedType}
+                        onChange={e => setSelectedType(e.target.value)}
+                        className="w-full bg-neutral-50 border border-neutral-200 p-2.5 rounded-xl font-medium text-sm outline-none focus:border-neutral-900 cursor-pointer"
+                    >
+                        <option value="">Todos</option>
+                        <option value="ENTRADA">Entradas</option>
+                        <option value="SAIDA">Saídas</option>
+                    </select>
+                </div>
+                <div className="w-40">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1 block">Categoria</label>
+                    <select 
+                        value={selectedCategory}
+                        onChange={e => setSelectedCategory(e.target.value)}
+                        className="w-full bg-neutral-50 border border-neutral-200 p-2.5 rounded-xl font-medium text-sm outline-none focus:border-neutral-900 cursor-pointer"
+                    >
+                        <option value="">Todas</option>
+                        {categories.map(cat => (
+                            <option key={cat.id_categoria} value={cat.nome}>{cat.nome}</option>
+                        ))}
+                    </select>
+                </div>
+                <button 
+                    onClick={() => {
+                        setSearchTerm('');
+                        setDateRange({
+                            start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+                            end: new Date().toISOString().split('T')[0]
+                        });
+                        setSelectedCategory('');
+                        setSelectedType('');
+                    }}
+                    className="h-[46px] px-4 flex items-center gap-2 text-neutral-500 font-bold text-xs uppercase hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors border border-dashed border-neutral-300 hover:border-red-200"
+                    title="Limpar Filtros"
+                >
+                    <X size={16} />
+                    Limpar
+                </button>
+            </div>
+
             {/* Summary Area */}
             <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm mb-6 flex flex-col md:flex-row justify-end gap-8 text-sm">
                 <div className="flex items-center gap-3 text-green-600 font-bold">
@@ -201,7 +286,7 @@ export const ExtratoBancarioPage = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-50">
-                        {movimentacoes.length === 0 ? (
+                        {filteredMovimentacoes.length === 0 ? (
                             <tr>
                                 <td colSpan={6} className="p-12 text-center text-neutral-400">
                                     <div className="flex flex-col items-center gap-2">
@@ -210,7 +295,7 @@ export const ExtratoBancarioPage = () => {
                                 </td>
                             </tr>
                         ) : (
-                            movimentacoes.map((mov) => (
+                            filteredMovimentacoes.map((mov) => (
                                 <tr key={mov.id_livro_caixa} className="hover:bg-neutral-25 transition-colors group">
                                     <td className="p-4">
                                         <div className="flex flex-col">

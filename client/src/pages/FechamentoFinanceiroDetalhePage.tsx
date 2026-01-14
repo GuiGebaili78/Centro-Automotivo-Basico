@@ -674,7 +674,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                  </Button>
 
                  <Button onClick={() => handleSave(true)} variant="success" isLoading={loading} className="bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/30">
-                     <BadgeCheck size={18} className="mr-2" /> Salvar e Finalizar
+                     <BadgeCheck size={18} className="mr-2" /> Salvar e Consolidar
                  </Button>
              </div>
 

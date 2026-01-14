@@ -110,19 +110,20 @@ export class FechamentoFinanceiroRepository {
             throw new Error(`Pagamento ${metodo} (R$ ${valorPagamento}) sem Operadora definida!`);
         }
 
-        // --- FLUXO 1: PIX / DINHEIRO (IMEDIATO) ---
-        if (metodo === 'PIX' || metodo === 'DINHEIRO') {
+        // --- FLUXO 1: DINHEIRO (IMEDIATO) ---
+        // PIX agora entra no fluxo de recebíveis (diferido), assim como Cartão.
+        if (metodo === 'DINHEIRO') {
           
-          // VERIFICA SE JÁ FOI PROCESSADO (Nova Funcionalidade: Processamento no Save)
+          // VERIFICA SE JÁ FOI PROCESSADO
           if ((pagamento as any).id_livro_caixa) {
               console.log(`      ⚠️ [SKIP] Pagamento ${idPagamentoCliente} já possui Livro Caixa #${(pagamento as any).id_livro_caixa}. Ignorando duplicação.`);
               continue;
           }
 
-          // 1.1 Criar LivroCaixa (COM CONTA BANCÁRIA -> Aparece no Extrato)
-          // SE FOR DINHEIRO: Não vincula ao banco (id_conta = null) e não atualiza saldo.
-          const isPix = metodo === 'PIX';
-          const targetContaId = isPix ? idContaBancaria : null;
+          // 1.1 Criar LivroCaixa (Dinheiro entra direto no Caixa mas não vinculamos conta bancária para evitar duplicidade de saldo se houver)
+          // Mas Dinheiro físico não afeta saldo de conta bancária digital, apenas saldo de "Caixa".
+          // Se houver uma conta "Caixa Físico", usamos o ID dela.
+          const targetContaId = idContaBancaria; // Se o usuário selecionou "Caixa", usa ele.
 
           const livroCaixa = await tx.livroCaixa.create({
             data: {
@@ -132,7 +133,7 @@ export class FechamentoFinanceiroRepository {
               categoria: 'VENDA',
               dt_movimentacao: new Date(),
               origem: 'AUTOMATICA',
-              id_conta_bancaria: targetContaId // VÍNCULO DIRETO SÓ SE FOR PIX
+              id_conta_bancaria: null // Dinheiro não gera extrato bancário automático (apenas Livro Caixa)
             }
           });
 
@@ -142,19 +143,11 @@ export class FechamentoFinanceiroRepository {
             data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any
           });
 
-          // 1.3 Atualizar Saldo Bancário (IMEDIATO) - SÓ SE FOR PIX
-          if (isPix && targetContaId) {
-            await tx.contaBancaria.update({
-              where: { id_conta: targetContaId },
-              data: { saldo_atual: { increment: valorPagamento } }
-            });
-          }
+          // Dinheiro não atualiza saldo de conta bancária automática por enquanto, 
+          // a menos que tivéssemos uma conta "Caixa Físico" explícita no sistema com saldo.
+          // O comportamento anterior para Dinheiro era apenas Log.
           
-          if (isPix) {
-             console.log(`      ✅ [PIX] Saldo Conta ${targetContaId} += ${valorPagamento}`);
-          } else {
-             console.log(`      ✅ [DINHEIRO] Livro Caixa gerado (Sem impacto no Saldo Bancário)`);
-          }
+          console.log(`      ✅ [DINHEIRO] Livro Caixa gerado (Sem impacto no Saldo Bancário Digital)`);
         } 
         
         // --- FLUXO 2: CARTÃO (DIFERIDO) ---

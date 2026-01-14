@@ -9,30 +9,94 @@ export class RecebivelCartaoRepository {
   }
 
   async findAll() {
-    return await prisma.recebivelCartao.findMany({
-      include: {
-        operadora: {
-          include: {
-            conta_destino: true
+    const [recebiveis, pixPendentes] = await Promise.all([
+      prisma.recebivelCartao.findMany({
+        include: {
+          operadora: {
+            include: {
+              conta_destino: true
+            }
+          },
+          ordem_de_servico: {
+            include: {
+              cliente: {
+                include: {
+                  pessoa_fisica: { include: { pessoa: true } },
+                  pessoa_juridica: true
+                }
+              },
+              veiculo: true,
+              pagamentos_cliente: true
+            }
           }
         },
-        ordem_de_servico: {
-          include: {
-            cliente: {
-              include: {
-                pessoa_fisica: { include: { pessoa: true } },
-                pessoa_juridica: true
-              }
-            },
-            veiculo: true,
-            pagamentos_cliente: true
-          }
+        orderBy: {
+          data_prevista: 'asc'
         }
-      },
-      orderBy: {
-        data_prevista: 'asc' // Mais próximos primeiro
-      }
-    });
+      }),
+      // Buscar PIX Pendentes (Pagamentos de OS finalizada sem LivroCaixa)
+      prisma.pagamentoCliente.findMany({
+        where: {
+          metodo_pagamento: 'PIX',
+          deleted_at: null,
+          id_livro_caixa: null,
+          ordem_de_servico: {
+            fechamento_financeiro: { isNot: null } // Apenas OSs Consolidadas
+          }
+        },
+        include: {
+          ordem_de_servico: {
+            include: {
+              cliente: {
+                include: {
+                  pessoa_fisica: { include: { pessoa: true } },
+                  pessoa_juridica: true
+                }
+              },
+              veiculo: true,
+              pagamentos_cliente: true,
+              fechamento_financeiro: true
+            }
+          },
+          conta_bancaria: true // Incluir conta destino do PIX
+        }
+      })
+    ]);
+
+    // Mapear PIX para IRecebivelCartao "Virtual"
+    const pixMapped = pixPendentes.map(p => ({
+        id_recebivel: -p.id_pagamento_cliente, // ID Negativo para identificar PIX
+        id_os: p.id_os,
+        id_operadora: 999999, // ID Fictício
+        valor_bruto: p.valor,
+        valor_liquido: p.valor, // PIX não tem taxa no sistema atual
+        taxa_aplicada: 0,
+        num_parcela: 1,
+        total_parcelas: 1,
+        data_venda: p.data_pagamento,
+        data_prevista: p.data_pagamento, // Disponível imediatamente
+        status: 'PENDENTE',
+        data_recebimento: null,
+        confirmado_em: null,
+        confirmado_por: null,
+        created_at: p.data_pagamento,
+        updated_at: p.data_pagamento,
+        
+        // Relacionamentos Simulados
+        operadora: {
+          id_operadora: 999999,
+          nome: 'PIX', // Exibir como PIX na coluna Operadora
+          taxa: 0,
+          dias_recebimento: 0,
+          ativo: true,
+          id_conta_destino: p.id_conta_bancaria || 0,
+          conta_destino: p.conta_bancaria || { nome: 'Conta N/I' } // Fallback
+        },
+        ordem_de_servico: p.ordem_de_servico
+    }));
+
+    // Merge e Sort
+    return [...recebiveis, ...pixMapped].sort((a, b) => new Date(a.data_prevista).getTime() - new Date(b.data_prevista).getTime());
   }
 
   async findById(id: number) {
@@ -286,30 +350,51 @@ export class RecebivelCartaoRepository {
     trintaDias.setDate(hoje.getDate() + 30);
 
     const [totalPendente, receberHoje, receberSeteDias, receberTrintaDias, totalRecebido] = await Promise.all([
-      // Total pendente
-      prisma.recebivelCartao.aggregate({
-        where: { status: 'PENDENTE' },
-        _sum: { valor_liquido: true }
-      }),
-      // Receber hoje
-      prisma.recebivelCartao.aggregate({
-        where: {
-          status: 'PENDENTE',
-          data_prevista: {
-            gte: new Date(hoje.setHours(0, 0, 0, 0)),
-            lte: new Date(hoje.setHours(23, 59, 59, 999))
-          }
-        },
-        _sum: { valor_liquido: true }
-      }),
+      // Total pendente (Cartão + PIX Pendente)
+      (async () => {
+         const card = await prisma.recebivelCartao.aggregate({ where: { status: 'PENDENTE' }, _sum: { valor_liquido: true } });
+         const pix = await prisma.pagamentoCliente.aggregate({
+            where: {
+               metodo_pagamento: 'PIX',
+               deleted_at: null,
+               id_livro_caixa: null,
+               ordem_de_servico: { fechamento_financeiro: { isNot: null } }
+            },
+            _sum: { valor: true }
+         });
+         return Number(card._sum.valor_liquido || 0) + Number(pix._sum.valor || 0);
+      })(),
+
+      // Receber hoje (Cartão + PIX)
+      (async () => {
+         const card = await prisma.recebivelCartao.aggregate({
+            where: {
+               status: 'PENDENTE',
+               data_prevista: {
+                   gte: new Date(hoje.setHours(0, 0, 0, 0)),
+                   lte: new Date(hoje.setHours(23, 59, 59, 999))
+               }
+            },
+            _sum: { valor_liquido: true }
+         });
+         // PIX é sempre D+0 praticamente, então entra aqui se pendente
+         const pix = await prisma.pagamentoCliente.aggregate({
+            where: {
+               metodo_pagamento: 'PIX',
+               deleted_at: null,
+               id_livro_caixa: null,
+               ordem_de_servico: { fechamento_financeiro: { isNot: null } }
+            },
+            _sum: { valor: true }
+         });
+         return Number(card._sum.valor_liquido || 0) + Number(pix._sum.valor || 0);
+      })(),
+
       // Próximos 7 dias
       prisma.recebivelCartao.aggregate({
         where: {
           status: 'PENDENTE',
-          data_prevista: {
-            gte: hoje,
-            lte: seteDias
-          }
+          data_prevista: { gte: hoje, lte: seteDias }
         },
         _sum: { valor_liquido: true }
       }),
@@ -317,28 +402,23 @@ export class RecebivelCartaoRepository {
       prisma.recebivelCartao.aggregate({
         where: {
           status: 'PENDENTE',
-          data_prevista: {
-            gte: hoje,
-            lte: trintaDias
-          }
+          data_prevista: { gte: hoje, lte: trintaDias }
         },
         _sum: { valor_liquido: true }
       }),
-      // Total recebido (mês atual)
+      // Total recebido (mês atual) - APENAS CARTÃO POR ENQUANTO (PIX entra como Caixa, complexo rastrear "histórico" sem tabela própria)
       prisma.recebivelCartao.aggregate({
         where: {
           status: 'RECEBIDO',
-          data_recebimento: {
-            gte: new Date(hoje.getFullYear(), hoje.getMonth(), 1)
-          }
+          data_recebimento: { gte: new Date(hoje.getFullYear(), hoje.getMonth(), 1) }
         },
         _sum: { valor_liquido: true }
       })
     ]);
 
     return {
-      totalPendente: totalPendente._sum.valor_liquido || 0,
-      receberHoje: receberHoje._sum.valor_liquido || 0,
+      totalPendente: totalPendente || 0,
+      receberHoje: receberHoje || 0,
       receberSeteDias: receberSeteDias._sum.valor_liquido || 0,
       receberTrintaDias: receberTrintaDias._sum.valor_liquido || 0,
       totalRecebido: totalRecebido._sum.valor_liquido || 0
@@ -351,6 +431,57 @@ export class RecebivelCartaoRepository {
       const resultados = [];
 
       for (const id of ids) {
+        
+        // --- FLUXO PIX (ID NEGATIVO) ---
+        if (id < 0) {
+            const idPagamento = Math.abs(id);
+            const pagamento = await tx.pagamentoCliente.findUnique({
+                where: { id_pagamento_cliente: idPagamento },
+                include: { conta_bancaria: true }
+            });
+
+            if (!pagamento || pagamento.id_livro_caixa) continue; // Já processado ou não existe
+
+            console.log(`[PIX CONFIRM] Processing Payment #${idPagamento}`);
+
+            const valor = Number(pagamento.valor);
+            const idConta = pagamento.id_conta_bancaria || pagamento.conta_bancaria?.id_conta;
+
+            if (!idConta) {
+                console.error(`[PIX ERROR] Payment #${idPagamento} has no bank account provided.`);
+                throw new Error(`Pagamento PIX (R$ ${valor}) não possui Conta Bancária vinculada. Edite o pagamento na OS.`);
+            }
+
+            // 1. Atualizar Saldo
+            await tx.contaBancaria.update({
+                where: { id_conta: idConta },
+                data: { saldo_atual: { increment: valor } }
+            });
+
+            // 2. Criar Livro Caixa (Aparece no Extrato)
+            const livro = await tx.livroCaixa.create({
+                data: {
+                    descricao: `Recebimento PIX - OS #${pagamento.id_os} (Confirmado em Rec.)`,
+                    valor: valor,
+                    tipo_movimentacao: 'ENTRADA',
+                    categoria: 'VENDA', // PIX é venda direta
+                    dt_movimentacao: new Date(),
+                    origem: 'AUTOMATICA',
+                    id_conta_bancaria: idConta
+                }
+            });
+
+            // 3. Vincular (Marca como CONFIRMADO/FEITO)
+            const updated = await tx.pagamentoCliente.update({
+                where: { id_pagamento_cliente: idPagamento },
+                data: { id_livro_caixa: livro.id_livro_caixa }
+            });
+            
+            resultados.push(updated);
+            continue;
+        }
+
+        // --- FLUXO CARTÃO (ID POSITIVO) - MANTIDO ---
         // Buscar recebível
         const recebivel = await tx.recebivelCartao.findUnique({
           where: { id_recebivel: id },

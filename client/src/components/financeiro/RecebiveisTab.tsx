@@ -155,9 +155,10 @@ export const RecebiveisTab = () => {
             setStatusMsg({ type: 'success', text: 'Recebimentos confirmados e conciliados!' });
             setSelectedIds([]);
             loadData(dateRange.start, dateRange.end);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            setStatusMsg({ type: 'error', text: 'Erro ao conciliar recebíveis.' });
+            const msg = error.response?.data?.details || error.response?.data?.error || 'Erro ao conciliar recebíveis.';
+            setStatusMsg({ type: 'error', text: msg });
         }
     };
 
