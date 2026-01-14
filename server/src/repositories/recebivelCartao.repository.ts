@@ -24,7 +24,8 @@ export class RecebivelCartaoRepository {
                 pessoa_juridica: true
               }
             },
-            veiculo: true
+            veiculo: true,
+            pagamentos_cliente: true
           }
         }
       },
@@ -51,7 +52,8 @@ export class RecebivelCartaoRepository {
                 pessoa_juridica: true
               }
             },
-            veiculo: true
+            veiculo: true,
+            pagamentos_cliente: true
           }
         }
       }
@@ -75,7 +77,8 @@ export class RecebivelCartaoRepository {
                   pessoa_juridica: true
                 }
               },
-              veiculo: true
+              veiculo: true,
+              pagamentos_cliente: true
             }
           }
       },
@@ -102,7 +105,8 @@ export class RecebivelCartaoRepository {
                   pessoa_juridica: true
                 }
               },
-              veiculo: true
+              veiculo: true,
+              pagamentos_cliente: true
             }
           }
       },
@@ -134,7 +138,8 @@ export class RecebivelCartaoRepository {
                   pessoa_juridica: true
                 }
               },
-              veiculo: true
+              veiculo: true,
+              pagamentos_cliente: true
             }
           }
       },

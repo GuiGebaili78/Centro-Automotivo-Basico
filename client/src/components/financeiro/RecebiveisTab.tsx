@@ -418,6 +418,7 @@ export const RecebiveisTab = () => {
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-black text-neutral-800 uppercase text-xs">{(r as any).ordem_de_servico?.veiculo?.placa || 'S/P'}</span>
                                                     <span className="text-[10px] font-bold text-neutral-400 uppercase">{(r as any).ordem_de_servico?.veiculo?.modelo || 'S/M'}</span>
+                                                    <span className="text-[10px] font-bold text-neutral-400 uppercase">{(r as any).ordem_de_servico?.veiculo?.cor || 'S/M'}</span>
                                                 </div>
                                                 <span className="text-[10px] text-neutral-500 font-medium mt-1">
                                                     {(r as any).ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome || (r as any).ordem_de_servico?.cliente?.pessoa_juridica?.razao_social || 'Cliente não identificado'}
@@ -428,6 +429,22 @@ export const RecebiveisTab = () => {
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md w-fit mb-1 cursor-help" title={`Data da Venda: ${new Date(r.data_venda).toLocaleDateString('pt-BR')}`}>OS #{r.id_os}</span>
                                                 <span className="text-[10px] font-bold text-neutral-400 uppercase">Parcela {r.num_parcela} de {r.total_parcelas}</span>
+                                                <span className="text-[10px] font-black text-neutral-500 uppercase mt-0.5 bg-neutral-100 px-1.5 py-0.5 rounded w-fit">
+                                                    {(() => {
+                                                        if (r.total_parcelas > 1) return 'Crédito Parcelado';
+                                                        const payments = (r.ordem_de_servico as any)?.pagamentos_cliente || [];
+                                                        const cardPayments = payments.filter((p: any) => 
+                                                            ['CREDITO', 'DEBITO'].includes(p.metodo_pagamento)
+                                                        );
+                                                        
+                                                        const match = cardPayments.find((p: any) => Math.abs(Number(p.valor) - Number(r.valor_bruto)) < 0.1);
+                                                        if (match) return match.metodo_pagamento === 'CREDITO' ? 'Crédito à Vista' : 'Débito';
+
+                                                        if (cardPayments.length === 1) return cardPayments[0].metodo_pagamento === 'CREDITO' ? 'Crédito à Vista' : 'Débito';
+
+                                                        return 'Crédito a Vista ou Débito';
+                                                    })()}
+                                                </span>
                                             </div>
                                         </td>
                                         <td className="p-5 text-right font-medium text-neutral-500 text-sm">
