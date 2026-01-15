@@ -99,6 +99,7 @@ model Cliente {
   bairro              String?   @db.VarChar(100)
   cidade              String?   @db.VarChar(100)
   estado              String?   @db.Char(2)
+  cep                 String?   @db.VarChar(10)
   dt_cadastro         DateTime  @default(now()) @db.Timestamp()
   
   // Relacionamentos (Chaves Estrangeiras)
