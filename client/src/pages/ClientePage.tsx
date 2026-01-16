@@ -204,12 +204,12 @@ export const ClientePage = () => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIndex((prev) =>
-        prev + 1 >= filteredClientes.length ? 0 : prev + 1
+        prev + 1 >= filteredClientes.length ? 0 : prev + 1,
       );
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((prev) =>
-        prev - 1 < 0 ? filteredClientes.length - 1 : prev - 1
+        prev - 1 < 0 ? filteredClientes.length - 1 : prev - 1,
       );
     } else if (e.key === "Enter") {
       if (activeIndex !== -1) {
@@ -262,7 +262,7 @@ export const ClientePage = () => {
               </button>
               <button
                 onClick={confirmModal.onConfirm}
-                className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
+                className="px-4 py-2 bg-red-600 text-neutral-25 font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
               >
                 Confirmar Exclusão
               </button>
@@ -284,14 +284,14 @@ export const ClientePage = () => {
         />
       </div>
 
-      {/* Tabela Moderna */}
+      {/* Tabela */}
       <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-neutral-500">
             Carregando dados...
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
@@ -320,7 +320,7 @@ export const ClientePage = () => {
                           <div
                             className={`p-2 rounded-full transition-colors ${
                               expandedRows.has(c.id_cliente)
-                                ? "bg-primary-100 text-white"
+                                ? "bg-primary-100 text-neutral-25"
                                 : "bg-primary-50 text-primary-600"
                             }`}
                           >
@@ -336,11 +336,11 @@ export const ClientePage = () => {
                       <td className="p-4">
                         <div className="flex flex-col gap-1">
                           {c.email && (
-                            <div className="flex items-center gap-2 text-sm text-neutral-500">
+                            <div className="flex items-center gap-2 text-sm font-bold text-neutral-500">
                               <Phone size={12} /> {c.telefone_1}
                             </div>
                           )}
-                          <div className="flex items-center gap-2 text-sm text-neutral-500">
+                          <div className="flex items-center gap-2 text-sm  text-neutral-500">
                             <Mail size={12} /> {c.email}
                           </div>
                         </div>
@@ -350,7 +350,7 @@ export const ClientePage = () => {
                           <MapPin size={14} className="text-neutral-400" />
                           {c.cidade}, {c.estado}
                         </div>
-                        <span className="text-xs text-neutral-400 ml-6">
+                        <span className="text-xs font-bold text-neutral-400 ml-6">
                           {c.bairro}
                         </span>
                       </td>
@@ -394,14 +394,14 @@ export const ClientePage = () => {
                         <td colSpan={5} className="p-4 pt-0">
                           <div className="ml-12 border-l-2 border-primary-200 pl-6 py-2 space-y-3">
                             <div className="flex items-center justify-between">
-                              <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-widest">
+                              <h4 className="text-[10px] font-neutral-900 uppercase text-neutral-400 tracking-widest">
                                 Veículos do Cliente ({c.veiculos?.length || 0})
                               </h4>
                               <button
                                 onClick={() =>
                                   handleRegisterVehicle(c.id_cliente)
                                 }
-                                className="text-[10px] font-black text-primary-600 hover:underline uppercase"
+                                className="text-[10px] font-bold text-primary-600 hover:underline uppercase"
                               >
                                 + Adicionar Veículo
                               </button>
@@ -411,10 +411,10 @@ export const ClientePage = () => {
                                 c.veiculos.map((v) => (
                                   <div
                                     key={v.id_veiculo}
-                                    className="bg-white p-3 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between group hover:border-primary-300 transition-all"
+                                    className="bg-neutral-25 p-3 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between group hover:border-primary-300 transition-all"
                                   >
                                     <div>
-                                      <p className="text-xs font-black text-neutral-500 tracking-widest uppercase">
+                                      <p className="text-xs font-neutral-900 text-neutral-500 tracking-widest uppercase">
                                         {v.placa}
                                       </p>
                                       <p className="text-[10px] text-neutral-500 font-bold uppercase">
@@ -425,7 +425,7 @@ export const ClientePage = () => {
                                       <button
                                         onClick={() =>
                                           navigate(
-                                            `/ordem-de-servico?clientId=${c.id_cliente}&vehicleId=${v.id_veiculo}`
+                                            `/ordem-de-servico?clientId=${c.id_cliente}&vehicleId=${v.id_veiculo}`,
                                           )
                                         }
                                         className="p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
