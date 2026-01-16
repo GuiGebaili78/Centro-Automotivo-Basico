@@ -2,10 +2,10 @@
 
 @theme {
   /* Tipografia */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
-  /* Brand / Primary */
+  /* Escala Azul (Oficina/Principal) */
   --color-primary-50: #eff6ff;
   --color-primary-100: #dbeafe;
   --color-primary-200: #bfdbfe;
@@ -17,7 +17,20 @@
   --color-primary-800: #1e40af;
   --color-primary-900: #1e3a8a;
 
-  /* Neutros / Grayscale */
+  /* Escala Laranja (Oficina/Destaque) */
+  --color-secondary-25: #fffaf5;
+  --color-secondary-50: #fff7ed;
+  --color-secondary-100: #ffedd5;
+  --color-secondary-200: #fed7aa;
+  --color-secondary-300: #fdba74;
+  --color-secondary-400: #fb923c;
+  --color-secondary-500: #f97316; /* Cor Base */
+  --color-secondary-600: #ea580c;
+  --color-secondary-700: #c2410c;
+  --color-secondary-800: #9a3412;
+  --color-secondary-900: #7c2d12;
+
+  /* Neutros */
   --color-neutral-25: #fcfcfd;
   --color-neutral-50: #f9fafb;
   --color-neutral-100: #f3f4f6;
@@ -28,12 +41,20 @@
   --color-neutral-600: #4b5563;
   --color-neutral-700: #374151;
   --color-neutral-800: #1f2937;
-  --color-neutral-900: #0e121b;
+  --color-neutral-900: #0d121d;
 
-  /* Accent / Secondary */
-  --color-accent-50: #f5f3ff;
-  --color-accent-600: #7c3aed;
-  --color-accent-700: #6d28d9;
+  /* Accent / Cyan */
+  --color-accent-25: #f0fdfa;
+  --color-accent-50: #ecfeff;
+  --color-accent-100: #cffafe;
+  --color-accent-200: #a5f3fc;
+  --color-accent-300: #67e8f9;
+  --color-accent-400: #22d3ee;
+  --color-accent-500: #06b6d4;
+  --color-accent-600: #0891b2;
+  --color-accent-700: #0e7490;
+  --color-accent-800: #155e75;
+  --color-accent-900: #164e63;
 
   /* Semânticas */
   --color-success: #059669;

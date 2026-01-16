@@ -55,13 +55,11 @@ export class ClienteRepository {
             email: data.email || null,
             logradouro: data.logradouro || null,
             nr_logradouro: data.nr_logradouro || null,
+            compl_logradouro: data.compl_logradouro || null,
             bairro: data.bairro || null,
             cidade: data.cidade || null,
             estado: data.estado || null,
             cep: data.cep || null,
-            // Map 'cep' if you add it to schema, currently schema doesn't seem to have explicit 'cep' column in Cliente?
-            // Checked schema: Cliente has logradouro, nr, compl, bairro, cidade, estado. NO CEP.
-            // Ignoring CEP for now as it's not in schema.
           },
         });
 
