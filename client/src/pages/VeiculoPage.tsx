@@ -183,17 +183,12 @@ export const VeiculoPage = () => {
                       <div className="bg-primary-50 p-2 rounded-lg text-primary-600">
                         <Car size={18} />
                       </div>
-                      <div>
-                        <div className="font-medium text-neutral-500">
-                          {v.marca} {v.modelo} {v.cor}
-                        </div>
-                        <div className="text-xs text-neutral-500">
-                          {v.ano_modelo} • {v.combustivel}
-                        </div>
+                      <div className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
+                        {v.marca} {v.modelo} - {v.cor}
                       </div>
                     </div>
                   </td>
-                  <td className="p-4 font-mono font-bold text-neutral-500">
+                  <td className="p-4 font-mono font-bold text-primary-500">
                     {v.placa}{" "}
                   </td>
                   <td className="p-4">

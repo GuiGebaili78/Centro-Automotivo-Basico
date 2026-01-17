@@ -10,7 +10,10 @@ import {
   X,
   CheckCircle,
   AlertCircle,
+  Save,
 } from "lucide-react";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/input";
 
 interface VeiculoFormProps {
   clientId?: number | null;
@@ -226,9 +229,10 @@ export const VeiculoForm = ({
       )}
 
       {/* 1. Client Selection Section (Only for new vehicles where ID isn't pre-injected) */}
+      {/* 1. Client Selection Section (Only for new vehicles where ID isn't pre-injected) */}
       {needsClientSelection && (
-        <div className="space-y-3 p-4 bg-neutral-50 rounded-xl border border-neutral-200">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="space-y-3 p-4 bg-neutral-25 rounded-3xl border border-neutral-200">
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-neutral-100">
             <User className="text-primary-600" size={20} />
             <h3 className="font-bold text-neutral-500">
               Proprietário do Veículo
@@ -237,23 +241,19 @@ export const VeiculoForm = ({
 
           {!selectedOwner ? (
             <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                size={18}
-              />
-              <input
+              <Input
                 ref={firstInputRef}
-                type="text"
+                icon={Search}
                 placeholder="Buscar cliente por nome..."
-                className="w-full pl-10 pr-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-mono text-neutral-500"
                 value={clientSearchTerm}
                 onChange={(e) => handleSearchClient(e.target.value)}
                 onKeyDown={handleKeyDown}
+                className="bg-neutral-25"
               />
 
               {/* Results Dropdown */}
               {clientResults.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-neutral-25 border border-neutral-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {clientResults.map((client, idx) => {
                     const name =
                       client.pessoa_fisica?.pessoa?.nome ||
@@ -301,7 +301,7 @@ export const VeiculoForm = ({
           ) : (
             <div className="flex items-center justify-between bg-primary-50 p-3 rounded-lg border border-primary-100">
               <div className="flex items-center gap-3">
-                <div className="bg-primary-600 text-white p-2 rounded-full">
+                <div className="bg-primary-600 text-neutral-25 p-2 rounded-full">
                   <Check size={16} />
                 </div>
                 <div>
@@ -327,84 +327,75 @@ export const VeiculoForm = ({
       )}
 
       {/* 2. Vehicle Info Section */}
-      <div className="space-y-4">
-        <div className="bg-primary-50 p-4 rounded-lg flex items-center gap-3">
-          <Car className="text-primary-600" size={24} />
+      <div className="bg-neutral-25 p-6 rounded-3xl border border-neutral-200">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-neutral-100">
+          <div className="p-3 bg-primary-50 text-primary-600 rounded-xl">
+            <Car size={24} />
+          </div>
           <div>
-            <h3 className="font-bold text-neutral-500">Dados do Veículo</h3>
-            <p className="text-xs text-primary-700">
-              Preencha as informações do veículo.
-            </p>
+            <h3 className="font-bold text-neutral-500 text-lg">
+              Dados do Veículo
+            </h3>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-              Placa *
-            </label>
-            <input
+            <Input
+              label="Placa *"
               ref={needsClientSelection ? null : firstInputRef}
               value={placa}
               onChange={(e) => setPlaca(e.target.value.toUpperCase())}
               maxLength={7}
-              className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium"
               placeholder="ABC1234"
               required
+              className="bg-neutral-25"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-              Marca *
-            </label>
-            <input
+            <Input
+              label="Marca *"
               value={marca}
               onChange={(e) => setMarca(e.target.value)}
-              className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium"
               required
+              className="bg-neutral-25"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-              Modelo *
-            </label>
-            <input
+            <Input
+              label="Modelo *"
               value={modelo}
               onChange={(e) => setModelo(e.target.value)}
-              className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium"
               required
+              className="bg-neutral-25"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-              Cor *
-            </label>
-            <input
+            <Input
+              label="Cor *"
               value={cor}
               onChange={(e) => setCor(e.target.value)}
-              className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium"
               required
+              className="bg-neutral-25"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-              Ano Modelo (YYYY)
-            </label>
-            <input
+            <Input
+              label="Ano Modelo (YYYY)"
               type="number"
               value={anoModelo}
               onChange={(e) => setAnoModelo(e.target.value)}
-              className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium"
+              className="bg-neutral-25"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
+            <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
               Combustível
             </label>
             <select
               value={combustivel}
               onChange={(e) => setCombustivel(e.target.value)}
-              className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium"
+              className="w-full transition-all outline-none rounded-lg border text-sm disabled:opacity-50 disabled:bg-neutral-100 border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-900 bg-neutral-25 px-4 py-2.5"
             >
               <option value="Flex">Flex</option>
               <option value="Gasolina">Gasolina</option>
@@ -415,37 +406,38 @@ export const VeiculoForm = ({
             </select>
           </div>
           <div className="col-span-2">
-            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-              Chassi
-            </label>
-            <input
+            <Input
+              label="Chassi"
               value={chassi}
               onChange={(e) => setChassi(e.target.value)}
-              className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium"
+              className="bg-neutral-25"
             />
           </div>
         </div>
       </div>
 
       <div className="flex gap-2 pt-4 border-t border-neutral-100">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={onCancel}
-          className="flex-1 py-3 text-neutral-600 font-bold hover:bg-neutral-100 rounded-lg transition-colors"
+          className="flex-1"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
+          variant="primary"
           disabled={loading || (!clientId && !selectedOwner && !vehicleId)}
-          className="flex-1 py-3 bg-primary-900 hover:bg-primary-800 hover:scale-105 transition-all shadow-xl shadow-primary-500/20 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm"
+          className="flex-1"
+          icon={Save}
         >
           {loading
             ? "Salvando..."
             : vehicleId
               ? "Salvar Alterações"
               : "Salvar Veículo"}
-        </button>
+        </Button>
       </div>
     </form>
   );
