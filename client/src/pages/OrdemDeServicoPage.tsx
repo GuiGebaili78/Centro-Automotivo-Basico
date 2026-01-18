@@ -17,7 +17,7 @@ export const OrdemDeServicoPage = () => {
   const [searchTerm, setSearchTerm] = useState(""); // NEW: Localizar Search
   const [dateFilter, setDateFilter] = useState<
     "ALL" | "HOJE" | "SEMANA" | "MES"
-  >("HOJE");
+  >("SEMANA");
 
   const [oss, setOss] = useState<IOrdemDeServico[]>([]);
 
