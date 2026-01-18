@@ -24,13 +24,15 @@ export const Button = ({
   const variants = {
     primary:
       "bg-primary-900 hover:bg-primary-800 hover:scale-105 transition-all shadow-xl shadow-primary-500/20 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm",
-    secondary: "bg-gray-100 text-gray-600 hover:bg-gray-200",
-    danger: "bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700",
+    secondary:
+      "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:scale-105 transition-all ",
+    danger:
+      "bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 hover:scale-105 transition-all",
     ghost:
-      "bg-transparent text-gray-500 hover:text-gray-900 border border-transparent hover:border-gray-200",
+      "bg-transparent text-gray-500 hover:text-gray-900 border border-transparent hover:border-gray-200 hover:scale-105 transition-all",
     success:
-      "bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-200",
-    dark: "bg-gray-900 text-white hover:bg-gray-800 shadow-lg shadow-gray-200",
+      "bg-green-600 text-white hover:bg-green-700 hover:scale-105 transition-all shadow-lg shadow-green-200",
+    dark: "bg-gray-900 text-white hover:bg-gray-800 hover:scale-105 transition-all shadow-lg shadow-gray-200",
   };
 
   const sizes = {

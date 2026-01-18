@@ -575,19 +575,20 @@ export const FechamentoFinanceiroDetalhePage = () => {
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Col 1: Vehicle */}
-          <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
               Veículo
             </p>
-            <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-              {osData.veiculo.modelo}
-              <span className="text-gray-400 text-xs font-normal uppercase px-1.5 py-0.5 bg-gray-100 rounded">
-                {osData.veiculo.cor}
-              </span>
-            </h3>
-            <p className="font-black text-2xl text-gray-900 uppercase mt-1 tracking-tight">
-              {osData.veiculo.placa}
-            </p>
+            <div className="flex flex-col">
+              <h3 className="text-2xl font-bold text-neutral-600 leading-none tracking-tight">
+                {osData.veiculo?.modelo} - {osData.veiculo?.cor || "Cor N/I"}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm font-medium text-neutral-600 uppercase tracking-widest  px-2 py-0.5 rounded-md">
+                  {osData.veiculo?.placa}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Col 2: Client */}
@@ -924,11 +925,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
       {/* ACTIONS (Inline now) */}
       <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
-        <Button
-          variant="secondary"
-          onClick={() => navigate(-1)}
-          className="border border-gray-300"
-        >
+        <Button variant="secondary" onClick={() => navigate(-1)}>
           Voltar
         </Button>
 
@@ -936,7 +933,6 @@ export const FechamentoFinanceiroDetalhePage = () => {
           onClick={() => handleSave(false)}
           variant="primary"
           isLoading={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30"
         >
           <Save size={18} className="mr-2" /> Salvar Alterações
         </Button>
@@ -945,7 +941,6 @@ export const FechamentoFinanceiroDetalhePage = () => {
           onClick={() => handleSave(true)}
           variant="success"
           isLoading={loading}
-          className="bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/30"
         >
           <BadgeCheck size={18} className="mr-2" /> Salvar e Consolidar
         </Button>
