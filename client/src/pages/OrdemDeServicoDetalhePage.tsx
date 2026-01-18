@@ -969,7 +969,7 @@ export const OrdemDeServicoDetalhePage = () => {
                   },
                 });
               }}
-              className="text-red-500 font-bold text-xs uppercase hover:text-red-700 flex items-center gap-2"
+              className="text-primary-500 font-bold text-xs uppercase hover:text-primary-700 flex items-center gap-2"
             >
               <Trash2 size={14} /> Apenas o Financeiro pode cancelar uma OS
             </button>
@@ -1074,7 +1074,11 @@ export const OrdemDeServicoDetalhePage = () => {
 
                         return (
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${isOk ? "bg-success-500/20 text-success-400" : "bg-red-500/70 text-neutral-400"}`}
+                            className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider shadow-lg ${
+                              isOk
+                                ? "bg-emerald-500 text-white shadow-emerald-500/40"
+                                : "bg-red-500 text-white shadow-red-500/40 animate-pulse"
+                            }`}
                           >
                             {isOk ? "QUITADO" : "PENDENTE"}
                           </span>
