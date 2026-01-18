@@ -428,7 +428,11 @@ export const OrdemDeServicoPage = () => {
 
       {newOsWizardStep === "OS" && wizardClient && wizardVehicle && (
         <Modal
-          title="Passo 3: Confirmar Abertura"
+          title={
+            <span className="text-neutral-600">
+              Passo 3: Confirmar Abertura
+            </span>
+          }
           onClose={() => setNewOsWizardStep("NONE")}
           className="max-w-xl"
         >
@@ -485,20 +489,24 @@ export const OrdemDeServicoPage = () => {
               }}
             >
               <div className="pt-2 flex gap-3">
-                <button
+                <Button
                   type="button"
                   onClick={() => setNewOsWizardStep("NONE")}
-                  className="flex-1 py-4 text-sm font-bold text-neutral-500 hover:bg-neutral-50 rounded-xl transition-colors"
+                  variant="ghost"
+                  className="flex-1"
+                  size="lg"
                 >
                   CANCELAR
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  style={{ flex: 2 }}
-                  className="py-4 bg-neutral-600 text-neutral-25 font-bold rounded-xl shadow-lg hover:bg-neutral-800 transition-transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                  variant="primary"
+                  className="flex-[2]"
+                  size="lg"
+                  icon={CheckCircle}
                 >
-                  <CheckCircle size={20} /> ABRIR ORDEM DE SERVIÇO
-                </button>
+                  ABRIR ORDEM DE SERVIÇO
+                </Button>
               </div>
             </form>
           </div>

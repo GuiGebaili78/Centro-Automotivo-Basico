@@ -420,11 +420,11 @@ export const OrdemDeServicoDetalhePage = () => {
         </button>
         <div className="flex-1">
           <div className="flex items-baseline gap-3">
-            <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">
+            <h1 className="text-2xl font-bold text-neutral-600 tracking-tight">
               OS #{os.id_os}
             </h1>
             <span
-              className={`px-3 py-1 rounded-md text-[10px] font-black uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
+              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
             >
               {os.status === "PRONTO PARA FINANCEIRO"
                 ? "FINANCEIRO"
@@ -436,21 +436,18 @@ export const OrdemDeServicoDetalhePage = () => {
 
       <div className="space-y-8">
         {/* Header Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6 bg-white rounded-2xl border border-neutral-200 items-center shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6 bg-neutral-25 rounded-2xl border border-neutral-200 items-center shadow-sm">
           {/* Coluna 1: Veículo */}
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
               Veículo
             </p>
             <div className="flex flex-col">
-              <h3 className="text-2xl font-black text-neutral-900 leading-none tracking-tight">
-                {os.veiculo?.modelo}
+              <h3 className="text-2xl font-bold text-neutral-600 leading-none tracking-tight">
+                {os.veiculo?.modelo} - {os.veiculo?.cor || "Cor N/I"}
               </h3>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-base font-bold text-neutral-700 uppercase bg-neutral-100 px-2 py-0.5 rounded-md">
-                  {os.veiculo?.cor || "Cor N/I"}
-                </span>
-                <span className="text-sm font-medium text-neutral-400 uppercase tracking-widest border border-neutral-200 px-2 py-0.5 rounded-md">
+                <span className="text-sm font-medium text-neutral-600 uppercase tracking-widest  px-2 py-0.5 rounded-md">
                   {os.veiculo?.placa}
                 </span>
               </div>
@@ -463,7 +460,7 @@ export const OrdemDeServicoDetalhePage = () => {
               Cliente / Contato
             </p>
             <div className="flex flex-col">
-              <p className="font-bold text-lg text-neutral-900 leading-tight">
+              <p className="font-bold text-lg text-neutral-600 leading-tight">
                 {os.cliente?.pessoa_fisica?.pessoa?.nome ||
                   os.cliente?.pessoa_juridica?.razao_social}
               </p>
@@ -474,26 +471,22 @@ export const OrdemDeServicoDetalhePage = () => {
           </div>
 
           {/* Coluna 3: Entrada */}
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+          <div className="flex flex-col gap-1 border-l-2 border-neutral-200 pl-3">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
               Data de Entrada
-            </p>
-            <div className="flex items-center gap-2">
-              <div className="bg-neutral-50 p-2 rounded-lg border border-neutral-100">
-                <p className="font-black text-xl text-neutral-900 leading-none">
-                  {new Date(os.dt_abertura).getDate()}
-                </p>
-              </div>
-              <div className="flex flex-col leading-none">
-                <span className="text-xs font-bold text-neutral-500 uppercase">
-                  {new Date(os.dt_abertura).toLocaleString("default", {
-                    month: "short",
-                  })}
-                </span>
-                <span className="text-[10px] font-medium text-neutral-300">
-                  {new Date(os.dt_abertura).getFullYear()}
-                </span>
-              </div>
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-bold text-neutral-700 tabular-nums">
+                {new Date(os.dt_abertura).getDate()}
+              </span>
+              <span className="text-sm font-medium text-neutral-500 capitalize">
+                {new Date(os.dt_abertura).toLocaleString("pt-BR", {
+                  month: "long",
+                })}
+              </span>
+              <span className="text-sm font-normal text-neutral-400">
+                {new Date(os.dt_abertura).getFullYear()}
+              </span>
             </div>
           </div>
 
@@ -504,7 +497,7 @@ export const OrdemDeServicoDetalhePage = () => {
             </label>
             <div className="relative group">
               <input
-                className="w-full bg-neutral-50 border border-neutral-200 text-neutral-900 font-black text-xl rounded-xl px-4 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all"
+                className="w-full bg-neutral-50 border border-neutral-200 text-neutral-600 font-bold text-xl rounded-xl px-4 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all"
                 type="number"
                 value={os.km_entrada}
                 onChange={(e) =>
@@ -526,12 +519,12 @@ export const OrdemDeServicoDetalhePage = () => {
           {/* LEFT COL: Text Areas */}
           <div className="space-y-4">
             <div className="space-y-1">
-              <label className="flex items-center gap-2 text-[10px] font-black text-neutral-400 uppercase tracking-wider">
+              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>{" "}
                 Defeito Relatado
               </label>
               <textarea
-                className="w-full bg-red-50/20 p-3 rounded-xl border border-red-100 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-red-300 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm"
                 placeholder="Descreva o defeito..."
                 value={os.defeito_relatado || ""}
                 onChange={(e) => {
@@ -544,12 +537,12 @@ export const OrdemDeServicoDetalhePage = () => {
               />
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-2 text-[10px] font-black text-neutral-400 uppercase tracking-wider">
+              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>{" "}
                 Diagnóstico Técnico
               </label>
               <textarea
-                className="w-full bg-blue-50/20 p-3 rounded-xl border border-blue-100 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-neutral-200 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm"
                 placeholder="Insira o diagnóstico..."
                 value={os.diagnostico || ""}
                 onChange={(e) => {
@@ -563,10 +556,13 @@ export const OrdemDeServicoDetalhePage = () => {
 
           {/* RIGHT COL: Labor Manager */}
           <div className="w-full space-y-2 h-full">
-            <h3 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2 pl-1">
-              <Wrench size={14} /> Mão de Obra
+            <h3 className="text-xs font-bold text-neutral-400  uppercase tracking-widest flex items-center gap-2 pl-1">
+              <div className="p-1.5 bg-primary-100 rounded-lg text-primary-600">
+                <Wrench size={14} />
+              </div>
+              Mão de Obra
             </h3>
-            <div className="h-full bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="h-full neutral-25bg-neutral-25 rounded-xl  overflow-hidden">
               <LaborManager
                 mode="api"
                 osId={os.id_os}
@@ -583,7 +579,7 @@ export const OrdemDeServicoDetalhePage = () => {
 
         {/* ITENS (PEÇAS) - FULL WIDTH */}
         <div className="space-y-4 pt-4 border-t border-dashed border-neutral-200">
-          <h3 className="text-sm font-black text-neutral-600 uppercase tracking-widest flex items-center gap-3 pb-2 border-b border-neutral-100">
+          <h3 className="text-sm font-bold text-neutral-600 uppercase tracking-widest flex items-center gap-3 pb-2 border-b border-neutral-100">
             <div className="p-1.5 bg-orange-100 rounded-lg text-orange-600">
               <Package size={16} />
             </div>
@@ -594,7 +590,7 @@ export const OrdemDeServicoDetalhePage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* LEFT: MANUAL FORM / SELECTED ITEM */}
               <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 shadow-sm relative">
-                <h4 className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <h4 className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                   <Package size={14} /> Item a Inserir
                 </h4>
                 <form onSubmit={handleAddItem} className="space-y-3">
@@ -604,7 +600,7 @@ export const OrdemDeServicoDetalhePage = () => {
                     </label>
                     <input
                       ref={partInputRef}
-                      className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all"
+                      className="w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all"
                       placeholder="Nome do Item ou Serviço"
                       value={newItem.descricao}
                       onChange={(e) =>
@@ -614,11 +610,11 @@ export const OrdemDeServicoDetalhePage = () => {
                     {newItem.id_pecas_estoque && (
                       <div className="absolute right-2 top-6 flex items-center gap-1">
                         {selectedStockInfo && (
-                          <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-blue-200">
+                          <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-blue-200">
                             Disp: {selectedStockInfo.qtd}
                           </span>
                         )}
-                        <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-green-200">
+                        <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-green-200">
                           Estoque
                         </span>
                       </div>
@@ -632,7 +628,7 @@ export const OrdemDeServicoDetalhePage = () => {
                       </label>
                       <input
                         ref={referenceInputRef}
-                        className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-sm outline-none focus:border-primary-500"
+                        className="w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 font-bold text-sm outline-none focus:border-primary-500"
                         placeholder="..."
                         value={newItem.codigo_referencia}
                         onChange={(e) =>
@@ -650,7 +646,7 @@ export const OrdemDeServicoDetalhePage = () => {
                       <input
                         ref={quantityInputRef}
                         type="number"
-                        className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-center text-sm outline-none focus:border-primary-500"
+                        className="w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 font-bold text-center text-sm outline-none focus:border-primary-500"
                         placeholder="1"
                         value={newItem.quantidade}
                         onChange={(e) =>
@@ -664,7 +660,7 @@ export const OrdemDeServicoDetalhePage = () => {
                       </label>
                       <input
                         type="number"
-                        className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white font-bold text-right text-sm outline-none focus:border-primary-500"
+                        className="w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 font-bold text-right text-sm outline-none focus:border-primary-500"
                         placeholder="0.00"
                         value={newItem.valor_venda}
                         onChange={(e) =>
@@ -685,19 +681,20 @@ export const OrdemDeServicoDetalhePage = () => {
                         Number(newItem.valor_venda || 0)
                       ).toFixed(2)}
                     </div>
-                    <button
+                    <Button
                       type="submit"
-                      className="bg-neutral-900 text-white px-6 py-2 rounded-xl hover:bg-black hover:scale-105 transition-all shadow-lg shadow-neutral-900/20 font-bold uppercase text-xs flex items-center gap-2"
+                      variant="primary"
+                      className="px-6 py-2 h-auto text-xs font-bold uppercase shadow-lg flex items-center gap-2"
                     >
                       <Plus size={16} /> Adicionar
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>
 
               {/* RIGHT: STOCK SEARCH */}
               <div className="p-4 rounded-2xl border border-blue-100 bg-blue-50/30 shadow-sm relative">
-                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                   <Search size={14} /> Buscar no Estoque
                 </h4>
                 <div className="relative group">
@@ -706,7 +703,7 @@ export const OrdemDeServicoDetalhePage = () => {
                     size={18}
                   />
                   <input
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-blue-100 bg-white outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 font-bold text-sm text-blue-900 transition-all shadow-sm placeholder:text-blue-200"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-blue-100 bg-neutral-25 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 font-bold text-sm text-blue-600 transition-all shadow-sm placeholder:text-blue-200"
                     placeholder="Digite para buscar peças..."
                     value={partSearch}
                     onChange={(e) => {
@@ -736,7 +733,7 @@ export const OrdemDeServicoDetalhePage = () => {
                     }}
                   />
                   {partResults.length > 0 && (
-                    <div className="absolute z-50 w-full mt-2 bg-white border border-blue-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2">
+                    <div className="absolute z-50 w-full mt-2 bg-neutral-25 border border-blue-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2">
                       {partResults.map((p, idx) => (
                         <button
                           key={p.id_pecas_estoque || p.nome}
@@ -800,7 +797,7 @@ export const OrdemDeServicoDetalhePage = () => {
                           }}
                           className={`w-full text-left p-3 text-sm font-medium border-b border-neutral-50 flex justify-between group/item transition-colors ${idx === highlightIndex ? "bg-blue-50 ring-1 ring-inset ring-blue-100 z-10" : "hover:bg-neutral-50"}`}
                         >
-                          <span className="text-neutral-700 group-hover/item:text-blue-900 flex-1">
+                          <span className="text-neutral-700 group-hover/item:text-blue-600 flex-1">
                             {p.nome}
                           </span>
                           {p.estoque_atual !== undefined && (
@@ -823,29 +820,29 @@ export const OrdemDeServicoDetalhePage = () => {
             </div>
           )}
           {/* List Items */}
-          <div className="border border-neutral-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+          <div className="border border-neutral-200 rounded-2xl overflow-hidden bg-neutral-25 shadow-sm">
             <table className="w-full text-left">
               <thead className="bg-neutral-50 border-b border-neutral-100">
                 <tr>
-                  <th className="p-3 pl-4 text-[10px] uppercase font-black text-neutral-400 tracking-wider">
+                  <th className="p-3 pl-4 text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
                     Item
                   </th>
-                  <th className="p-3 text-[10px] uppercase font-black text-neutral-400 tracking-wider">
+                  <th className="p-3 text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
                     Ref/Código
                   </th>
-                  <th className="p-3 text-[10px] uppercase font-black text-neutral-400 tracking-wider text-center">
+                  <th className="p-3 text-[10px] uppercase font-bold text-neutral-400 tracking-wider text-center">
                     Qtd
                   </th>
-                  <th className="p-3 text-[10px] uppercase font-black text-neutral-400 tracking-wider text-right">
+                  <th className="p-3 text-[10px] uppercase font-bold text-neutral-400 tracking-wider text-right">
                     Unit.
                   </th>
-                  <th className="p-3 text-[10px] uppercase font-black text-neutral-400 tracking-wider text-right">
+                  <th className="p-3 text-[10px] uppercase font-bold text-neutral-400 tracking-wider text-right">
                     Total
                   </th>
                   <th className="p-3 w-20"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-50">
+              <tbody className="divide-y divide-neutral-50 bg-primary-100">
                 {osItems.map((item) => (
                   <tr
                     key={item.id_iten}
@@ -860,14 +857,14 @@ export const OrdemDeServicoDetalhePage = () => {
                           item.pagamentos_peca.some(
                             (pp: any) => pp.pago_ao_fornecedor,
                           ) && (
-                            <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-green-100 text-green-700 tracking-wider border border-green-200">
+                            <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-green-100 text-green-700 tracking-wider border border-green-200">
                               PAGO
                             </span>
                           )}
                       </div>
                     </td>
                     <td className="p-3">
-                      <div className="text-[10px] text-neutral-400 font-medium font-mono bg-neutral-100 px-2 py-0.5 rounded-md w-fit">
+                      <div className="text-[10px] text-neutral-400 font-medium font-mono px-2 py-0.5 rounded-md w-fit">
                         {item.codigo_referencia || "-"}
                       </div>
                     </td>
@@ -877,7 +874,7 @@ export const OrdemDeServicoDetalhePage = () => {
                     <td className="p-3 text-right text-neutral-500 text-xs">
                       R$ {Number(item.valor_venda).toFixed(2)}
                     </td>
-                    <td className="p-3 text-right font-black text-neutral-800 text-xs">
+                    <td className="p-3 text-right font-bold text-neutral-600 text-xs">
                       R$ {Number(item.valor_total).toFixed(2)}
                     </td>
                     <td className="p-3 text-right pr-4">
@@ -933,9 +930,9 @@ export const OrdemDeServicoDetalhePage = () => {
         {["ABERTA", "EM_ANDAMENTO"].includes(os.status) && (
           <div className="flex justify-end">
             <Button
-              variant="secondary"
+              variant="primary"
               onClick={handleSaveAndClose}
-              className="bg-neutral-800 text-neutral-200 border border-neutral-700 hover:bg-neutral-900 shadow-lg px-8 py-4 text-sm font-bold uppercase tracking-wider flex items-center gap-2"
+              className="bg-neutral-600 text-neutral-200 border border-neutral-700 hover:bg-neutral-600 shadow-lg px-8 py-4 text-sm font-bold uppercase tracking-wider flex items-center gap-2"
             >
               <Save size={18} /> Salvar e Fechar
             </Button>
@@ -973,22 +970,22 @@ export const OrdemDeServicoDetalhePage = () => {
               }}
               className="text-red-500 font-bold text-xs uppercase hover:text-red-700 flex items-center gap-2"
             >
-              <Trash2 size={14} /> Cancelar OS (Apenas Financeiro)
+              <Trash2 size={14} /> Apenas o Financeiro pode cancelar uma OS
             </button>
           </div>
         )}
 
         {/* Totals & Actions - Keep as is (below everything) */}
-        <div className="relative overflow-hidden rounded-3xl bg-neutral-900 border border-neutral-800 shadow-2xl">
+        <div className="relative overflow-hidden rounded-3xl bg-neutral-600 border border-neutral-600 shadow-2xl">
           {/* Background Glow Effect */}
-          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary-900/20 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
-          <div className="relative p-8 text-white space-y-8">
+          <div className="relative p-8 text-neutral-25 space-y-8">
             {/* Totals Row */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 pb-8 border-b border-neutral-800">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 pb-8 border-b border-neutral-600">
               <div className="flex gap-12">
                 <div>
-                  <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">
+                  <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">
                     Peças
                   </p>
                   <p className="font-medium text-lg text-neutral-300">
@@ -999,7 +996,7 @@ export const OrdemDeServicoDetalhePage = () => {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">
+                  <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">
                     Mão de Obra
                   </p>
                   <p className="font-medium text-lg text-neutral-300">
@@ -1016,10 +1013,10 @@ export const OrdemDeServicoDetalhePage = () => {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xs font-black text-success-500 uppercase tracking-widest mb-1">
+                <p className="text-xs font-bold text-success-500 uppercase tracking-widest mb-1">
                   VALOR TOTAL
                 </p>
-                <p className="font-black text-5xl tracking-tighter text-white drop-shadow-lg">
+                <p className="font-bold text-5xl tracking-tighter text-neutral-25 drop-shadow-lg">
                   R${" "}
                   {(
                     osItems.reduce((acc, i) => acc + Number(i.valor_total), 0) +
@@ -1037,9 +1034,9 @@ export const OrdemDeServicoDetalhePage = () => {
             {/* Footer Actions Row */}
             <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
               {/* Payment Card - HIGH VISIBILITY REDESIGN */}
-              <div className="w-full lg:w-auto flex-1 max-w-2xl bg-neutral-800/50 rounded-2xl p-2 pr-4 flex items-center justify-between border border-neutral-700/50 hover:bg-neutral-800 transition-colors group">
+              <div className="w-full lg:w-auto flex-1 max-w-2xl bg-yellow-600/60 rounded-2xl p-2 pr-4 flex items-center justify-between border border-neutral-700/50 hover:bg-yellow-600/80 transition-colors group">
                 <div className="flex items-center gap-4">
-                  <div className="bg-neutral-900 border border-neutral-800 p-3 rounded-xl shadow-lg">
+                  <div className="bg-grenn-400/20 border border-neutral-600 p-3 rounded-xl shadow-lg">
                     <DollarSign
                       className="text-success-500"
                       size={24}
@@ -1048,7 +1045,7 @@ export const OrdemDeServicoDetalhePage = () => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-wider">
+                      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                         Pagamentos Recebidos
                       </p>
                       {(() => {
@@ -1074,14 +1071,14 @@ export const OrdemDeServicoDetalhePage = () => {
 
                         return (
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${isOk ? "bg-success-500/20 text-success-400" : "bg-red-500/20 text-red-400"}`}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${isOk ? "bg-success-500/20 text-success-400" : "bg-red-500/70 text-neutral-400"}`}
                           >
                             {isOk ? "QUITADO" : "PENDENTE"}
                           </span>
                         );
                       })()}
                     </div>
-                    <p className="font-bold text-2xl text-white tracking-tight">
+                    <p className="font-bold text-2xl text-neutral-25 tracking-tight">
                       R${" "}
                       {(os.pagamentos_cliente || [])
                         .filter((p) => !p.deleted_at)
@@ -1091,7 +1088,7 @@ export const OrdemDeServicoDetalhePage = () => {
                   </div>
                 </div>
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   onClick={() => setShowPaymentModal(true)}
                   size="sm"
                   className="bg-neutral-700 text-neutral-200 border-none hover:bg-neutral-600 font-bold uppercase text-xs h-9 px-4 ml-4"
@@ -1105,7 +1102,7 @@ export const OrdemDeServicoDetalhePage = () => {
                   <Button
                     onClick={handleFinishService}
                     variant="success"
-                    className="w-full lg:w-auto px-8 py-5 h-auto text-lg font-black uppercase tracking-widest shadow-xl shadow-success-500/20 hover:scale-105 transition-all flex-1 lg:flex-none justify-center"
+                    className="w-full lg:w-auto px-8 py-5 h-auto text-lg font-bold uppercase tracking-widest shadow-xl shadow-success-500/20 hover:scale-105 transition-all flex-1 lg:flex-none justify-center"
                   >
                     <CheckCircle className="mr-3" size={24} strokeWidth={3} />{" "}
                     FINALIZAR OS
@@ -1138,12 +1135,12 @@ export const OrdemDeServicoDetalhePage = () => {
                             });
                           }
                         }}
-                        className="bg-transparent border-2 border-dashed border-neutral-600 text-neutral-500 hover:text-white hover:bg-neutral-800 hover:border-neutral-500 px-6 py-4 h-auto w-full sm:w-auto font-bold uppercase transition-all"
+                        className="bg-transparent border-2 border-dashed border-neutral-600 text-neutral-500 hover:text-neutral-25 hover:bg-neutral-600 hover:border-neutral-500 px-6 py-4 h-auto w-full sm:w-auto font-bold uppercase transition-all"
                       >
                         REABRIR OS
                       </Button>
                     )}
-                    <div className="flex items-center justify-center gap-3 text-success-400 font-black bg-success-500/10 px-8 py-4 rounded-xl border border-success-500/20 w-full sm:w-auto">
+                    <div className="flex items-center justify-center gap-3 text-success-400 font-bold bg-success-500/10 px-8 py-4 rounded-xl border border-success-500/20 w-full sm:w-auto">
                       <BadgeCheck size={28} />
                       <div className="flex flex-col text-left">
                         <span className="text-[10px] text-success-600/70 uppercase leading-none">
@@ -1259,7 +1256,7 @@ export const OrdemDeServicoDetalhePage = () => {
               <p className="text-[10px] font-bold text-neutral-400 uppercase mb-1">
                 Valor Total
               </p>
-              <p className="text-xl font-black text-primary-600">
+              <p className="text-xl font-bold text-primary-600">
                 R${" "}
                 {(
                   Number(editingItemData.quantidade || 0) *
@@ -1358,7 +1355,7 @@ export const OrdemDeServicoDetalhePage = () => {
                               )}
                             </td>
                             <td
-                              className={`p-2 text-right font-bold ${isDeleted ? "line-through text-red-800" : "text-green-600"}`}
+                              className={`p-2 text-right font-bold ${isDeleted ? "line-through text-red-600" : "text-green-600"}`}
                             >
                               R$ {Number(pag.valor).toFixed(2)}
                             </td>
@@ -1371,7 +1368,7 @@ export const OrdemDeServicoDetalhePage = () => {
                       <td colSpan={3} className="p-2 font-bold text-green-700">
                         TOTAL PAGO
                       </td>
-                      <td className="p-2 text-right font-black text-green-700">
+                      <td className="p-2 text-right font-bold text-green-700">
                         R${" "}
                         {os.pagamentos_cliente
                           .filter((p) => !p.deleted_at)
