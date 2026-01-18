@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
+import { formatCurrency } from "../../utils/formatCurrency";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api";
 import {
@@ -20,6 +21,7 @@ import { LaborManager } from "../os/LaborManager";
 import { Modal } from "../ui/Modal";
 import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
+import { ActionButton } from "../ui/ActionButton";
 
 interface FechamentoFinanceiroFormProps {
   preSelectedOsId?: number | null;
@@ -687,7 +689,7 @@ export const FechamentoFinanceiroForm = ({
                   </p>
                   <div className="bg-green-50 px-4 py-2 rounded-xl border border-green-100 mb-2">
                     <p className="text-4xl font-black text-green-600 tracking-tight">
-                      R$ {Number(totalReceita).toFixed(2)}
+                      {formatCurrency(totalReceita)}
                     </p>
                   </div>
                   <p className="text-[10px] font-bold text-gray-400">
@@ -765,13 +767,13 @@ export const FechamentoFinanceiroForm = ({
                               {item.descricao}
                             </p>
                             <p className="text-xs text-gray-400">
-                              Qtd: {item.quantidade} x R${" "}
-                              {Number(
+                              Qtd: {item.quantidade} x{" "}
+                              {formatCurrency(
                                 Number(item.valor_total) / item.quantidade,
-                              ).toFixed(2)}{" "}
+                              )}{" "}
                               ={" "}
                               <span className="text-green-600 font-bold">
-                                R$ {Number(item.valor_total).toFixed(2)}
+                                {formatCurrency(Number(item.valor_total))}
                               </span>
                             </p>
                           </div>
@@ -825,7 +827,7 @@ export const FechamentoFinanceiroForm = ({
                             />
                             <div className="text-[9px] text-gray-400 mt-1 text-center font-medium">
                               {item.pecas_estoque
-                                ? `Custo Orig: R$ ${Number(item.pecas_estoque.valor_custo).toFixed(2)}`
+                                ? `Custo Orig: ${formatCurrency(Number(item.pecas_estoque.valor_custo))}`
                                 : "Estoque"}
                             </div>
                           </div>
@@ -854,8 +856,9 @@ export const FechamentoFinanceiroForm = ({
                       </td>
                       <td className="p-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <button
-                            type="button"
+                          <ActionButton
+                            icon={Pen}
+                            label="Editar Item"
                             onClick={() =>
                               setEditItem({
                                 ...item,
@@ -863,19 +866,14 @@ export const FechamentoFinanceiroForm = ({
                                   Number(item.valor_total) / item.quantidade,
                               } as any)
                             }
-                            className="p-2 text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 rounded-lg"
-                            title="Editar Item"
-                          >
-                            <Pen size={16} />
-                          </button>
-                          <button
-                            type="button"
+                            variant="accent"
+                          />
+                          <ActionButton
+                            icon={Trash2}
+                            label="Excluir Item"
                             onClick={() => handleDeleteItemOS(item.id_iten)}
-                            className="p-2 text-red-600 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 rounded-lg"
-                            title="Excluir Item"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                            variant="danger"
+                          />
                         </div>
                       </td>
                     </tr>
@@ -963,7 +961,7 @@ export const FechamentoFinanceiroForm = ({
                           <td
                             className={`p-3 text-right font-black ${isDeleted ? "line-through text-red-800" : "text-green-700"}`}
                           >
-                            R$ {Number(pag.valor).toFixed(2)}
+                            {formatCurrency(Number(pag.valor))}
                           </td>
                           <td className="p-3 text-center">
                             {isDeleted ? (
@@ -1025,14 +1023,14 @@ export const FechamentoFinanceiroForm = ({
                     Valor Peças (Cobrado)
                   </p>
                   <p className="text-3xl font-black text-gray-900">
-                    R$ {(totalItemsRevenue || 0).toFixed(2)}
+                    {formatCurrency(totalItemsRevenue || 0)}
                   </p>
                   <p className="text-[10px] uppercase font-bold text-gray-400 mt-1">
                     Ref:{" "}
                     <span
                       className={lucro >= 0 ? "text-green-600" : "text-red-600"}
                     >
-                      R$ {((totalItemsRevenue || 0) - totalCusto).toFixed(2)}
+                      {formatCurrency((totalItemsRevenue || 0) - totalCusto)}
                     </span>
                   </p>
                 </div>
@@ -1042,7 +1040,7 @@ export const FechamentoFinanceiroForm = ({
                     Mão de Obra Total
                   </p>
                   <p className="text-3xl font-black text-blue-600">
-                    R$ {Number(osData.valor_mao_de_obra || 0).toFixed(2)}
+                    {formatCurrency(Number(osData.valor_mao_de_obra || 0))}
                   </p>
                 </div>
 
@@ -1051,7 +1049,7 @@ export const FechamentoFinanceiroForm = ({
                     Valor Final (OS)
                   </p>
                   <p className="text-4xl font-black text-green-600">
-                    R$ {totalReceita.toFixed(2)}
+                    {formatCurrency(totalReceita)}
                   </p>
                   {(() => {
                     const totalPago =

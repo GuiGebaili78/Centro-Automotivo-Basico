@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
@@ -508,10 +509,11 @@ export const FechamentoFinanceiroPage = () => {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-1 text-primary-600 font-bold bg-primary-50 w-fit px-3 py-1 rounded-lg">
-                          <span className="text-xs">R$</span>
-                          {Number(
-                            fech.ordem_de_servico?.valor_total_cliente || 0,
-                          ).toFixed(2)}
+                          {formatCurrency(
+                            Number(
+                              fech.ordem_de_servico?.valor_total_cliente || 0,
+                            ),
+                          )}
                         </div>
                       </td>
                       <td className="p-4">

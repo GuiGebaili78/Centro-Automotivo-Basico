@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, useBlocker } from "react-router-dom";
+import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import {
   Save,
@@ -10,7 +11,6 @@ import {
   Edit,
   AlertCircle,
   Truck,
-  Pen,
   Phone,
 } from "lucide-react";
 import { PagamentoClienteForm } from "../components/forms/PagamentoClienteForm";
@@ -19,6 +19,7 @@ import { LaborManager } from "../components/os/LaborManager";
 import { Modal } from "../components/ui/Modal";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { Button } from "../components/ui/Button";
+import { ActionButton } from "../components/ui/ActionButton";
 
 interface ItemOS {
   id_iten: number;
@@ -691,13 +692,13 @@ export const FechamentoFinanceiroDetalhePage = () => {
                         {item.descricao}
                       </p>
                       <p className="text-xs text-gray-400">
-                        Qtd: {item.quantidade} x R${" "}
-                        {Number(
+                        Qtd: {item.quantidade} x{" "}
+                        {formatCurrency(
                           Number(item.valor_total) / item.quantidade,
-                        ).toFixed(2)}{" "}
+                        )}{" "}
                         ={" "}
                         <span className="text-green-600 font-bold">
-                          R$ {Number(item.valor_total).toFixed(2)}
+                          {formatCurrency(Number(item.valor_total))}
                         </span>
                       </p>
                     </div>
@@ -747,7 +748,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                       </div>
                       <div className="text-[9px] text-gray-400 mt-1 text-center font-medium">
                         {item.pecas_estoque
-                          ? `Custo Orig: R$ ${Number(item.pecas_estoque.valor_custo).toFixed(2)}`
+                          ? `Custo Orig: ${formatCurrency(Number(item.pecas_estoque.valor_custo))}`
                           : "Estoque"}
                       </div>
                     </div>
@@ -783,23 +784,19 @@ export const FechamentoFinanceiroDetalhePage = () => {
                   )}
                 </td>
                 <td className="p-4 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <button
-                      type="button"
+                  <div className="flex items-center justify-center gap-1">
+                    <ActionButton
+                      icon={Edit}
+                      label="Editar"
                       onClick={() => handleOpenEditItem(item)}
-                      className="p-2 text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 rounded-lg"
-                      title="Editar Item"
-                    >
-                      <Pen size={16} />
-                    </button>
-                    <button
-                      type="button"
+                      variant="neutral"
+                    />
+                    <ActionButton
+                      icon={Trash2}
+                      label="Excluir"
                       onClick={() => handleDeleteItemOS(item.id_iten)}
-                      className="p-2 text-red-600 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 rounded-lg"
-                      title="Excluir Item"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                      variant="danger"
+                    />
                   </div>
                 </td>
               </tr>
@@ -839,7 +836,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                     className="flex justify-between items-center bg-green-50/50 p-2 rounded-lg text-sm border border-green-100 group"
                   >
                     <span className="font-bold text-green-800">
-                      R$ {Number(pag.valor).toFixed(2)}
+                      {formatCurrency(Number(pag.valor))}
                     </span>
                     <span className="text-gray-500">
                       {pag.metodo_pagamento} -{" "}
@@ -879,10 +876,10 @@ export const FechamentoFinanceiroDetalhePage = () => {
               Total Peças
             </p>
             <p className="text-2xl font-black text-white">
-              R$ {Number(totalItemsRevenue).toFixed(2)}
+              {formatCurrency(totalItemsRevenue)}
             </p>
             <p className="text-[10px] font-bold text-emerald-400 mt-1">
-              Ref: R$ {(Number(totalItemsRevenue) - totalItemsCost).toFixed(2)}
+              Ref: {formatCurrency(Number(totalItemsRevenue) - totalItemsCost)}
             </p>
           </div>
           <div>
@@ -890,7 +887,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
               Total Mão de Obra
             </p>
             <p className="text-2xl font-black text-white">
-              R$ {Number(totalLaborRevenue).toFixed(2)}
+              {formatCurrency(totalLaborRevenue)}
             </p>
           </div>
           <div>
@@ -898,7 +895,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
               Total Geral
             </p>
             <p className="text-3xl font-black text-white">
-              R$ {Number(totalReceita).toFixed(2)}
+              {formatCurrency(totalReceita)}
             </p>
           </div>
           <div className="text-right">

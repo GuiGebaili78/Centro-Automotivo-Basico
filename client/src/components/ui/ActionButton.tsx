@@ -22,7 +22,7 @@ export const ActionButton = ({
   };
 
   return (
-    <div className="group relative inline-flex items-center justify-center">
+    <div className="group/action relative inline-flex items-center justify-center">
       <button
         type="button"
         onClick={(e) => {
@@ -35,12 +35,12 @@ export const ActionButton = ({
       </button>
 
       {/* TOOLTIP: Otimizado */}
-      <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-[100] animate-in fade-in zoom-in-95 duration-200">
+      <div className="absolute bottom-full mb-2 hidden group-hover/action:flex flex-col items-center pointer-events-none z-100 animate-in fade-in zoom-in-95 duration-200">
         <span className="px-2 py-1 text-[10px] font-bold text-white bg-neutral-800 rounded shadow-md whitespace-nowrap uppercase tracking-wider">
           {label}
         </span>
         {/* Triângulo invertido */}
-        <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-neutral-800" />
+        <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-neutral-800" />
       </div>
     </div>
   );

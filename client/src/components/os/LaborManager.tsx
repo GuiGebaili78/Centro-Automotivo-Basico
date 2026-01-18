@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Wrench, Plus, Check, X, Trash2 } from "lucide-react";
+import { formatCurrency } from "../../utils/formatCurrency";
+import { Plus, Check, X, Trash2, Edit } from "lucide-react";
 import { api } from "../../services/api";
 import type { FormEvent } from "react";
 import { Button } from "../ui/Button";
+import { ActionButton } from "../ui/ActionButton";
 
 // Tipagem básica para garantir o funcionamento
 interface LaborService {
@@ -330,34 +332,27 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                     {svc.descricao || "-"}
                   </td>
                   <td className="p-3 text-right font-bold text-neutral-900">
-                    R${" "}
-                    {Number(svc.valor).toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                    })}
+                    {formatCurrency(Number(svc.valor))}
                   </td>
                   <td className="p-3 text-center">
                     {!readOnly && (
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          type="button"
+                      <div className="flex items-center justify-center gap-1">
+                        <ActionButton
+                          icon={Edit}
+                          label="Editar"
                           onClick={() => handleEditLabor(svc)}
-                          className="text-neutral-400 hover:text-amber-500 transition-colors"
-                          title="Editar"
-                        >
-                          <Wrench size={14} />
-                        </button>
-                        <button
-                          type="button"
+                          variant="neutral"
+                        />
+                        <ActionButton
+                          icon={Trash2}
+                          label="Excluir"
                           onClick={() =>
                             handleDeleteLabor(
                               svc.id_servico_mao_de_obra || svc.id_temporary!,
                             )
                           }
-                          className="text-neutral-400 hover:text-red-500 transition-colors"
-                          title="Remover"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                          variant="danger"
+                        />
                       </div>
                     )}
                   </td>

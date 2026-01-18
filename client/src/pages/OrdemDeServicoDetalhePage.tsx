@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { FormEvent } from "react";
+import { formatCurrency } from "../utils/formatCurrency";
 
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
@@ -7,8 +8,6 @@ import type { IOrdemDeServico } from "../types/backend";
 import {
   Search,
   Plus,
-  PenTool,
-  X,
   Trash2,
   Package,
   Wrench,
@@ -17,11 +16,13 @@ import {
   DollarSign,
   ArrowLeft,
   Save,
+  Edit,
 } from "lucide-react";
 
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
+import { ActionButton } from "../components/ui/ActionButton";
 import { PagamentoClienteForm } from "../components/forms/PagamentoClienteForm";
 import { LaborManager } from "../components/os/LaborManager";
 
@@ -675,11 +676,11 @@ export const OrdemDeServicoDetalhePage = () => {
 
                   <div className="flex items-center justify-between pt-1">
                     <div className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-                      Total: R${" "}
-                      {(
+                      Total:{" "}
+                      {formatCurrency(
                         Number(newItem.quantidade) *
-                        Number(newItem.valor_venda || 0)
-                      ).toFixed(2)}
+                          Number(newItem.valor_venda || 0),
+                      )}
                     </div>
                     <Button
                       type="submit"
@@ -806,7 +807,7 @@ export const OrdemDeServicoDetalhePage = () => {
                             </span>
                           )}
                           <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                            R$ {Number(p.valor_venda).toFixed(2)}
+                            {formatCurrency(Number(p.valor_venda))}
                           </span>
                         </button>
                       ))}
@@ -872,10 +873,10 @@ export const OrdemDeServicoDetalhePage = () => {
                       {item.quantidade}
                     </td>
                     <td className="p-3 text-right text-neutral-500 text-xs">
-                      R$ {Number(item.valor_venda).toFixed(2)}
+                      {formatCurrency(Number(item.valor_venda))}
                     </td>
                     <td className="p-3 text-right font-bold text-neutral-600 text-xs">
-                      R$ {Number(item.valor_total).toFixed(2)}
+                      {formatCurrency(Number(item.valor_total))}
                     </td>
                     <td className="p-3 text-right pr-4">
                       {os.status !== "FINALIZADA" &&
@@ -892,18 +893,18 @@ export const OrdemDeServicoDetalhePage = () => {
                               </span>
                             ) : (
                               <>
-                                <button
+                                <ActionButton
+                                  icon={Edit}
+                                  label="Editar Item"
                                   onClick={() => handleEditItem(item)}
-                                  className="p-1.5 hover:bg-blue-50 text-neutral-400 hover:text-blue-600 rounded-md transition-colors"
-                                >
-                                  <PenTool size={14} />
-                                </button>
-                                <button
+                                  variant="accent"
+                                />
+                                <ActionButton
+                                  icon={Trash2}
+                                  label="Excluir Item"
                                   onClick={() => handleDeleteItem(item.id_iten)}
-                                  className="p-1.5 hover:bg-red-50 text-neutral-400 hover:text-red-600 rounded-md transition-colors"
-                                >
-                                  <X size={14} />
-                                </button>
+                                  variant="danger"
+                                />
                               </>
                             )}
                           </div>
@@ -976,7 +977,7 @@ export const OrdemDeServicoDetalhePage = () => {
         )}
 
         {/* Totals & Actions - Keep as is (below everything) */}
-        <div className="relative overflow-hidden rounded-3xl bg-neutral-600 border border-neutral-600 shadow-2xl">
+        <div className="relative overflow-hidden rounded-3xl bg-neutral-900 border border-neutral-600 shadow-2xl">
           {/* Background Glow Effect */}
           <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -989,10 +990,12 @@ export const OrdemDeServicoDetalhePage = () => {
                     Peças
                   </p>
                   <p className="font-medium text-lg text-neutral-300">
-                    R${" "}
-                    {osItems
-                      .reduce((acc, i) => acc + Number(i.valor_total), 0)
-                      .toFixed(2)}
+                    {formatCurrency(
+                      osItems.reduce(
+                        (acc, i) => acc + Number(i.valor_total),
+                        0,
+                      ),
+                    )}
                   </p>
                 </div>
                 <div>
@@ -1000,15 +1003,16 @@ export const OrdemDeServicoDetalhePage = () => {
                     Mão de Obra
                   </p>
                   <p className="font-medium text-lg text-neutral-300">
-                    R${" "}
-                    {Number(
-                      laborServices.length > 0
-                        ? laborServices.reduce(
-                            (acc, l) => acc + Number(l.valor),
-                            0,
-                          )
-                        : os.valor_mao_de_obra || 0,
-                    ).toFixed(2)}
+                    {formatCurrency(
+                      Number(
+                        laborServices.length > 0
+                          ? laborServices.reduce(
+                              (acc, l) => acc + Number(l.valor),
+                              0,
+                            )
+                          : os.valor_mao_de_obra || 0,
+                      ),
+                    )}
                   </p>
                 </div>
               </div>
@@ -1017,16 +1021,15 @@ export const OrdemDeServicoDetalhePage = () => {
                   VALOR TOTAL
                 </p>
                 <p className="font-bold text-5xl tracking-tighter text-neutral-25 drop-shadow-lg">
-                  R${" "}
-                  {(
+                  {formatCurrency(
                     osItems.reduce((acc, i) => acc + Number(i.valor_total), 0) +
-                    (laborServices.length > 0
-                      ? laborServices.reduce(
-                          (acc, l) => acc + Number(l.valor),
-                          0,
-                        )
-                      : Number(os.valor_mao_de_obra || 0))
-                  ).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      (laborServices.length > 0
+                        ? laborServices.reduce(
+                            (acc, l) => acc + Number(l.valor),
+                            0,
+                          )
+                        : Number(os.valor_mao_de_obra || 0)),
+                  )}
                 </p>
               </div>
             </div>
@@ -1079,11 +1082,11 @@ export const OrdemDeServicoDetalhePage = () => {
                       })()}
                     </div>
                     <p className="font-bold text-2xl text-neutral-25 tracking-tight">
-                      R${" "}
-                      {(os.pagamentos_cliente || [])
-                        .filter((p) => !p.deleted_at)
-                        .reduce((acc, p) => acc + Number(p.valor), 0)
-                        .toFixed(2)}
+                      {formatCurrency(
+                        (os.pagamentos_cliente || [])
+                          .filter((p) => !p.deleted_at)
+                          .reduce((acc, p) => acc + Number(p.valor), 0),
+                      )}
                     </p>
                   </div>
                 </div>
@@ -1257,11 +1260,10 @@ export const OrdemDeServicoDetalhePage = () => {
                 Valor Total
               </p>
               <p className="text-xl font-bold text-primary-600">
-                R${" "}
-                {(
+                {formatCurrency(
                   Number(editingItemData.quantidade || 0) *
-                  Number(editingItemData.valor_venda || 0)
-                ).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    Number(editingItemData.valor_venda || 0),
+                )}
               </p>
             </div>
             <Button onClick={handleSaveItemEdit} className="w-full mt-2">
@@ -1357,7 +1359,7 @@ export const OrdemDeServicoDetalhePage = () => {
                             <td
                               className={`p-2 text-right font-bold ${isDeleted ? "line-through text-red-600" : "text-green-600"}`}
                             >
-                              R$ {Number(pag.valor).toFixed(2)}
+                              {formatCurrency(Number(pag.valor))}
                             </td>
                           </tr>
                         );
@@ -1369,11 +1371,11 @@ export const OrdemDeServicoDetalhePage = () => {
                         TOTAL PAGO
                       </td>
                       <td className="p-2 text-right font-bold text-green-700">
-                        R${" "}
-                        {os.pagamentos_cliente
-                          .filter((p) => !p.deleted_at)
-                          .reduce((acc, p) => acc + Number(p.valor), 0)
-                          .toFixed(2)}
+                        {formatCurrency(
+                          os.pagamentos_cliente
+                            .filter((p) => !p.deleted_at)
+                            .reduce((acc, p) => acc + Number(p.valor), 0),
+                        )}
                       </td>
                     </tr>
                   </tfoot>

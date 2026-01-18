@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import {
@@ -543,10 +544,7 @@ export const PagamentoPecaPage = () => {
                   Selecionado para Baixa ({selectedIds.length})
                 </p>
                 <p className="text-3xl font-black tracking-tighter">
-                  R${" "}
-                  {totalSelected.toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                  })}
+                  {formatCurrency(totalSelected)}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
@@ -568,10 +566,12 @@ export const PagamentoPecaPage = () => {
                   Total Listado (Status Atual)
                 </p>
                 <p className="text-3xl font-black text-neutral-800">
-                  R${" "}
-                  {filteredPayments
-                    .reduce((acc, p) => acc + Number(p.custo_real), 0)
-                    .toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  {formatCurrency(
+                    filteredPayments.reduce(
+                      (acc, p) => acc + Number(p.custo_real),
+                      0,
+                    ),
+                  )}
                 </p>
                 <p className="text-[10px] font-bold text-neutral-300 mt-2">
                   {filteredPayments.length} registros encontrados
@@ -590,10 +590,12 @@ export const PagamentoPecaPage = () => {
                 Total Selecionado (Filtro)
               </p>
               <p className="text-3xl font-black">
-                R${" "}
-                {filteredPayments
-                  .reduce((acc, p) => acc + Number(p.custo_real), 0)
-                  .toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                {formatCurrency(
+                  filteredPayments.reduce(
+                    (acc, p) => acc + Number(p.custo_real),
+                    0,
+                  ),
+                )}
               </p>
             </div>
             <div className="p-3 bg-white/10 rounded-xl text-white/50">
@@ -720,7 +722,7 @@ export const PagamentoPecaPage = () => {
                       })()}
                     </td>
                     <td className="p-5 text-right font-black text-neutral-900">
-                      R$ {Number(p.custo_real).toFixed(2)}
+                      {formatCurrency(Number(p.custo_real))}
                     </td>
                     <td className="p-5 text-center">
                       {p.pago_ao_fornecedor ? (
@@ -1001,8 +1003,8 @@ export const PagamentoPecaPage = () => {
                   <option value="">Selecione uma conta...</option>
                   {accounts.map((acc) => (
                     <option key={acc.id_conta} value={acc.id_conta}>
-                      {acc.nome} {acc.banco ? `(${acc.banco})` : ""} - Saldo: R${" "}
-                      {Number(acc.saldo_atual).toFixed(2)}
+                      {acc.nome} {acc.banco ? `(${acc.banco})` : ""} - Saldo:{" "}
+                      {formatCurrency(Number(acc.saldo_atual))}
                     </option>
                   ))}
                 </select>
