@@ -585,7 +585,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 {osData.veiculo?.modelo} - {osData.veiculo?.cor || "Cor N/I"}
               </h3>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm font-medium text-neutral-600 uppercase tracking-widest  px-2 py-0.5 rounded-md">
+                <span className="text-sm font-bold text-primary-600 uppercase tracking-widest  px-2 py-0.5 rounded-md">
                   {osData.veiculo?.placa}
                 </span>
               </div>

@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import { StatusBanner } from "../components/ui/StatusBanner";
+import { ActionButton } from "../components/ui/ActionButton";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/input";
 import {
   Search,
   Truck,
@@ -11,7 +14,6 @@ import {
   Edit,
   Trash2,
   Save,
-  CalendarCheck,
   DollarSign,
   X,
 } from "lucide-react";
@@ -35,9 +37,21 @@ export const PagamentoPecaPage = () => {
     "PENDING",
   );
 
-  // NEW FILTERS
-  const [filterOSStart, setFilterOSStart] = useState("");
-  const [filterOSEnd, setFilterOSEnd] = useState("");
+  // NEW FILTERS & QUICK FILTER
+  const [activeFilter, setActiveFilter] = useState<
+    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
+  >("WEEK");
+
+  const [filterOSStart, setFilterOSStart] = useState(() => {
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+    return weekAgo.toLocaleDateString("en-CA");
+  });
+  const [filterOSEnd, setFilterOSEnd] = useState(() => {
+    return new Date().toLocaleDateString("en-CA");
+  });
+
   const [filterPayStart, setFilterPayStart] = useState("");
   const [filterPayEnd, setFilterPayEnd] = useState("");
 
@@ -106,14 +120,40 @@ export const PagamentoPecaPage = () => {
   };
 
   const clearFilters = () => {
-    setFilterStatus("PENDING"); // Or 'ALL', but defaulting to PENDING is usually safer flow
+    setFilterStatus("PENDING");
     setFilterSupplier("");
     setFilterPlate("");
-    setFilterOSStart("");
-    setFilterOSEnd("");
+    // Reset to week default logic or clear all?
+    // Usually "Clear" implies reset to default state
+    setActiveFilter("WEEK");
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+    setFilterOSStart(weekAgo.toLocaleDateString("en-CA"));
+    setFilterOSEnd(now.toLocaleDateString("en-CA"));
     setFilterPayStart("");
     setFilterPayEnd("");
     setSelectedIds([]);
+  };
+
+  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
+    setActiveFilter(type);
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("en-CA");
+
+    if (type === "TODAY") {
+      setFilterOSStart(todayStr);
+      setFilterOSEnd(todayStr);
+    } else if (type === "WEEK") {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      setFilterOSStart(weekAgo.toLocaleDateString("en-CA"));
+      setFilterOSEnd(todayStr);
+    } else if (type === "MONTH") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFilterOSStart(firstDay.toLocaleDateString("en-CA"));
+      setFilterOSEnd(todayStr);
+    }
   };
 
   const handleUnpay = async (id: number) => {
@@ -368,15 +408,14 @@ export const PagamentoPecaPage = () => {
     .reduce((acc, p) => acc + Number(p.custo_real), 0);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="w-full mx-auto px-4 md:px-8 py-6 space-y-6">
       <StatusBanner
         msg={statusMsg}
         onClose={() => setStatusMsg({ type: null, text: "" })}
       />
-
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-neutral-600 tracking-tight">
             Pagamento de Auto Peças
           </h1>
           <p className="text-neutral-500">
@@ -384,153 +423,177 @@ export const PagamentoPecaPage = () => {
           </p>
         </div>
       </div>
-
       <div className="space-y-6">
         {/* Filters */}
-        <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-          <div className="md:col-span-3">
-            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-              Status
-            </label>
-            <div className="flex bg-neutral-100 rounded-xl p-1 gap-2">
-              <button
-                onClick={() => setFilterStatus("PENDING")}
-                className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${filterStatus === "PENDING" ? "bg-white shadow text-neutral-900" : "text-neutral-400 hover:text-neutral-600"}`}
-              >
-                PENDENTES
-              </button>
-              <button
-                onClick={() => setFilterStatus("PAID")}
-                className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${filterStatus === "PAID" ? "bg-white shadow text-green-600" : "text-neutral-400 hover:text-neutral-600"}`}
-              >
-                PAGAS
-              </button>
-              <button
-                onClick={() => setFilterStatus("ALL")}
-                className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${filterStatus === "ALL" ? "bg-white shadow text-neutral-900" : "text-neutral-400 hover:text-neutral-600"}`}
-              >
-                TODAS
-              </button>
+        <div className="bg-surface p-4 rounded-xl border border-neutral-200 shadow-sm flex flex-col gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Status */}
+            <div>
+              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-2 block">
+                Status
+              </label>
+              <div className="flex bg-neutral-100 rounded-xl p-1 gap-1">
+                {["PENDING", "PAID", "ALL"].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setFilterStatus(st as any)}
+                    className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${
+                      filterStatus === st
+                        ? "bg-white shadow text-neutral-800"
+                        : "text-neutral-400 hover:text-neutral-600"
+                    }`}
+                  >
+                    {st === "PENDING"
+                      ? "PENDENTES"
+                      : st === "PAID"
+                        ? "PAGAS"
+                        : "TODAS"}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="md:col-span-3">
-            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-              Fornecedor
-            </label>
-            <select
-              value={filterSupplier}
-              onChange={(e) => setFilterSupplier(e.target.value)}
-              className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors"
-            >
-              <option value="">Todos</option>
-              {fornecedores.map((f) => (
-                <option key={f.id_fornecedor} value={f.id_fornecedor}>
-                  {f.nome_fantasia || f.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-3">
-            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-              Buscar (Geral)
-            </label>
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                size={16}
-              />
-              <input
+            {/* Search */}
+            <div className="lg:col-span-2">
+              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-2 block">
+                Buscar
+              </label>
+              <Input
                 value={filterPlate}
                 onChange={(e) => setFilterPlate(e.target.value)}
                 placeholder="Placa, OS, Fornecedor..."
-                className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors"
+                icon={Search}
               />
             </div>
+
+            {/* Supplier */}
+            <div>
+              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-2 block">
+                Fornecedor
+              </label>
+              <select
+                value={filterSupplier}
+                onChange={(e) => setFilterSupplier(e.target.value)}
+                className="w-full h-[42px] px-3 bg-white border border-neutral-200 rounded-xl font-bold text-sm text-neutral-600 outline-none focus:border-primary-500 transition-colors"
+              >
+                <option value="">Todos</option>
+                {fornecedores.map((f) => (
+                  <option key={f.id_fornecedor} value={f.id_fornecedor}>
+                    {f.nome_fantasia || f.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Clear Filters Button */}
-          <div className="md:col-span-3 flex md:justify-end">
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-2 px-4 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-500 font-bold rounded-xl transition-colors text-xs uppercase w-full md:w-auto justify-center"
-              title="Limpar todos os filtros"
-            >
-              <X size={16} />
-              Limpar Filtros
-            </button>
-          </div>
-
-          {/* NEW DOUBLE DATE FILTER */}
-          <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Filter 1: OS Finish */}
-            <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200 shadow-sm flex flex-col justify-center">
-              <div className="flex items-center gap-2 mb-2">
-                <CalendarCheck size={16} className="text-blue-500" />
-                <span className="text-[10px] font-black text-neutral-600 uppercase">
-                  Filtro: Finalização da OS
-                </span>
+          {/* Date Filters Row */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 border-t border-neutral-100 pt-4">
+            {/* Start OS Date */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase whitespace-nowrap min-w-[90px]">
+                Finalização OS:
+              </span>
+              <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
+                <button
+                  onClick={() => applyQuickFilter("TODAY")}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                    activeFilter === "TODAY"
+                      ? "bg-primary-200 text-primary-500 shadow-sm"
+                      : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                  }`}
+                >
+                  Hoje
+                </button>
+                <button
+                  onClick={() => applyQuickFilter("WEEK")}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                    activeFilter === "WEEK"
+                      ? "bg-primary-200 text-primary-500 shadow-sm"
+                      : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                  }`}
+                >
+                  Semana
+                </button>
+                <button
+                  onClick={() => applyQuickFilter("MONTH")}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                    activeFilter === "MONTH"
+                      ? "bg-primary-200 text-primary-500 shadow-sm"
+                      : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                  }`}
+                >
+                  Mês
+                </button>
               </div>
-              <div className="flex items-end gap-2">
-                <div>
-                  <label className="text-[9px] font-bold text-neutral-400 uppercase mb-1 block">
-                    De
-                  </label>
-                  <input
+
+              <div className="flex gap-2 items-center">
+                <div className="w-32">
+                  <Input
                     type="date"
                     value={filterOSStart}
-                    onChange={(e) => setFilterOSStart(e.target.value)}
-                    className="bg-white border border-neutral-200 p-1.5 rounded-lg font-bold text-xs outline-none focus:border-neutral-400 transition-colors uppercase w-[130px]"
+                    onChange={(e) => {
+                      setFilterOSStart(e.target.value);
+                      setActiveFilter("CUSTOM");
+                    }}
+                    className={`h-9 px-2 text-[10px] uppercase font-bold ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
                   />
                 </div>
-                <div>
-                  <label className="text-[9px] font-bold text-neutral-400 uppercase mb-1 block">
-                    Até
-                  </label>
-                  <input
+                <span className="text-neutral-400">-</span>
+                <div className="w-32">
+                  <Input
                     type="date"
                     value={filterOSEnd}
-                    onChange={(e) => setFilterOSEnd(e.target.value)}
-                    className="bg-white border border-neutral-200 p-1.5 rounded-lg font-bold text-xs outline-none focus:border-neutral-400 transition-colors uppercase w-[130px]"
+                    onChange={(e) => {
+                      setFilterOSEnd(e.target.value);
+                      setActiveFilter("CUSTOM");
+                    }}
+                    className={`h-9 px-2 text-[10px] uppercase font-bold ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
                   />
                 </div>
               </div>
             </div>
 
-            {/* Filter 2: Payment Date */}
-            <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200 shadow-sm flex flex-col justify-center">
-              <div className="flex items-center gap-2 mb-2">
-                <DollarSign size={16} className="text-green-500" />
-                <span className="text-[10px] font-black text-neutral-600 uppercase">
-                  Filtro: Pagamento Fornecedor
-                </span>
-              </div>
-              <div className="flex items-end gap-2">
-                <div>
-                  <label className="text-[9px] font-bold text-neutral-400 uppercase mb-1 block">
-                    De
-                  </label>
-                  <input
+            {/* Payment Date */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 lg:ml-auto">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase whitespace-nowrap min-w-[130px]">
+                Pagamento Fornecedor:
+              </span>
+              <div className="flex gap-2 items-center">
+                <div className="w-32">
+                  <Input
                     type="date"
                     value={filterPayStart}
                     onChange={(e) => setFilterPayStart(e.target.value)}
-                    className="bg-white border border-neutral-200 p-1.5 rounded-lg font-bold text-xs outline-none focus:border-neutral-400 transition-colors uppercase w-[130px]"
+                    className="h-9 px-2 text-[10px] uppercase font-bold"
                   />
                 </div>
-                <div>
-                  <label className="text-[9px] font-bold text-neutral-400 uppercase mb-1 block">
-                    Até
-                  </label>
-                  <input
+                <span className="text-neutral-400">-</span>
+                <div className="w-32">
+                  <Input
                     type="date"
                     value={filterPayEnd}
                     onChange={(e) => setFilterPayEnd(e.target.value)}
-                    className="bg-white border border-neutral-200 p-1.5 rounded-lg font-bold text-xs outline-none focus:border-neutral-400 transition-colors uppercase w-[130px]"
+                    className="h-9 px-2 text-[10px] uppercase font-bold"
                   />
                 </div>
               </div>
             </div>
+
+            <Button
+              onClick={clearFilters}
+              variant="ghost"
+              size="sm"
+              icon={X}
+              className="hidden lg:flex"
+            >
+              Limpar
+            </Button>
+          </div>
+
+          <div className="lg:hidden flex justify-end">
+            <Button onClick={clearFilters} variant="ghost" size="sm" icon={X}>
+              Limpar Filtros
+            </Button>
           </div>
         </div>
 
@@ -548,252 +611,237 @@ export const PagamentoPecaPage = () => {
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <button
+                <Button
                   onClick={handleBatchConfirmClick}
-                  className="px-4 py-2 bg-white text-blue-600 text-xs font-black uppercase rounded-lg shadow hover:bg-neutral-50 active:scale-95 transition-all flex items-center gap-2"
+                  className="bg-white text-blue-600 hover:bg-neutral-50 border-none shadow-none"
+                  icon={Save}
                 >
-                  <Save size={14} />
                   Confirmar Baixa
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            // Placeholder or Info when nothing selected? Or keep hidden?
-            // Let's show TOTAL FILTRADO (PENDENTE + PAGO displayed)
-            <div className="bg-white p-6 rounded-2xl border border-neutral-100 flex items-center justify-between">
+            // Display Total Filtered
+            <div className="bg-surface p-6 rounded-2xl border border-neutral-200 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
                   Total Listado (Status Atual)
                 </p>
-                <p className="text-3xl font-black text-neutral-800">
+                <p className="text-3xl font-bold text-neutral-600">
                   {formatCurrency(
                     filteredPayments.reduce(
-                      (acc, p) => acc + Number(p.custo_real),
+                      (acc, p) => acc + Number(p.custo_real || 0),
                       0,
                     ),
                   )}
                 </p>
-                <p className="text-[10px] font-bold text-neutral-300 mt-2">
-                  {filteredPayments.length} registros encontrados
-                </p>
               </div>
-              <div className="p-3 bg-neutral-50 rounded-xl text-neutral-300">
-                <Search size={24} />
+              <div className="h-10 w-10 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400">
+                <DollarSign size={20} />
               </div>
             </div>
           )}
 
-          {/* CARD 2: TOTAL PAGO (Only filtered paid items) - OR GENERAL STATS */}
-          <div className="bg-neutral-900 text-white p-6 rounded-2xl flex items-center justify-between shadow-lg">
+          {/* CARD 2: Total Geral (Todos) */}
+          <div className="bg-neutral-800 p-6 rounded-2xl flex items-center justify-between shadow-lg text-white">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60">
-                Total Selecionado (Filtro)
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                Total Geral (Todos Pendentes)
               </p>
-              <p className="text-3xl font-black">
+              <p className="text-3xl font-bold">
                 {formatCurrency(
-                  filteredPayments.reduce(
-                    (acc, p) => acc + Number(p.custo_real),
-                    0,
-                  ),
+                  payments
+                    .filter((p) => !p.pago_ao_fornecedor)
+                    .reduce((acc, p) => acc + Number(p.custo_real || 0), 0),
                 )}
               </p>
             </div>
-            <div className="p-3 bg-white/10 rounded-xl text-white/50">
-              <DollarSign size={24} />
+            <div className="h-10 w-10 bg-white/10 rounded-full flex items-center justify-center text-white/50">
+              <DollarSign size={20} />
             </div>
           </div>
         </div>
-
-        {/* Table */}
-        <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden w-full">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                <th className="p-5">Data Inserção</th>
-                <th className="p-5">Ref / Nota</th>
-                <th className="p-5">Peça</th>
-                <th className="p-5">Fornecedor</th>
-                <th className="p-5">Veículo / OS</th>
-                <th className="p-5">Status OS</th>
-                <th className="p-5 text-right w-32">Valor Custo</th>
-                <th className="p-5 text-center w-24">Pagar</th>
-                <th className="p-5 text-center w-16">Editar</th>
+      </div>{" "}
+      {/* Table */}
+      <div className="bg-surface rounded-3xl shadow-sm border border-neutral-200 overflow-hidden w-full">
+        <table className="w-full text-left border-collapse min-w-[800px]">
+          <thead>
+            <tr className="bg-neutral-50 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+              <th className="p-5">Ref / Nota</th>
+              <th className="p-5">Peça</th>
+              <th className="p-5">Fornecedor</th>
+              <th className="p-5">Veículo / OS</th>
+              <th className="p-5">Status OS</th>
+              <th className="p-5 text-right w-32">Valor Custo</th>
+              <th className="p-5 text-center w-24">Pagar</th>
+              <th className="p-5 text-right w-32">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-50">
+            {filteredPayments.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={7}
+                  className="p-10 text-center text-neutral-400 italic font-medium"
+                >
+                  Nenhum registro encontrado.
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-50">
-              {filteredPayments.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="p-10 text-center text-neutral-400 italic font-medium"
-                  >
-                    Nenhum registro encontrado.
+            ) : (
+              filteredPayments.map((p) => (
+                <tr
+                  key={p.id_pagamento_peca}
+                  className={`hover:bg-neutral-25 transition-colors ${p.pago_ao_fornecedor ? "bg-neutral-50/50" : ""}`}
+                >
+                  <td className="p-5">
+                    <div className="flex items-center gap-2 font-bold text-neutral-600 text-xs">
+                      <Calendar size={14} />
+                      {/* DATA INSERÇÃO NA OS (from item_os.dt_cadastro) */}
+                      {p.item_os?.dt_cadastro
+                        ? new Date(p.item_os.dt_cadastro).toLocaleDateString()
+                        : "N/A"}
+                    </div>
                   </td>
-                </tr>
-              ) : (
-                filteredPayments.map((p) => (
-                  <tr
-                    key={p.id_pagamento_peca}
-                    className={`hover:bg-neutral-25 transition-colors ${p.pago_ao_fornecedor ? "bg-neutral-50/50" : ""}`}
-                  >
-                    <td className="p-5">
-                      <div className="flex items-center gap-2 font-bold text-neutral-600 text-xs">
-                        <Calendar size={14} />
-                        {/* DATA INSERÇÃO NA OS (from item_os.dt_cadastro) */}
-                        {p.item_os?.dt_cadastro
-                          ? new Date(p.item_os.dt_cadastro).toLocaleDateString()
-                          : "N/A"}
-                      </div>
-                    </td>
-                    <td className="p-5">
-                      <span className="font-mono text-xs font-black text-neutral-600 bg-neutral-100 px-2 py-1 rounded w-fit">
-                        {p.item_os?.codigo_referencia || "---"}
+                  <td className="p-5">
+                    <span className="font-mono text-xs font-black text-neutral-600 bg-neutral-100 px-2 py-1 rounded w-fit">
+                      {p.item_os?.codigo_referencia || "---"}
+                    </span>
+                  </td>
+                  <td className="p-5">
+                    <p className="font-bold text-neutral-600 text-sm">
+                      {p.item_os?.descricao}
+                    </p>
+                  </td>
+                  <td className="p-5">
+                    <div className="flex items-center gap-2">
+                      <Truck size={14} className="text-orange-500" />
+                      <span className="font-bold text-neutral-700 text-xs uppercase">
+                        {p.fornecedor?.nome_fantasia || p.fornecedor?.nome}
                       </span>
-                    </td>
-                    <td className="p-5">
-                      <p className="font-bold text-neutral-900 text-sm">
-                        {p.item_os?.descricao}
+                    </div>
+                  </td>
+                  <td className="p-5">
+                    <div className="flex flex-col">
+                      <p className="font-black text-neutral-800 text-xs uppercase tracking-widest bg-neutral-100 px-2 py-1 rounded w-fit">
+                        {p.item_os?.ordem_de_servico?.veiculo?.placa || "---"}
                       </p>
-                    </td>
-                    <td className="p-5">
-                      <div className="flex items-center gap-2">
-                        <Truck size={14} className="text-orange-500" />
-                        <span className="font-bold text-neutral-700 text-xs uppercase">
-                          {p.fornecedor?.nome_fantasia || p.fornecedor?.nome}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-5">
-                      <div className="flex flex-col">
-                        <p className="font-black text-neutral-800 text-xs uppercase tracking-widest bg-neutral-100 px-2 py-1 rounded w-fit">
-                          {p.item_os?.ordem_de_servico?.veiculo?.placa || "---"}
-                        </p>
-                        <p className="text-[10px] text-neutral-500 font-bold mt-1 uppercase">
-                          {p.item_os?.ordem_de_servico?.veiculo?.modelo ||
-                            "N/A"}{" "}
-                          {p.item_os?.ordem_de_servico?.veiculo?.cor
-                            ? `• ${p.item_os.ordem_de_servico.veiculo.cor}`
-                            : ""}
-                        </p>
+                      <p className="text-[10px] text-neutral-500 font-bold mt-1 uppercase">
+                        {p.item_os?.ordem_de_servico?.veiculo?.modelo || "N/A"}{" "}
+                        {p.item_os?.ordem_de_servico?.veiculo?.cor
+                          ? `• ${p.item_os.ordem_de_servico.veiculo.cor}`
+                          : ""}
+                      </p>
 
-                        <p className="text-[10px] text-neutral-400 font-bold mt-0.5">
-                          OS #{p.item_os?.id_os}
+                      <p className="text-[10px] text-neutral-400 font-bold mt-0.5">
+                        OS #{p.item_os?.id_os}
+                      </p>
+                      {/* Optional: Show OS Finish Date if available */}
+                      {p.item_os?.ordem_de_servico?.dt_entrega && (
+                        <p className="text-[9px] text-green-600 font-bold mt-1">
+                          Fim OS:{" "}
+                          {new Date(
+                            p.item_os.ordem_de_servico.dt_entrega,
+                          ).toLocaleDateString()}
                         </p>
-                        {/* Optional: Show OS Finish Date if available */}
-                        {p.item_os?.ordem_de_servico?.dt_entrega && (
-                          <p className="text-[9px] text-green-600 font-bold mt-1">
-                            Fim OS:{" "}
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-5">
+                    {(() => {
+                      const st =
+                        p.item_os?.ordem_de_servico?.status || "ABERTA";
+                      const styles: Record<string, string> = {
+                        FINALIZADA:
+                          "bg-emerald-100 text-emerald-700 ring-emerald-200",
+                        PAGA_CLIENTE:
+                          "bg-neutral-100 text-neutral-600 ring-neutral-200",
+                        "PRONTO PARA FINANCEIRO":
+                          "bg-amber-100 text-amber-700 ring-amber-200",
+                        ABERTA: "bg-blue-100 text-blue-700 ring-blue-200",
+                        EM_ANDAMENTO: "bg-cyan-100 text-cyan-700 ring-cyan-200",
+                        CANCELADA: "bg-red-100 text-red-700 ring-red-200",
+                      };
+                      const style =
+                        styles[st] || "bg-gray-50 text-gray-500 ring-gray-200";
+
+                      return (
+                        <span
+                          className={`px-3 py-1 rounded-md text-[10px] font-black uppercase ring-1 whitespace-nowrap ${style}`}
+                        >
+                          {st === "PRONTO PARA FINANCEIRO"
+                            ? "FINANCEIRO"
+                            : st.replace(/_/g, " ")}
+                        </span>
+                      );
+                    })()}
+                  </td>
+                  <td className="p-5 text-right font-bold text-neutral-600">
+                    {formatCurrency(Number(p.custo_real))}
+                  </td>
+                  <td className="p-5 text-center">
+                    {p.pago_ao_fornecedor ? (
+                      <div className="flex flex-col items-center">
+                        <button
+                          onClick={() => handleUnpay(p.id_pagamento_peca)}
+                          className="hover:scale-110 transition-transform active:scale-95 text-neutral-400 hover:text-green-600"
+                          title={`Pago em: ${p.data_pagamento_fornecedor ? new Date(p.data_pagamento_fornecedor).toLocaleDateString() : "N/A"} (Clique para desfazer)`}
+                        >
+                          <CheckSquare
+                            size={32}
+                            className="text-green-500 fill-green-500/20"
+                          />
+                        </button>
+                        {p.data_pagamento_fornecedor && (
+                          <span className="text-[9px] font-bold text-green-600 mt-1">
                             {new Date(
-                              p.item_os.ordem_de_servico.dt_entrega,
+                              p.data_pagamento_fornecedor,
                             ).toLocaleDateString()}
-                          </p>
+                          </span>
                         )}
                       </div>
-                    </td>
-                    <td className="p-5">
-                      {(() => {
-                        const st =
-                          p.item_os?.ordem_de_servico?.status || "ABERTA";
-                        const styles: Record<string, string> = {
-                          FINALIZADA:
-                            "bg-emerald-100 text-emerald-700 ring-emerald-200",
-                          PAGA_CLIENTE:
-                            "bg-neutral-100 text-neutral-600 ring-neutral-200",
-                          "PRONTO PARA FINANCEIRO":
-                            "bg-amber-100 text-amber-700 ring-amber-200",
-                          ABERTA: "bg-blue-100 text-blue-700 ring-blue-200",
-                          EM_ANDAMENTO:
-                            "bg-cyan-100 text-cyan-700 ring-cyan-200",
-                          CANCELADA: "bg-red-100 text-red-700 ring-red-200",
-                        };
-                        const style =
-                          styles[st] ||
-                          "bg-gray-50 text-gray-500 ring-gray-200";
-
-                        return (
-                          <span
-                            className={`px-3 py-1 rounded-md text-[10px] font-black uppercase ring-1 whitespace-nowrap ${style}`}
-                          >
-                            {st === "PRONTO PARA FINANCEIRO"
-                              ? "FINANCEIRO"
-                              : st.replace(/_/g, " ")}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="p-5 text-right font-black text-neutral-900">
-                      {formatCurrency(Number(p.custo_real))}
-                    </td>
-                    <td className="p-5 text-center">
-                      {p.pago_ao_fornecedor ? (
-                        <div className="flex flex-col items-center">
-                          <button
-                            onClick={() => handleUnpay(p.id_pagamento_peca)}
-                            className="hover:scale-110 transition-transform active:scale-95 text-neutral-400 hover:text-green-600"
-                            title={`Pago em: ${p.data_pagamento_fornecedor ? new Date(p.data_pagamento_fornecedor).toLocaleDateString() : "N/A"} (Clique para desfazer)`}
-                          >
-                            <CheckSquare
-                              size={32}
-                              className="text-green-500 fill-green-500/20"
-                            />
-                          </button>
-                          {p.data_pagamento_fornecedor && (
-                            <span className="text-[9px] font-bold text-green-600 mt-1">
-                              {new Date(
-                                p.data_pagamento_fornecedor,
-                              ).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => toggleSelection(p.id_pagamento_peca)}
-                          className="hover:scale-110 transition-transform active:scale-95 text-neutral-300 hover:text-blue-500"
-                          title={
-                            selectedIds.includes(p.id_pagamento_peca)
-                              ? "Desmarcar"
-                              : "Selecionar para pagamento"
-                          }
-                        >
-                          {selectedIds.includes(p.id_pagamento_peca) ? (
-                            <CheckSquare
-                              size={32}
-                              className="text-green-500 fill-green-500/20"
-                            />
-                          ) : (
-                            <Square size={32} className="stroke-[2.5]" />
-                          )}
-                        </button>
-                      )}
-                    </td>
-                    <td className="p-5 text-center">
-                      <div className="flex justify-center gap-2">
-                        <button
-                          onClick={() => openEditModal(p)}
-                          className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Editar Detalhes"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleDeletePayment(p.id_pagamento_peca)
-                          }
-                          className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Excluir Pagamento"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    ) : (
+                      <button
+                        onClick={() => toggleSelection(p.id_pagamento_peca)}
+                        className="hover:scale-110 transition-transform active:scale-95 text-neutral-300 hover:text-blue-500"
+                        title={
+                          selectedIds.includes(p.id_pagamento_peca)
+                            ? "Desmarcar"
+                            : "Selecionar para pagamento"
+                        }
+                      >
+                        {selectedIds.includes(p.id_pagamento_peca) ? (
+                          <CheckSquare
+                            size={32}
+                            className="text-green-500 fill-green-500/20"
+                          />
+                        ) : (
+                          <Square size={32} className="stroke-[2.5]" />
+                        )}
+                      </button>
+                    )}
+                  </td>
+                  <td className="p-5 text-right">
+                    <div className="flex justify-end gap-2">
+                      <ActionButton
+                        onClick={() => openEditModal(p)}
+                        icon={Edit}
+                        label="Editar"
+                        variant="accent"
+                      />
+                      <ActionButton
+                        onClick={() => handleDeletePayment(p.id_pagamento_peca)}
+                        icon={Trash2}
+                        label="Excluir"
+                        variant="danger"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
-
       {showEditModal && editPayment && (
         <Modal
           title="Editar Pagamento (Peça)"
@@ -814,15 +862,12 @@ export const PagamentoPecaPage = () => {
                   : "N/A"}
               </div>
               <div className="mt-2">
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-1 block">
-                  Ref / Nota
-                </label>
-                <input
+                <Input
+                  label="Ref / Nota"
                   value={editPayment.ref_nota || ""}
                   onChange={(e) =>
                     setEditPayment({ ...editPayment, ref_nota: e.target.value })
                   }
-                  className="w-full bg-white border border-neutral-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-neutral-400"
                   placeholder="Número da Nota / Referência"
                 />
               </div>
@@ -831,11 +876,8 @@ export const PagamentoPecaPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Read-Only Insertion Date */}
               <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                  Data de Inserção na OS (Auto)
-                </label>
-                <input
-                  type="text"
+                <Input
+                  label="Data de Inserção na OS (Auto)"
                   disabled
                   value={
                     editPayment.item_os?.dt_cadastro
@@ -844,17 +886,13 @@ export const PagamentoPecaPage = () => {
                         ).toLocaleDateString()
                       : "N/A"
                   }
-                  className="w-full bg-neutral-100 border border-neutral-200 p-3 rounded-xl font-bold text-sm text-neutral-500 cursor-not-allowed"
                 />
               </div>
 
               {/* Read-Only OS Finish Date */}
               <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                  Data de Finalização da OS
-                </label>
-                <input
-                  type="text"
+                <Input
+                  label="Data de Finalização da OS"
                   disabled
                   value={
                     editPayment.item_os?.ordem_de_servico?.dt_entrega
@@ -863,16 +901,13 @@ export const PagamentoPecaPage = () => {
                         ).toLocaleDateString()
                       : "OS em Aberto"
                   }
-                  className="w-full bg-neutral-100 border border-neutral-200 p-3 rounded-xl font-bold text-sm text-neutral-500 cursor-not-allowed"
                 />
               </div>
 
               {/* Editable Payment Date */}
               <div className="md:col-span-2">
-                <label className="text-[10px] font-black uppercase mb-2 block text-green-600">
-                  Data de Pagamento à Auto Peças (Editável)
-                </label>
-                <input
+                <Input
+                  label="Data de Pagamento à Auto Peças (Editável)"
                   type="date"
                   value={editPayment.data_pagamento_fornecedor || ""}
                   onChange={(e) =>
@@ -881,17 +916,15 @@ export const PagamentoPecaPage = () => {
                       data_pagamento_fornecedor: e.target.value,
                     })
                   }
-                  className="w-full bg-white border border-green-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-green-400 text-green-700"
+                  className="text-green-700 font-bold"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                  Custo Real (R$)
-                </label>
-                <input
+                <Input
+                  label="Custo Real (R$)"
                   type="number"
                   step="0.01"
                   value={editPayment.custo_real}
@@ -901,11 +934,10 @@ export const PagamentoPecaPage = () => {
                       custo_real: e.target.value,
                     })
                   }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
+                <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">
                   Fornecedor
                 </label>
                 <select
@@ -916,7 +948,7 @@ export const PagamentoPecaPage = () => {
                       id_fornecedor: e.target.value,
                     })
                   }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400"
+                  className="w-full bg-white border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm text-neutral-600 outline-none focus:border-primary-500 transition-colors h-[42px]"
                 >
                   {fornecedores.map((f) => (
                     <option key={f.id_fornecedor} value={f.id_fornecedor}>
@@ -928,23 +960,24 @@ export const PagamentoPecaPage = () => {
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-neutral-100">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 py-3 text-neutral-500 font-bold hover:bg-neutral-50 rounded-xl transition-colors"
+                className="flex-1"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="dark"
                 onClick={handleUpdatePayment}
-                className="flex-1 py-3 bg-neutral-900 text-white font-bold rounded-xl hover:bg-neutral-800 transition-colors shadow-lg"
+                className="flex-1 shadow-lg"
               >
                 Salvar Alterações
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
       )}
-
       {/* CONFIRM PAYMENT MODAL (WITH ACCOUNT SELECTION) */}
       {paymentModal.isOpen && (
         <Modal
@@ -972,22 +1005,17 @@ export const PagamentoPecaPage = () => {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                  Data do Pagamento
-                </label>
-                <input
-                  type="date"
-                  value={paymentModal.date}
-                  onChange={(e) =>
-                    setPaymentModal({ ...paymentModal, date: e.target.value })
-                  }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-blue-500"
-                />
-              </div>
+              <Input
+                label="Data do Pagamento"
+                type="date"
+                value={paymentModal.date}
+                onChange={(e) =>
+                  setPaymentModal({ ...paymentModal, date: e.target.value })
+                }
+              />
 
               <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
+                <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">
                   Conta de Origem (Débito)
                 </label>
                 <select
@@ -998,7 +1026,7 @@ export const PagamentoPecaPage = () => {
                       accountId: e.target.value,
                     })
                   }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-blue-500"
+                  className="w-full bg-white border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm text-neutral-600 outline-none focus:border-primary-500 transition-colors h-[42px]"
                 >
                   <option value="">Selecione uma conta...</option>
                   {accounts.map((acc) => (
@@ -1012,32 +1040,29 @@ export const PagamentoPecaPage = () => {
             </div>
 
             <div className="pt-4 flex gap-3">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() =>
                   setPaymentModal((prev) => ({ ...prev, isOpen: false }))
                 }
-                className="flex-1 py-3 font-bold text-neutral-500 hover:bg-neutral-100 rounded-xl"
+                className="flex-1"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="success"
                 onClick={processBatchPayment}
                 disabled={loading}
-                className={`flex-1 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                isLoading={loading}
+                className="flex-1 shadow-lg shadow-green-500/20"
+                icon={DollarSign}
               >
-                {loading ? (
-                  "Processando..."
-                ) : (
-                  <>
-                    <DollarSign size={18} /> Confirmar Pagamento
-                  </>
-                )}
-              </button>
+                Confirmar Pagamento
+              </Button>
             </div>
           </div>
         </Modal>
       )}
-
       {/* Confirmation Modal */}
       {confirmModal.isOpen && (
         <Modal
@@ -1051,22 +1076,21 @@ export const PagamentoPecaPage = () => {
               {confirmModal.message}
             </p>
             <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={() =>
                   setConfirmModal((prev) => ({ ...prev, isOpen: false }))
                 }
-                className="px-5 py-2.5 text-neutral-600 font-bold hover:bg-neutral-100 rounded-lg transition-colors"
               >
                 Cancelar
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="danger"
                 onClick={confirmModal.onConfirm}
-                className="px-5 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
+                className="shadow-lg shadow-red-500/30"
               >
                 Confirmar Exclusão
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>

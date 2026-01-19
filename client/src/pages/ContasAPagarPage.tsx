@@ -3,6 +3,9 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { Modal } from "../components/ui/Modal";
+import { ActionButton } from "../components/ui/ActionButton";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/input";
 import {
   Plus,
   Calendar,
@@ -28,22 +31,21 @@ export const ContasAPagarPage = () => {
   // Filters
   const [filterStatus, setFilterStatus] = useState("TODOS"); // TODOS, PENDENTE, PAGO
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState<
+    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
+  >("WEEK");
 
-  // Date Filters - Default to Current Month
-  const date = new Date();
-  const firstDayCurrent = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    1,
-  ).toLocaleDateString("en-CA");
-  const lastDayCurrent = new Date(
-    date.getFullYear(),
-    date.getMonth() + 1,
-    0,
-  ).toLocaleDateString("en-CA");
+  // Date Filters - Default to Current Week
+  const [filterStart, setFilterStart] = useState(() => {
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+    return weekAgo.toLocaleDateString("en-CA");
+  });
 
-  const [filterStart, setFilterStart] = useState(firstDayCurrent);
-  const [filterEnd, setFilterEnd] = useState(lastDayCurrent);
+  const [filterEnd, setFilterEnd] = useState(() => {
+    return new Date().toLocaleDateString("en-CA");
+  });
 
   // Modal & Form
   const [modalOpen, setModalOpen] = useState(false);
@@ -188,6 +190,7 @@ export const ContasAPagarPage = () => {
   };
 
   const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
+    setActiveFilter(type);
     const now = new Date();
     const todayStr = now.toLocaleDateString("en-CA"); // Local YYYY-MM-DD
 
@@ -196,11 +199,9 @@ export const ContasAPagarPage = () => {
       setFilterEnd(todayStr);
     } else if (type === "WEEK") {
       const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
-      const weekEnd = new Date(now);
-      weekEnd.setDate(weekStart.getDate() + 6); // End of week
+      weekStart.setDate(now.getDate() - 7); // Last 7 days
       setFilterStart(weekStart.toLocaleDateString("en-CA"));
-      setFilterEnd(weekEnd.toLocaleDateString("en-CA"));
+      setFilterEnd(todayStr);
     } else if (type === "MONTH") {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -258,7 +259,7 @@ export const ContasAPagarPage = () => {
   ];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="w-full mx-auto px-4 md:px-8 py-6 space-y-6">
       <StatusBanner
         msg={statusMsg}
         onClose={() => setStatusMsg({ type: null, text: "" })}
@@ -266,161 +267,157 @@ export const ContasAPagarPage = () => {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-neutral-600 tracking-tight">
             Contas a Pagar (Geral)
           </h1>
           <p className="text-neutral-500">
             Gerência de despesas operacionais da oficina.
           </p>
         </div>
-        <button
+        <Button
           onClick={openNewModal}
-          className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-transform hover:-translate-y-0.5"
+          variant="primary"
+          icon={Plus}
+          className="text-neutral-200"
         >
-          <Plus size={20} /> Nova Conta
-        </button>
+          Nova Conta
+        </Button>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-red-50 border border-red-100 p-6 rounded-2xl">
-          <p className="text-xs font-black text-red-400 uppercase tracking-widest mb-1">
+          <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">
             Total Pendente
           </p>
-          <p className="text-3xl font-black text-red-600">
+          <p className="text-3xl font-bold text-red-600">
             {formatCurrency(totalPending)}
           </p>
         </div>
         <div className="bg-success-50 border border-success-100 p-6 rounded-2xl">
-          <p className="text-xs font-black text-success-400 uppercase tracking-widest mb-1">
+          <p className="text-xs font-bold text-success-400 uppercase tracking-widest mb-1">
             Pago este Mês
           </p>
-          <p className="text-3xl font-black text-success-600">
+          <p className="text-3xl font-bold text-success-600">
             {formatCurrency(totalPaidMonth)}
           </p>
         </div>
       </div>
 
       {/* FILTERS */}
-      <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col gap-4">
-        <div className="flex flex-col lg:flex-row justify-between items-end gap-4">
-          <div className="flex flex-col md:flex-row gap-4 w-full lg:w-auto">
-            {/* Search */}
-            <div className="relative w-full md:w-64">
-              <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                Buscar
-              </label>
-              <div className="relative">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                  size={16}
-                />
-                <input
-                  className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm focus:border-primary-500 outline-none"
-                  placeholder="Descrição, Credor..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
+      {/* FILTERS & SEARCH */}
+      <div className="bg-surface p-4 rounded-xl shadow-sm border border-neutral-200 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex-1 w-full relative">
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por Descrição, Credor..."
+            icon={Search}
+          />
+        </div>
 
-            {/* Date Inputs */}
-            <div className="flex gap-2">
-              <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                  Venc. De
-                </label>
-                <input
-                  type="date"
-                  value={filterStart}
-                  onChange={(e) => setFilterStart(e.target.value)}
-                  className="px-3 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-xs font-bold text-neutral-600 focus:bg-white outline-none focus:border-primary-500 uppercase h-[42px]"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                  Até
-                </label>
-                <input
-                  type="date"
-                  value={filterEnd}
-                  onChange={(e) => setFilterEnd(e.target.value)}
-                  className="px-3 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-xs font-bold text-neutral-600 focus:bg-white outline-none focus:border-primary-500 uppercase h-[42px]"
-                />
-              </div>
-            </div>
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+          {/* Quick Filters Group */}
+          <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
+            <button
+              onClick={() => applyQuickFilter("TODAY")}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                activeFilter === "TODAY"
+                  ? "bg-primary-200 text-primary-500 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+              }`}
+            >
+              Hoje
+            </button>
+            <button
+              onClick={() => applyQuickFilter("WEEK")}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                activeFilter === "WEEK"
+                  ? "bg-primary-200 text-primary-500 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+              }`}
+            >
+              Semana
+            </button>
+            <button
+              onClick={() => applyQuickFilter("MONTH")}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                activeFilter === "MONTH"
+                  ? "bg-primary-200 text-primary-500 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+              }`}
+            >
+              Mês
+            </button>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-4 w-full lg:w-auto items-end">
-            {/* Quick Filters */}
-            <div>
-              <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block lg:hidden">
-                Período
-              </label>
-              <div className="flex bg-neutral-100 p-1.5 rounded-xl h-[42px] items-center">
-                <button
-                  onClick={() => applyQuickFilter("TODAY")}
-                  className="px-3 py-1 rounded-lg text-[10px] font-black uppercase hover:bg-white hover:shadow-sm text-neutral-500 hover:text-neutral-900 transition-all"
-                >
-                  Hoje
-                </button>
-                <button
-                  onClick={() => applyQuickFilter("WEEK")}
-                  className="px-3 py-1 rounded-lg text-[10px] font-black uppercase hover:bg-white hover:shadow-sm text-neutral-500 hover:text-neutral-900 transition-all"
-                >
-                  Semana
-                </button>
-                <button
-                  onClick={() => applyQuickFilter("MONTH")}
-                  className="px-3 py-1 rounded-lg text-[10px] font-black uppercase hover:bg-white hover:shadow-sm text-neutral-500 hover:text-neutral-900 transition-all"
-                >
-                  Mês
-                </button>
-              </div>
-            </div>
+          {/* Manual Date Inputs */}
+          <div className="flex gap-2 items-center">
+            <input
+              type="date"
+              value={filterStart}
+              onChange={(e) => {
+                setFilterStart(e.target.value);
+                setActiveFilter("CUSTOM");
+              }}
+              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
+                activeFilter === "CUSTOM"
+                  ? "border-primary-300 text-primary-700"
+                  : "border-neutral-200 text-neutral-600"
+              }`}
+            />
+            <span className="text-neutral-400 self-center">-</span>
+            <input
+              type="date"
+              value={filterEnd}
+              onChange={(e) => {
+                setFilterEnd(e.target.value);
+                setActiveFilter("CUSTOM");
+              }}
+              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
+                activeFilter === "CUSTOM"
+                  ? "border-primary-300 text-primary-700"
+                  : "border-neutral-200 text-neutral-600"
+              }`}
+            />
+          </div>
 
-            {/* Status Type */}
-            <div>
-              <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block lg:hidden">
-                Status
-              </label>
-              <div className="flex bg-neutral-100 p-1.5 rounded-xl h-[42px] items-center">
-                {["TODOS", "PENDENTE", "PAGO"].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setFilterStatus(s)}
-                    className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase whitespace-nowrap transition-colors ${filterStatus === s ? "bg-white shadow-sm text-neutral-900" : "text-neutral-400 hover:text-neutral-700"}`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Status Type */}
+          <div className="flex bg-neutral-100 p-1.5 rounded-xl h-[42px] items-center ml-2">
+            {["TODOS", "PENDENTE", "PAGO"].map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilterStatus(s)}
+                className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap transition-colors ${filterStatus === s ? "bg-white shadow-sm text-neutral-900" : "text-neutral-400 hover:text-neutral-700"}`}
+              >
+                {s}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* TABLE */}
-      <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-surface border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
         <table className="w-full text-left border-collapse">
           <thead className="bg-neutral-50 border-b border-neutral-100">
             <tr>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
                 Vencimento
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
                 Descrição
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
                 Credor / Docs
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">
+              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest text-right">
                 Valor
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-center">
+              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest text-center">
                 Status
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">
+              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest text-right">
                 Ações
               </th>
             </tr>
@@ -512,12 +509,12 @@ export const ContasAPagarPage = () => {
                       </a>
                     )}
                   </td>
-                  <td className="p-4 text-right font-black text-neutral-800">
+                  <td className="p-4 text-right font-bold text-neutral-600">
                     {formatCurrency(Number(conta.valor))}
                   </td>
                   <td className="p-4 text-center">
                     <span
-                      className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
+                      className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
                         conta.status === "PAGO"
                           ? "bg-success-100 text-success-700"
                           : // Check overdue
@@ -536,30 +533,27 @@ export const ContasAPagarPage = () => {
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-2 transition-opacity">
                       {conta.status !== "PAGO" && (
-                        <button
+                        <ActionButton
                           onClick={() => handleQuickPay(conta)}
-                          className="p-2 bg-success-50 text-success-600 rounded-lg hover:bg-success-100"
-                          title="Marcar como Pago"
-                        >
-                          <CheckCircle size={16} />
-                        </button>
+                          icon={CheckCircle}
+                          label="Marcar como Pago"
+                          variant="primary" // Changed from bg-success-50 text-success-600 to component variant
+                        />
                       )}
-                      <button
+                      <ActionButton
                         onClick={() => handleEdit(conta)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
-                        title="Editar"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
+                        icon={Edit}
+                        label="Editar"
+                        variant="accent"
+                      />
+                      <ActionButton
                         onClick={() => handleDelete(conta.id_conta_pagar)}
-                        className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
-                        title="Excluir"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                        icon={Trash2}
+                        label="Excluir"
+                        variant="danger"
+                      />
                     </div>
                   </td>
                 </tr>
@@ -579,43 +573,35 @@ export const ContasAPagarPage = () => {
           <form onSubmit={handleSave} className="space-y-6 pt-4">
             {/* 1. Descrição & Credor */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">
-                  Descrição / Título
-                </label>
-                <input
-                  required
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold"
-                  value={formData.descricao}
-                  onChange={(e) =>
-                    setFormData({ ...formData, descricao: e.target.value })
-                  }
-                  placeholder="Ex: Compra Material Limpeza"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">
-                  Credor
-                </label>
-                <input
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold"
-                  value={formData.credor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, credor: e.target.value })
-                  }
-                  placeholder="Ex: Fornecedor X"
-                />
-              </div>
+              <Input
+                label="Descrição / Título"
+                required
+                value={formData.descricao}
+                onChange={(e) =>
+                  setFormData({ ...formData, descricao: e.target.value })
+                }
+                placeholder="Ex: Compra Material Limpeza"
+                className="font-bold text-neutral-600"
+              />
+              <Input
+                label="Credor"
+                value={formData.credor}
+                onChange={(e) =>
+                  setFormData({ ...formData, credor: e.target.value })
+                }
+                placeholder="Ex: Fornecedor X"
+                className="font-bold text-neutral-600"
+              />
             </div>
 
             {/* 2. Categoria & Valor */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">
+                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
                   Categoria
                 </label>
                 <select
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm h-[50px]"
+                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-bold text-sm h-[42px] outline-none bg-white transition-all"
                   value={formData.categoria}
                   onChange={(e) =>
                     setFormData({ ...formData, categoria: e.target.value })
@@ -628,76 +614,60 @@ export const ContasAPagarPage = () => {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">
-                  Valor do Título (R$)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-black text-neutral-800"
-                  value={formData.valor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, valor: e.target.value })
-                  }
-                  placeholder="0.00"
-                />
-              </div>
+              <Input
+                label="Valor do Título (R$)"
+                type="number"
+                step="0.01"
+                required
+                value={formData.valor}
+                onChange={(e) =>
+                  setFormData({ ...formData, valor: e.target.value })
+                }
+                placeholder="0.00"
+                className="font-bold text-neutral-600"
+              />
             </div>
 
             {/* 3. Datas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">
-                  Data de Emissão
-                </label>
-                <input
-                  type="date"
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm"
-                  value={formData.dt_emissao}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dt_emissao: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">
-                  Data de Vencimento
-                </label>
-                <input
-                  type="date"
-                  required
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm"
-                  value={formData.dt_vencimento}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dt_vencimento: e.target.value })
-                  }
-                />
-              </div>
+              <Input
+                label="Data de Emissão"
+                type="date"
+                value={formData.dt_emissao}
+                onChange={(e) =>
+                  setFormData({ ...formData, dt_emissao: e.target.value })
+                }
+                className="font-bold text-neutral-600"
+              />
+              <Input
+                label="Data de Vencimento"
+                type="date"
+                required
+                value={formData.dt_vencimento}
+                onChange={(e) =>
+                  setFormData({ ...formData, dt_vencimento: e.target.value })
+                }
+                className="font-bold text-neutral-600"
+              />
             </div>
 
             {/* 4. Documento & Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Número do Documento"
+                value={formData.num_documento}
+                onChange={(e) =>
+                  setFormData({ ...formData, num_documento: e.target.value })
+                }
+                placeholder="Nota Fiscal / Boleto"
+                className="font-bold text-neutral-600"
+              />
               <div>
-                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">
-                  Número do Documento
-                </label>
-                <input
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold"
-                  value={formData.num_documento}
-                  onChange={(e) =>
-                    setFormData({ ...formData, num_documento: e.target.value })
-                  }
-                  placeholder="Nota Fiscal / Boleto"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">
+                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
                   Status
                 </label>
                 <select
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm h-[50px]"
+                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-bold text-sm h-[42px] outline-none bg-white transition-all"
                   value={formData.status}
                   onChange={(e) =>
                     setFormData({ ...formData, status: e.target.value })
@@ -712,11 +682,11 @@ export const ContasAPagarPage = () => {
             {/* 5. Forma Pagto & Anexos */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">
+                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
                   Forma de Pagamento Prevista
                 </label>
                 <select
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm h-[50px]"
+                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-bold text-sm h-[42px] outline-none bg-white transition-all"
                   value={formData.forma_pagamento}
                   onChange={(e) =>
                     setFormData({
@@ -733,36 +703,24 @@ export const ContasAPagarPage = () => {
                   <option value="CARTAO">Cartão</option>
                 </select>
               </div>
-              <div>
-                <label className="text-xs font-bold text-neutral-500 mb-1 uppercase flex gap-2">
-                  Arquivos / Anexos{" "}
-                  <span className="text-neutral-300 font-normal">
-                    (Link URL por enquanto)
-                  </span>
-                </label>
-                <div className="relative">
-                  <Upload
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                    size={16}
-                  />
-                  <input
-                    className="w-full pl-10 pr-3 py-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm"
-                    value={formData.url_anexo}
-                    onChange={(e) =>
-                      setFormData({ ...formData, url_anexo: e.target.value })
-                    }
-                    placeholder="http://..."
-                  />
-                </div>
-              </div>
+              <Input
+                label="Arquivos / Anexos (URL)"
+                icon={Upload}
+                value={formData.url_anexo}
+                onChange={(e) =>
+                  setFormData({ ...formData, url_anexo: e.target.value })
+                }
+                placeholder="http://..."
+                className="font-bold text-neutral-600"
+              />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">
+              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
                 Observações
               </label>
               <textarea
-                className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-medium text-sm h-20 resize-none"
+                className="w-full px-4 py-3 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-20 resize-none outline-none bg-white transition-all"
                 value={formData.obs}
                 onChange={(e) =>
                   setFormData({ ...formData, obs: e.target.value })
@@ -771,9 +729,14 @@ export const ContasAPagarPage = () => {
               />
             </div>
 
-            <button className="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white font-black uppercase rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 mt-2 flex items-center justify-center gap-2">
-              <CheckCircle size={20} /> Salvar Conta
-            </button>
+            <Button
+              variant="primary"
+              size="blocks"
+              icon={CheckCircle}
+              className="text-neutral-200"
+            >
+              Salvar Conta
+            </Button>
           </form>
         </Modal>
       )}
