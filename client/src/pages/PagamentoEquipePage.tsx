@@ -2,13 +2,13 @@ import { useState, useEffect, useMemo } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import { StatusBanner } from "../components/ui/StatusBanner";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/input";
 import { DollarSign, User, Search, AlertCircle } from "lucide-react";
-
 import { useNavigate } from "react-router-dom";
 
 export const PagamentoEquipePage = () => {
   const navigate = useNavigate();
-  console.log("PagamentoEquipePage mounted");
   // --- STATE ---
   const [selectedFuncId, setSelectedFuncId] = useState("");
   const [activeTab, setActiveTab] = useState<"PENDENTE" | "PAGO">("PENDENTE");
@@ -26,6 +26,10 @@ export const PagamentoEquipePage = () => {
   }>({ type: null, text: "" });
 
   // Filters (History Tab)
+  // Default to "WEEK" logic if desired, or keep generic dates. User asked for "hj, semana e mes" filters.
+  const [activeFilter, setActiveFilter] = useState<
+    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
+  >("WEEK");
   const [filterHistStart, setFilterHistStart] = useState("");
   const [filterHistEnd, setFilterHistEnd] = useState("");
   const [historySearchTerm, setHistorySearchTerm] = useState("");
@@ -33,6 +37,8 @@ export const PagamentoEquipePage = () => {
   // --- EFFECTS ---
   useEffect(() => {
     loadFuncionarios();
+    // Initialize Week Filter
+    applyQuickFilter("WEEK");
   }, []);
 
   useEffect(() => {
@@ -101,6 +107,26 @@ export const PagamentoEquipePage = () => {
     return { porcentagem, valorComissao };
   };
 
+  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
+    setActiveFilter(type);
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("en-CA");
+
+    if (type === "TODAY") {
+      setFilterHistStart(todayStr);
+      setFilterHistEnd(todayStr);
+    } else if (type === "WEEK") {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      setFilterHistStart(weekAgo.toLocaleDateString("en-CA"));
+      setFilterHistEnd(todayStr);
+    } else if (type === "MONTH") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFilterHistStart(firstDay.toLocaleDateString("en-CA"));
+      setFilterHistEnd(todayStr);
+    }
+  };
+
   // --- FILTERS & FLATTENING ---
   const flattenedHistorico = useMemo(() => {
     const flatList: any[] = [];
@@ -166,7 +192,6 @@ export const PagamentoEquipePage = () => {
           )
         : 0;
       const premioVal = Number(h.premio_valor) || 0;
-      // valeVal was unused
 
       // If it is NOT a Vale record, we check for residuals
       if (h.tipo_lancamento !== "VALE") {
@@ -252,6 +277,26 @@ export const PagamentoEquipePage = () => {
     }, 0);
   }, [flattenedHistorico]);
 
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "FINALIZADA":
+        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
+      case "PAGA_CLIENTE":
+        return "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200";
+      case "PRONTO_PARA_FINANCEIRO":
+      case "PRONTO PARA FINANCEIRO":
+        return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
+      case "ABERTA":
+        return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
+      case "EM_ANDAMENTO":
+        return "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200";
+      case "CANCELADA":
+        return "bg-red-100 text-red-700 ring-1 ring-red-200";
+      default:
+        return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <StatusBanner
@@ -262,7 +307,7 @@ export const PagamentoEquipePage = () => {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-neutral-600 tracking-tight">
             Pagamento da Equipe
           </h1>
           <p className="text-neutral-500">
@@ -272,15 +317,15 @@ export const PagamentoEquipePage = () => {
       </div>
 
       {/* SELEÇÃO COLABORADOR */}
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100">
-        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-2">
+      <div className="bg-surface p-6 rounded-xl shadow-sm border border-neutral-200">
+        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-2">
           Selecione o Colaborador
         </label>
         <div className="relative max-w-md">
           <select
             value={selectedFuncId}
             onChange={(e) => setSelectedFuncId(e.target.value)}
-            className="w-full pl-4 pr-10 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-primary-500/20 appearance-none text-neutral-800"
+            className="w-full pl-4 pr-10 py-3 bg-white border border-neutral-200 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-colors text-neutral-600"
           >
             <option value="">Selecione um colaborador...</option>
             {funcionarios.map((f: any) => (
@@ -296,36 +341,45 @@ export const PagamentoEquipePage = () => {
         <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-6">
           {/* ACTION & TABS */}
           <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
-            <div className="flex gap-2 bg-white p-1 rounded-2xl border border-neutral-100 w-fit">
+            <div className="flex bg-neutral-100 p-1 rounded-xl w-fit">
               <button
                 onClick={() => setActiveTab("PENDENTE")}
-                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${activeTab === "PENDENTE" ? "bg-neutral-900 text-white shadow-md" : "text-neutral-500 hover:bg-neutral-50"}`}
+                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                  activeTab === "PENDENTE"
+                    ? "bg-primary-200 text-primary-500 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                }`}
               >
                 Visão Geral / Pendências
               </button>
               <button
                 onClick={() => setActiveTab("PAGO")}
-                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${activeTab === "PAGO" ? "bg-neutral-900 text-white shadow-md" : "text-neutral-500 hover:bg-neutral-50"}`}
+                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                  activeTab === "PAGO"
+                    ? "bg-primary-200 text-primary-500 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                }`}
               >
                 Histórico (Pagos)
               </button>
             </div>
 
-            <button
+            <Button
               onClick={() =>
                 navigate("/pagamento-equipe/novo", {
                   state: { funcionarioId: selectedFuncId },
                 })
               }
-              className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 active:scale-95"
+              variant="primary"
+              className="shadow-lg shadow-primary-500/20"
+              icon={DollarSign}
             >
-              <DollarSign size={18} />
               Novo Lançamento
-            </button>
+            </Button>
           </div>
 
           {/* CONTENT AREA */}
-          <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden min-h-[400px]">
+          <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden min-h-[400px]">
             {/* TAB: PENDENTE */}
             {activeTab === "PENDENTE" && (
               <div className="p-0">
@@ -334,31 +388,31 @@ export const PagamentoEquipePage = () => {
                   <div className="mb-6 border-b border-neutral-100 pb-2">
                     <div className="px-6 py-4 bg-amber-50/50 flex items-center gap-2">
                       <AlertCircle size={16} className="text-amber-500" />
-                      <h3 className="text-xs font-black text-amber-700 uppercase tracking-widest">
+                      <h3 className="text-xs font-bold text-amber-700 uppercase tracking-widest">
                         Adiantamentos (Vales) em Aberto
                       </h3>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left">
-                        <thead className="bg-white text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                        <thead className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
                           <tr>
-                            <th className="px-6 py-2">Data</th>
-                            <th className="px-6 py-2">Descrição</th>
-                            <th className="px-6 py-2 text-right">Valor</th>
+                            <th className="p-4">Data</th>
+                            <th className="p-4">Descrição</th>
+                            <th className="p-4 text-right">Valor</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-neutral-50">
+                        <tbody className="divide-y divide-neutral-100">
                           {valesPendentes.map((vale, idx) => (
                             <tr key={`vale-${idx}`} className="text-sm">
-                              <td className="px-6 py-3">
+                              <td className="px-6 py-3 font-bold text-neutral-600">
                                 {new Date(
                                   vale.dt_pagamento,
                                 ).toLocaleDateString()}
                               </td>
-                              <td className="px-6 py-3 text-neutral-600">
+                              <td className="p-4 px-6 text-neutral-600">
                                 {vale.obs || "Adiantamento (Sem descrição)"}
                               </td>
-                              <td className="px-6 py-3 text-right font-black text-amber-600">
+                              <td className="p-4 px-6 text-right font-bold text-orange-600">
                                 {formatCurrency(Number(vale.valor_total))}
                               </td>
                             </tr>
@@ -370,13 +424,13 @@ export const PagamentoEquipePage = () => {
                 )}
 
                 <div className="px-6 py-4 bg-neutral-50/50 border-b border-neutral-100">
-                  <h3 className="text-xs font-black text-neutral-500 uppercase tracking-widest">
+                  <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
                     Comissões Pendentes
                   </h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
-                    <thead className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                    <thead className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
                       <tr>
                         <th className="p-4">OS / Data</th>
                         <th className="p-4">Veículo / Cliente</th>
@@ -386,7 +440,7 @@ export const PagamentoEquipePage = () => {
                         <th className="p-4 text-center">Status OS</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-50">
+                    <tbody className="divide-y divide-neutral-100">
                       {pendentes.length === 0 ? (
                         <tr>
                           <td
@@ -403,10 +457,10 @@ export const PagamentoEquipePage = () => {
                           return (
                             <tr
                               key={`${item.id_os}-${idx}`}
-                              className="hover:bg-neutral-50 transition-colors"
+                              className="hover:bg-neutral-25 transition-colors"
                             >
                               <td className="p-4">
-                                <div className="font-black text-neutral-800">
+                                <div className="font-bold text-neutral-600">
                                   #{item.id_os}
                                 </div>
                                 <div className="text-[10px] text-neutral-400">
@@ -416,7 +470,7 @@ export const PagamentoEquipePage = () => {
                                 </div>
                               </td>
                               <td className="p-4">
-                                <div className="text-xs font-bold text-neutral-800">
+                                <div className="text-xs font-bold text-neutral-600">
                                   {item.ordem_de_servico?.veiculo?.modelo}
                                   {item.ordem_de_servico?.veiculo?.cor && (
                                     <span className="text-neutral-500 font-normal ml-1">
@@ -424,7 +478,7 @@ export const PagamentoEquipePage = () => {
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mt-0.5">
+                                <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mt-0.5">
                                   {item.ordem_de_servico?.veiculo?.placa}
                                 </div>
                                 <div className="text-[10px] text-neutral-400 mt-0.5">
@@ -445,35 +499,24 @@ export const PagamentoEquipePage = () => {
                                 </span>
                               </td>
                               <td className="p-4 text-right">
-                                <span className="font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                                <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
                                   {formatCurrency(valorComissao)}
                                 </span>
                               </td>
                               <td className="p-4 text-center">
                                 <span
-                                  className={`px-2 py-1 rounded-md text-[10px] font-black uppercase border ${
-                                    item.ordem_de_servico?.status === "ABERTA"
-                                      ? "bg-blue-50 text-blue-600 border-blue-100"
-                                      : item.ordem_de_servico?.status ===
-                                          "FINALIZADA"
-                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                        : item.ordem_de_servico?.status ===
-                                            "CANCELADA"
-                                          ? "bg-red-50 text-red-600 border-red-100"
-                                          : item.ordem_de_servico?.status ===
-                                              "PRONTO_PARA_FINANCEIRO"
-                                            ? "bg-violet-50 text-violet-600 border-violet-100"
-                                            : item.ordem_de_servico?.status ===
-                                                "PAGA_CLIENTE"
-                                              ? "bg-cyan-50 text-cyan-600 border-cyan-100"
-                                              : "bg-gray-50 text-gray-600 border-gray-100"
-                                  }`}
+                                  className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(item.ordem_de_servico?.status || "")}`}
                                 >
                                   {item.ordem_de_servico?.status
-                                    ? item.ordem_de_servico.status.replace(
-                                        /_/g,
-                                        " ",
-                                      )
+                                    ? item.ordem_de_servico.status ===
+                                        "PRONTO_PARA_FINANCEIRO" ||
+                                      item.ordem_de_servico.status ===
+                                        "PRONTO PARA FINANCEIRO"
+                                      ? "FINANCEIRO"
+                                      : item.ordem_de_servico.status.replace(
+                                          /_/g,
+                                          " ",
+                                        )
                                     : "N/A"}
                                 </span>
                               </td>
@@ -491,59 +534,96 @@ export const PagamentoEquipePage = () => {
             {activeTab === "PAGO" && (
               <div>
                 {/* FILTROS E BUSCA */}
-                <div className="p-4 border-b border-neutral-100 flex flex-col md:flex-row gap-4 items-end bg-neutral-50/50">
-                  <div className="flex gap-4 w-full md:w-auto">
-                    <div>
-                      <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">
-                        De
-                      </label>
+                <div className="bg-surface p-4 rounded-xl shadow-sm border border-neutral-200 flex flex-col md:flex-row items-center justify-between gap-4 m-4">
+                  <div className="flex-1 w-full relative">
+                    <Input
+                      placeholder="Buscar por OS, Placa, Cliente..."
+                      value={historySearchTerm}
+                      onChange={(e) => setHistorySearchTerm(e.target.value)}
+                      icon={Search}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+                    {/* Quick Filters Group */}
+                    <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
+                      <button
+                        onClick={() => applyQuickFilter("TODAY")}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                          activeFilter === "TODAY"
+                            ? "bg-primary-200 text-primary-500 shadow-sm"
+                            : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                        }`}
+                      >
+                        Hoje
+                      </button>
+                      <button
+                        onClick={() => applyQuickFilter("WEEK")}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                          activeFilter === "WEEK"
+                            ? "bg-primary-200 text-primary-500 shadow-sm"
+                            : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                        }`}
+                      >
+                        Semana
+                      </button>
+                      <button
+                        onClick={() => applyQuickFilter("MONTH")}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                          activeFilter === "MONTH"
+                            ? "bg-primary-200 text-primary-500 shadow-sm"
+                            : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                        }`}
+                      >
+                        Mês
+                      </button>
+                    </div>
+
+                    {/* Manual Date Inputs */}
+                    <div className="flex gap-2 items-center">
                       <input
                         type="date"
                         value={filterHistStart}
-                        onChange={(e) => setFilterHistStart(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-xs font-bold outline-none"
+                        onChange={(e) => {
+                          setFilterHistStart(e.target.value);
+                          setActiveFilter("CUSTOM");
+                        }}
+                        className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
+                          activeFilter === "CUSTOM"
+                            ? "border-primary-300 text-primary-700"
+                            : "border-neutral-200 text-neutral-600"
+                        }`}
                       />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">
-                        Até
-                      </label>
+                      <span className="text-neutral-400 self-center">-</span>
                       <input
                         type="date"
                         value={filterHistEnd}
-                        onChange={(e) => setFilterHistEnd(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-xs font-bold outline-none"
+                        onChange={(e) => {
+                          setFilterHistEnd(e.target.value);
+                          setActiveFilter("CUSTOM");
+                        }}
+                        className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
+                          activeFilter === "CUSTOM"
+                            ? "border-primary-300 text-primary-700"
+                            : "border-neutral-200 text-neutral-600"
+                        }`}
                       />
                     </div>
-                  </div>
 
-                  <div className="w-full relative">
-                    <Search
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Buscar por OS, Placa, Cliente, Veículo..."
-                      value={historySearchTerm}
-                      onChange={(e) => setHistorySearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-white border border-neutral-200 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-primary-500/20"
-                    />
-                  </div>
-
-                  <div className="ml-auto flex flex-col items-end min-w-max">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400">
-                      Total Pago no Período
-                    </span>
-                    <span className="text-lg font-black text-neutral-900">
-                      {formatCurrency(totalHistorico)}
-                    </span>
+                    <div className="flex flex-col items-end min-w-max ml-4 px-4 border-l border-neutral-200">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                        Total Pago
+                      </span>
+                      <span className="text-lg font-bold text-neutral-600">
+                        {formatCurrency(totalHistorico)}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
-                    <thead className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                    <thead className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
                       <tr>
                         <th className="p-4">Data Pagto</th>
                         <th className="p-4">Tipo</th>
@@ -553,7 +633,7 @@ export const PagamentoEquipePage = () => {
                         <th className="p-4 text-right">Valor Pago</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-50">
+                    <tbody className="divide-y divide-neutral-100">
                       {flattenedHistorico.length === 0 ? (
                         <tr>
                           <td
@@ -574,7 +654,7 @@ export const PagamentoEquipePage = () => {
                             </td>
                             <td className="p-4">
                               <span
-                                className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider ${
+                                className={`px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider ${
                                   item.type === "COMISSAO"
                                     ? "bg-emerald-50 text-emerald-600"
                                     : item.type === "VALE"
@@ -588,7 +668,7 @@ export const PagamentoEquipePage = () => {
                             <td className="p-4">
                               {item.type === "COMISSAO" ? (
                                 <div className="flex flex-col gap-1">
-                                  <span className="font-black text-neutral-800">
+                                  <span className="font-bold text-neutral-600">
                                     OS #{item.os.id_os}
                                   </span>
                                   {(item.os.defeito_relatado ||
@@ -622,7 +702,7 @@ export const PagamentoEquipePage = () => {
                             <td className="p-4">
                               {item.type === "COMISSAO" ? (
                                 <div className="text-xs">
-                                  <div className="font-bold text-neutral-800">
+                                  <div className="font-bold text-neutral-600">
                                     {item.os.veiculo?.modelo}
                                   </div>
                                   <div className="text-[10px] text-neutral-500">
@@ -636,7 +716,7 @@ export const PagamentoEquipePage = () => {
                             </td>
                             <td className="p-4">
                               {item.type === "COMISSAO" ? (
-                                <div className="text-xs font-medium text-neutral-700">
+                                <div className="text-xs font-medium text-neutral-600">
                                   {item.os.cliente?.pessoa_fisica?.pessoa
                                     ?.nome ||
                                     item.os.cliente?.pessoa_juridica
@@ -647,7 +727,7 @@ export const PagamentoEquipePage = () => {
                               )}
                             </td>
                             <td className="p-4 text-right">
-                              <div className="font-black text-neutral-800 text-xs">
+                              <div className="font-bold text-neutral-600 text-xs">
                                 {formatCurrency(
                                   item.type === "COMISSAO"
                                     ? item.commissionValue
@@ -672,11 +752,11 @@ export const PagamentoEquipePage = () => {
         </div>
       ) : (
         // EMPTY STATE
-        <div className="bg-white rounded-3xl border border-dashed border-neutral-300 p-12 flex flex-col items-center justify-center text-center mt-6">
+        <div className="bg-surface rounded-xl border border-dashed border-neutral-200 p-12 flex flex-col items-center justify-center text-center mt-6">
           <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 mb-4">
             <User size={32} />
           </div>
-          <h3 className="font-black text-lg text-neutral-800">
+          <h3 className="font-bold text-lg text-neutral-600">
             Nenhum Colaborador Selecionado
           </h3>
           <p className="text-neutral-500 max-w-sm mt-2">

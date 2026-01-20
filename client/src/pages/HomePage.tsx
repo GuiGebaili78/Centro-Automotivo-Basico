@@ -202,7 +202,7 @@ export function HomePage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-neutral-600 tracking-tight">
             Visão Geral
           </h1>
           <p className="text-neutral-500">Acompanhamento diário da oficina.</p>

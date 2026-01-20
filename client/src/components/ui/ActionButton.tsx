@@ -6,6 +6,7 @@ interface ActionButtonProps {
   label: string;
   onClick: (e: React.MouseEvent) => void;
   variant?: "primary" | "danger" | "accent" | "neutral";
+  className?: string;
 }
 
 export const ActionButton = ({
@@ -13,6 +14,7 @@ export const ActionButton = ({
   label,
   onClick,
   variant = "neutral",
+  className = "",
 }: ActionButtonProps) => {
   const variants = {
     primary: "text-primary-600 hover:bg-primary-50 hover:text-primary-700",
@@ -22,7 +24,9 @@ export const ActionButton = ({
   };
 
   return (
-    <div className="group/action relative inline-flex items-center justify-center">
+    <div
+      className={`group/action relative inline-flex items-center justify-center ${className}`}
+    >
       <button
         type="button"
         onClick={(e) => {

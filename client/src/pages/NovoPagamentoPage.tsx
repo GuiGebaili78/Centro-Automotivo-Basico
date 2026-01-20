@@ -13,6 +13,8 @@ import {
   Square,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/Button";
 
 export const NovoPagamentoPage = () => {
   const navigate = useNavigate();
@@ -56,6 +58,8 @@ export const NovoPagamentoPage = () => {
     type: "success" | "error" | null;
     text: string;
   }>({ type: null, text: "" });
+
+  const [isLoading, setIsLoading] = useState(false);
 
   // --- EFFECTS ---
   useEffect(() => {
@@ -208,6 +212,7 @@ export const NovoPagamentoPage = () => {
     if (!selectedFuncionarioId) return;
 
     try {
+      setIsLoading(true);
       if (mode === "ADIANTAMENTO") {
         // Post ADIANTAMENTO (Vale)
         await api.post("/pagamento-equipe", {
@@ -247,6 +252,8 @@ export const NovoPagamentoPage = () => {
       setTimeout(() => navigate("/pagamento-equipe"), 1500);
     } catch (error) {
       setStatusMsg({ type: "error", text: "Erro ao processar lançamento." });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -274,7 +281,7 @@ export const NovoPagamentoPage = () => {
       <div className="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100 grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* 1. SELEÇÃO DE COLABORADOR */}
         <div className="md:col-span-1">
-          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-2">
+          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-2">
             Colaborador
           </label>
           <div className="relative">
@@ -285,7 +292,7 @@ export const NovoPagamentoPage = () => {
             <select
               value={selectedFuncionarioId}
               onChange={(e) => setSelectedFuncionarioId(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-primary-500/20 appearance-none text-neutral-700"
+              className="w-full pl-10 pr-4 py-3 bg-white border border-neutral-200 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-colors text-neutral-600 appearance-none"
             >
               <option value="">Selecione...</option>
               {funcionarios.map((f: any) => (
@@ -299,26 +306,26 @@ export const NovoPagamentoPage = () => {
 
         {/* 2. TIPO DE LANÇAMENTO (MODE) */}
         <div className="md:col-span-2">
-          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-2">
+          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-2">
             Modo de Lançamento
           </label>
-          <div className="flex gap-2 p-1 bg-neutral-50 rounded-xl border border-neutral-200 w-fit">
+          <div className="flex bg-neutral-100 p-1 rounded-xl w-fit">
             <button
               onClick={() => setMode("PAGAMENTO")}
-              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                 mode === "PAGAMENTO"
-                  ? "bg-neutral-900 text-white shadow"
-                  : "text-neutral-500 hover:bg-white"
+                  ? "bg-primary-200 text-primary-500 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
               }`}
             >
               Pagamento (Salário/Comissões)
             </button>
             <button
               onClick={() => setMode("ADIANTAMENTO")}
-              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                 mode === "ADIANTAMENTO"
-                  ? "bg-amber-500 text-white shadow"
-                  : "text-neutral-500 hover:bg-white"
+                  ? "bg-primary-200 text-primary-500 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
               }`}
             >
               Adiantamento (Novo Vale)
@@ -333,7 +340,7 @@ export const NovoPagamentoPage = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* CARD COMISSÕES (Only in PAGAMENTO mode) */}
             {mode === "PAGAMENTO" && (
-              <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
+              <div className="bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden">
                 <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
                   <h3 className="font-black text-neutral-700 flex items-center gap-2">
                     <Calculator size={18} className="text-primary-500" />{" "}
@@ -366,25 +373,25 @@ export const NovoPagamentoPage = () => {
 
                 <div className="grid grid-cols-2 gap-4 p-4 border-b border-neutral-100 bg-white">
                   <div>
-                    <label className="text-[9px] font-black text-neutral-400 uppercase tracking-widest block mb-1">
+                    <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                       De
                     </label>
-                    <input
+                    <Input
                       type="date"
                       value={filterStart}
                       onChange={(e) => setFilterStart(e.target.value)}
-                      className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-bold outline-none"
+                      className="bg-neutral-50 border-neutral-200 text-xs font-bold"
                     />
                   </div>
                   <div>
-                    <label className="text-[9px] font-black text-neutral-400 uppercase tracking-widest block mb-1">
+                    <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                       Até
                     </label>
-                    <input
+                    <Input
                       type="date"
                       value={filterEnd}
                       onChange={(e) => setFilterEnd(e.target.value)}
-                      className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-bold outline-none"
+                      className="bg-neutral-50 border-neutral-200 text-xs font-bold"
                     />
                   </div>
                 </div>
@@ -531,10 +538,10 @@ export const NovoPagamentoPage = () => {
             )}
 
             {/* CARD ADIANTAMENTOS PENDENTES (Histórico) */}
-            <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
-              <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
-                <h3 className="font-black text-amber-800 flex items-center gap-2">
-                  <DollarSign size={18} className="text-amber-600" />
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden">
+              <div className="p-4 bg-orange-50 border-b border-orange-100 flex items-center justify-between">
+                <h3 className="font-bold text-orange-800 flex items-center gap-2">
+                  <DollarSign size={18} className="text-orange-600" />
                   {mode === "PAGAMENTO"
                     ? "Descontar Adiantamentos Pendentes"
                     : "Histórico de Adiantamentos Pendentes"}
@@ -614,10 +621,10 @@ export const NovoPagamentoPage = () => {
               </div>
               {valesPendentes.length > 0 && mode === "PAGAMENTO" && (
                 <div className="p-3 bg-neutral-50 border-t border-neutral-100 text-right">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-orange-700">
                     Total a Descontar:{" "}
                   </span>
-                  <span className="text-sm font-black text-red-600">
+                  <span className="text-sm font-bold text-red-600">
                     {formatCurrency(totalDescontos)}
                   </span>
                 </div>
@@ -628,8 +635,8 @@ export const NovoPagamentoPage = () => {
           {/* RIGHT COLUMN: SUMMARY & ACTIONS */}
           <div className="lg:col-span-1 space-y-6">
             {/* CARD FORMULÁRIO (Context Sensitive) */}
-            <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 p-6 space-y-4">
-              <h3 className="font-black text-neutral-900 text-lg">Detalhes</h3>
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-100 p-6 space-y-4">
+              <h3 className="font-bold text-neutral-900 text-lg">Detalhes</h3>
 
               {mode === "PAGAMENTO" ? (
                 <>
@@ -650,36 +657,33 @@ export const NovoPagamentoPage = () => {
                         Incluir Pagamento de Contrato?
                       </label>
                     </div>
-                    <input
+                    <Input
                       type="number"
                       disabled={!includeSalary}
                       value={valorSalario}
                       onChange={(e) => setValorSalario(e.target.value)}
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:bg-neutral-100"
                       placeholder="0.00"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                       Prêmios / Extras (R$)
                     </label>
-                    <input
+                    <Input
                       type="number"
                       value={valorPremio}
                       onChange={(e) => setValorPremio(e.target.value)}
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold outline-none focus:ring-2 focus:ring-primary-500/20"
                       placeholder="0.00"
                     />
                   </div>
                   {valorPremio && (
                     <div>
-                      <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                         Motivo do Prêmio
                       </label>
-                      <input
+                      <Input
                         value={obsExtra}
                         onChange={(e) => setObsExtra(e.target.value)}
-                        className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-xs outline-none"
                         placeholder="Ex: Meta Batida"
                       />
                     </div>
@@ -689,40 +693,39 @@ export const NovoPagamentoPage = () => {
                 <>
                   {/* ADIANTAMENTO MODE INPUTS */}
                   <div>
-                    <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                       Valor do Novo Adiantamento (R$)
                     </label>
-                    <input
+                    <Input
                       type="number"
                       value={valorAdiantamento}
                       onChange={(e) => setValorAdiantamento(e.target.value)}
-                      className="w-full px-4 py-3 bg-neutral-50 border-amber-200 border rounded-xl font-bold outline-none focus:ring-2 focus:ring-amber-500/20 text-amber-900"
                       placeholder="0.00"
                       autoFocus
+                      className="border-orange-200 focus:border-orange-500 focus:ring-orange-500/20"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                       Data do Lançamento
                     </label>
-                    <input
+                    <Input
                       type="date"
                       value={dataAdiantamento}
                       onChange={(e) => setDataAdiantamento(e.target.value)}
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold outline-none"
                     />
                   </div>
                 </>
               )}
 
               <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                   Forma Pagto
                 </label>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm outline-none"
+                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-colors"
                 >
                   <option value="DINHEIRO">Dinheiro</option>
                   <option value="PIX">Pix</option>
@@ -731,13 +734,13 @@ export const NovoPagamentoPage = () => {
               </div>
 
               <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block mb-1">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                   Obs Geral
                 </label>
                 <textarea
                   value={obsPagamento}
                   onChange={(e) => setObsPagamento(e.target.value)}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-xs outline-none"
+                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg font-bold text-xs outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all resize-none"
                   rows={2}
                 />
               </div>
@@ -745,7 +748,7 @@ export const NovoPagamentoPage = () => {
 
             {/* TOTAL FINAL CARD (Only in PAGAMENTO mode, or just Button in Adiantamento) */}
             {mode === "PAGAMENTO" ? (
-              <div className="bg-neutral-900 text-white rounded-3xl shadow-xl shadow-neutral-900/10 p-6 space-y-4">
+              <div className="bg-neutral-900 text-white rounded-xl shadow-xl shadow-neutral-900/10 p-6 space-y-4">
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-neutral-400">
                     <span>(+) Pagamento</span>
@@ -777,7 +780,7 @@ export const NovoPagamentoPage = () => {
                   </div>
 
                   <div className="border-t border-neutral-800 my-2 pt-3 flex justify-between items-end">
-                    <span className="font-black uppercase tracking-widest text-xs text-white">
+                    <span className="font-bold uppercase tracking-widest text-xs text-white">
                       Total a Pagar
                     </span>
                     <span className="font-black text-3xl">
@@ -786,29 +789,32 @@ export const NovoPagamentoPage = () => {
                   </div>
                 </div>
 
-                <button
+                <Button
                   onClick={handlePay}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="success"
+                  className="w-full py-4 rounded-xl font-bold uppercase tracking-widest text-sm"
+                  disabled={isLoading}
                 >
                   Confirmar Pagamento
-                </button>
+                </Button>
               </div>
             ) : (
-              <div className="bg-amber-500 text-white rounded-3xl shadow-xl shadow-amber-900/10 p-6 space-y-4">
+              <div className="bg-orange-500 text-white rounded-xl shadow-xl shadow-orange-900/10 p-6 space-y-4">
                 <div className="flex justify-between items-end border-b border-white/20 pb-4">
-                  <span className="font-black uppercase tracking-widest text-xs text-amber-100">
+                  <span className="font-bold uppercase tracking-widest text-xs text-orange-100">
                     Valor Adiantamento
                   </span>
                   <span className="font-black text-3xl">
                     {formatCurrency(Number(valorAdiantamento))}
                   </span>
                 </div>
-                <button
+                <Button
                   onClick={handlePay}
-                  className="w-full bg-white text-amber-600 hover:bg-amber-50 py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all active:scale-95"
+                  className="w-full bg-white text-orange-600 hover:bg-orange-50 border-transparent py-4 rounded-xl font-bold uppercase tracking-widest text-sm"
+                  disabled={isLoading}
                 >
                   Confirmar Lançamento
-                </button>
+                </Button>
               </div>
             )}
           </div>

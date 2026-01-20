@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import type { IRecebivelCartao } from "../../types/backend";
 import { StatusBanner } from "../ui/StatusBanner";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/input";
 
 export const RecebiveisTab = () => {
   const [recebiveis, setRecebiveis] = useState<IRecebivelCartao[]>([]);
@@ -219,6 +221,24 @@ export const RecebiveisTab = () => {
   ).length;
   const countTotal = originalData.length;
 
+  const getStatusButtonClass = (
+    isActive: boolean,
+    type: "PENDENTE" | "RECEBIDO" | "ALL",
+  ) => {
+    let colorClass = "text-neutral-500 hover:bg-white/50";
+    if (isActive) {
+      if (type === "PENDENTE")
+        colorClass =
+          "bg-primary-500 text-neutral-25 shadow-md shadow-primary-500/20 scale-105";
+      if (type === "RECEBIDO")
+        colorClass =
+          "bg-emerald-500 text-neutral-25 shadow-md shadow-emerald-500/20 scale-105";
+      if (type === "ALL")
+        colorClass = "bg-neutral-800 text-neutral-25 shadow-md scale-105";
+    }
+    return `flex flex-col items-center justify-center px-6 py-2.5 rounded-lg transition-all duration-300 ${colorClass}`;
+  };
+
   return (
     <div className="p-6 space-y-6">
       <StatusBanner
@@ -229,7 +249,7 @@ export const RecebiveisTab = () => {
       {/* HEADER AREA */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
-          <h2 className="text-2xl font-black text-neutral-800 tracking-tight">
+          <h2 className="text-2xl font-bold text-neutral-800 tracking-tight">
             Conciliação de Cartões
           </h2>
           <p className="text-neutral-500 font-medium text-sm">
@@ -238,45 +258,51 @@ export const RecebiveisTab = () => {
         </div>
 
         {/* Status Selection Cards */}
-        <div className="flex gap-2 bg-neutral-100 p-1.5 rounded-2xl border border-neutral-200 shadow-inner">
+        <div className="flex gap-2 bg-neutral-100 p-1.5 rounded-xl border border-neutral-200 shadow-inner">
           <button
             onClick={() => setFilterStatus("PENDENTE")}
-            className={`flex flex-col items-center justify-center px-6 py-2.5 rounded-xl transition-all duration-300 ${filterStatus === "PENDENTE" ? "bg-white text-blue-600 shadow-md scale-105" : "text-neutral-500 hover:bg-white/50"}`}
+            className={getStatusButtonClass(
+              filterStatus === "PENDENTE",
+              "PENDENTE",
+            )}
           >
             <Clock size={18} className="mb-1" />
-            <span className="text-[10px] font-black uppercase tracking-widest">
+            <span className="text-[10px] font-bold uppercase tracking-widest">
               Pendentes
             </span>
             <span
-              className={`mt-1 text-xs font-black ${filterStatus === "PENDENTE" ? "text-blue-600" : "text-neutral-400"}`}
+              className={`mt-1 text-xs font-black ${filterStatus === "PENDENTE" ? "text-neutral-25" : "text-neutral-400"}`}
             >
               {countPendente}
             </span>
           </button>
           <button
             onClick={() => setFilterStatus("RECEBIDO")}
-            className={`flex flex-col items-center justify-center px-6 py-2.5 rounded-xl transition-all duration-300 ${filterStatus === "RECEBIDO" ? "bg-white text-emerald-600 shadow-md scale-105" : "text-neutral-500 hover:bg-white/50"}`}
+            className={getStatusButtonClass(
+              filterStatus === "RECEBIDO",
+              "RECEBIDO",
+            )}
           >
             <CheckCircle size={18} className="mb-1" />
-            <span className="text-[10px] font-black uppercase tracking-widest">
+            <span className="text-[10px] font-bold uppercase tracking-widest">
               Recebidos
             </span>
             <span
-              className={`mt-1 text-xs font-black ${filterStatus === "RECEBIDO" ? "text-emerald-600" : "text-neutral-400"}`}
+              className={`mt-1 text-xs font-black ${filterStatus === "RECEBIDO" ? "text-neutral-25" : "text-neutral-400"}`}
             >
               {countRecebido}
             </span>
           </button>
           <button
             onClick={() => setFilterStatus("ALL")}
-            className={`flex flex-col items-center justify-center px-6 py-2.5 rounded-xl transition-all duration-300 ${filterStatus === "ALL" ? "bg-white text-neutral-800 shadow-md scale-105" : "text-neutral-500 hover:bg-white/50"}`}
+            className={getStatusButtonClass(filterStatus === "ALL", "ALL")}
           >
             <History size={18} className="mb-1" />
-            <span className="text-[10px] font-black uppercase tracking-widest">
+            <span className="text-[10px] font-bold uppercase tracking-widest">
               Todos
             </span>
             <span
-              className={`mt-1 text-xs font-black ${filterStatus === "ALL" ? "text-neutral-800" : "text-neutral-400"}`}
+              className={`mt-1 text-xs font-black ${filterStatus === "ALL" ? "text-neutral-25" : "text-neutral-400"}`}
             >
               {countTotal}
             </span>
@@ -285,54 +311,50 @@ export const RecebiveisTab = () => {
       </div>
 
       {/* FILTERS CONTAINER */}
-      <div className="bg-white p-5 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+      <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-end">
           {/* Search Field */}
-          <div className="xl:col-span-4 space-y-2">
-            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">
-              Filtro Rápido (Placa, OS, Operadora...)
-            </label>
-            <div className="relative group">
-              <Search
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-blue-500 transition-colors"
-                size={20}
-              />
-              <input
-                type="text"
-                placeholder="Busca inteligente..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-neutral-50 border border-neutral-200 p-3.5 pl-12 rounded-2xl font-bold text-sm outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all"
-              />
-            </div>
+          <div className="xl:col-span-4">
+            <Input
+              label="Filtro Rápido (Placa, OS, Operadora...)"
+              icon={Search}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Busca inteligente..."
+            />
           </div>
 
           {/* Operadora Select */}
-          <div className="xl:col-span-3 space-y-2">
-            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">
+          <div className="xl:col-span-3 space-y-1.5">
+            <label className="text-sm font-semibold text-neutral-700 ml-1">
               Operadora
             </label>
-            <select
-              value={selectedOperadoraId}
-              onChange={(e) =>
-                setSelectedOperadoraId(
-                  e.target.value === "ALL" ? "ALL" : Number(e.target.value),
-                )
-              }
-              className="w-full bg-neutral-50 border border-neutral-200 p-3.5 rounded-2xl font-bold text-sm outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all cursor-pointer"
-            >
-              <option value="ALL">Todas as Operadoras</option>
-              {operadoras.map((op) => (
-                <option key={op.id_operadora} value={op.id_operadora}>
-                  {op.nome}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedOperadoraId}
+                onChange={(e) =>
+                  setSelectedOperadoraId(
+                    e.target.value === "ALL" ? "ALL" : Number(e.target.value),
+                  )
+                }
+                className="w-full bg-neutral-50 border border-neutral-200 px-4 py-[11px] rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
+              >
+                <option value="ALL">Todas as Operadoras</option>
+                {operadoras.map((op) => (
+                  <option key={op.id_operadora} value={op.id_operadora}>
+                    {op.nome}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                {/* Could add an arrow icon here if needed */}
+              </div>
+            </div>
           </div>
 
           {/* Date Range Fields */}
           <div className="xl:col-span-3">
-            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1 mb-2 block">
+            <label className="text-sm font-semibold text-neutral-700 ml-1 mb-1.5 block">
               Período Customizado
             </label>
             <div className="flex gap-2">
@@ -341,7 +363,7 @@ export const RecebiveisTab = () => {
                   type="date"
                   value={dateRange.start}
                   onChange={(e) => handleDateChange("start", e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-[11px] outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner uppercase"
+                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-xl font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all shadow-inner uppercase"
                 />
               </div>
               <div className="flex-1 relative">
@@ -349,7 +371,7 @@ export const RecebiveisTab = () => {
                   type="date"
                   value={dateRange.end}
                   onChange={(e) => handleDateChange("end", e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-[11px] outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner uppercase"
+                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-xl font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all shadow-inner uppercase"
                 />
               </div>
             </div>
@@ -357,12 +379,14 @@ export const RecebiveisTab = () => {
 
           {/* Clear Button */}
           <div className="xl:col-span-2">
-            <button
+            <Button
+              variant="danger"
               onClick={clearFilters}
-              className="w-full h-[52px] bg-red-50 text-red-600 border border-red-100 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"
+              className="w-full h-[46px]"
+              icon={FilterX}
             >
-              <FilterX size={18} /> Limpar Filtro
-            </button>
+              Limpar Filtro
+            </Button>
           </div>
         </div>
 
@@ -379,12 +403,12 @@ export const RecebiveisTab = () => {
             <button
               key={card.label}
               onClick={() => setPresetRange(card.days)}
-              className="bg-white border border-neutral-200 px-5 py-3 rounded-2xl shadow-sm hover:border-blue-400 hover:bg-blue-50 transition-all flex flex-col items-center group min-w-[100px]"
+              className="bg-white border border-neutral-200 px-5 py-3 rounded-xl shadow-sm hover:border-primary-400 hover:bg-primary-50 transition-all flex flex-col items-center group min-w-[100px]"
             >
-              <span className="text-[9px] font-black text-neutral-400 uppercase tracking-widest group-hover:text-blue-500">
+              <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest group-hover:text-primary-500">
                 Próximos
               </span>
-              <span className="text-sm font-black text-neutral-700 group-hover:text-blue-700">
+              <span className="text-sm font-bold text-neutral-700 group-hover:text-primary-700">
                 {card.label}
               </span>
             </button>
@@ -395,18 +419,18 @@ export const RecebiveisTab = () => {
       {/* VALUE SUMMARY & ACTIONS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* PREVISÃO NO PERÍODO - DYNAMIC */}
-        <div className="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl relative overflow-hidden group">
+        <div className="bg-neutral-800 p-6 rounded-xl border border-neutral-800 shadow-xl relative overflow-hidden group">
           {/* Background Glow */}
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all"></div>
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl group-hover:bg-primary-500/20 transition-all"></div>
 
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
-              <AlertCircle size={14} className="text-blue-400" />
-              <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+              <AlertCircle size={14} className="text-primary-400" />
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
                 Previsão no Período (Filtrado)
               </p>
             </div>
-            <p className="text-3xl font-black text-white tracking-tighter">
+            <p className="text-3xl font-black text-neutral-25 tracking-tighter">
               {formatCurrency(totalPrevisto)}
             </p>
             <p className="text-[10px] text-neutral-500 mt-2 font-bold uppercase tracking-wider italic">
@@ -417,39 +441,41 @@ export const RecebiveisTab = () => {
 
         {/* ACTION BOX (IF SELECTED) */}
         {selectedIds.length > 0 && (
-          <div className="lg:col-span-2 bg-blue-600 p-6 rounded-3xl border border-blue-500 shadow-xl shadow-blue-200 flex flex-col md:flex-row items-center justify-between gap-4 animate-in zoom-in-95 duration-300">
+          <div className="lg:col-span-2 bg-primary-600 p-6 rounded-xl border border-primary-500 shadow-xl shadow-primary-200 flex flex-col md:flex-row items-center justify-between gap-4 animate-in zoom-in-95 duration-300">
             <div className="flex items-center gap-4">
-              <div className="bg-white/20 p-3 rounded-2xl">
-                <CheckCircle size={28} className="text-white" />
+              <div className="bg-white/20 p-3 rounded-lg">
+                <CheckCircle size={28} className="text-neutral-25" />
               </div>
               <div>
-                <p className="text-[10px] font-black text-blue-100 uppercase tracking-widest">
+                <p className="text-[10px] font-bold text-primary-100 uppercase tracking-widest">
                   Confirmar Depósito
                 </p>
-                <p className="text-3xl font-black text-white tracking-tighter">
+                <p className="text-3xl font-black text-neutral-25 tracking-tighter">
                   {formatCurrency(totalSelected)}
                 </p>
-                <p className="text-xs font-bold text-blue-100 mt-1">
+                <p className="text-xs font-bold text-primary-100 mt-1">
                   {selectedIds.length} transações selecionadas
                 </p>
               </div>
             </div>
-            <button
+            <Button
               onClick={handleConciliar}
-              className="w-full md:w-auto bg-white text-blue-700 px-10 py-4 rounded-2xl font-black uppercase text-sm shadow-2xl hover:bg-neutral-50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+              className="w-full md:w-auto text-primary-700 bg-white hover:bg-neutral-50 shadow-lg border-none!"
+              icon={Calendar}
+              size="lg"
             >
-              <Calendar size={20} /> Dar Baixa no Banco
-            </button>
+              Dar Baixa no Banco
+            </Button>
           </div>
         )}
       </div>
 
       {/* TABLE CONTAINER */}
-      <div className="bg-white rounded-3xl shadow-sm border border-neutral-200 overflow-hidden">
+      <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+              <tr className="bg-neutral-50 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
                 <th className="p-5 w-14 text-center">
                   <input
                     type="checkbox"
@@ -458,7 +484,7 @@ export const RecebiveisTab = () => {
                       recebiveis.length > 0 &&
                       selectedIds.length === recebiveis.length
                     }
-                    className="w-5 h-5 rounded-lg border-neutral-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    className="w-5 h-5 rounded-lg border-neutral-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
                   />
                 </th>
                 <th className="p-5">Previsão</th>
@@ -480,7 +506,7 @@ export const RecebiveisTab = () => {
                   <td colSpan={10} className="p-20 text-center">
                     <div className="flex flex-col items-center opacity-30">
                       <Search size={48} className="mb-4" />
-                      <p className="text-lg font-black text-neutral-500">
+                      <p className="text-lg font-bold text-neutral-500">
                         Nenhum recebível encontrado
                       </p>
                       <p className="text-sm font-medium">
@@ -493,7 +519,7 @@ export const RecebiveisTab = () => {
                 recebiveis.map((r) => (
                   <tr
                     key={r.id_recebivel}
-                    className={`group hover:bg-blue-50/30 transition-colors ${r.status === "RECEBIDO" ? "opacity-80" : ""}`}
+                    className={`group hover:bg-primary-50/30 transition-colors ${r.status === "RECEBIDO" ? "opacity-80" : ""}`}
                   >
                     <td className="p-5 text-center">
                       <input
@@ -501,12 +527,12 @@ export const RecebiveisTab = () => {
                         checked={selectedIds.includes(r.id_recebivel)}
                         onChange={() => toggleSelect(r.id_recebivel)}
                         disabled={r.status === "RECEBIDO"}
-                        className="w-5 h-5 rounded-lg border-neutral-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="w-5 h-5 rounded-lg border-neutral-300 text-primary-600 focus:ring-primary-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                       />
                     </td>
                     <td className="p-5">
                       <div className="flex flex-col">
-                        <span className="font-black text-neutral-800 text-sm whitespace-nowrap">
+                        <span className="font-bold text-neutral-800 text-sm whitespace-nowrap">
                           {new Date(r.data_prevista).toLocaleDateString(
                             "pt-BR",
                           )}
@@ -523,7 +549,7 @@ export const RecebiveisTab = () => {
                     </td>
                     <td className="p-5">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-black text-[10px]">
+                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-black text-[10px]">
                           {(r as any).operadora?.nome?.substring(0, 1) || "O"}
                         </div>
                         <span className="font-bold text-neutral-900 text-sm">
@@ -534,7 +560,7 @@ export const RecebiveisTab = () => {
                     <td className="p-5">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <span className="font-black text-neutral-800 uppercase text-xs">
+                          <span className="font-bold text-neutral-800 uppercase text-xs">
                             {(r as any).ordem_de_servico?.veiculo?.placa ||
                               "S/P"}
                           </span>
@@ -558,7 +584,7 @@ export const RecebiveisTab = () => {
                     <td className="p-5">
                       <div className="flex flex-col">
                         <span
-                          className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md w-fit mb-1 cursor-help"
+                          className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md w-fit mb-1 cursor-help"
                           title={`Data da Venda: ${new Date(r.data_venda).toLocaleDateString("pt-BR")}`}
                         >
                           OS #{r.id_os}
@@ -566,7 +592,7 @@ export const RecebiveisTab = () => {
                         <span className="text-[10px] font-bold text-neutral-400 uppercase">
                           Parcela {r.num_parcela} de {r.total_parcelas}
                         </span>
-                        <span className="text-[10px] font-black text-neutral-500 uppercase mt-0.5 bg-neutral-100 px-1.5 py-0.5 rounded w-fit">
+                        <span className="text-[10px] font-bold text-neutral-500 uppercase mt-0.5 bg-neutral-100 px-1.5 py-0.5 rounded w-fit">
                           {(() => {
                             if (r.total_parcelas > 1)
                               return "Crédito Parcelado";
@@ -605,7 +631,7 @@ export const RecebiveisTab = () => {
                       {formatCurrency(Number(r.valor_bruto))}
                     </td>
                     <td className="p-5 text-right">
-                      <span className="text-red-500 text-xs font-black bg-red-50 px-2 py-1 rounded-lg">
+                      <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg">
                         - {formatCurrency(Number(r.taxa_aplicada))}
                       </span>
                     </td>
@@ -617,7 +643,7 @@ export const RecebiveisTab = () => {
                     <td className="p-5 text-center">
                       {r.status === "RECEBIDO" ? (
                         <div className="flex flex-col items-center">
-                          <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
                             <CheckCircle size={12} /> Recebido
                           </span>
                           {r.data_recebimento && (
@@ -629,7 +655,7 @@ export const RecebiveisTab = () => {
                           )}
                         </div>
                       ) : (
-                        <span className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border border-blue-100">
+                        <span className="bg-primary-50 text-primary-600 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-primary-100">
                           <Clock size={12} /> Aberto
                         </span>
                       )}

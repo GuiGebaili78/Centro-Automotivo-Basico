@@ -439,7 +439,7 @@ export const PagamentoPecaPage = () => {
                     onClick={() => setFilterStatus(st as any)}
                     className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${
                       filterStatus === st
-                        ? "bg-white shadow text-neutral-800"
+                        ? "bg-primary-200 text-primary-500 shadow-sm"
                         : "text-neutral-400 hover:text-neutral-600"
                     }`}
                   >

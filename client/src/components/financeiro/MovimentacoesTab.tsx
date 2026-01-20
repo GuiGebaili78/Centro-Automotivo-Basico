@@ -8,14 +8,17 @@ import {
   ArrowDownCircle,
   Calendar,
   Trash2,
-  Edit2,
-  X,
-  AlertTriangle,
-  Wallet,
   Settings,
+  Wallet,
+  Edit,
+  AlertTriangle,
 } from "lucide-react";
 import { StatusBanner } from "../ui/StatusBanner";
 import { CategoryManager } from "./CategoryManager";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/input";
+import { Modal } from "../ui/Modal";
+import { ActionButton } from "../ui/ActionButton";
 
 interface CashBookEntry {
   id: string; // 'man-1', 'in-5', 'out-10' (prefix to identify source)
@@ -62,6 +65,9 @@ export const MovimentacoesTab = () => {
     "ALL",
   );
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
+  const [activeQuickFilter, setActiveQuickFilter] = useState<
+    "TODAY" | "WEEK" | "MONTH"
+  >("TODAY");
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,10 +87,7 @@ export const MovimentacoesTab = () => {
     tipo_movimentacao: "ENTRADA",
     categoria: "OUTROS",
     obs: "",
-    // id_conta_bancaria could be added here later
   });
-
-  // Operators Cache - Removed state, now local in loadData
 
   useEffect(() => {
     loadData();
@@ -114,8 +117,6 @@ export const MovimentacoesTab = () => {
       (opsRes.data || []).forEach((op: any) => {
         opMap[op.id_operadora] = op.nome;
       });
-
-      // (Previous block was duplicated, removing)
 
       // Build Payment Map (Link LivroCaixa ID -> Payment Data)
       const lcPaymentMap: Record<number, any> = {};
@@ -225,11 +226,6 @@ export const MovimentacoesTab = () => {
         });
 
       // 3. Auto Inflows (Payments from Clients)
-      // ONLY include payments that are NOT linked to a Livro Caixa entry (to avoid duplicates)
-      // or if we want to show non-consolidated items.
-      // Usually, standard flow creates LC immediately for PIX/Cash.
-      // For Card, if it's NOT in LC, maybe we should show it?
-      // But user asked for LC display adjustments.
       const inflows = (inflowsRes.data || [])
         .filter((p: any) => !p.id_livro_caixa) // Prevent duplicates if already in LC
         .map((p: any) => {
@@ -247,10 +243,6 @@ export const MovimentacoesTab = () => {
 
           // Determine display method
           let methodDisplay = p.metodo_pagamento;
-          // (Previous block was duplicated, removing)
-
-          // Helper to format currency
-          // const fmt = (v: number) => `R$ ${v.toFixed(2)}`;
 
           if (methodDisplay === "CREDITO") {
             const opName =
@@ -370,19 +362,20 @@ export const MovimentacoesTab = () => {
   const balance = totalInflow - totalOutflow;
 
   const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
+    setActiveQuickFilter(type);
     const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
+    const todayStr = now.toLocaleDateString("en-CA"); // Ensure YYYY-MM-DD
     if (type === "TODAY") {
       setCashFilterStart(todayStr);
       setCashFilterEnd(todayStr);
     } else if (type === "WEEK") {
       const weekAgo = new Date(now);
       weekAgo.setDate(now.getDate() - 7);
-      setCashFilterStart(weekAgo.toISOString().split("T")[0]);
+      setCashFilterStart(weekAgo.toLocaleDateString("en-CA"));
       setCashFilterEnd(todayStr);
     } else if (type === "MONTH") {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      setCashFilterStart(firstDay.toISOString().split("T")[0]);
+      setCashFilterStart(firstDay.toLocaleDateString("en-CA"));
       setCashFilterEnd(todayStr);
     }
   };
@@ -428,8 +421,7 @@ export const MovimentacoesTab = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     try {
       if (editingItem) {
         if (editingItem.id.startsWith("man-")) {
@@ -481,8 +473,15 @@ export const MovimentacoesTab = () => {
     }
   };
 
+  const getQuickFilterClass = (type: "TODAY" | "WEEK" | "MONTH") =>
+    `flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
+      activeQuickFilter === type
+        ? "bg-primary-200 text-primary-500 shadow-sm"
+        : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+    }`;
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 relative">
+    <div className="p-6 space-y-6 animate-in fade-in duration-500 relative">
       <StatusBanner
         msg={statusMsg}
         onClose={() => setStatusMsg({ type: null, text: "" })}
@@ -505,60 +504,66 @@ export const MovimentacoesTab = () => {
             Registro completo de entradas e saídas.
           </p>
         </div>
-        <button
+        <Button
+          variant="secondary"
           onClick={() => setIsCategoryModalOpen(true)}
-          className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 font-bold text-sm bg-white border border-neutral-200 px-4 py-2 rounded-xl hover:shadow-sm hover:border-neutral-300 transition-all"
+          icon={Settings}
         >
-          <Settings size={16} />
           Categorias
-        </button>
+        </Button>
       </div>
 
       <div className="space-y-6">
         {/* Filters Board */}
-        <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col xl:flex-row justify-between items-end gap-4">
+        <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex flex-col xl:flex-row justify-between items-end gap-6">
           <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
             {/* Search */}
             <div className="md:col-span-3">
-              <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                Buscar
-              </label>
-              <div className="relative">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                  size={16}
-                />
-                <input
-                  value={cashSearch}
-                  onChange={(e) => setCashSearch(e.target.value)}
-                  placeholder="Pesquisar..."
-                  className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors"
-                />
-              </div>
+              <Input
+                label="Buscar"
+                value={cashSearch}
+                onChange={(e) => setCashSearch(e.target.value)}
+                placeholder="Pesquisar..."
+                icon={Search}
+              />
             </div>
 
             {/* Dates */}
             <div className="md:col-span-4 flex gap-2">
               <div className="flex-1">
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
                   De
                 </label>
                 <input
                   type="date"
                   value={cashFilterStart}
-                  onChange={(e) => setCashFilterStart(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none uppercase"
+                  onChange={(e) => {
+                    setCashFilterStart(e.target.value);
+                    setActiveQuickFilter(null as any); // Clear quick filter
+                  }}
+                  className={`w-full h-[42px] px-3 rounded-lg border text-sm font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors uppercase ${
+                    activeQuickFilter
+                      ? "border-neutral-200 text-neutral-600"
+                      : "border-primary-300 text-primary-700"
+                  }`}
                 />
               </div>
               <div className="flex-1">
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
                   Até
                 </label>
                 <input
                   type="date"
                   value={cashFilterEnd}
-                  onChange={(e) => setCashFilterEnd(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none uppercase"
+                  onChange={(e) => {
+                    setCashFilterEnd(e.target.value);
+                    setActiveQuickFilter(null as any);
+                  }}
+                  className={`w-full h-[42px] px-3 rounded-lg border text-sm font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors uppercase ${
+                    activeQuickFilter
+                      ? "border-neutral-200 text-neutral-600"
+                      : "border-primary-300 text-primary-700"
+                  }`}
                 />
               </div>
             </div>
@@ -566,25 +571,25 @@ export const MovimentacoesTab = () => {
             {/* Quick Filters */}
             <div className="md:col-span-5 flex items-center justify-end">
               <div className="w-full">
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
                   Período
                 </label>
-                <div className="flex bg-neutral-100 p-1 rounded-xl h-[46px] items-center w-full">
+                <div className="flex bg-neutral-100 p-1 rounded-xl h-[42px] items-center w-full">
                   <button
                     onClick={() => applyQuickFilter("TODAY")}
-                    className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-black uppercase hover:bg-white transition-all text-neutral-500"
+                    className={getQuickFilterClass("TODAY")}
                   >
                     Hoje
                   </button>
                   <button
                     onClick={() => applyQuickFilter("WEEK")}
-                    className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-black uppercase hover:bg-white transition-all text-neutral-500"
+                    className={getQuickFilterClass("WEEK")}
                   >
                     Semana
                   </button>
                   <button
                     onClick={() => applyQuickFilter("MONTH")}
-                    className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-black uppercase hover:bg-white transition-all text-neutral-500"
+                    className={getQuickFilterClass("MONTH")}
                   >
                     Mês
                   </button>
@@ -594,77 +599,83 @@ export const MovimentacoesTab = () => {
 
             {/* Source Filter */}
             <div className="md:col-span-2">
-              <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
+              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
                 Origem
               </label>
-              <select
-                value={filterSource}
-                onChange={(e) => setFilterSource(e.target.value as any)}
-                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400"
-              >
-                <option value="ALL">Todas</option>
-                <option value="MANUAL">Manual</option>
-                <option value="AUTO">Automática</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={filterSource}
+                  onChange={(e) => setFilterSource(e.target.value as any)}
+                  className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="ALL">Todas</option>
+                  <option value="MANUAL">Manual</option>
+                  <option value="AUTO">Automática</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                  <ArrowDownCircle size={14} />
+                </div>
+              </div>
             </div>
 
             {/* Category Filter */}
             <div className="md:col-span-3">
-              <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
+              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
                 Categoria
               </label>
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400"
-              >
-                <option value="ALL">Todas</option>
-                {categories.map((cat) => (
-                  <option key={cat.id_categoria} value={cat.nome}>
-                    {cat.nome}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="ALL">Todas</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id_categoria} value={cat.nome}>
+                      {cat.nome}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                  <ArrowDownCircle size={14} />
+                </div>
+              </div>
             </div>
 
             <div className="md:col-span-2">
-              <button
-                className="w-full bg-neutral-900 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl hover:bg-neutral-800 transition-all hover:scale-[1.02] active:scale-95 whitespace-nowrap text-sm tracking-wide"
+              <Button
+                variant="primary"
                 onClick={handleOpenCreate}
+                className="w-full h-[42px] shadow-lg shadow-primary-500/20"
+                icon={Plus}
               >
-                <Plus size={32} strokeWidth={3} />
-                <div className="flex flex-col items-start leading-tight">
-                  <span>NOVO</span>
-                  <span className="text-[10px] opacity-70 font-medium">
-                    LANÇAMENTO
-                  </span>
-                </div>
-              </button>
+                Novo Lançamento
+              </Button>
             </div>
           </div>
         </div>
 
         {/* SUMMARY */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100">
+          <div className="bg-surface p-6 rounded-xl shadow-sm border border-neutral-200">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-success-50 text-success-600 rounded-lg">
+              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
                 <ArrowDownCircle size={20} />
               </div>
-              <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
                 Entradas
               </p>
             </div>
-            <p className="text-3xl font-black text-success-600">
+            <p className="text-3xl font-black text-emerald-600">
               {formatCurrency(totalInflow)}
             </p>
           </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100">
+          <div className="bg-surface p-6 rounded-xl shadow-sm border border-neutral-200">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-red-50 text-red-600 rounded-lg">
                 <ArrowUpCircle size={20} />
               </div>
-              <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
                 Saídas
               </p>
             </div>
@@ -672,17 +683,17 @@ export const MovimentacoesTab = () => {
               {formatCurrency(totalOutflow)}
             </p>
           </div>
-          <div className="bg-neutral-900 p-6 rounded-2xl shadow-xl text-white">
+          <div className="bg-neutral-800 p-6 rounded-xl shadow-xl text-neutral-25">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-neutral-800 text-neutral-400 rounded-lg">
                 <Wallet size={20} />
               </div>
-              <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
                 Saldo
               </p>
             </div>
             <p
-              className={`text-3xl font-black ${balance >= 0 ? "text-white" : "text-red-400"}`}
+              className={`text-3xl font-bold ${balance >= 0 ? "text-neutral-25" : "text-red-400"}`}
             >
               {formatCurrency(balance)}
             </p>
@@ -690,30 +701,30 @@ export const MovimentacoesTab = () => {
         </div>
 
         {/* TABLE */}
-        <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden w-full">
+        <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden w-full">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                <th className="p-5">Data</th>
-                <th className="p-5">Descrição</th>
-                <th className="p-5">Tipo</th>
-                <th className="p-5">Categoria</th>
-                <th className="p-5">Conta / Origem</th>
-                <th className="p-5 text-right whitespace-nowrap min-w-[150px]">
+            <thead className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
+              <tr>
+                <th className="p-4">Data</th>
+                <th className="p-4">Descrição</th>
+                <th className="p-4">Tipo</th>
+                <th className="p-4">Categoria</th>
+                <th className="p-4">Conta / Origem</th>
+                <th className="p-4 text-right whitespace-nowrap min-w-[150px]">
                   Valor
                 </th>
-                <th className="p-5 font-black text-neutral-400 uppercase text-[10px] tracking-widest">
+                <th className="p-4 font-bold text-neutral-400 uppercase text-[10px] tracking-widest">
                   Obs
                 </th>
-                <th className="p-5 text-center">Ações</th>
+                <th className="p-4 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-50">
+            <tbody className="divide-y divide-neutral-100">
               {filteredCashBook.length === 0 ? (
                 <tr>
                   <td
                     colSpan={8}
-                    className="p-10 text-center text-neutral-400 italic font-medium"
+                    className="p-12 text-center text-neutral-400 italic font-medium"
                   >
                     Nenhuma movimentação encontrada.
                   </td>
@@ -722,29 +733,28 @@ export const MovimentacoesTab = () => {
                 filteredCashBook.map((entry) => (
                   <tr
                     key={entry.id}
-                    className={`hover:bg-neutral-25 transition-colors ${entry.deleted_at ? "opacity-50" : ""}`}
+                    className={`hover:bg-neutral-50 transition-colors ${entry.deleted_at ? "opacity-50" : ""}`}
                   >
-                    <td className="p-5">
+                    <td className="p-4">
                       <div
                         className={`flex items-center gap-2 font-bold text-xs ${entry.deleted_at ? "line-through text-neutral-400" : "text-neutral-600"}`}
                       >
                         <Calendar size={14} />
-                        {/* Show Date and Time */}
-                        {new Date(entry.date).toLocaleString("pt-BR", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {new Date(entry.date).toLocaleDateString("pt-BR")}
+                        <span className="text-[10px] text-neutral-400">
+                          {new Date(entry.date).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                       </div>
                     </td>
                     <td
-                      className={`p-5 font-bold ${entry.deleted_at ? "line-through text-neutral-400" : "text-neutral-900"}`}
+                      className={`p-4 font-bold ${entry.deleted_at ? "line-through text-neutral-400" : "text-neutral-900"}`}
                     >
-                      <div>{entry.description}</div>
+                      <div className="text-sm">{entry.description}</div>
                       {entry.source === "AUTO" && (
-                        <div className="text-[10px] text-neutral-400 font-medium mt-1">
+                        <div className="text-[10px] text-neutral-400 font-medium mt-0.5">
                           {entry.type === "OUT" ? (
                             <span>Pago a: {entry.supplier}</span>
                           ) : (
@@ -757,18 +767,18 @@ export const MovimentacoesTab = () => {
                       )}
                       {/* Show manual obs if exists */}
                       {entry.source === "MANUAL" && entry.obs && (
-                        <div className="text-[10px] text-neutral-400 font-medium mt-1 italic">
+                        <div className="text-[10px] text-neutral-400 font-medium mt-0.5 italic">
                           {entry.obs}
                         </div>
                       )}
                     </td>
-                    <td className="p-5">
+                    <td className="p-4">
                       <span
-                        className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                        className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
                           entry.deleted_at
                             ? "bg-neutral-100 text-neutral-500 line-through"
                             : entry.type === "IN"
-                              ? "bg-success-50 text-success-700"
+                              ? "bg-emerald-50 text-emerald-700"
                               : "bg-red-50 text-red-700"
                         }`}
                       >
@@ -780,62 +790,68 @@ export const MovimentacoesTab = () => {
                         ({entry.source === "MANUAL" ? "M" : "A"})
                       </span>
                     </td>
-                    <td className="p-5">
-                      <span className="text-xs font-bold text-neutral-600 uppercase bg-neutral-100 px-2 py-1 rounded-md">
-                        {entry.category || "Geral"}
+                    <td className="p-4">
+                      <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-xs font-bold uppercase tracking-wide">
+                        {entry.category}
                       </span>
                     </td>
-                    <td className="p-5">
-                      {entry.paymentMethod ? (
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[10px] font-black text-neutral-600 uppercase">
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-neutral-700">
+                          {entry.conta_bancaria || "Caixa Geral / Indefinido"}
+                        </span>
+                        {entry.paymentMethod && (
+                          <span className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">
                             {entry.paymentMethod}
                           </span>
-                          {entry.conta_bancaria && (
-                            <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded w-fit">
-                              {entry.conta_bancaria}
-                            </span>
-                          )}
-                        </div>
-                      ) : entry.conta_bancaria ? (
-                        <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md uppercase">
-                          {entry.conta_bancaria}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-neutral-400">
-                          Caixa Geral
-                        </span>
-                      )}
-                    </td>
-                    <td
-                      className={`p-5 text-right font-black ${entry.deleted_at ? "line-through text-neutral-400" : "text-neutral-900"}`}
-                    >
-                      {formatCurrency(entry.value)}
-                    </td>
-                    <td className="p-5">
-                      <div
-                        className="text-xs text-neutral-500 italic truncate max-w-[150px]"
-                        title={entry.obs}
-                      >
-                        {entry.obs || "-"}
+                        )}
                       </div>
                     </td>
-                    <td className="p-5 text-center">
+                    <td
+                      className={`p-4 text-right font-black text-sm whitespace-nowrap ${
+                        entry.deleted_at
+                          ? "line-through text-neutral-400"
+                          : entry.type === "IN"
+                            ? "text-emerald-600"
+                            : "text-red-600"
+                      }`}
+                    >
+                      {entry.type === "IN" ? "+ " : "- "}
+                      {formatCurrency(entry.value)}
+                    </td>
+                    <td className="p-4">
+                      {entry.obs ? (
+                        <span
+                          className="text-xs text-neutral-500 italic truncate max-w-[150px] block"
+                          title={entry.obs}
+                        >
+                          {entry.obs}
+                        </span>
+                      ) : (
+                        <span className="text-neutral-300">-</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-center">
                       {!entry.deleted_at && (
-                        <div className="flex justify-center gap-2">
-                          <button
+                        <div className="flex items-center justify-center gap-2">
+                          <ActionButton
+                            icon={Edit}
                             onClick={() => handleOpenEdit(entry)}
-                            className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-500 hover:text-primary-600 transition-colors"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
+                            label="Editar"
+                            variant="neutral"
+                          />
+                          <ActionButton
+                            icon={Trash2}
                             onClick={() => handleOpenDelete(entry)}
-                            className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-500 hover:text-red-600 transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                            label="Excluir"
+                            variant="danger"
+                          />
                         </div>
+                      )}
+                      {entry.deleted_at && (
+                        <span className="text-[10px] font-bold text-red-300 uppercase">
+                          Excluído
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -848,57 +864,44 @@ export const MovimentacoesTab = () => {
 
       {/* CREATE/EDIT MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black text-neutral-900">
-                {editingItem ? "Editar Lançamento" : "Novo Lançamento"}
-              </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900"
-              >
-                <X size={20} />
-              </button>
+        <Modal
+          title={editingItem ? "Editar Lançamento" : "Novo Lançamento"}
+          onClose={() => setIsModalOpen(false)}
+        >
+          <div className="space-y-4">
+            <div>
+              <Input
+                label="Descrição"
+                required
+                value={formData.descricao}
+                onChange={(e) =>
+                  setFormData({ ...formData, descricao: e.target.value })
+                }
+                placeholder="Ex: Compra de Material, Cafezinho..."
+                readOnly={editingItem?.source === "AUTO"} // Prevent edit desc if auto
+              />
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                  Descrição
-                </label>
-                <input
-                  disabled={editingItem?.source === "AUTO"} // Lock description for AUTO
+                <Input
+                  label="Valor (R$)"
                   required
-                  type="text"
-                  value={formData.descricao}
+                  type="number"
+                  step="0.01"
+                  value={formData.valor}
                   onChange={(e) =>
-                    setFormData({ ...formData, descricao: e.target.value })
+                    setFormData({ ...formData, valor: e.target.value })
                   }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-neutral-400 disabled:opacity-60"
+                  readOnly={editingItem?.source === "AUTO"} // Prevent edit value if auto (usually restricted)
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                    Valor (R$)
-                  </label>
-                  <input
-                    required
-                    type="number"
-                    step="0.01"
-                    value={formData.valor}
-                    onChange={(e) =>
-                      setFormData({ ...formData, valor: e.target.value })
-                    }
-                    className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-neutral-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                    Tipo
-                  </label>
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                  Tipo
+                </label>
+                <div className="relative">
                   <select
-                    disabled={editingItem?.source === "AUTO"} // Only lock for AUTO
                     value={formData.tipo_movimentacao}
                     onChange={(e) =>
                       setFormData({
@@ -906,24 +909,30 @@ export const MovimentacoesTab = () => {
                         tipo_movimentacao: e.target.value,
                       })
                     }
-                    className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-neutral-400 disabled:opacity-60"
+                    disabled={!!editingItem} // Usually can't change type after creation easily without messes, or enable it. Let's disable for safety or matching legacy.
+                    className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer disabled:opacity-50"
                   >
-                    <option value="ENTRADA">Entrada</option>
-                    <option value="SAIDA">Saída</option>
+                    <option value="ENTRADA">Entrada (+)</option>
+                    <option value="SAIDA">Saída (-)</option>
                   </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                    <ArrowDownCircle size={14} />
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                  Categoria
-                </label>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                Categoria
+              </label>
+              <div className="relative">
                 <select
-                  disabled={editingItem?.source === "AUTO"} // Lock category for AUTO
                   value={formData.categoria}
                   onChange={(e) =>
                     setFormData({ ...formData, categoria: e.target.value })
                   }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-neutral-900 outline-none focus:border-neutral-400 disabled:opacity-60"
+                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
                 >
                   {categories.map((cat) => (
                     <option key={cat.id_categoria} value={cat.nome}>
@@ -931,87 +940,91 @@ export const MovimentacoesTab = () => {
                     </option>
                   ))}
                 </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                  <ArrowDownCircle size={14} />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                  Observação
-                </label>
-                <textarea
-                  disabled={editingItem?.source === "AUTO"} // Lock OBS for AUTO
-                  rows={3}
-                  value={formData.obs}
-                  onChange={(e) =>
-                    setFormData({ ...formData, obs: e.target.value })
-                  }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-medium text-neutral-900 outline-none focus:border-neutral-400 disabled:opacity-60"
-                />
-                {editingItem?.source === "AUTO" && (
-                  <p className="text-[10px] text-red-500 mt-1">
-                    * Obs e Categoria não editáveis em lançamentos automáticos.
-                  </p>
-                )}
-              </div>
-              <div className="pt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 font-bold text-neutral-500 hover:bg-neutral-100 rounded-xl"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-neutral-900 text-white font-bold rounded-xl hover:bg-neutral-800 shadow-lg"
-                >
-                  {editingItem ? "Salvar Alterações" : "Criar Lançamento"}
-                </button>
-              </div>
-            </form>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                Observação (Opcional)
+              </label>
+              <textarea
+                rows={3}
+                value={formData.obs}
+                onChange={(e) =>
+                  setFormData({ ...formData, obs: e.target.value })
+                }
+                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-lg font-medium text-neutral-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all"
+              />
+            </div>
+
+            <div className="pt-4 flex gap-3 justify-end">
+              <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                variant="primary"
+                className="shadow-lg shadow-primary-500/20"
+              >
+                {editingItem ? "Salvar Alterações" : "Criar Lançamento"}
+              </Button>
+            </div>
           </div>
-        </div>
+        </Modal>
       )}
 
-      {/* DELETE MODAL */}
+      {/* DELETE CONFIRM MODAL */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-in fade-in zoom-in duration-200 text-center">
-            <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <AlertTriangle size={32} />
+        <Modal
+          title="Confirmar Exclusão"
+          onClose={() => setIsDeleteModalOpen(false)}
+        >
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-3">
+              <AlertTriangle className="text-red-600 shrink-0" size={24} />
+              <div>
+                <h3 className="font-bold text-red-900">Atenção!</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Você está prestes a excluir o lançamento: <br />
+                  <span className="font-black">
+                    {itemToDelete?.description} (
+                    {formatCurrency(itemToDelete?.value || 0)})
+                  </span>
+                </p>
+                <p className="text-xs text-red-600 mt-2">
+                  Essa ação registrará um estorno e não poderá ser desfeita
+                  completamente (o registro será mantido como excluído).
+                </p>
+              </div>
             </div>
-            <h2 className="text-xl font-black text-neutral-900 mb-2">
-              Excluir Lançamento?
-            </h2>
-            <p className="text-neutral-500 mb-6">
-              Esta ação irá inativar o registro. Para lançamentos automáticos,
-              isso não desfaz a OS ou Pagamento original, apenas remove do Livro
-              Caixa visível.
-            </p>
 
-            {itemToDelete?.source === "MANUAL" && (
-              <input
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                Motivo da Exclusão (Opcional)
+              </label>
+              <Input
                 value={deleteObs}
                 onChange={(e) => setDeleteObs(e.target.value)}
-                placeholder="Motivo da exclusão (obs)..."
-                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-medium text-sm outline-none focus:border-red-200 mb-6"
+                placeholder="Ex: Lançado errado, Duplicado..."
               />
-            )}
+            </div>
 
-            <div className="flex gap-3">
-              <button
+            <div className="pt-4 flex gap-3 justify-end">
+              <Button
+                variant="ghost"
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="flex-1 py-3 font-bold text-neutral-500 hover:bg-neutral-100 rounded-xl"
               >
                 Cancelar
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 shadow-lg"
-              >
-                Confirmar
-              </button>
+              </Button>
+              <Button variant="danger" onClick={handleDelete} icon={Trash2}>
+                Confirmar Exclusão
+              </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
