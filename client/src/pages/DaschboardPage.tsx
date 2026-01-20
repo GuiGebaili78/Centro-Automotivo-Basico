@@ -50,7 +50,7 @@ const StatCard = ({
   </div>
 );
 
-export function HomePage() {
+export function DaschboardPage() {
   const navigate = useNavigate();
   const [recentOss, setRecentOss] = useState<any[]>([]);
   const [filterPeriod, setFilterPeriod] = useState<

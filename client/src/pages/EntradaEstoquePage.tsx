@@ -363,7 +363,7 @@ export const EntradaEstoquePage = () => {
                 Cancelar
               </Button>
               <Button variant="primary" onClick={handleFinalSubmit}>
-                CONFIRMAR TUDO
+                CONFIRMAR
               </Button>
             </div>
           </div>
@@ -584,7 +584,7 @@ export const EntradaEstoquePage = () => {
             <Button
               onClick={handleAddItem}
               className="w-full"
-              variant="dark"
+              variant="primary"
               icon={Plus}
             >
               ADICIONAR

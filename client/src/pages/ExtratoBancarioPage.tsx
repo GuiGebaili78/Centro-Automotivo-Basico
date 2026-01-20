@@ -90,6 +90,7 @@ export const ExtratoBancarioPage = () => {
           tipo_movimentacao: m.tipo_movimentacao,
           valor: Number(m.valor),
           obs: m.obs || "",
+          deleted_at: m.deleted_at,
           origem: "LIVRO_CAIXA",
           paymentMethod:
             m.categoria === "CONCILIACAO_CARTAO"
@@ -408,7 +409,7 @@ export const ExtratoBancarioPage = () => {
                 filteredMovimentacoes.map((mov) => (
                   <tr
                     key={mov.id_livro_caixa}
-                    className="hover:bg-neutral-50 transition-colors group"
+                    className={`hover:bg-neutral-50 transition-colors group ${mov.deleted_at ? "opacity-50" : ""}`}
                   >
                     <td className="p-4">
                       <div className="flex flex-col gap-1">
@@ -429,7 +430,9 @@ export const ExtratoBancarioPage = () => {
                     </td>
                     <td className="p-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-neutral-900">
+                        <span
+                          className={`text-sm font-bold text-neutral-900 ${mov.deleted_at ? "line-through" : ""}`}
+                        >
                           {mov.descricao}
                         </span>
                         {mov.obs && (
@@ -467,7 +470,13 @@ export const ExtratoBancarioPage = () => {
                       )}
                     </td>
                     <td
-                      className={`p-4 text-right font-black text-sm whitespace-nowrap ${mov.tipo_movimentacao === "ENTRADA" ? "text-emerald-600" : "text-red-600"}`}
+                      className={`p-4 text-right font-black text-sm whitespace-nowrap ${
+                        mov.deleted_at
+                          ? "text-neutral-400 line-through"
+                          : mov.tipo_movimentacao === "ENTRADA"
+                            ? "text-emerald-600"
+                            : "text-red-600"
+                      }`}
                     >
                       {mov.tipo_movimentacao === "SAIDA" ? "- " : "+ "}
                       {formatCurrency(Number(mov.valor))}

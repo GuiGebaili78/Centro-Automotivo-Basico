@@ -184,8 +184,8 @@ export const PecasEstoquePage = () => {
   const executeUpdate = async () => {
     if (!editData) return;
     try {
+      // Build a clean payload with only editable fields
       const payload = {
-        ...editData,
         nome: formData.nome,
         fabricante: formData.fabricante,
         descricao: formData.descricao,
@@ -194,15 +194,22 @@ export const PecasEstoquePage = () => {
         valor_venda: Number(formData.valor_venda),
         estoque_atual: Number(formData.estoque_atual),
       };
+
       await api.put(`/pecas-estoque/${editData.id_pecas_estoque}`, payload);
+
       setStatusMsg({ type: "success", text: "Peça atualizada com sucesso!" });
-      setEditModalOpen(false);
+      setEditModalOpen(false); // Close edit modal
       setEditData(null);
-      loadPecas();
-    } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao atualizar peça." });
+      loadPecas(); // Refresh list
+    } catch (error: any) {
+      console.error(error);
+      const errorMsg =
+        error.response?.data?.error ||
+        "Erro ao atualizar peça. Verifique os dados.";
+      setStatusMsg({ type: "error", text: errorMsg });
+      // Do NOT close edit modal so user can fix
     }
-    setConfirmModal((prev) => ({ ...prev, show: false }));
+    setConfirmModal((prev) => ({ ...prev, show: false })); // Always close confirm modal
   };
 
   const handleUpdate = (e: React.FormEvent) => {

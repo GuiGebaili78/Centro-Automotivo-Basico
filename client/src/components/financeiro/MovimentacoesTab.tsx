@@ -243,10 +243,10 @@ export const MovimentacoesTab = () => {
 
           // Determine display method
           let methodDisplay = p.metodo_pagamento;
+          let opName = null;
 
           if (methodDisplay === "CREDITO") {
-            const opName =
-              opMap[p.id_operadora] || p.bandeira_cartao || "Cartão";
+            opName = opMap[p.id_operadora] || p.bandeira_cartao || "Cartão";
             const parc =
               p.qtd_parcelas > 1 ? ` (${p.qtd_parcelas}x)` : " (À Vista)";
             const nsu = p.codigo_transacao
@@ -255,8 +255,7 @@ export const MovimentacoesTab = () => {
             methodDisplay = `CRÉDITO ${opName}${parc} - ${p.bandeira_cartao || ""}${nsu}`;
           }
           if (methodDisplay === "DEBITO") {
-            const opName =
-              opMap[p.id_operadora] || p.bandeira_cartao || "Cartão";
+            opName = opMap[p.id_operadora] || p.bandeira_cartao || "Cartão";
             const nsu = p.codigo_transacao
               ? ` | NSU/Aut: ${p.codigo_transacao}`
               : "";
@@ -277,7 +276,9 @@ export const MovimentacoesTab = () => {
               : "";
             methodDisplay = `DINHEIRO${bankInfo}`;
           }
-          const contaDisplay = p.conta_bancaria ? p.conta_bancaria.nome : null;
+          const contaDisplay = p.conta_bancaria
+            ? p.conta_bancaria.nome
+            : opName || null;
 
           return {
             id: `in-${p.id_pagamento_cliente}`,

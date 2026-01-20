@@ -336,7 +336,7 @@ export const OrdemDeServicoDetalhePage = () => {
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       setTimeout(() => {
         setStatusMsg({ type: null, text: "" });
-        navigate("/ordem-de-servico");
+        navigate("/");
       }, 1000);
     } catch (e) {
       setStatusMsg({ type: "error", text: "Erro ao finalizar OS." });
@@ -353,7 +353,7 @@ export const OrdemDeServicoDetalhePage = () => {
       });
       setIsDirty(false);
       setStatusMsg({ type: "success", text: "Alterações Salvas!" });
-      setTimeout(() => navigate("/ordem-de-servico"), 500);
+      setTimeout(() => navigate("/"), 500);
     } catch (e) {
       setStatusMsg({ type: "error", text: "Erro ao salvar." });
     }
@@ -371,7 +371,7 @@ export const OrdemDeServicoDetalhePage = () => {
         },
       });
     } else {
-      navigate("/ordem-de-servico");
+      navigate("/");
     }
   };
 
@@ -1184,7 +1184,7 @@ export const OrdemDeServicoDetalhePage = () => {
             >
               Cancelar
             </Button>
-            <Button variant="danger" onClick={confirmModal.onConfirm}>
+            <Button variant="primary" onClick={confirmModal.onConfirm}>
               Confirmar
             </Button>
           </div>

@@ -601,7 +601,7 @@ export const PagamentoPecaPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* CARD 1: SELETOR DE BAIXA (Checkboxes) - Show only if items selected */}
           {selectedIds.length > 0 ? (
-            <div className="bg-blue-600 p-6 rounded-2xl flex items-center justify-between shadow-xl shadow-blue-500/20 text-white animate-in zoom-in duration-300">
+            <div className="bg-blue-900 p-6 rounded-2xl flex items-center justify-between shadow-xl shadow-blue-500/20 text-white animate-in zoom-in duration-300">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">
                   Selecionado para Baixa ({selectedIds.length})
@@ -613,7 +613,7 @@ export const PagamentoPecaPage = () => {
               <div className="flex flex-col items-end gap-2">
                 <Button
                   onClick={handleBatchConfirmClick}
-                  className="bg-white text-blue-600 hover:bg-neutral-50 border-none shadow-none"
+                  className="bg-neutral-200 text-blue-600 hover:bg-neutral-50 border-none shadow-none"
                   icon={Save}
                 >
                   Confirmar Baixa
@@ -958,6 +958,33 @@ export const PagamentoPecaPage = () => {
                 </select>
               </div>
             </div>
+
+            {/* Revert Payment Option */}
+            {editPayment.data_pagamento_fornecedor && (
+              <div className="mt-4 p-4 bg-orange-50 border border-orange-100 rounded-xl flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="revertPayment"
+                  checked={!editPayment.pago_ao_fornecedor}
+                  onChange={(e) =>
+                    setEditPayment({
+                      ...editPayment,
+                      pago_ao_fornecedor: !e.target.checked,
+                    })
+                  }
+                  className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500 border-gray-300 cursor-pointer"
+                />
+                <label htmlFor="revertPayment" className="cursor-pointer">
+                  <p className="text-sm font-bold text-orange-800">
+                    Estornar Pagamento
+                  </p>
+                  <p className="text-xs text-orange-600">
+                    Ao marcar, o pagamento voltará para "Pendente" e o valor
+                    será estornado no caixa/banco (mantendo registro riscado).
+                  </p>
+                </label>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-4 border-t border-neutral-100">
               <Button

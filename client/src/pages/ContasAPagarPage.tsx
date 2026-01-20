@@ -17,6 +17,7 @@ import {
   Upload,
   User,
   Link,
+  ArrowDownCircle,
 } from "lucide-react";
 import type { IContasPagar } from "../types/backend";
 
@@ -65,9 +66,26 @@ export const ContasAPagarPage = () => {
     obs: "",
   });
 
+  // Payment Confirmation Modal
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [selectedConta, setSelectedConta] = useState<any>(null);
+  const [paymentDate, setPaymentDate] = useState("");
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [selectedBank, setSelectedBank] = useState("");
+
   useEffect(() => {
     loadContas();
+    loadAccounts();
   }, []);
+
+  const loadAccounts = async () => {
+    try {
+      const res = await api.get("/conta-bancaria");
+      setBankAccounts(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const loadContas = async () => {
     try {
@@ -130,14 +148,24 @@ export const ContasAPagarPage = () => {
     }
   };
 
-  const handleQuickPay = async (conta: any) => {
+  const handleQuickPay = (conta: any) => {
+    setSelectedConta(conta);
+    setPaymentDate(new Date().toISOString().split("T")[0]); // Default to today
+    setSelectedBank(""); // Reset bank selection
+    setPayModalOpen(true);
+  };
+
+  const executePay = async () => {
+    if (!selectedConta) return;
     try {
-      await api.put(`/contas-pagar/${conta.id_conta_pagar}`, {
+      await api.put(`/contas-pagar/${selectedConta.id_conta_pagar}`, {
         status: "PAGO",
-        dt_pagamento: new Date().toISOString(),
+        dt_pagamento: new Date(paymentDate).toISOString(),
+        id_conta_bancaria: selectedBank || null,
       });
       setStatusMsg({ type: "success", text: "Conta marcada como PAGA." });
       loadContas();
+      setPayModalOpen(false);
     } catch (error) {
       setStatusMsg({ type: "error", text: "Erro ao atualizar pagamento." });
     }
@@ -294,7 +322,7 @@ export const ContasAPagarPage = () => {
             {formatCurrency(totalPending)}
           </p>
         </div>
-        <div className="bg-success-50 border border-success-100 p-6 rounded-2xl">
+        <div className="bg-primary-50 border border-success-100 p-6 rounded-2xl">
           <p className="text-xs font-bold text-success-400 uppercase tracking-widest mb-1">
             Pago este Mês
           </p>
@@ -384,15 +412,29 @@ export const ContasAPagarPage = () => {
 
           {/* Status Type */}
           <div className="flex bg-neutral-100 p-1.5 rounded-xl h-[42px] items-center ml-2">
-            {["TODOS", "PENDENTE", "PAGO"].map((s) => (
-              <button
-                key={s}
-                onClick={() => setFilterStatus(s)}
-                className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap transition-colors ${filterStatus === s ? "bg-white shadow-sm text-neutral-900" : "text-neutral-400 hover:text-neutral-700"}`}
-              >
-                {s}
-              </button>
-            ))}
+            {["TODOS", "PENDENTE", "PAGO"].map((s) => {
+              let activeClass = "bg-primary-200 text-primary-600 shadow-sm"; // Default/Todos (Blue like Date Filters)
+              if (filterStatus === s) {
+                if (s === "PENDENTE")
+                  activeClass = "bg-red-100 text-red-600 shadow-sm";
+                if (s === "PAGO")
+                  activeClass = "bg-success-100 text-success-600 shadow-sm";
+              }
+
+              return (
+                <button
+                  key={s}
+                  onClick={() => setFilterStatus(s)}
+                  className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap transition-colors ${
+                    filterStatus === s
+                      ? activeClass
+                      : "text-neutral-400 hover:text-neutral-700"
+                  }`}
+                >
+                  {s}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -738,6 +780,64 @@ export const ContasAPagarPage = () => {
               Salvar Conta
             </Button>
           </form>
+        </Modal>
+      )}
+
+      {/* PAYMENT DATE MODAL */}
+      {payModalOpen && selectedConta && (
+        <Modal
+          title="Confirmar Pagamento"
+          onClose={() => setPayModalOpen(false)}
+          className="max-w-md"
+        >
+          <div className="space-y-4 pt-2">
+            <div>
+              <p className="text-sm text-neutral-600 mb-4">
+                Confirmar pagamento de{" "}
+                <span className="font-bold">{selectedConta.descricao}</span>?
+              </p>
+              <Input
+                label="Data do Pagamento"
+                type="date"
+                required
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="font-bold text-neutral-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                Conta Bancária (Opcional)
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedBank}
+                  onChange={(e) => setSelectedBank(e.target.value)}
+                  className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer text-neutral-600"
+                >
+                  <option value="">Sem vínculo (Apenas Caixa)</option>
+                  {bankAccounts.map((acc: any) => (
+                    <option key={acc.id_conta} value={acc.id_conta}>
+                      {acc.nome} ({acc.banco})
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                  <ArrowDownCircle size={14} />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setPayModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button variant="primary" onClick={executePay}>
+                Confirmar
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>
