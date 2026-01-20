@@ -4,6 +4,7 @@ import { api } from "../services/api";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
+import { Input } from "../components/ui/input";
 import { FornecedorForm } from "../components/forms/FornecedorForm";
 import { Plus, Search, Trash2, Save, ShoppingCart, Edit } from "lucide-react";
 
@@ -71,8 +72,7 @@ export const EntradaEstoquePage = () => {
         setRowMargin(margin.toFixed(2));
       }
     }
-  }, [rowSale, rowCost]); // Only trigger if Sale changes and Margin is empty, or explicitly desired?
-  // Actually bi-directional calc is tricky. Let's stick to Cost+Margin->Sale priority, but if user types Sale, calc Margin.
+  }, [rowSale, rowCost]);
 
   const handleRecalcMargin = (saleVal: string) => {
     setRowSale(saleVal);
@@ -104,8 +104,6 @@ export const EntradaEstoquePage = () => {
     setPartResults([]);
     setIsNewPart(false);
 
-    // Auto-fill cost (last cost) if available? The API returns standard cost or we assume user enters new cost.
-    // But we DO want to suggest existing Sale Price.
     setRowSale(Number(p.valor_venda || 0).toFixed(2));
     setRowCost(Number(p.valor_custo || 0).toFixed(2)); // Suggest last cost
   };
@@ -180,10 +178,7 @@ export const EntradaEstoquePage = () => {
       setSelectedStockPart({
         id_pecas_estoque: item.id_pecas_estoque,
         nome: item.displayName,
-        // We don't have all original stock part data here, but enough for ID and Name
-        // If we needed original stock/cost values we might need to store them or re-fetch.
-        // For now, this is enough to re-select.
-        valor_custo: item.valor_custo, // Preserve these
+        valor_custo: item.valor_custo,
         valor_venda: item.valor_venda,
       });
     }
@@ -272,7 +267,7 @@ export const EntradaEstoquePage = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="w-full mx-auto px-4 md:px-8 py-6 space-y-6">
       {statusMsg.text && (
         <div className="fixed bottom-8 right-8 z-50">
           <StatusBanner
@@ -281,8 +276,6 @@ export const EntradaEstoquePage = () => {
           />
         </div>
       )}
-
-      {/* ... (Existing JSX up to buttons) ... */}
 
       {/* NEW FINANCIAL MODAL */}
       {showFinancialModal && (
@@ -302,26 +295,21 @@ export const EntradaEstoquePage = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                Descrição
-              </label>
-              <input
+              <Input
+                label="Descrição"
                 value={finDesc}
                 onChange={(e) => setFinDesc(e.target.value)}
-                className="w-full border p-3 rounded-xl outline-none focus:border-blue-500 font-medium"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                  Valor Total (R$)
-                </label>
-                <input
+                <Input
+                  label="Valor Total (R$)"
                   type="number"
                   value={finValue}
                   readOnly
-                  className="w-full border p-3 rounded-xl bg-neutral-100 font-bold text-neutral-600 outline-none"
+                  className="bg-neutral-100 font-bold text-neutral-600"
                 />
               </div>
               <div>
@@ -332,7 +320,7 @@ export const EntradaEstoquePage = () => {
                   type="date"
                   value={finDueDate}
                   onChange={(e) => setFinDueDate(e.target.value)}
-                  className="w-full border p-3 rounded-xl outline-none focus:border-blue-500 font-medium"
+                  className="w-full border border-neutral-200 p-3 rounded-xl outline-none focus:border-blue-500 font-medium h-[46px]"
                 />
               </div>
             </div>
@@ -362,7 +350,7 @@ export const EntradaEstoquePage = () => {
                   type="date"
                   value={finPayDate}
                   onChange={(e) => setFinPayDate(e.target.value)}
-                  className="w-full border p-3 rounded-xl outline-none focus:border-green-500 font-medium border-green-200 bg-green-50"
+                  className="w-full border p-3 rounded-xl outline-none focus:border-green-500 font-medium border-green-200 bg-green-50 h-[46px]"
                 />
               </div>
             )}
@@ -374,7 +362,7 @@ export const EntradaEstoquePage = () => {
               >
                 Cancelar
               </Button>
-              <Button variant="success" onClick={handleFinalSubmit}>
+              <Button variant="primary" onClick={handleFinalSubmit}>
                 CONFIRMAR TUDO
               </Button>
             </div>
@@ -408,7 +396,7 @@ export const EntradaEstoquePage = () => {
             </button>
           </div>
           <select
-            className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-700 outline-none focus:border-primary-500 transition-all"
+            className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-700 outline-none focus:border-primary-500 transition-all h-[46px]"
             value={selectedSupplierId}
             onChange={(e) => setSelectedSupplierId(e.target.value)}
           >
@@ -427,28 +415,25 @@ export const EntradaEstoquePage = () => {
           </label>
           <input
             type="date"
-            className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-700 outline-none focus:border-primary-500"
+            className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-700 outline-none focus:border-primary-500 h-[46px]"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">
-            Nota Fiscal / Recibo
-          </label>
-          <input
-            className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-700 outline-none focus:border-primary-500"
-            placeholder="Nº NF"
+          <Input
+            label="Nota Fiscal / Recibo"
             value={invoice}
             onChange={(e) => setInvoice(e.target.value)}
+            placeholder="Nº NF"
           />
         </div>
       </div>
 
       {/* ITEM INPUT CARD */}
       <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm space-y-4 relative overflow-visible">
-        <h3 className="text-sm font-black text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2">
+        <h3 className="text-sm font-bold text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2">
           Adicionar Item à Compra
         </h3>
 
@@ -464,7 +449,7 @@ export const EntradaEstoquePage = () => {
                 size={18}
               />
               <input
-                className={`w-full pl-10 pr-4 py-3 rounded-xl border ${selectedStockPart ? "border-primary-500 bg-primary-50 text-primary-700" : "border-neutral-200 bg-neutral-50"} font-bold outline-none focus:border-primary-500 transition-all`}
+                className={`w-full pl-10 pr-4 py-3 rounded-xl border ${selectedStockPart ? "border-primary-500 bg-primary-50 text-primary-700" : "border-neutral-200 bg-neutral-50"} font-bold outline-none focus:border-primary-500 transition-all h-[46px]`}
                 placeholder="Digite o nome da peça..."
                 value={partSearch}
                 onChange={(e) => {
@@ -527,11 +512,8 @@ export const EntradaEstoquePage = () => {
           {isNewPart && (
             <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2">
               <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">
-                  Fabricante
-                </label>
-                <input
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-white"
+                <Input
+                  label="Fabricante"
                   placeholder="Marca"
                   value={newPartFab}
                   onChange={(e) => setNewPartFab(e.target.value)}
@@ -542,7 +524,7 @@ export const EntradaEstoquePage = () => {
                   Unidade
                 </label>
                 <select
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-white"
+                  className="w-full p-3 rounded-xl border border-neutral-200 bg-white font-medium h-[46px]"
                   value={newPartUnit}
                   onChange={(e) => setNewPartUnit(e.target.value)}
                 >
@@ -560,72 +542,64 @@ export const EntradaEstoquePage = () => {
         {/* Values Row */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-2">
           <div>
-            <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">
-              Quantidade
-            </label>
-            <input
+            <Input
+              label="Quantidade"
               type="number"
-              className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-black text-center outline-none focus:border-primary-500"
+              className="text-center font-bold"
               value={rowQtd}
               onChange={(e) => setRowQtd(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">
-              Custo Unit (R$)
-            </label>
-            <input
+            <Input
+              label="Custo Unit (R$)"
               type="number"
-              className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-medium text-right outline-none focus:border-primary-500"
+              className="text-right font-medium"
               placeholder="0.00"
               value={rowCost}
               onChange={(e) => setRowCost(e.target.value)}
             />
           </div>
           <div className="relative">
-            <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">
-              Margem (%)
-            </label>
-            <input
+            <Input
+              label="Margem (%)"
               type="number"
-              className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-medium text-center outline-none focus:border-primary-500"
+              className="text-center font-medium"
               placeholder="%"
               value={rowMargin}
               onChange={(e) => setRowMargin(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">
-              Venda Unit (R$)
-            </label>
-            <input
+            <Input
+              label="Venda Unit (R$)"
               type="number"
-              className="w-full p-3 rounded-xl border border-primary-200 bg-primary-50 text-primary-800 font-bold text-right outline-none focus:border-primary-500"
+              className="text-right border-primary-200 bg-primary-50 text-primary-800 font-bold"
               placeholder="0.00"
               value={rowSale}
               onChange={(e) => handleRecalcMargin(e.target.value)}
             />
           </div>
           <div className="flex items-end">
-            <button
+            <Button
               onClick={handleAddItem}
-              className="w-full py-3 bg-neutral-900 text-white font-bold rounded-xl shadow-lg hover:bg-black hover:scale-105 transition-all flex justify-center items-center gap-2"
+              className="w-full"
+              variant="dark"
+              icon={Plus}
             >
-              <Plus size={20} /> ADICIONAR
-            </button>
+              ADICIONAR
+            </Button>
           </div>
         </div>
 
         {/* Extra Details Row */}
         <div className="grid grid-cols-2 gap-4">
-          <input
-            className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-medium text-sm outline-none focus:border-primary-500"
+          <Input
             placeholder="Código Ref/Fabricante (Opcional)"
             value={rowRef}
             onChange={(e) => setRowRef(e.target.value)}
           />
-          <input
-            className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-medium text-sm outline-none focus:border-primary-500"
+          <Input
             placeholder="Observações do item (Opcional)"
             value={rowObs}
             onChange={(e) => setRowObs(e.target.value)}
@@ -636,7 +610,7 @@ export const EntradaEstoquePage = () => {
       {/* CART LIST */}
       <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-sm">
         <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex justify-between items-center">
-          <h3 className="text-sm font-black text-neutral-600 uppercase tracking-widest">
+          <h3 className="text-sm font-bold text-neutral-600 uppercase tracking-widest">
             Itens na Lista
           </h3>
           <span className="text-xs font-bold text-neutral-400">
@@ -645,7 +619,7 @@ export const EntradaEstoquePage = () => {
         </div>
 
         <table className="w-full text-left">
-          <thead className="bg-neutral-50 text-[10px] uppercase font-black text-neutral-400 tracking-wider">
+          <thead className="bg-neutral-50 text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
             <tr>
               <th className="p-3">Produto</th>
               <th className="p-3 text-center">Qtd</th>
@@ -658,7 +632,10 @@ export const EntradaEstoquePage = () => {
           </thead>
           <tbody className="divide-y divide-neutral-50">
             {items.map((i) => (
-              <tr key={i.tempId} className="hover:bg-neutral-50">
+              <tr
+                key={i.tempId}
+                className="hover:bg-neutral-50 transition-colors"
+              >
                 <td className="p-3">
                   <div className="font-bold text-neutral-800">
                     {i.displayName}
@@ -672,14 +649,16 @@ export const EntradaEstoquePage = () => {
                     </span>
                   )}
                 </td>
-                <td className="p-3 text-center font-bold">{i.quantidade}</td>
+                <td className="p-3 text-center font-bold text-neutral-700">
+                  {i.quantidade}
+                </td>
                 <td className="p-3 text-right text-neutral-600">
                   {formatCurrency(i.valor_custo)}
                 </td>
-                <td className="p-3 text-right text-blue-600">
+                <td className="p-3 text-right text-blue-600 font-medium">
                   {i.margem_lucro?.toFixed(1)}%
                 </td>
-                <td className="p-3 text-right font-black text-neutral-800">
+                <td className="p-3 text-right font-bold text-neutral-800">
                   {formatCurrency(i.valor_venda)}
                 </td>
                 <td className="p-3 text-right text-neutral-500">
@@ -688,13 +667,13 @@ export const EntradaEstoquePage = () => {
                 <td className="p-3 text-right">
                   <button
                     onClick={() => handleEditItem(i)}
-                    className="text-primary-400 hover:text-primary-600 p-1 mr-2"
+                    className="text-primary-400 hover:text-primary-600 p-1 mr-2 transition-colors"
                   >
                     <Edit size={16} />
                   </button>
                   <button
                     onClick={() => handleRemoveItem(i.tempId)}
-                    className="text-red-400 hover:text-red-600 p-1"
+                    className="text-red-400 hover:text-red-600 p-1 transition-colors"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -720,7 +699,7 @@ export const EntradaEstoquePage = () => {
               <p className="text-xs font-bold text-neutral-500 uppercase">
                 Total da Compra
               </p>
-              <p className="text-2xl font-black text-neutral-800">
+              <p className="text-2xl font-bold text-neutral-800">
                 {formatCurrency(
                   items.reduce(
                     (acc, i) => acc + i.quantidade * i.valor_custo,
@@ -731,10 +710,11 @@ export const EntradaEstoquePage = () => {
             </div>
             <Button
               onClick={handlePreSubmit}
-              variant="success"
-              className="h-12 px-8 text-lg shadow-xl shadow-green-500/20"
+              variant="primary"
+              className="h-12 px-8 text-lg shadow-xl shadow-primary-500/20"
+              icon={Save}
             >
-              <Save className="mr-2" /> FINALIZAR ENTRADA
+              FINALIZAR ENTRADA
             </Button>
           </div>
         )}

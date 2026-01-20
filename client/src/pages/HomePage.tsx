@@ -1,29 +1,51 @@
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import {
+  Plus,
+  Wrench,
+  CreditCard,
+  Wallet,
+  Package,
+  CheckCircle,
+} from "lucide-react";
 import { api } from "../services/api";
 import { useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/Button";
 
-const StatCard = ({ title, value, color, onClick, subtext }: any) => (
+// Updated StatCard to match "Summary Card" style from MovimentacoesTab
+const StatCard = ({
+  title,
+  value,
+  color,
+  icon: Icon,
+  onClick,
+  subtext,
+}: any) => (
   <div
     onClick={onClick}
-    className={`bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 group`}
+    className="bg-white p-6 rounded-xl shadow-sm border border-neutral-200 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 group"
   >
-    <div className="flex flex-col justify-between h-full items-center text-center">
-      <div>
-        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
+    <div className="flex flex-col justify-between h-full">
+      <div className="flex items-center gap-3 mb-2">
+        <div className={`p-2 rounded-lg ${color.bg} ${color.text}`}>
+          <Icon size={20} />
+        </div>
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
           {title}
         </p>
-        <h3 className={`text-4xl font-black ${color.replace("bg-", "text-")}`}>
+      </div>
+
+      <div className="mt-2">
+        <h3
+          className={`text-3xl font-bold ${color.textValue || "text-neutral-900"}`}
+        >
           {value}
         </h3>
-      </div>
-      {subtext && (
-        <div className="mt-4 pt-4 border-t border-neutral-50 w-full">
-          <p className="text-[10px] text-neutral-400 font-bold uppercase">
+        {subtext && (
+          <p className="text-[10px] text-neutral-400 font-bold uppercase mt-1">
             {subtext}
           </p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   </div>
 );
@@ -72,14 +94,10 @@ export function HomePage() {
         (c: any) => c.status === "PENDENTE",
       ).length;
 
-      // Robust matcher for local date string match (ignores timezone shifts from DB midnight)
       const isToday = (dateStr: string) => {
         if (!dateStr) return false;
-        // Create Date object from ISO string (e.g. 2026-01-04T02:00:00Z)
         const date = new Date(dateStr);
-        // Get local date string YYYY-MM-DD (e.g. 2026-01-03)
         const localDateStr = date.toLocaleDateString("en-CA");
-
         const todayStr = new Date().toLocaleDateString("en-CA");
         return localDateStr === todayStr;
       };
@@ -94,12 +112,10 @@ export function HomePage() {
         return isToday(p.data_pagamento_fornecedor) && !p.deleted_at;
       }).length;
 
-      // 4. Auto Peças (Pecas não pagas ao fornecedor)
       const autoPecasPendentes = pagPecas.filter(
         (p: any) => !p.pago_ao_fornecedor && !p.deleted_at,
       ).length;
 
-      // 5. Consolidação (OS Pronta para Financeiro E SEM Fechamento)
       const consolidacao = oss.filter(
         (o: any) =>
           o.status === "PRONTO PARA FINANCEIRO" && !o.fechamento_financeiro,
@@ -130,7 +146,6 @@ export function HomePage() {
 
     let filtered = recentOss;
 
-    // 1. Filter Logic
     if (filterPeriod !== "STATUS") {
       filtered = recentOss.filter((os) => {
         const dateRef = os.updated_at
@@ -153,7 +168,6 @@ export function HomePage() {
       });
     }
 
-    // 2. Sort Logic
     return filtered.sort((a, b) => {
       if (filterPeriod === "STATUS") {
         const priority: Record<string, number> = {
@@ -168,7 +182,6 @@ export function HomePage() {
         const pB = priority[b.status] || 99;
         if (pA !== pB) return pA - pB;
       }
-      // Date Sort (Secondary for STATUS, Primary for others)
       const dateA = a.updated_at
         ? new Date(a.updated_at).getTime()
         : new Date(a.dt_abertura).getTime();
@@ -198,8 +211,15 @@ export function HomePage() {
 
   const filteredServices = getFilteredRecentServices();
 
+  const getFilterButtonClass = (isActive: boolean) =>
+    `px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+      isActive
+        ? "bg-primary-200 text-primary-500 shadow-sm"
+        : "text-neutral-500 hover:text-neutral-700 hover:bg-white"
+    }`;
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="w-full mx-auto px-4 md:px-8 py-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-neutral-600 tracking-tight">
@@ -221,35 +241,60 @@ export function HomePage() {
         <StatCard
           title="Serviços Abertos"
           value={stats.osAberta}
-          color="bg-blue-500"
+          color={{
+            bg: "bg-blue-50",
+            text: "text-blue-600",
+            textValue: "text-blue-600",
+          }}
+          icon={Wrench}
           onClick={() => navigate("/ordem-de-servico")}
           subtext="Em produção"
         />
         <StatCard
           title="Contas a Pagar"
           value={stats.contasPagar}
-          color="bg-red-500"
+          color={{
+            bg: "bg-red-50",
+            text: "text-red-600",
+            textValue: "text-red-600",
+          }}
+          icon={CreditCard}
           onClick={() => navigate("/financeiro/contas-pagar")}
           subtext="Geral / Fixas"
         />
         <StatCard
-          title="Movimentação de Caixa"
+          title="Mov. de Caixa"
           value={stats.livroCaixaEntries + stats.livroCaixaExits}
-          color="bg-neutral-900"
+          color={{
+            bg: "bg-neutral-100",
+            text: "text-neutral-600",
+            textValue: "text-neutral-800",
+          }}
+          icon={Wallet}
           onClick={() => navigate("/financeiro/livro-caixa")}
-          subtext={`Ent: ${stats.livroCaixaEntries}  |  Sai: ${stats.livroCaixaExits}`}
+          subtext={`Ent: ${stats.livroCaixaEntries} | Sai: ${stats.livroCaixaExits}`}
         />
         <StatCard
           title="Auto Peças"
           value={stats.autoPecasPendentes}
-          color="bg-orange-500"
+          color={{
+            bg: "bg-orange-50",
+            text: "text-orange-600",
+            textValue: "text-orange-600",
+          }}
+          icon={Package}
           onClick={() => navigate("/financeiro/pagamento-pecas")}
           subtext="Pendentes Pagto"
         />
         <StatCard
           title="Consolidação"
           value={stats.consolidacao}
-          color="bg-emerald-500"
+          color={{
+            bg: "bg-emerald-50",
+            text: "text-emerald-600",
+            textValue: "text-emerald-600",
+          }}
+          icon={CheckCircle}
           onClick={() => navigate("/fechamento-financeiro")}
           subtext="Aguardando Financ."
         />
@@ -257,18 +302,21 @@ export function HomePage() {
 
       {/* Shortcuts */}
       <div className="flex items-center gap-4">
-        <button
+        <Button
           onClick={() => navigate("/ordem-de-servico?new=true")}
-          className="bg-neutral-900 hover:bg-black text-white px-8 py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center gap-3 shadow-xl shadow-neutral-900/20 transition-all hover:-translate-y-1 hover:shadow-2xl"
+          variant="primary"
+          size="lg"
+          icon={Plus}
+          className="shadow-lg shadow-primary-500/20"
         >
-          <Plus size={22} /> Nova Ordem de Serviço
-        </button>
+          Nova Ordem de Serviço
+        </Button>
       </div>
 
       {/* Recent Services - FULL WIDTH */}
       <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
         <div className="p-6 border-b border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <h2 className="text-lg font-black text-neutral-900 tracking-tight">
+          <h2 className="text-lg font-bold text-neutral-900 tracking-tight">
             Ordens de Serviços Recentes
           </h2>
 
@@ -278,7 +326,7 @@ export function HomePage() {
               <button
                 key={p}
                 onClick={() => setFilterPeriod(p as any)}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${filterPeriod === p ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
+                className={getFilterButtonClass(filterPeriod === p)}
               >
                 {p === "MES" ? "Mês" : p}
               </button>
@@ -290,25 +338,25 @@ export function HomePage() {
           <table className="w-full text-left">
             <thead className="bg-neutral-50 border-b border-neutral-100">
               <tr>
-                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">
+                <th className="p-4 text-[10px] font-bold uppercase text-neutral-400 tracking-widest">
                   OS / Data
                 </th>
-                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">
+                <th className="p-4 text-[10px] font-bold uppercase text-neutral-400 tracking-widest">
                   Veículo
                 </th>
-                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">
+                <th className="p-4 text-[10px] font-bold uppercase text-neutral-400 tracking-widest">
                   Diagnóstico
                 </th>
-                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">
+                <th className="p-4 text-[10px] font-bold uppercase text-neutral-400 tracking-widest">
                   Colaborador
                 </th>
-                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest">
+                <th className="p-4 text-[10px] font-bold uppercase text-neutral-400 tracking-widest">
                   Cliente
                 </th>
-                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest text-center">
+                <th className="p-4 text-[10px] font-bold uppercase text-neutral-400 tracking-widest text-center">
                   Status
                 </th>
-                <th className="p-4 text-[10px] font-black uppercase text-neutral-400 tracking-widest text-right">
+                <th className="p-4 text-[10px] font-bold uppercase text-neutral-400 tracking-widest text-right">
                   Ações
                 </th>
               </tr>
@@ -317,7 +365,7 @@ export function HomePage() {
               {filteredServices.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={7}
                     className="p-12 text-center text-neutral-400 font-medium italic"
                   >
                     Nenhuma atualização neste período.
@@ -334,10 +382,10 @@ export function HomePage() {
                           : `/ordem-de-servico?id=${os.id_os}`,
                       )
                     }
-                    className="hover:bg-neutral-25 cursor-pointer transition-colors group"
+                    className="hover:bg-neutral-50 cursor-pointer transition-colors group"
                   >
                     <td className="p-4">
-                      <div className="font-black text-neutral-800">
+                      <div className="font-bold text-neutral-800">
                         #{os.id_os}
                       </div>
                       <div className="text-[10px] text-neutral-400 font-bold">
@@ -350,7 +398,7 @@ export function HomePage() {
                           {os.veiculo?.modelo || "Modelo N/I"}{" "}
                           {os.veiculo?.cor ? os.veiculo.cor : ""}
                         </span>
-                        <span className="text-[10px] font-black text-neutral-400 uppercase">
+                        <span className="text-[10px] font-bold text-neutral-400 uppercase">
                           {os.veiculo?.placa || "---"}
                         </span>
                       </div>
@@ -391,7 +439,7 @@ export function HomePage() {
                     </td>
                     <td className="p-4 text-center">
                       <span
-                        className={`px-3 py-1 rounded-md text-[10px] font-black uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
+                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
                       >
                         {os.status === "PRONTO PARA FINANCEIRO"
                           ? "FINANCEIRO"
@@ -399,15 +447,16 @@ export function HomePage() {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <button
+                      <Button
                         onClick={(e) => {
                           e.stopPropagation(); // Prevent row click
                           navigate(`/ordem-de-servico?id=${os.id_os}`);
                         }}
-                        className="bg-neutral-900 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase hover:bg-black transition-transform hover:scale-105 shadow-md shadow-neutral-900/20"
+                        variant="secondary"
+                        size="sm"
                       >
                         Gerenciar
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))

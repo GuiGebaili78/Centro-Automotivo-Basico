@@ -13,12 +13,12 @@ import {
 } from "lucide-react";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/input";
 
 export const PecasEstoquePage = () => {
   const navigate = useNavigate();
   const [pecas, setPecas] = useState<IPecasEstoque[]>([]);
-
-  // const [showNewModal, setShowNewModal] = useState(false); // Removed
 
   const [statusMsg, setStatusMsg] = useState<{
     type: "success" | "error" | null;
@@ -46,8 +46,6 @@ export const PecasEstoquePage = () => {
   useEffect(() => {
     loadPecas();
   }, []);
-
-  // ... (keep handleRecalcMargin, handleRecalcSale, loadPecas, handleSearch, etc.)
 
   // FILTERED LIST
   const filteredPecas = pecas.filter((p) => {
@@ -165,8 +163,6 @@ export const PecasEstoquePage = () => {
     type: "warning" | "info" | "danger";
   }>({ show: false, title: "", msg: "", onConfirm: () => {}, type: "info" });
 
-  // ... (existing code)
-
   const handleCloseModal = () => {
     if (editData) {
       setConfirmModal({
@@ -247,7 +243,7 @@ export const PecasEstoquePage = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="w-full mx-auto px-4 md:px-8 py-6 space-y-6">
       <StatusBanner
         msg={statusMsg}
         onClose={() => setStatusMsg({ type: null, text: "" })}
@@ -267,20 +263,20 @@ export const PecasEstoquePage = () => {
               <p className="font-bold text-center">{confirmModal.msg}</p>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() =>
                   setConfirmModal((prev) => ({ ...prev, show: false }))
                 }
-                className="px-4 py-2 text-neutral-500 font-bold hover:bg-neutral-100 rounded-lg transition-colors"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant={confirmModal.type === "danger" ? "danger" : "primary"}
                 onClick={confirmModal.onConfirm}
-                className={`px-6 py-2 text-white font-bold rounded-lg shadow-md transition-all ${confirmModal.type === "danger" ? "bg-red-600 hover:bg-red-700" : "bg-neutral-900 hover:bg-black"}`}
               >
                 Confirmar
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
@@ -288,73 +284,68 @@ export const PecasEstoquePage = () => {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">
             Estoque de Peças
           </h1>
           <p className="text-neutral-500">
             Gerencie o inventário de peças e serviços.
           </p>
         </div>
-        <button
+        <Button
           onClick={() => navigate("/entrada-estoque")}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg transition-transform hover:-translate-y-0.5"
+          variant="primary"
+          icon={ShoppingCart}
+          className="shadow-lg shadow-primary-500/20"
         >
-          <ShoppingCart size={20} />
           Nova Compra / Entrada
-        </button>
+        </Button>
       </div>
 
       {/* ACTION CARDS ROW */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* 1. Maintenance By ID (Left) */}
         <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm flex flex-col justify-between">
-          <h2 className="text-sm font-black text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2 mb-4">
+          <h2 className="text-sm font-bold text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2 mb-4">
             Manutenção de Item (Por ID)
           </h2>
           <div className="flex gap-4 items-end">
             <div className="flex-1">
-              <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">
-                ID da Peça
-              </label>
-              <input
+              <Input
+                label="ID da Peça"
                 type="number"
                 value={searchId}
                 onChange={(e) => setSearchId(e.target.value)}
                 placeholder="123"
-                className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-800 outline-none focus:border-primary-500 transition-colors"
               />
             </div>
-            <button
+            <Button
               onClick={handleSearch}
               disabled={!searchId}
-              className="px-6 py-3 bg-neutral-800 hover:bg-neutral-900 disabled:opacity-50 text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2"
+              variant="primary"
+              className="mb-1"
+              icon={Search}
             >
-              <Search size={18} /> ABRIR
-            </button>
+              ABRIR
+            </Button>
           </div>
         </div>
 
         {/* 2. Global Search / Filtering (Right) */}
         <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm flex flex-col justify-between">
-          <h2 className="text-sm font-black text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2 mb-4">
+          <h2 className="text-sm font-bold text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2 mb-4">
             Localizar / Filtrar Lista
           </h2>
           <div className="relative">
-            <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">
-              Buscar em todas as colunas
-            </label>
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                size={18}
-              />
-              <input
-                value={listSearchTerm}
-                onChange={(e) => setListSearchTerm(e.target.value)}
-                placeholder="Nome, Fabricante, Descrição..."
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-800 outline-none focus:border-primary-500 transition-colors"
-              />
-            </div>
+            <Input
+              label="Buscar em todas as colunas"
+              value={listSearchTerm}
+              onChange={(e) => setListSearchTerm(e.target.value)}
+              placeholder="Nome, Fabricante, Descrição..."
+            />
+            <Search
+              className="absolute right-3 top-[34px] text-neutral-400 pointer-events-none"
+              size={18}
+            />
           </div>
         </div>
       </div>
@@ -364,25 +355,25 @@ export const PecasEstoquePage = () => {
         <table className="w-full text-left border-collapse">
           <thead className="bg-neutral-50 border-b border-neutral-100">
             <tr>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
                 ID
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
                 Produto / Peça
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
                 Fornecedor / Data
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">
+              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-right">
                 Estoque
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">
+              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-right">
                 Custo Unit.
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">
+              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-right">
                 Valor Venda
               </th>
-              <th className="p-4 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">
+              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-right">
                 Ações
               </th>
             </tr>
@@ -399,7 +390,6 @@ export const PecasEstoquePage = () => {
               </tr>
             ) : (
               filteredPecas.map((p) => {
-                // ... row rendering
                 const lastEntry = (p as any).itens_entrada?.[0]?.entrada;
                 const fornecedorName = lastEntry?.fornecedor?.nome || "-";
                 const dataCompra = lastEntry?.data_compra
@@ -410,9 +400,9 @@ export const PecasEstoquePage = () => {
                 return (
                   <tr
                     key={p.id_pecas_estoque}
-                    className="hover:bg-neutral-25 group"
+                    className="hover:bg-neutral-50 group transition-colors"
                   >
-                    <td className="p-4 text-neutral-500 font-mono text-xs">
+                    <td className="p-4 text-neutral-500 font-mono text-xs font-bold">
                       #{p.id_pecas_estoque}
                     </td>
                     <td className="p-4 font-medium">
@@ -440,14 +430,14 @@ export const PecasEstoquePage = () => {
                         <div className="font-bold text-neutral-700">
                           {fornecedorName}
                         </div>
-                        <div className="text-neutral-400">
+                        <div className="text-neutral-400 font-medium">
                           {dataCompra} • NF: {nf}
                         </div>
                       </div>
                     </td>
                     <td className="p-4 text-right">
                       <span
-                        className={`px-2 py-1 rounded-md text-xs font-black ${p.estoque_atual > 0 ? "bg-success-50 text-success-600" : "bg-red-50 text-red-600"}`}
+                        className={`px-2 py-1 rounded-md text-xs font-bold ${p.estoque_atual > 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}
                       >
                         {p.estoque_atual} {p.unidade_medida || "UN"}
                       </span>
@@ -455,17 +445,19 @@ export const PecasEstoquePage = () => {
                     <td className="p-4 text-right font-medium text-neutral-600">
                       {formatCurrency(Number(p.valor_custo))}
                     </td>
-                    <td className="p-4 text-right font-black text-neutral-900">
+                    <td className="p-4 text-right font-bold text-neutral-900">
                       {formatCurrency(Number(p.valor_venda))}
                     </td>
                     <td className="p-4 text-right">
-                      <button
+                      <Button
                         onClick={() => handleOpenEdit(p)}
-                        className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                        title="Editar"
+                        variant="secondary"
+                        size="sm"
+                        icon={Edit}
+                        className="py-1 px-2"
                       >
-                        <Edit size={16} />
-                      </button>
+                        Editar
+                      </Button>
                     </td>
                   </tr>
                 );
@@ -485,29 +477,23 @@ export const PecasEstoquePage = () => {
           <form onSubmit={handleUpdate} className="space-y-6 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                  Nome do Item
-                </label>
-                <input
+                <Input
+                  label="Nome do Item"
                   value={formData.nome}
                   onChange={(e) =>
                     setFormData({ ...formData, nome: e.target.value })
                   }
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                    Fabricante
-                  </label>
-                  <input
+                  <Input
+                    label="Fabricante"
                     value={formData.fabricante}
                     onChange={(e) =>
                       setFormData({ ...formData, fabricante: e.target.value })
                     }
-                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold"
                     placeholder="Marca..."
                   />
                 </div>
@@ -523,7 +509,7 @@ export const PecasEstoquePage = () => {
                         unidade_medida: e.target.value,
                       })
                     }
-                    className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm h-[50px]"
+                    className="w-full p-[10px] rounded-lg border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm h-[42px] transition-all"
                   >
                     <option value="UN">Unidade (UN)</option>
                     <option value="L">Litro (L)</option>
@@ -538,54 +524,46 @@ export const PecasEstoquePage = () => {
             {/* Values Row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                  Estoque Atual
-                </label>
-                <input
+                <Input
+                  label="Estoque Atual"
                   type="number"
                   value={formData.estoque_atual}
                   onChange={(e) =>
                     setFormData({ ...formData, estoque_atual: e.target.value })
                   }
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 text-center font-black focus:bg-white outline-none focus:border-primary-500"
+                  className="text-center font-bold"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                  Custo Unit (R$)
-                </label>
-                <input
+                <Input
+                  label="Custo Unit (R$)"
                   type="number"
                   step="0.01"
                   value={formData.valor_custo}
                   onChange={(e) =>
                     setFormData({ ...formData, valor_custo: e.target.value })
                   }
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 text-right font-medium focus:bg-white outline-none focus:border-primary-500"
+                  className="text-right font-medium"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                  Margem (%)
-                </label>
-                <input
+                <Input
+                  label="Margem (%)"
                   type="number"
                   step="0.5"
                   value={formData.margem_lucro}
                   onChange={(e) => handleRecalcSale(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 text-center font-medium focus:bg-white outline-none focus:border-primary-500"
+                  className="text-center font-medium"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-primary-600 uppercase mb-1">
-                  Venda Unit (R$)
-                </label>
-                <input
+                <Input
+                  label="Venda Unit (R$)"
                   type="number"
                   step="0.01"
                   value={formData.valor_venda}
                   onChange={(e) => handleRecalcMargin(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-primary-200 bg-primary-50 text-primary-800 text-right font-black focus:bg-white outline-none focus:border-primary-500"
+                  className="text-right font-bold border-primary-200 bg-primary-50 text-primary-800"
                 />
               </div>
             </div>
@@ -600,27 +578,30 @@ export const PecasEstoquePage = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, descricao: e.target.value })
                   }
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-medium text-sm h-24 resize-none"
+                  className="w-full p-3 rounded-lg border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-medium text-sm h-24 resize-none transition-all"
                   placeholder="Detalhes adicionais..."
                 />
               </div>
             </div>
 
             <div className="flex justify-between items-center pt-2">
-              <button
+              <Button
                 type="button"
                 onClick={handleDelete}
-                className="px-6 py-3 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 flex items-center gap-2"
+                variant="danger"
+                icon={Trash2}
               >
-                <Trash2 size={20} /> Excluir Item
-              </button>
+                Excluir Item
+              </Button>
 
-              <button
+              <Button
                 type="submit"
-                className="px-8 py-3 bg-primary-600 text-white font-black uppercase rounded-xl shadow-lg hover:bg-primary-700 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                variant="primary"
+                icon={CheckCircle}
+                className="px-8 shadow-lg shadow-primary-500/20"
               >
-                <CheckCircle size={20} /> Salvar Alterações
-              </button>
+                Salvar Alterações
+              </Button>
             </div>
           </form>
         </Modal>
