@@ -2,15 +2,7 @@ import { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api";
-import {
-  Plus,
-  Trash2,
-  Landmark,
-  Eye,
-  EyeOff,
-  FileText,
-  Edit,
-} from "lucide-react";
+import { Plus, Landmark, Eye, EyeOff, FileText, Edit } from "lucide-react";
 import type { IContaBancaria } from "../../types/backend";
 import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
@@ -171,8 +163,8 @@ export const ContasTab = () => {
                 />
                 <ActionButton
                   onClick={() => toggleDelete(acc)}
-                  icon={Trash2}
-                  variant="danger"
+                  icon={acc.ativo ? EyeOff : Eye}
+                  variant={acc.ativo ? "danger" : "primary"}
                   label={acc.ativo ? "Desativar" : "Ativar"}
                   className="opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0"
                 />

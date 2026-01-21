@@ -308,7 +308,7 @@ export const CadastroUnificadoPage = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">
       {statusMsg.text && (
         <div className="fixed bottom-8 right-8 z-50">
           <StatusBanner

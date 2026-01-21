@@ -14,6 +14,7 @@ import type { IRecebivelCartao } from "../../types/backend";
 import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/input";
+import { Modal } from "../ui/Modal";
 
 export const RecebiveisTab = () => {
   const [recebiveis, setRecebiveis] = useState<IRecebivelCartao[]>([]);
@@ -177,15 +178,9 @@ export const RecebiveisTab = () => {
     }
   };
 
-  const handleConciliar = async () => {
-    if (selectedIds.length === 0) return;
-    if (
-      !window.confirm(
-        `Confirma o recebimento de ${selectedIds.length} transações? Isso lançará o valor na conta bancária.`,
-      )
-    )
-      return;
+  const [showConciliateModal, setShowConciliateModal] = useState(false);
 
+  const executeConciliacao = async () => {
     try {
       await api.post("/recebivel-cartao/confirmar", { ids: selectedIds });
       setStatusMsg({
@@ -194,6 +189,7 @@ export const RecebiveisTab = () => {
       });
       setSelectedIds([]);
       loadData(dateRange.start, dateRange.end);
+      setShowConciliateModal(false);
     } catch (error: any) {
       console.error(error);
       const msg =
@@ -202,6 +198,11 @@ export const RecebiveisTab = () => {
         "Erro ao conciliar recebíveis.";
       setStatusMsg({ type: "error", text: msg });
     }
+  };
+
+  const handleConciliar = () => {
+    if (selectedIds.length === 0) return;
+    setShowConciliateModal(true);
   };
 
   const totalSelected = recebiveis
@@ -460,7 +461,7 @@ export const RecebiveisTab = () => {
             </div>
             <Button
               onClick={handleConciliar}
-              className="w-full md:w-auto text-primary-700 bg-white hover:bg-neutral-50 shadow-lg border-none!"
+              className="w-full md:w-auto text-primary-700 bg-primary-100 hover:bg-neutral-50 shadow-lg border-none!"
               icon={Calendar}
               size="lg"
             >
@@ -667,6 +668,59 @@ export const RecebiveisTab = () => {
           </table>
         </div>
       </div>
+      {/* CONCILIATION MODAL */}
+      {showConciliateModal && (
+        <Modal
+          title="Confirmar Conciliação"
+          onClose={() => setShowConciliateModal(false)}
+        >
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
+              <div className="bg-blue-100 p-2 rounded-full">
+                <CheckCircle className="text-blue-600" size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-blue-900">
+                  Confirmar Recebimento
+                </h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  Deseja marcar <b>{selectedIds.length}</b> transações como
+                  recebidas?
+                  <br />
+                  <span className="text-xs opacity-75">
+                    Isso atualizará o saldo das contas vinculadas.
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-neutral-50 p-3 rounded-lg border border-neutral-100">
+              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">
+                Total a Conciliar
+              </p>
+              <p className="text-2xl font-black text-neutral-800">
+                {formatCurrency(totalSelected)}
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setShowConciliateModal(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={executeConciliacao}
+                icon={CheckCircle}
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

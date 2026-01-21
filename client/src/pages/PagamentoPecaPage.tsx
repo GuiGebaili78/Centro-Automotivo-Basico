@@ -16,6 +16,7 @@ import {
   Save,
   DollarSign,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import { Modal } from "../components/ui/Modal";
 
@@ -156,31 +157,33 @@ export const PagamentoPecaPage = () => {
     }
   };
 
-  const handleUnpay = async (id: number) => {
-    if (
-      !window.confirm(
-        "Deseja realmente estornar este pagamento? O valor retornará para a conta e o registro sairá do Livro Caixa.",
-      )
-    )
-      return;
+  const [undoModal, setUndoModal] = useState<{
+    isOpen: boolean;
+    id: number | null;
+  }>({ isOpen: false, id: null });
 
+  const executeUnpay = async (id: number) => {
     try {
       setLoading(true);
       await api.put(`/pagamento-peca/${id}`, {
         pago_ao_fornecedor: false,
-        // revert: true // Backend logic handles default 'false' as revert if implemented properly or explicit flag
       });
       setStatusMsg({
         type: "success",
         text: "Pagamento estornado com sucesso!",
       });
       loadData();
+      setUndoModal({ isOpen: false, id: null });
     } catch (error) {
       console.error(error);
       setStatusMsg({ type: "error", text: "Erro ao desfazer pagamento." });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUnpay = (id: number) => {
+    setUndoModal({ isOpen: true, id });
   };
 
   const handleBatchConfirmClick = () => {
@@ -1117,6 +1120,46 @@ export const PagamentoPecaPage = () => {
                 className="shadow-lg shadow-red-500/30"
               >
                 Confirmar Exclusão
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {/* UNDO PAYMENT MODAL */}
+      {undoModal.isOpen && (
+        <Modal
+          title="Confirmar Estorno"
+          onClose={() => setUndoModal({ isOpen: false, id: null })}
+        >
+          <div className="space-y-4">
+            <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-3">
+              <AlertTriangle className="text-amber-600 shrink-0" size={24} />
+              <div>
+                <h3 className="font-bold text-amber-900">Atenção!</h3>
+                <p className="text-sm text-amber-800 mt-1">
+                  Deseja realmente estornar este pagamento?
+                  <br />
+                  <span className="text-xs opacity-75">
+                    O valor retornará para a conta e o registro sairá do Livro
+                    Caixa.
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setUndoModal({ isOpen: false, id: null })}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => undoModal.id && executeUnpay(undoModal.id)}
+                icon={CheckSquare}
+              >
+                Confirmar Estorno
               </Button>
             </div>
           </div>

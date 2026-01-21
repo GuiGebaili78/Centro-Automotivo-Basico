@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { api } from "../../services/api";
-import { Plus, CreditCard, Trash2, AlertTriangle, Edit } from "lucide-react";
+import {
+  Plus,
+  CreditCard,
+  Trash2,
+  AlertTriangle,
+  Edit,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import type { IOperadoraCartao, IContaBancaria } from "../../types/backend";
 import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
@@ -476,20 +484,36 @@ export const OperadorasTab = () => {
         </Modal>
       )}
 
-      {/* DELETE MODAL */}
+      {/* TOGGLE STATUS MODAL (REPLACES DELETE) */}
       {isDeleteModalOpen && (
         <Modal
-          title="Confirmar Exclusão"
+          title={`Confirmar ${opToDelete?.ativo ? "Desativação" : "Ativação"}`}
           onClose={() => setIsDeleteModalOpen(false)}
         >
           <div className="space-y-4">
-            <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-3">
-              <AlertTriangle className="text-red-600 shrink-0" size={24} />
+            <div
+              className={`${opToDelete?.ativo ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100"} border p-4 rounded-xl flex items-start gap-3`}
+            >
+              <AlertTriangle
+                className={`${opToDelete?.ativo ? "text-red-600" : "text-emerald-600"} shrink-0`}
+                size={24}
+              />
               <div>
-                <h3 className="font-bold text-red-900">Atenção!</h3>
-                <p className="text-sm text-red-700 mt-1">
-                  Você tem certeza que deseja excluir esta operadora? <br />
-                  <span className="font-black">{opToDelete?.nome}</span>
+                <h3
+                  className={`font-bold ${opToDelete?.ativo ? "text-red-900" : "text-emerald-900"}`}
+                >
+                  Atenção!
+                </h3>
+                <p
+                  className={`text-sm mt-1 ${opToDelete?.ativo ? "text-red-700" : "text-emerald-700"}`}
+                >
+                  Você deseja {opToDelete?.ativo ? "desativar" : "ativar"} a
+                  operadora{" "}
+                  <span className="font-black">{opToDelete?.nome}</span>?
+                  <br />
+                  <span className="text-xs opacity-80">
+                    O histórico financeiro será mantido.
+                  </span>
                 </p>
               </div>
             </div>
@@ -501,8 +525,12 @@ export const OperadorasTab = () => {
               >
                 Cancelar
               </Button>
-              <Button variant="danger" onClick={handleDelete} icon={Trash2}>
-                Confirmar Exclusão
+              <Button
+                variant={opToDelete?.ativo ? "danger" : "primary"}
+                onClick={handleDelete}
+                icon={opToDelete?.ativo ? EyeOff : Eye}
+              >
+                Confirmar {opToDelete?.ativo ? "Desativação" : "Ativação"}
               </Button>
             </div>
           </div>

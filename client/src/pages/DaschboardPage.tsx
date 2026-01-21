@@ -72,17 +72,20 @@ export function DaschboardPage() {
 
   const fetchData = async () => {
     try {
-      const [osRes, contasRes, pagPecaRes, pagCliRes] = await Promise.all([
-        api.get("/ordem-de-servico"),
-        api.get("/contas-pagar"),
-        api.get("/pagamento-peca"),
-        api.get("/pagamento-cliente"),
-      ]);
+      const [osRes, contasRes, pagPecaRes, pagCliRes, livroRes] =
+        await Promise.all([
+          api.get("/ordem-de-servico"),
+          api.get("/contas-pagar"),
+          api.get("/pagamento-peca"),
+          api.get("/pagamento-cliente"),
+          api.get("/livro-caixa"),
+        ]);
 
       const oss = osRes.data;
       const contas = contasRes.data;
       const pagPecas = pagPecaRes.data;
       const pagClients = pagCliRes.data;
+      const manualEntries = livroRes.data;
 
       // 1. Serviços em Aberto
       const osAberta = oss.filter(
@@ -96,21 +99,56 @@ export function DaschboardPage() {
 
       const isToday = (dateStr: string) => {
         if (!dateStr) return false;
-        const date = new Date(dateStr);
-        const localDateStr = date.toLocaleDateString("en-CA");
-        const todayStr = new Date().toLocaleDateString("en-CA");
-        return localDateStr === todayStr;
+        const todayLocal = new Date().toLocaleDateString("en-CA");
+
+        // 1. Try standard local conversion
+        if (new Date(dateStr).toLocaleDateString("en-CA") === todayLocal)
+          return true;
+
+        // 2. Try raw string match (fixes UTC Midnight issue where local conversion shifts to yesterday)
+        // e.g. "2024-01-21T00:00..." starts with "2024-01-21"
+        if (dateStr.startsWith(todayLocal)) return true;
+
+        return false;
       };
 
-      const todayEntries = pagClients.filter(
+      // Auto Inflows (Clients) + Manual Inflows.
+      // Note: We assume only Client Payments generate 'AUTOMATICA' Inflows (category 'VENDA').
+      // So filtering manualInflows by 'MANUAL' avoids double counting.
+      const autoInflows = pagClients.filter(
         (p: any) => isToday(p.data_pagamento) && !p.deleted_at,
       ).length;
 
-      const todayExits = pagPecas.filter((p: any) => {
+      const manualInflows = manualEntries.filter(
+        (m: any) =>
+          isToday(m.dt_movimentacao) &&
+          m.tipo_movimentacao === "ENTRADA" &&
+          !m.deleted_at &&
+          m.origem === "MANUAL" && // Only count strictly manual inflows here
+          m.categoria !== "CONCILIACAO_CARTAO",
+      ).length;
+
+      const todayEntries = autoInflows + manualInflows;
+
+      // Auto Outflows (Parts) + Other Outflows (Bills/Manual).
+      const autoOutflows = pagPecas.filter((p: any) => {
         if (!p.pago_ao_fornecedor) return false;
         if (!p.data_pagamento_fornecedor) return false;
         return isToday(p.data_pagamento_fornecedor) && !p.deleted_at;
       }).length;
+
+      const manualOutflows = manualEntries.filter(
+        (m: any) =>
+          isToday(m.dt_movimentacao) &&
+          m.tipo_movimentacao === "SAIDA" &&
+          !m.deleted_at &&
+          m.categoria !== "CONCILIACAO_CARTAO" &&
+          // Exclude "Auto Peças" because they are counted in 'autoOutflows'
+          // But KEEP other AUTOMATICA (e.g. Bills) and MANUAL
+          !(m.origem === "AUTOMATICA" && m.categoria === "Auto Peças"),
+      ).length;
+
+      const todayExits = autoOutflows + manualOutflows;
 
       const autoPecasPendentes = pagPecas.filter(
         (p: any) => !p.pago_ao_fornecedor && !p.deleted_at,

@@ -618,6 +618,7 @@ model ContaBancaria {
 model OperadoraCartao {
   id_operadora          Int      @id @default(autoincrement())
   nome                  String   @db.VarChar(50) // "Stone", "Cielo"
+  ativo                 Boolean  @default(true)
   vincular_caixa        Boolean  @default(false) // Se TRUE, ativa gestão de recebíveis
   
   // Taxas e Prazos

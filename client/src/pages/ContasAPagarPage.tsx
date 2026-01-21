@@ -810,23 +810,36 @@ export const ContasAPagarPage = () => {
               <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
                 Conta Bancária (Opcional)
               </label>
-              <div className="relative">
-                <select
-                  value={selectedBank}
-                  onChange={(e) => setSelectedBank(e.target.value)}
-                  className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer text-neutral-600"
-                >
-                  <option value="">Sem vínculo (Apenas Caixa)</option>
-                  {bankAccounts.map((acc: any) => (
-                    <option key={acc.id_conta} value={acc.id_conta}>
-                      {acc.nome} ({acc.banco})
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                  <ArrowDownCircle size={14} />
+
+              {/* Only show select if there are active bank accounts */}
+              {bankAccounts.filter((a) => a.ativo).length > 0 ? (
+                <div className="relative">
+                  <select
+                    value={selectedBank}
+                    onChange={(e) => setSelectedBank(e.target.value)}
+                    className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer text-neutral-600"
+                  >
+                    <option value="">Sem vínculo (Apenas Caixa)</option>
+                    {bankAccounts
+                      .filter((acc: any) => acc.ativo) // Only showing active accounts
+                      .map((acc: any) => (
+                        <option key={acc.id_conta} value={acc.id_conta}>
+                          {acc.nome} ({acc.banco})
+                        </option>
+                      ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                    <ArrowDownCircle size={14} />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg text-sm text-orange-700 flex items-center gap-2">
+                  <span className="font-semibold">Apenas Caixa</span>
+                  <span className="text-xs opacity-75">
+                    (Nenhum banco ativo disponível)
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
