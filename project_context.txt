@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 01/21/2026 14:25:15
+PROJECT DUMP GENERATED ON 01/21/2026 21:03:17
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -173,6 +173,56 @@ networks:
 
 
 ================================================================================
+FILE PATH: implementation_plan_reports.md
+================================================================================
+# Plano de Implementação: Relatórios Financeiros
+
+Este plano descreve a criação do módulo de "Inteligência Financeira".
+
+## 1. Visão Geral
+
+Criaremos uma nova página "Relatórios Financeiros" e um controller dedicado.
+
+## 2. Arquitetura do Backend (`/api/relatorios`)
+
+Não alteraremos tabelas existentes.
+
+### Novo Controller: `RelatorioFinanceiroController.ts`
+
+Endpoint único: `GET /api/relatorios/dashboard`
+Retorno JSON:
+
+1.  **DRE Mensal**: Receita Bruta, Custos Diretos (CMV), Despesas Operacionais, Lucro Líquido.
+2.  **Fluxo de Caixa**: Histórico `livro_caixa` vs Futuro `recebivel_cartao` + `contas_pagar`.
+3.  **Churn**: Clientes inativos > 180 dias.
+4.  **Despesas por Categoria**: Gráfico Donut.
+
+## 3. Frontend (`RelatoriosFinanceirosPage.tsx`)
+
+Biblioteca **Recharts**.
+
+- **KPIs**: Lucro Atual, Previsão Entradas.
+- **Gráficos**: DRE (Barras), Fluxo (Linha), Despesas (Donut).
+- **Tabela**: Churn.
+
+## 4. Passos
+
+1.  Criar `RelatorioFinanceiroController.ts`.
+2.  Criar rota `relatorio.routes.ts` e registrar no `server.ts`.
+3.  Criar `RelatoriosFinanceirosPage.tsx`.
+
+## 5. Não-Regressão
+
+- Nenhuma tabela alterada.
+- Nenhum dado modificado (`READ ONLY`).
+
+---
+
+**Aguardando validação.**
+
+
+
+================================================================================
 FILE PATH: package.json
 ================================================================================
 {
@@ -189,7 +239,14 @@ FILE PATH: package.json
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
+    "@tremor/react": "^3.18.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
 }
 
 
@@ -448,6 +505,9 @@ FILE PATH: client\index.html
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   <title>Centro Automotivo APP</title>
 </head>
 
@@ -472,16 +532,17 @@ FILE PATH: client\package.json
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
-    
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.17",
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
+    "@tremor/react": "^3.18.7",
     "axios": "^1.13.2",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.561.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.10.1",
-    "tailwindcss": "^4.1.17"
+    "react-router-dom": "^7.10.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -489,14 +550,29 @@ FILE PATH: client\package.json
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "autoprefixer": "^10.4.23",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
   }
+}
+
+
+
+================================================================================
+FILE PATH: client\postcss.config.js
+================================================================================
+export default {
+    plugins: {
+        tailwindcss: {},
+        autoprefixer: {},
+    },
 }
 
 
@@ -581,6 +657,114 @@ export default defineConfig([
 
 
 ================================================================================
+FILE PATH: client\tailwind.config.js
+================================================================================
+/** @type {import('tailwindcss').Config} */
+import colors from "tailwindcss/colors";
+
+export default {
+    content: [
+        "./index.html",
+        "./src/**/*.{js,ts,jsx,tsx}",
+
+        // 🔥 ESTA LINHA É OBRIGATÓRIA PARA O TREMOR APARECER 🔥
+        "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
+    ],
+    theme: {
+        transparent: "transparent",
+        current: "currentColor",
+        extend: {
+            colors: {
+                // 1. AQUI CONECTAMOS O SEU INDEX.CSS AO TAILWIND
+                // Assim você pode usar className="bg-primary-500" e ele puxa do CSS
+                primary: {
+                    25: "var(--color-primary-25)",
+                    50: "var(--color-primary-50)",
+                    100: "var(--color-primary-100)",
+                    200: "var(--color-primary-200)",
+                    300: "var(--color-primary-300)",
+                    400: "var(--color-primary-400)",
+                    500: "var(--color-primary-500)",
+                    600: "var(--color-primary-600)",
+                    700: "var(--color-primary-700)",
+                    800: "var(--color-primary-800)",
+                    900: "var(--color-primary-900)",
+                },
+                secondary: {
+                    50: "var(--color-secondary-50)",
+                    500: "var(--color-secondary-500)", // Laranja
+                    600: "var(--color-secondary-600)",
+                },
+                // Mapeando suas cores semânticas
+                success: "var(--color-success)",
+                warning: "var(--color-warning)",
+                error: "var(--color-error)",
+
+                // 2. CONFIGURAÇÃO PADRÃO DO TREMOR (Visual Azul/Neutro)
+                tremor: {
+                    brand: {
+                        faint: colors.blue[50],
+                        muted: colors.blue[200],
+                        subtle: colors.blue[400],
+                        DEFAULT: colors.blue[500],
+                        emphasis: colors.blue[700],
+                        inverted: colors.white,
+                    },
+                    background: {
+                        muted: colors.gray[50],
+                        subtle: colors.gray[100],
+                        DEFAULT: colors.white,
+                        emphasis: colors.gray[700],
+                    },
+                    border: {
+                        DEFAULT: colors.gray[200],
+                    },
+                    ring: {
+                        DEFAULT: colors.gray[200],
+                    },
+                    content: {
+                        subtle: colors.gray[400],
+                        DEFAULT: colors.gray[500],
+                        emphasis: colors.gray[700],
+                        strong: colors.gray[900],
+                        inverted: colors.white,
+                    },
+                },
+            },
+            boxShadow: {
+                // Sombras suaves para os Cards do Tremor
+                "tremor-input": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+                "tremor-card": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+                "tremor-dropdown": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+            },
+            borderRadius: {
+                "tremor-small": "0.375rem",
+                "tremor-default": "0.5rem",
+                "tremor-full": "9999px",
+            },
+            fontSize: {
+                "tremor-label": ["0.75rem", { lineHeight: "1rem" }],
+                "tremor-default": ["0.875rem", { lineHeight: "1.25rem" }],
+                "tremor-title": ["1.125rem", { lineHeight: "1.75rem" }],
+                "tremor-metric": ["1.875rem", { lineHeight: "2.25rem" }],
+            },
+            fontFamily: {
+                sans: ['Roboto', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            },
+        },
+    },
+    safelist: [
+        {
+            pattern:
+                /^(bg|text|border|ring|stroke|fill)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300|400|500|600|700|800|900|950)$/,
+            variants: ["hover", "ui-selected"],
+        },
+    ],
+    plugins: [],
+};
+
+
+================================================================================
 FILE PATH: client\tsconfig.app.json
 ================================================================================
 {
@@ -662,28 +846,26 @@ FILE PATH: client\tsconfig.node.json
 ================================================================================
 FILE PATH: client\vite.config.ts
 ================================================================================
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
   server: {
     host: true, // Listen on all addresses
     strictPort: true,
     port: 5173,
     watch: {
-      usePolling: true, 
+      usePolling: true,
       interval: 1000, // Check files every 1000ms (Reduced Load)
       binaryInterval: 2000, // Check binary files less often
     },
     hmr: {
       clientPort: 5173, // Ensures simple WebSocket connection from browser
-    }
-  }
-})
+    },
+  },
+});
 
 
 
@@ -776,6 +958,7 @@ import { NovoPagamentoPage } from "./pages/NovoPagamentoPage";
 import { PagamentoEquipePage } from "./pages/PagamentoEquipePage";
 import { ExtratoBancarioPage } from "./pages/ExtratoBancarioPage";
 import { DaschboardPage } from "./pages/DaschboardPage";
+import { RelatoriosFinanceirosPage } from "./pages/financeiro/RelatoriosFinanceirosPage";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -815,6 +998,10 @@ const router = createBrowserRouter(
       />
       <Route path="/financeiro/contas-pagar" element={<ContasAPagarPage />} />
       <Route
+        path="/financeiro/relatorios"
+        element={<RelatoriosFinanceirosPage />}
+      />
+      <Route
         path="/financeiro/extrato/:idConta"
         element={<ExtratoBancarioPage />}
       />
@@ -844,101 +1031,104 @@ export default App;
 ================================================================================
 FILE PATH: client\src\index.css
 ================================================================================
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  /* Tipografia */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+@layer base {
+  :root {
+    /* Tipografia */
+    --font-sans: "Roboto", "Inter", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
-  /* Escala Azul (Oficina/Principal) */
-  --color-primary-25: #eff6ff;
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+    /* Escala Azul (Oficina/Principal) */
+    --color-primary-25: #eff6ff;
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+    --color-primary-800: #1e40af;
+    --color-primary-900: #1e3a8a;
 
-  /* Escala Laranja (Oficina/Destaque) */
-  --color-secondary-25: #fffaf5;
-  --color-secondary-50: #fff7ed;
-  --color-secondary-100: #ffedd5;
-  --color-secondary-200: #fed7aa;
-  --color-secondary-300: #fdba74;
-  --color-secondary-400: #fb923c;
-  --color-secondary-500: #f97316;
-  --color-secondary-600: #ea580c;
-  --color-secondary-700: #c2410c;
-  --color-secondary-800: #9a3412;
-  --color-secondary-900: #7c2d12;
+    /* Escala Laranja (Oficina/Destaque) */
+    --color-secondary-25: #fffaf5;
+    --color-secondary-50: #fff7ed;
+    --color-secondary-100: #ffedd5;
+    --color-secondary-200: #fed7aa;
+    --color-secondary-300: #fdba74;
+    --color-secondary-400: #fb923c;
+    --color-secondary-500: #f97316;
+    --color-secondary-600: #ea580c;
+    --color-secondary-700: #c2410c;
+    --color-secondary-800: #9a3412;
+    --color-secondary-900: #7c2d12;
 
-  /* Neutros */
-  --color-neutral-25: #fcfcfd;
-  --color-neutral-50: #f9fafb;
-  --color-neutral-100: #f3f4f6;
-  --color-neutral-200: #e5e7eb;
-  --color-neutral-300: #d1d5db;
-  --color-neutral-400: #9ca3af;
-  --color-neutral-500: #6b7280;
-  --color-neutral-600: #4b5563;
-  --color-neutral-700: #374151;
-  --color-neutral-800: #1f2937;
-  --color-neutral-900: #0d121d;
+    /* Neutros */
+    --color-neutral-25: #fcfcfd;
+    --color-neutral-50: #f9fafb;
+    --color-neutral-100: #f3f4f6;
+    --color-neutral-200: #e5e7eb;
+    --color-neutral-300: #d1d5db;
+    --color-neutral-400: #9ca3af;
+    --color-neutral-500: #6b7280;
+    --color-neutral-600: #4b5563;
+    --color-neutral-700: #374151;
+    --color-neutral-800: #1f2937;
+    --color-neutral-900: #0d121d;
 
-  /* Accent / Cyan */
-  --color-accent-25: #f0fdfa;
-  --color-accent-50: #ecfeff;
-  --color-accent-100: #cffafe;
-  --color-accent-200: #a5f3fc;
-  --color-accent-300: #67e8f9;
-  --color-accent-400: #22d3ee;
-  --color-accent-500: #06b6d4;
-  --color-accent-600: #0891b2;
-  --color-accent-700: #0e7490;
-  --color-accent-800: #155e75;
-  --color-accent-900: #164e63;
+    /* Accent / Cyan */
+    --color-accent-25: #f0fdfa;
+    --color-accent-50: #ecfeff;
+    --color-accent-100: #cffafe;
+    --color-accent-200: #a5f3fc;
+    --color-accent-300: #67e8f9;
+    --color-accent-400: #22d3ee;
+    --color-accent-500: #06b6d4;
+    --color-accent-600: #0891b2;
+    --color-accent-700: #0e7490;
+    --color-accent-800: #155e75;
+    --color-accent-900: #164e63;
 
-  /* Semânticas */
-  --color-success: #059669;
-  --color-success-50: #ecfdf5;
-  --color-warning: #d97706;
-  --color-warning-50: #fffbeb;
-  --color-error: #dc2626;
-  --color-error-50: #fef2f2;
-  --color-info: #2563eb;
+    /* Semânticas */
+    --color-success: #059669;
+    --color-success-50: #ecfdf5;
+    --color-warning: #d97706;
+    --color-warning-50: #fffbeb;
+    --color-error: #dc2626;
+    --color-error-50: #fef2f2;
+    --color-info: #2563eb;
 
-  /* UI Tokens */
-  --color-background: var(--color-neutral-50);
-  --color-surface: #ffffff;
-  --color-border: var(--color-neutral-200);
-  --color-text-main: var(--color-neutral-900);
-  --color-text-muted: var(--color-neutral-500);
-  --color-sidebar: var(--color-neutral-900);
-}
+    /* UI Tokens */
+    --color-background: var(--color-neutral-50);
+    --color-surface: #ffffff;
+    --color-border: var(--color-neutral-200);
+    --color-text-main: var(--color-neutral-900);
+    --color-text-muted: var(--color-neutral-500);
+    --color-sidebar: var(--color-neutral-900);
+  }
 
-:root {
-  font-family: var(--font-sans);
-  line-height: 1.5;
-  font-weight: 400;
-  color: #334155;
-  /* Slate 700 */
-  background-color: var(--color-background);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  html {
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    font-weight: 400;
+    color: #334155;
+    background-color: var(--color-background);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-body {
-  margin: 0;
-  display: flex;
-  min-width: 320px;
-  min-height: 100vh;
+  body {
+    margin: 0;
+    display: flex;
+    min-width: 320px;
+    min-height: 100vh;
+  }
 }
 
 /* Scrollbar moderna */
@@ -1025,6 +1215,7 @@ const menuItems = [
       { path: "/financeiro/equipe", label: "Pagamento de Equipe" },
       { path: "/financeiro/pagamento-pecas", label: "Pagamento Auto Peças" },
       { path: "/financeiro/contas-pagar", label: "Contas a Pagar (Geral)" },
+      { path: "/financeiro/relatorios", label: "Relatórios Inteligentes ✨" },
       { path: "/fechamento-financeiro", label: "Consolidação" },
     ],
   },
@@ -1038,7 +1229,7 @@ export const Sidebar = () => {
     setExpandedMenus((prev) =>
       prev.includes(label)
         ? prev.filter((item) => item !== label)
-        : [...prev, label]
+        : [...prev, label],
     );
   };
 
@@ -1476,15 +1667,7 @@ import { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api";
-import {
-  Plus,
-  Trash2,
-  Landmark,
-  Eye,
-  EyeOff,
-  FileText,
-  Edit,
-} from "lucide-react";
+import { Plus, Landmark, Eye, EyeOff, FileText, Edit } from "lucide-react";
 import type { IContaBancaria } from "../../types/backend";
 import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
@@ -1645,8 +1828,8 @@ export const ContasTab = () => {
                 />
                 <ActionButton
                   onClick={() => toggleDelete(acc)}
-                  icon={Trash2}
-                  variant="danger"
+                  icon={acc.ativo ? EyeOff : Eye}
+                  variant={acc.ativo ? "danger" : "primary"}
                   label={acc.ativo ? "Desativar" : "Ativar"}
                   className="opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0"
                 />
@@ -2859,7 +3042,15 @@ FILE PATH: client\src\components\financeiro\OperadorasTab.tsx
 ================================================================================
 import { useState, useEffect } from "react";
 import { api } from "../../services/api";
-import { Plus, CreditCard, Trash2, AlertTriangle, Edit } from "lucide-react";
+import {
+  Plus,
+  CreditCard,
+  Trash2,
+  AlertTriangle,
+  Edit,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import type { IOperadoraCartao, IContaBancaria } from "../../types/backend";
 import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
@@ -3335,20 +3526,36 @@ export const OperadorasTab = () => {
         </Modal>
       )}
 
-      {/* DELETE MODAL */}
+      {/* TOGGLE STATUS MODAL (REPLACES DELETE) */}
       {isDeleteModalOpen && (
         <Modal
-          title="Confirmar Exclusão"
+          title={`Confirmar ${opToDelete?.ativo ? "Desativação" : "Ativação"}`}
           onClose={() => setIsDeleteModalOpen(false)}
         >
           <div className="space-y-4">
-            <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-3">
-              <AlertTriangle className="text-red-600 shrink-0" size={24} />
+            <div
+              className={`${opToDelete?.ativo ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100"} border p-4 rounded-xl flex items-start gap-3`}
+            >
+              <AlertTriangle
+                className={`${opToDelete?.ativo ? "text-red-600" : "text-emerald-600"} shrink-0`}
+                size={24}
+              />
               <div>
-                <h3 className="font-bold text-red-900">Atenção!</h3>
-                <p className="text-sm text-red-700 mt-1">
-                  Você tem certeza que deseja excluir esta operadora? <br />
-                  <span className="font-black">{opToDelete?.nome}</span>
+                <h3
+                  className={`font-bold ${opToDelete?.ativo ? "text-red-900" : "text-emerald-900"}`}
+                >
+                  Atenção!
+                </h3>
+                <p
+                  className={`text-sm mt-1 ${opToDelete?.ativo ? "text-red-700" : "text-emerald-700"}`}
+                >
+                  Você deseja {opToDelete?.ativo ? "desativar" : "ativar"} a
+                  operadora{" "}
+                  <span className="font-black">{opToDelete?.nome}</span>?
+                  <br />
+                  <span className="text-xs opacity-80">
+                    O histórico financeiro será mantido.
+                  </span>
                 </p>
               </div>
             </div>
@@ -3360,8 +3567,12 @@ export const OperadorasTab = () => {
               >
                 Cancelar
               </Button>
-              <Button variant="danger" onClick={handleDelete} icon={Trash2}>
-                Confirmar Exclusão
+              <Button
+                variant={opToDelete?.ativo ? "danger" : "primary"}
+                onClick={handleDelete}
+                icon={opToDelete?.ativo ? EyeOff : Eye}
+              >
+                Confirmar {opToDelete?.ativo ? "Desativação" : "Ativação"}
               </Button>
             </div>
           </div>
@@ -3392,6 +3603,7 @@ import type { IRecebivelCartao } from "../../types/backend";
 import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/input";
+import { Modal } from "../ui/Modal";
 
 export const RecebiveisTab = () => {
   const [recebiveis, setRecebiveis] = useState<IRecebivelCartao[]>([]);
@@ -3555,15 +3767,9 @@ export const RecebiveisTab = () => {
     }
   };
 
-  const handleConciliar = async () => {
-    if (selectedIds.length === 0) return;
-    if (
-      !window.confirm(
-        `Confirma o recebimento de ${selectedIds.length} transações? Isso lançará o valor na conta bancária.`,
-      )
-    )
-      return;
+  const [showConciliateModal, setShowConciliateModal] = useState(false);
 
+  const executeConciliacao = async () => {
     try {
       await api.post("/recebivel-cartao/confirmar", { ids: selectedIds });
       setStatusMsg({
@@ -3572,6 +3778,7 @@ export const RecebiveisTab = () => {
       });
       setSelectedIds([]);
       loadData(dateRange.start, dateRange.end);
+      setShowConciliateModal(false);
     } catch (error: any) {
       console.error(error);
       const msg =
@@ -3580,6 +3787,11 @@ export const RecebiveisTab = () => {
         "Erro ao conciliar recebíveis.";
       setStatusMsg({ type: "error", text: msg });
     }
+  };
+
+  const handleConciliar = () => {
+    if (selectedIds.length === 0) return;
+    setShowConciliateModal(true);
   };
 
   const totalSelected = recebiveis
@@ -4045,6 +4257,59 @@ export const RecebiveisTab = () => {
           </table>
         </div>
       </div>
+      {/* CONCILIATION MODAL */}
+      {showConciliateModal && (
+        <Modal
+          title="Confirmar Conciliação"
+          onClose={() => setShowConciliateModal(false)}
+        >
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
+              <div className="bg-blue-100 p-2 rounded-full">
+                <CheckCircle className="text-blue-600" size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-blue-900">
+                  Confirmar Recebimento
+                </h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  Deseja marcar <b>{selectedIds.length}</b> transações como
+                  recebidas?
+                  <br />
+                  <span className="text-xs opacity-75">
+                    Isso atualizará o saldo das contas vinculadas.
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-neutral-50 p-3 rounded-lg border border-neutral-100">
+              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">
+                Total a Conciliar
+              </p>
+              <p className="text-2xl font-black text-neutral-800">
+                {formatCurrency(totalSelected)}
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setShowConciliateModal(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={executeConciliacao}
+                icon={CheckCircle}
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
@@ -10375,7 +10640,7 @@ export const CadastroUnificadoPage = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">
       {statusMsg.text && (
         <div className="fixed bottom-8 right-8 z-50">
           <StatusBanner
@@ -11369,6 +11634,7 @@ export const ContasAPagarPage = () => {
     dt_pagamento: "",
     url_anexo: "",
     obs: "",
+    repetir_parcelas: 0,
   });
 
   // Payment Confirmation Modal
@@ -11495,6 +11761,7 @@ export const ContasAPagarPage = () => {
         : "",
       url_anexo: conta.url_anexo || "",
       obs: conta.obs || "",
+      repetir_parcelas: 0,
     });
     setModalOpen(true);
   };
@@ -11514,6 +11781,7 @@ export const ContasAPagarPage = () => {
       dt_pagamento: "",
       url_anexo: "",
       obs: "",
+      repetir_parcelas: 0,
     });
   };
 
@@ -12115,23 +12383,36 @@ export const ContasAPagarPage = () => {
               <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
                 Conta Bancária (Opcional)
               </label>
-              <div className="relative">
-                <select
-                  value={selectedBank}
-                  onChange={(e) => setSelectedBank(e.target.value)}
-                  className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer text-neutral-600"
-                >
-                  <option value="">Sem vínculo (Apenas Caixa)</option>
-                  {bankAccounts.map((acc: any) => (
-                    <option key={acc.id_conta} value={acc.id_conta}>
-                      {acc.nome} ({acc.banco})
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                  <ArrowDownCircle size={14} />
+
+              {/* Only show select if there are active bank accounts */}
+              {bankAccounts.filter((a) => a.ativo).length > 0 ? (
+                <div className="relative">
+                  <select
+                    value={selectedBank}
+                    onChange={(e) => setSelectedBank(e.target.value)}
+                    className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer text-neutral-600"
+                  >
+                    <option value="">Sem vínculo (Apenas Caixa)</option>
+                    {bankAccounts
+                      .filter((acc: any) => acc.ativo) // Only showing active accounts
+                      .map((acc: any) => (
+                        <option key={acc.id_conta} value={acc.id_conta}>
+                          {acc.nome} ({acc.banco})
+                        </option>
+                      ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                    <ArrowDownCircle size={14} />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg text-sm text-orange-700 flex items-center gap-2">
+                  <span className="font-semibold">Apenas Caixa</span>
+                  <span className="text-xs opacity-75">
+                    (Nenhum banco ativo disponível)
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
@@ -12228,17 +12509,20 @@ export function DaschboardPage() {
 
   const fetchData = async () => {
     try {
-      const [osRes, contasRes, pagPecaRes, pagCliRes] = await Promise.all([
-        api.get("/ordem-de-servico"),
-        api.get("/contas-pagar"),
-        api.get("/pagamento-peca"),
-        api.get("/pagamento-cliente"),
-      ]);
+      const [osRes, contasRes, pagPecaRes, pagCliRes, livroRes] =
+        await Promise.all([
+          api.get("/ordem-de-servico"),
+          api.get("/contas-pagar"),
+          api.get("/pagamento-peca"),
+          api.get("/pagamento-cliente"),
+          api.get("/livro-caixa"),
+        ]);
 
       const oss = osRes.data;
       const contas = contasRes.data;
       const pagPecas = pagPecaRes.data;
       const pagClients = pagCliRes.data;
+      const manualEntries = livroRes.data;
 
       // 1. Serviços em Aberto
       const osAberta = oss.filter(
@@ -12252,21 +12536,56 @@ export function DaschboardPage() {
 
       const isToday = (dateStr: string) => {
         if (!dateStr) return false;
-        const date = new Date(dateStr);
-        const localDateStr = date.toLocaleDateString("en-CA");
-        const todayStr = new Date().toLocaleDateString("en-CA");
-        return localDateStr === todayStr;
+        const todayLocal = new Date().toLocaleDateString("en-CA");
+
+        // 1. Try standard local conversion
+        if (new Date(dateStr).toLocaleDateString("en-CA") === todayLocal)
+          return true;
+
+        // 2. Try raw string match (fixes UTC Midnight issue where local conversion shifts to yesterday)
+        // e.g. "2024-01-21T00:00..." starts with "2024-01-21"
+        if (dateStr.startsWith(todayLocal)) return true;
+
+        return false;
       };
 
-      const todayEntries = pagClients.filter(
+      // Auto Inflows (Clients) + Manual Inflows.
+      // Note: We assume only Client Payments generate 'AUTOMATICA' Inflows (category 'VENDA').
+      // So filtering manualInflows by 'MANUAL' avoids double counting.
+      const autoInflows = pagClients.filter(
         (p: any) => isToday(p.data_pagamento) && !p.deleted_at,
       ).length;
 
-      const todayExits = pagPecas.filter((p: any) => {
+      const manualInflows = manualEntries.filter(
+        (m: any) =>
+          isToday(m.dt_movimentacao) &&
+          m.tipo_movimentacao === "ENTRADA" &&
+          !m.deleted_at &&
+          m.origem === "MANUAL" && // Only count strictly manual inflows here
+          m.categoria !== "CONCILIACAO_CARTAO",
+      ).length;
+
+      const todayEntries = autoInflows + manualInflows;
+
+      // Auto Outflows (Parts) + Other Outflows (Bills/Manual).
+      const autoOutflows = pagPecas.filter((p: any) => {
         if (!p.pago_ao_fornecedor) return false;
         if (!p.data_pagamento_fornecedor) return false;
         return isToday(p.data_pagamento_fornecedor) && !p.deleted_at;
       }).length;
+
+      const manualOutflows = manualEntries.filter(
+        (m: any) =>
+          isToday(m.dt_movimentacao) &&
+          m.tipo_movimentacao === "SAIDA" &&
+          !m.deleted_at &&
+          m.categoria !== "CONCILIACAO_CARTAO" &&
+          // Exclude "Auto Peças" because they are counted in 'autoOutflows'
+          // But KEEP other AUTOMATICA (e.g. Bills) and MANUAL
+          !(m.origem === "AUTOMATICA" && m.categoria === "Auto Peças"),
+      ).length;
+
+      const todayExits = autoOutflows + manualOutflows;
 
       const autoPecasPendentes = pagPecas.filter(
         (p: any) => !p.pago_ao_fornecedor && !p.deleted_at,
@@ -16689,7 +17008,6 @@ export const FinanceiroPage = () => {
 
 
 
-================================================================================
 FILE PATH: client\src\pages\FornecedorPage.tsx
 ================================================================================
 import { useState, useEffect, useRef } from "react";
@@ -17807,7 +18125,7 @@ export const NovoPagamentoPage = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">
       <StatusBanner
         msg={statusMsg}
         onClose={() => setStatusMsg({ type: null, text: "" })}
@@ -20617,7 +20935,7 @@ export const PagamentoEquipePage = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">
       <StatusBanner
         msg={statusMsg}
         onClose={() => setStatusMsg({ type: null, text: "" })}
@@ -21111,6 +21429,7 @@ import {
   Save,
   DollarSign,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import { Modal } from "../components/ui/Modal";
 
@@ -21251,31 +21570,33 @@ export const PagamentoPecaPage = () => {
     }
   };
 
-  const handleUnpay = async (id: number) => {
-    if (
-      !window.confirm(
-        "Deseja realmente estornar este pagamento? O valor retornará para a conta e o registro sairá do Livro Caixa.",
-      )
-    )
-      return;
+  const [undoModal, setUndoModal] = useState<{
+    isOpen: boolean;
+    id: number | null;
+  }>({ isOpen: false, id: null });
 
+  const executeUnpay = async (id: number) => {
     try {
       setLoading(true);
       await api.put(`/pagamento-peca/${id}`, {
         pago_ao_fornecedor: false,
-        // revert: true // Backend logic handles default 'false' as revert if implemented properly or explicit flag
       });
       setStatusMsg({
         type: "success",
         text: "Pagamento estornado com sucesso!",
       });
       loadData();
+      setUndoModal({ isOpen: false, id: null });
     } catch (error) {
       console.error(error);
       setStatusMsg({ type: "error", text: "Erro ao desfazer pagamento." });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUnpay = (id: number) => {
+    setUndoModal({ isOpen: true, id });
   };
 
   const handleBatchConfirmClick = () => {
@@ -22212,6 +22533,46 @@ export const PagamentoPecaPage = () => {
                 className="shadow-lg shadow-red-500/30"
               >
                 Confirmar Exclusão
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {/* UNDO PAYMENT MODAL */}
+      {undoModal.isOpen && (
+        <Modal
+          title="Confirmar Estorno"
+          onClose={() => setUndoModal({ isOpen: false, id: null })}
+        >
+          <div className="space-y-4">
+            <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-3">
+              <AlertTriangle className="text-amber-600 shrink-0" size={24} />
+              <div>
+                <h3 className="font-bold text-amber-900">Atenção!</h3>
+                <p className="text-sm text-amber-800 mt-1">
+                  Deseja realmente estornar este pagamento?
+                  <br />
+                  <span className="text-xs opacity-75">
+                    O valor retornará para a conta e o registro sairá do Livro
+                    Caixa.
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setUndoModal({ isOpen: false, id: null })}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => undoModal.id && executeUnpay(undoModal.id)}
+                icon={CheckSquare}
+              >
+                Confirmar Estorno
               </Button>
             </div>
           </div>
@@ -24368,6 +24729,289 @@ export const VeiculoPage = () => {
 
 
 ================================================================================
+FILE PATH: client\src\pages\financeiro\RelatoriosFinanceirosPage.tsx
+================================================================================
+import { useState, useEffect } from "react";
+import { api } from "../../services/api";
+import { formatCurrency } from "../../utils/formatCurrency";
+import { ptBR } from "date-fns/locale";
+import {
+  Card,
+  Grid,
+  Title,
+  Text,
+  Metric,
+  TabGroup,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  AreaChart,
+  DonutChart,
+  Flex,
+  BadgeDelta,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeaderCell,
+  TableBody,
+  TableCell,
+  DateRangePicker,
+  Legend,
+} from "@tremor/react";
+import type { DateRangePickerValue } from "@tremor/react";
+import { Calculator, TrendingUp, Wallet, AlertCircle } from "lucide-react";
+
+export const RelatoriosFinanceirosPage = () => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Default: Current Month
+  const [dateRange, setDateRange] = useState<DateRangePickerValue>({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
+  });
+
+  const fetchData = async () => {
+    if (!dateRange.from || !dateRange.to) return;
+
+    try {
+      setLoading(true);
+      const res = await api.get("/relatorios/dashboard", {
+        params: {
+          startDate: dateRange.from.toISOString().split("T")[0],
+          endDate: dateRange.to.toISOString().split("T")[0],
+        },
+      });
+      setData(res.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [dateRange]);
+
+  // Loading State
+  if (loading && !data) {
+    return (
+      <div className="p-10 flex items-center justify-center h-screen bg-tremor-background-muted">
+        <Text>Carregando inteligência financeira...</Text>
+      </div>
+    );
+  }
+
+  // Initial Empty State
+  if (!data)
+    return (
+      <div className="p-10">
+        <Text>Selecione um período.</Text>
+      </div>
+    );
+
+  const { kpis, fluxo_caixa, categorias, dreDetails } = data;
+
+  return (
+    <main className="p-6 sm:p-10 bg-tremor-background-muted min-h-screen">
+      {/* HEADER */}
+      <Flex className="mb-6 flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div>
+          <Title className="text-tremor-brand-emphasis font-bold text-2xl">
+            Inteligência Financeira
+          </Title>
+          <Text>Visão estratégica de fluxo de caixa e resultados (DRE).</Text>
+        </div>
+
+        <DateRangePicker
+          className="max-w-sm"
+          value={dateRange}
+          onValueChange={setDateRange}
+          locale={ptBR}
+          enableSelect={false}
+        />
+      </Flex>
+
+      {/* KPI GRID */}
+      <Grid numItems={1} numItemsSm={2} numItemsLg={4} className="gap-6 mb-6">
+        <Card decoration="top" decorationColor="blue">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+              <TrendingUp size={24} />
+            </div>
+            <div>
+              <Text>Receita Total</Text>
+              <Metric>{formatCurrency(kpis.receitaTotal)}</Metric>
+            </div>
+          </Flex>
+          <BadgeDelta deltaType="increase" className="mt-4">
+            +12.5% vs mês anterior
+          </BadgeDelta>
+        </Card>
+
+        <Card decoration="top" decorationColor="emerald">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+              <Wallet size={24} />
+            </div>
+            <div>
+              <Text>Lucro Líquido</Text>
+              <Metric>{formatCurrency(kpis.lucroLiquido)}</Metric>
+            </div>
+          </Flex>
+          <Flex className="mt-4 space-x-2">
+            <Text className="font-bold text-emerald-600">
+              {kpis.margemLiquida.toFixed(1)}%
+            </Text>
+            <Text>Margem Líquida</Text>
+          </Flex>
+        </Card>
+
+        <Card decoration="top" decorationColor="orange">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+              <AlertCircle size={24} />
+            </div>
+            <div>
+              <Text>Despesas Fixas</Text>
+              <Metric>{formatCurrency(kpis.despesasFixas)}</Metric>
+            </div>
+          </Flex>
+          <div className="mt-4 h-6"></div> {/* Spacer */}
+        </Card>
+
+        <Card decoration="top" decorationColor="indigo">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+              <Calculator size={24} />
+            </div>
+            <div>
+              <Text>Ticket Médio</Text>
+              <Metric>{formatCurrency(kpis.ticketMedio)}</Metric>
+            </div>
+          </Flex>
+          <div className="mt-4 h-6"></div> {/* Spacer */}
+        </Card>
+      </Grid>
+
+      {/* MAIN CONTENT TABS */}
+      <TabGroup>
+        <TabList className="mt-8">
+          <Tab>Visão Geral (Fluxo de Caixa)</Tab>
+          <Tab>Detalhes (DRE)</Tab>
+        </TabList>
+        <TabPanels>
+          {/* PAINEL 1: FLUXO DE CAIXA + CATEGORIAS */}
+          <TabPanel>
+            <Grid numItems={1} numItemsLg={3} className="gap-6 mt-6">
+              {/* FLUXO DE CAIXA */}
+              <Card className="col-span-1 lg:col-span-2">
+                <Title>Fluxo de Caixa Realizado</Title>
+                <Text>Entradas vs Saídas diárias no período selecionado</Text>
+                <AreaChart
+                  className="h-72 mt-4"
+                  data={fluxo_caixa}
+                  index="date"
+                  categories={["Receitas", "Despesas"]}
+                  colors={["emerald", "rose"]}
+                  valueFormatter={formatCurrency}
+                  showAnimation={true}
+                  curveType="monotone"
+                />
+              </Card>
+
+              {/* RECEITA POR CATEGORIA */}
+              <Card className="flex flex-col">
+                <Title>Receita por Categoria</Title>
+                <Text>Distribuição dos serviços realizados</Text>
+                <DonutChart
+                  className="mt-6 flex-1"
+                  data={categorias}
+                  category="value"
+                  index="name"
+                  valueFormatter={formatCurrency}
+                  colors={["cyan", "blue", "indigo", "violet", "fuchsia"]}
+                />
+                <Legend
+                  className="mt-3"
+                  categories={categorias.map((c: any) => c.name)}
+                  colors={["cyan", "blue", "indigo", "violet", "fuchsia"]}
+                />
+              </Card>
+            </Grid>
+          </TabPanel>
+
+          {/* PAINEL 2: DRE COMPLETO */}
+          <TabPanel>
+            <Card className="mt-6">
+              <Title>Demonstrativo de Resultado do Exercício (DRE)</Title>
+              <Text>Detalhamento contábil da operação</Text>
+
+              <Table className="mt-5">
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>Categoria</TableHeaderCell>
+                    <TableHeaderCell className="text-right">
+                      Valor
+                    </TableHeaderCell>
+                    <TableHeaderCell className="text-right">
+                      Análise
+                    </TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {dreDetails.map((item: any, idx: number) => (
+                    <TableRow key={idx}>
+                      <TableCell className="font-medium text-tremor-content-strong">
+                        {item.category}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Text
+                          color={item.type === "expense" ? "red" : "emerald"}
+                        >
+                          {formatCurrency(item.value)}
+                        </Text>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <BadgeDelta
+                          deltaType={item.value > 0 ? "increase" : "decrease"}
+                          size="xs"
+                        >
+                          {((item.value / kpis.receitaTotal) * 100).toFixed(1)}%
+                          da Rec.
+                        </BadgeDelta>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {/* RESULTADO FINAL */}
+                  <TableRow className="border-t-2 border-tremor-border">
+                    <TableCell className="font-bold text-tremor-brand text-lg">
+                      LUCRO LÍQUIDO DO PERÍODO
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-tremor-brand text-lg">
+                      {formatCurrency(kpis.lucroLiquido)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Text className="font-bold">
+                        {kpis.margemLiquida.toFixed(1)}% Margem
+                      </Text>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Card>
+          </TabPanel>
+        </TabPanels>
+      </TabGroup>
+    </main>
+  );
+};
+
+
+
+================================================================================
 FILE PATH: client\src\services\api.ts
 ================================================================================
 import axios from 'axios';
@@ -24382,296 +25026,296 @@ export const api = axios.create({
 FILE PATH: client\src\types\backend.d.ts
 ================================================================================
 export interface IPessoa {
-    id_pessoa: number;
-    nome: string;
-    genero?: string | null;
-    dt_nascimento?: string | null; // Date sent as string
-    obs?: string | null;
-    dt_cadastro: string;
+  id_pessoa: number;
+  nome: string;
+  genero?: string | null;
+  dt_nascimento?: string | null; // Date sent as string
+  obs?: string | null;
+  dt_cadastro: string;
 }
 
 export interface IPessoaFisica {
-    id_pessoa_fisica: number;
-    id_pessoa: number;
-    cpf?: string | null;
-    dt_cadastro: string;
+  id_pessoa_fisica: number;
+  id_pessoa: number;
+  cpf?: string | null;
+  dt_cadastro: string;
 }
 
 export interface IPessoaJuridica {
-    id_pessoa_juridica: number;
-    id_pessoa: number;
-    razao_social: string;
-    nome_fantasia?: string | null;
-    cnpj?: string | null;
-    inscricao_estadual?: string | null;
-    dt_cadastro: string;
+  id_pessoa_juridica: number;
+  id_pessoa: number;
+  razao_social: string;
+  nome_fantasia?: string | null;
+  cnpj?: string | null;
+  inscricao_estadual?: string | null;
+  dt_cadastro: string;
 }
 
 export interface ITipo {
-    id_tipo: number;
-    funcao?: string | null;
-    dt_cadastro: string;
+  id_tipo: number;
+  funcao?: string | null;
+  dt_cadastro: string;
 }
 
 export interface ICliente {
-    id_cliente: number;
-    id_pessoa_fisica?: number | null;
-    id_pessoa_juridica?: number | null;
-    tipo_pessoa: number;
-    telefone_1: string;
-    telefone_2?: string | null;
-    telefone_3?: string | null;
-    email?: string | null;
-    logradouro: string;
-    nr_logradouro: string;
-    compl_logradouro?: string | null;
-    bairro: string;
-    cidade: string;
-    estado: string;
-    dt_cadastro: string;
+  id_cliente: number;
+  id_pessoa_fisica?: number | null;
+  id_pessoa_juridica?: number | null;
+  tipo_pessoa: number;
+  telefone_1: string;
+  telefone_2?: string | null;
+  telefone_3?: string | null;
+  email?: string | null;
+  logradouro: string;
+  nr_logradouro: string;
+  compl_logradouro?: string | null;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  dt_cadastro: string;
 
-    // Optional Joins
-    pessoa_fisica?: IPessoaFisica & { pessoa: IPessoa };
-    pessoa_juridica?: IPessoaJuridica & { pessoa: IPessoa };
-    veiculos?: IVeiculo[];
+  // Optional Joins
+  pessoa_fisica?: IPessoaFisica & { pessoa: IPessoa };
+  pessoa_juridica?: IPessoaJuridica & { pessoa: IPessoa };
+  veiculos?: IVeiculo[];
 }
 
 export interface IFuncionario {
-    id_funcionario: number;
-    id_pessoa_fisica: number;
-    ativo: string;
-    cargo: string;
-    
-    // Antigos
-    salario?: number | null;
-    comissao?: number | null; // Mão de Obra
-    
-    dt_admissao: string;
-    dt_recisao?: string | null;
-    motivo_saida?: string | null;
-    obs?: string | null;
-    dt_cadastro: string;
-    
-    // MEI / Identificação
-    razao_social?: string | null;
-    nome_fantasia?: string | null;
-    cnpj_mei?: string | null;
-    inscricao_municipal?: string | null;
+  id_funcionario: number;
+  id_pessoa_fisica: number;
+  ativo: string;
+  cargo: string;
 
-    // Dados Pessoais / Endereço
-    rg?: string | null;
-    cep?: string | null;
-    logradouro?: string | null;
-    numero?: string | null;
-    complemento?: string | null;
-    bairro?: string | null;
-    cidade?: string | null;
-    uf?: string | null;
-    telefone_pessoal?: string | null;
-    email_pessoal?: string | null;
+  // Antigos
+  salario?: number | null;
+  comissao?: number | null; // Mão de Obra
 
-    // Operacional / Financeiro Extra
-    especialidade?: string | null;
-    tipo_pagamento?: string | null;
-    valor_pagamento?: number | null;
-    comissao_pecas?: number | null;
+  dt_admissao: string;
+  dt_recisao?: string | null;
+  motivo_saida?: string | null;
+  obs?: string | null;
+  dt_cadastro: string;
 
-    banco?: string | null;
-    agencia?: string | null;
-    conta?: string | null;
-    chave_pix?: string | null;
-    periodicidade_pagamento?: string | null;
-    dia_vencimento?: number | null;
+  // MEI / Identificação
+  razao_social?: string | null;
+  nome_fantasia?: string | null;
+  cnpj_mei?: string | null;
+  inscricao_municipal?: string | null;
 
-    // Docs
-    url_ccmei?: string | null;
-    url_cnh?: string | null;
-    equipamentos_epis?: string | null;
+  // Dados Pessoais / Endereço
+  rg?: string | null;
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+  telefone_pessoal?: string | null;
+  email_pessoal?: string | null;
 
-    // Optional Joins
-    pessoa_fisica?: IPessoaFisica & { pessoa: IPessoa };
+  // Operacional / Financeiro Extra
+  especialidade?: string | null;
+  tipo_pagamento?: string | null;
+  valor_pagamento?: number | null;
+  comissao_pecas?: number | null;
+
+  banco?: string | null;
+  agencia?: string | null;
+  conta?: string | null;
+  chave_pix?: string | null;
+  periodicidade_pagamento?: string | null;
+  dia_vencimento?: number | null;
+
+  // Docs
+  url_ccmei?: string | null;
+  url_cnh?: string | null;
+  equipamentos_epis?: string | null;
+
+  // Optional Joins
+  pessoa_fisica?: IPessoaFisica & { pessoa: IPessoa };
 }
 
 export interface IPecasEstoque {
-    id_pecas_estoque: number;
-    fabricante?: string | null;
-    nome: string;
-    descricao: string;
-    valor_custo: number; // Decimal
-    valor_venda: number; // Decimal
-    estoque_atual: number;
-    unidade_medida?: string | null;
-    custo_unitario_padrao: number; // Decimal
-    dt_ultima_compra?: string | null;
-    dt_cadastro: string;
+  id_pecas_estoque: number;
+  fabricante?: string | null;
+  nome: string;
+  descricao: string;
+  valor_custo: number; // Decimal
+  valor_venda: number; // Decimal
+  estoque_atual: number;
+  unidade_medida?: string | null;
+  custo_unitario_padrao: number; // Decimal
+  dt_ultima_compra?: string | null;
+  dt_cadastro: string;
 }
 
 export interface IVeiculo {
-    id_veiculo: number;
-    id_cliente: number;
-    placa: string;
-    chassi?: string | null;
-    marca: string;
-    modelo: string;
-    versao?: string | null;
-    ano_modelo: string;
-    cor: string;
-    combustivel: string;
-    obs?: string | null;
-    dt_cadastro: string;
+  id_veiculo: number;
+  id_cliente: number;
+  placa: string;
+  chassi?: string | null;
+  marca: string;
+  modelo: string;
+  versao?: string | null;
+  ano_modelo: string;
+  cor: string;
+  combustivel: string;
+  obs?: string | null;
+  dt_cadastro: string;
 
-    // Optional Joins
-    cliente?: ICliente;
+  // Optional Joins
+  cliente?: ICliente;
 }
 
 export interface IOrdemDeServico {
-    id_os: number;
-    id_cliente: number;
-    id_veiculo: number;
-    id_funcionario: number;
-    dt_abertura: string;
-    dt_entrega?: string | null;
-    km_entrada: number;
-    status: string;
-    defeito_relatado?: string | null;
-    diagnostico?: string | null;
-    valor_servico?: number | null;
-    valor_pecas?: number | null;
-    valor_final?: number | null;
-    
-    valor_total_cliente?: number | null;
-    valor_mao_de_obra?: number | null;
+  id_os: number;
+  id_cliente: number;
+  id_veiculo: number;
+  id_funcionario: number;
+  dt_abertura: string;
+  dt_entrega?: string | null;
+  km_entrada: number;
+  status: string;
+  defeito_relatado?: string | null;
+  diagnostico?: string | null;
+  valor_servico?: number | null;
+  valor_pecas?: number | null;
+  valor_final?: number | null;
 
-    modo_pagamento?: string | null;
-    cod_pagamento?: string | null;
-    parcelas: number;
-    obs?: string | null;
-    obs_final?: string | null;
-    dt_cadastro: string;
-    
-    // Optional Joins
-    cliente?: ICliente;
-    veiculo?: IVeiculo;
-    itens_os?: IItensOs[];
-    pagamentos_cliente?: IPagamentoCliente[];
-    funcionario?: IFuncionario;
-    fechamento_financeiro?: IFechamentoFinanceiro;
-    servicos_mao_de_obra?: IServicoMaoDeObra[];
+  valor_total_cliente?: number | null;
+  valor_mao_de_obra?: number | null;
+
+  modo_pagamento?: string | null;
+  cod_pagamento?: string | null;
+  parcelas: number;
+  obs?: string | null;
+  obs_final?: string | null;
+  dt_cadastro: string;
+
+  // Optional Joins
+  cliente?: ICliente;
+  veiculo?: IVeiculo;
+  itens_os?: IItensOs[];
+  pagamentos_cliente?: IPagamentoCliente[];
+  funcionario?: IFuncionario;
+  fechamento_financeiro?: IFechamentoFinanceiro;
+  servicos_mao_de_obra?: IServicoMaoDeObra[];
 }
 
 export interface IServicoMaoDeObra {
-    id_servico_mao_de_obra: number;
-    id_os: number;
-    id_funcionario: number;
-    valor: number;
-    descricao?: string | null;
-    dt_cadastro: string;
+  id_servico_mao_de_obra: number;
+  id_os: number;
+  id_funcionario: number;
+  valor: number;
+  descricao?: string | null;
+  dt_cadastro: string;
 
-    // Optional Joins
-    funcionario?: IFuncionario;
+  // Optional Joins
+  funcionario?: IFuncionario;
 }
 
 export interface IPagamentoCliente {
-    id_pagamento_cliente: number;
-    id_os: number;
-    metodo_pagamento: string;
-    valor: number;
-    data_pagamento: string;
-    bandeira_cartao?: string | null;
-    codigo_transacao?: string | null;
-    qtd_parcelas: number;
-    deleted_at?: string | null;
+  id_pagamento_cliente: number;
+  id_os: number;
+  metodo_pagamento: string;
+  valor: number;
+  data_pagamento: string;
+  bandeira_cartao?: string | null;
+  codigo_transacao?: string | null;
+  qtd_parcelas: number;
+  deleted_at?: string | null;
 
-    id_operadora?: number | null;
-    operadora?: IOperadoraCartao;
-    id_conta_bancaria?: number | null;
-    conta_bancaria?: IContaBancaria;
+  id_operadora?: number | null;
+  operadora?: IOperadoraCartao;
+  id_conta_bancaria?: number | null;
+  conta_bancaria?: IContaBancaria;
 }
 
 export interface IItensOs {
-    id_iten: number;
-    id_os: number;
-    id_pecas_estoque?: number | null;
-    descricao: string;
-    codigo_referencia?: string | null;
-    quantidade: number;
-    valor_venda: number;
-    valor_total: number;
-    dt_cadastro: string;
+  id_iten: number;
+  id_os: number;
+  id_pecas_estoque?: number | null;
+  descricao: string;
+  codigo_referencia?: string | null;
+  quantidade: number;
+  valor_venda: number;
+  valor_total: number;
+  dt_cadastro: string;
 }
 
 export interface IFechamentoFinanceiro {
-    id_fechamento_financeiro: number;
-    id_os: number;
-    custo_total_pecas_real: number;
-    data_fechamento_financeiro: string;
+  id_fechamento_financeiro: number;
+  id_os: number;
+  custo_total_pecas_real: number;
+  data_fechamento_financeiro: string;
 }
 
 export interface IFornecedor {
-    id_fornecedor: number;
-    // Identificação
-    tipo_pessoa?: string | null;
-    nome: string;
-    nome_fantasia?: string | null;
-    documento?: string | null;
-    inscricao_estadual?: string | null;
-    inscricao_municipal?: string | null;
+  id_fornecedor: number;
+  // Identificação
+  tipo_pessoa?: string | null;
+  nome: string;
+  nome_fantasia?: string | null;
+  documento?: string | null;
+  inscricao_estadual?: string | null;
+  inscricao_municipal?: string | null;
 
-    // Contato
-    contato?: string | null;
-    telefone?: string | null;
-    whatsapp?: string | null;
-    email?: string | null;
+  // Contato
+  contato?: string | null;
+  telefone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
 
-    // Endereço
-    cep?: string | null;
-    logradouro?: string | null;
-    numero?: string | null;
-    complemento?: string | null;
-    bairro?: string | null;
-    cidade?: string | null;
-    uf?: string | null;
+  // Endereço
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
 
-    // Financeiro
-    banco?: string | null;
-    agencia?: string | null;
-    conta?: string | null;
-    chave_pix?: string | null;
-    condicoes_pagamento?: string | null;
-    categoria_produto?: string | null;
+  // Financeiro
+  banco?: string | null;
+  agencia?: string | null;
+  conta?: string | null;
+  chave_pix?: string | null;
+  condicoes_pagamento?: string | null;
+  categoria_produto?: string | null;
 
-    obs?: string | null;
-    dt_cadastro: string;
+  obs?: string | null;
+  dt_cadastro: string;
 }
 
 export interface IPagamentoPeca {
-    id_pagamento_peca: number;
-    id_item_os: number;
-    id_fornecedor: number;
-    custo_real: number;
-    data_compra: string;
-    data_pagamento_fornecedor?: string | null;
-    pago_ao_fornecedor: boolean;
+  id_pagamento_peca: number;
+  id_item_os: number;
+  id_fornecedor: number;
+  custo_real: number;
+  data_compra: string;
+  data_pagamento_fornecedor?: string | null;
+  pago_ao_fornecedor: boolean;
 }
 
 export interface IContasPagar {
-    id_conta_pagar: number;
-    descricao: string;
-    valor: number;
-    dt_vencimento: string;
-    dt_pagamento?: string | null;
-    status: string;
-    categoria?: string | null;
-    
-    // New
-    credor?: string | null;
-    dt_emissao?: string | null;
-    num_documento?: string | null;
-    forma_pagamento?: string | null;
-    url_anexo?: string | null;
-    
-    obs?: string | null;
-    dt_cadastro: string;
+  id_conta_pagar: number;
+  descricao: string;
+  valor: number;
+  dt_vencimento: string;
+  dt_pagamento?: string | null;
+  status: string;
+  categoria?: string | null;
+
+  // New
+  credor?: string | null;
+  dt_emissao?: string | null;
+  num_documento?: string | null;
+  forma_pagamento?: string | null;
+  url_anexo?: string | null;
+
+  obs?: string | null;
+  dt_cadastro: string;
 }
 
 // ---------------------------------------------------------
@@ -24679,69 +25323,71 @@ export interface IContasPagar {
 // ---------------------------------------------------------
 
 export interface IContaBancaria {
-    id_conta: number;
-    nome: string;
-    banco?: string | null;
-    agencia?: string | null;
-    conta?: string | null;
-    saldo_atual: number;
-    ativo: boolean;
-    dt_cadastro: string;
+  id_conta: number;
+  nome: string;
+  banco?: string | null;
+  agencia?: string | null;
+  conta?: string | null;
+  saldo_atual: number;
+  ativo: boolean;
+  dt_cadastro: string;
 }
 
 export interface IOperadoraCartao {
-    id_operadora: number;
-    nome: string;
-    
-    taxa_debito: number;
-    prazo_debito: number;
+  id_operadora: number;
+  nome: string;
+  ativo: boolean; // Added field
+  vincular_caixa: boolean;
 
-    taxa_credito_vista: number;
-    prazo_credito_vista: number;
+  taxa_debito: number;
+  prazo_debito: number;
 
-    taxa_credito_parc: number;
-    prazo_credito_parc: number;
+  taxa_credito_vista: number;
+  prazo_credito_vista: number;
 
-    taxa_antecipacao: number;
-    antecipacao_auto: boolean;
+  taxa_credito_parc: number;
+  prazo_credito_parc: number;
 
-    id_conta_destino: number;
-    conta_destino?: IContaBancaria;
+  taxa_antecipacao: number;
+  antecipacao_auto: boolean;
+
+  id_conta_destino: number;
+  conta_destino?: IContaBancaria;
 }
 
 export interface IRecebivelCartao {
-    id_recebivel: number;
-    id_os?: number | null;
-    id_operadora: number;
-    
-    num_parcela: number;
-    total_parcelas: number;
-    
-    valor_bruto: number;
-    valor_liquido: number;
-    taxa_aplicada: number;
-    
-    data_venda: string;
-    data_prevista: string;
-    data_recebimento?: string | null;
-    
-    status: string; // 'PENDENTE', 'RECEBIDO'
-    
-    operadora?: IOperadoraCartao;
-    ordem_de_servico?: IOrdemDeServico;
+  id_recebivel: number;
+  id_os?: number | null;
+  id_operadora: number;
+
+  num_parcela: number;
+  total_parcelas: number;
+
+  valor_bruto: number;
+  valor_liquido: number;
+  taxa_aplicada: number;
+
+  data_venda: string;
+  data_prevista: string;
+  data_recebimento?: string | null;
+
+  status: string; // 'PENDENTE', 'RECEBIDO'
+
+  operadora?: IOperadoraCartao;
+  ordem_de_servico?: IOrdemDeServico;
 }
 
 export interface ILivroCaixa {
-    id_livro_caixa: number;
-    descricao: string;
-    valor: number; // Decimal string in UI usually, but number here
-    tipo_movimentacao: string; // 'ENTRADA' | 'SAIDA'
-    categoria: string;
-    dt_movimentacao: string;
-    obs?: string | null;
-    origem: string;
-    id_conta_bancaria?: number | null;
-    conta?: IContaBancaria;
+  id_livro_caixa: number;
+  descricao: string;
+  valor: number; // Decimal string in UI usually, but number here
+  tipo_movimentacao: string; // 'ENTRADA' | 'SAIDA'
+  categoria: string;
+  dt_movimentacao: string;
+  obs?: string | null;
+  origem: string;
+  id_conta_bancaria?: number | null;
+  conta?: IContaBancaria;
 }
 
 
@@ -26675,6 +27321,7 @@ model ContaBancaria {
 model OperadoraCartao {
   id_operadora          Int      @id @default(autoincrement())
   nome                  String   @db.VarChar(50) // "Stone", "Cielo"
+  ativo                 Boolean  @default(true)
   vincular_caixa        Boolean  @default(false) // Se TRUE, ativa gestão de recebíveis
   
   // Taxas e Prazos
@@ -26785,6 +27432,326 @@ async function main() {
   }
 
   console.log('✅ Seed finished.');
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+
+
+
+================================================================================
+FILE PATH: server\prisma\seed_financial.ts
+================================================================================
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log("🌱 Start seeding financial data... Cleaning up first.");
+
+  // Limpeza (Ordem Inversa de Dependência)
+  await prisma.fechamentoFinanceiro.deleteMany();
+  await prisma.pagamentoCliente.deleteMany();
+  await prisma.pagamentoEquipe.deleteMany();
+  await prisma.pagamentoPeca.deleteMany();
+  await prisma.recebivelCartao.deleteMany();
+  await prisma.itemEntrada.deleteMany(); // Depende de Pecas e Entrada
+  await prisma.entradaEstoque.deleteMany();
+  await prisma.contasPagar.deleteMany();
+  await prisma.livroCaixa.deleteMany();
+  await prisma.operadoraCartao.deleteMany();
+  await prisma.contaBancaria.deleteMany();
+
+  await prisma.servicoMaoDeObra.deleteMany();
+  await prisma.itensOs.deleteMany();
+  await prisma.ordemDeServico.deleteMany();
+  await prisma.veiculo.deleteMany();
+  await prisma.cliente.deleteMany();
+  await prisma.tipo.deleteMany(); // Limpa Tipos de cliente
+  await prisma.funcionario.deleteMany();
+  await prisma.pecasEstoque.deleteMany();
+  await prisma.fornecedor.deleteMany();
+  // Limpar Pessoas é delicado pois pode ter outros vinculos, mas vamos limpar os criados pelo seed
+  await prisma.pessoaFisica.deleteMany();
+  await prisma.pessoa.deleteMany();
+
+  // 1. Criar Pessoa Física para Funcionario Mecanico
+  const pMecanico = await prisma.pessoa.create({
+    data: {
+      nome: "Carlos Mecânico",
+      pessoa_fisica: {
+        create: {
+          cpf: "12345678900",
+        },
+      },
+    },
+    include: { pessoa_fisica: true },
+  });
+
+  const funcMecanico = await prisma.funcionario.create({
+    data: {
+      id_pessoa_fisica: pMecanico.pessoa_fisica!.id_pessoa_fisica,
+      cargo: "Mecânico",
+      especialidade: "Mecânica Geral",
+      comissao: 30, // 30%
+      ativo: "S",
+      dt_cadastro: new Date(),
+      dt_admissao: new Date(),
+    },
+  });
+
+  // 1. Criar Pessoa Física para Funcionario Elétrico
+  const pEletrico = await prisma.pessoa.create({
+    data: {
+      nome: "Eduardo Elétrica",
+      pessoa_fisica: {
+        create: {
+          cpf: "98765432100",
+        },
+      },
+    },
+    include: { pessoa_fisica: true },
+  });
+
+  const funcEletrico = await prisma.funcionario.create({
+    data: {
+      id_pessoa_fisica: pEletrico.pessoa_fisica!.id_pessoa_fisica,
+      cargo: "Eletricista",
+      especialidade: "Elétrica",
+      comissao: 40, // 40%
+      ativo: "S",
+      dt_cadastro: new Date(),
+      dt_admissao: new Date(),
+    },
+  });
+
+  // 2. Criar Peças no Estoque
+  const pecaOleo = await prisma.pecasEstoque.create({
+    data: {
+      nome: "Óleo 5W30 Sintético",
+      descricao: "Óleo Motor",
+      fabricante: "Lubrax",
+      valor_custo: 25.0,
+      valor_venda: 60.0,
+      estoque_atual: 100, // Requerido no schema
+    },
+  });
+
+  // 2b. Criar Tipo de Cliente (Se não existir)
+  let tipo = await prisma.tipo.findFirst({ where: { funcao: "Varejo" } });
+  if (!tipo) {
+    tipo = await prisma.tipo.create({ data: { funcao: "Varejo" } });
+  }
+
+  // 2c. Criar Cliente e Veiculo Generico para OS
+  const pCliente = await prisma.pessoa.create({
+    data: { nome: "Cliente Teste" },
+  });
+
+  const pfCliente = await prisma.pessoaFisica.create({
+    data: { id_pessoa: pCliente.id_pessoa, cpf: "11122233344" },
+  });
+
+  const cliente = await prisma.cliente.create({
+    data: {
+      telefone_1: "1199999999",
+      tipo_pessoa: tipo.id_tipo,
+      id_pessoa_fisica: pfCliente.id_pessoa_fisica,
+    },
+  });
+
+  const veiculo = await prisma.veiculo.create({
+    data: {
+      placa: "TST-" + Math.floor(Math.random() * 1000), // Random placa
+      marca: "Fiat",
+      modelo: "Uno",
+      ano_modelo: "2020",
+      cor: "Branco",
+      combustivel: "Flex",
+      id_cliente: cliente.id_cliente,
+    },
+  });
+
+  // 3. Fornecedor
+  const fornecedor = await prisma.fornecedor.create({
+    data: {
+      nome: "Auto Peças Zé",
+      tipo_pessoa: "JURIDICA",
+    },
+  });
+
+  const meses = [
+    { ano: 2025, mes: 10, nome: "Nov" }, // Nov (JS Month 10)
+    { ano: 2025, mes: 11, nome: "Dez" },
+    { ano: 2026, mes: 0, nome: "Jan" }, // Jan 26
+  ];
+
+  for (const m of meses) {
+    const dtEvento = new Date(m.ano, m.mes, 15);
+
+    // A. OS Típica de Mecânica
+    const osMec = await prisma.ordemDeServico.create({
+      data: {
+        id_cliente: cliente.id_cliente,
+        id_veiculo: veiculo.id_veiculo,
+        status: "FINALIZADO",
+        dt_abertura: dtEvento, // Correto (não dt_entrada)
+        dt_entrega: dtEvento,
+        km_entrada: 50000,
+        defeito_relatado: "Revisão Geral", // Correto (não defeito)
+        valor_final: 340.0, // Correto (não valor_total)
+        parcelas: 1,
+      },
+    });
+
+    // Itens da OS
+    const itemOs = await prisma.itensOs.create({
+      data: {
+        id_os: osMec.id_os, // Correto (não id_ordem_servico)
+        id_pecas_estoque: pecaOleo.id_pecas_estoque,
+        descricao: "Óleo 5W30",
+        quantidade: 4,
+        valor_venda: 60.0,
+        valor_total: 240.0,
+      },
+    });
+
+    await prisma.servicoMaoDeObra.create({
+      data: {
+        id_os: osMec.id_os,
+        descricao: "Troca de Óleo e Filtros",
+        valor: 100.0,
+        id_funcionario: funcMecanico.id_funcionario,
+      },
+    });
+
+    // B. OS Típica de Elétrica
+    // Como id_veiculo é unico por placa no seed, usar mesmo veiculo ou criar outro se precisar
+    // Vamos usar o mesmo veiculo
+    const osEle = await prisma.ordemDeServico.create({
+      data: {
+        id_cliente: cliente.id_cliente,
+        id_veiculo: veiculo.id_veiculo,
+        status: "FINALIZADO",
+        dt_abertura: dtEvento,
+        dt_entrega: dtEvento,
+        km_entrada: 10000,
+        defeito_relatado: "Pane Elétrica",
+        valor_final: 700.0,
+        parcelas: 1,
+      },
+    });
+
+    // Peça Compra Direta
+    const itemPecaDireta = await prisma.itensOs.create({
+      data: {
+        id_os: osEle.id_os,
+        descricao: "Alternador Recondicionado",
+        quantidade: 1,
+        valor_venda: 400.0,
+        valor_total: 400.0,
+      },
+    });
+
+    // Simular Pagamento da Peça (Custo)
+    await prisma.pagamentoPeca.create({
+      data: {
+        id_item_os: itemPecaDireta.id_iten, // Note: id_iten based on schema
+        id_fornecedor: fornecedor.id_fornecedor,
+        custo_real: 250.0,
+        data_compra: dtEvento,
+      },
+    });
+
+    await prisma.servicoMaoDeObra.create({
+      data: {
+        id_os: osEle.id_os,
+        descricao: "Reparo de Alternador",
+        valor: 300.0,
+        id_funcionario: funcEletrico.id_funcionario,
+      },
+    });
+
+    // C. Despesas Fixas do Mês
+    await prisma.livroCaixa.create({
+      data: {
+        descricao: `Aluguel ${m.nome}/${m.ano}`,
+        valor: 1200.0,
+        tipo_movimentacao: "SAIDA",
+        categoria: "ALUGUEL",
+        dt_movimentacao: dtEvento,
+        origem: "MANUAL",
+      },
+    });
+
+    await prisma.livroCaixa.create({
+      data: {
+        descricao: `Energia ${m.nome}/${m.ano}`,
+        valor: 350.0,
+        tipo_movimentacao: "SAIDA",
+        categoria: "LUZ",
+        dt_movimentacao: dtEvento,
+        origem: "MANUAL",
+      },
+    });
+  }
+
+  // =================================================================================
+  // FUTURO
+  // =================================================================================
+
+  const futureDates = [
+    new Date(2026, 1, 10), // 10 Fev
+    new Date(2026, 2, 10), // 10 Mar
+    new Date(2026, 3, 10), // 10 Abr
+  ];
+
+  // Criar Operadora Mock para Recebivel
+  const conta = await prisma.contaBancaria.create({
+    data: { nome: "Caixa Geral" },
+  });
+  const operadora = await prisma.operadoraCartao.create({
+    data: {
+      nome: "Stone",
+      id_conta_destino: conta.id_conta,
+    },
+  });
+
+  for (const fd of futureDates) {
+    // 1. Contas a Pagar Recorrentes
+    await prisma.contasPagar.create({
+      data: {
+        descricao: "Aluguel Oficina",
+        valor: 1200.0,
+        dt_vencimento: fd,
+        status: "PENDENTE",
+        categoria: "ALUGUEL",
+        credor: "Imobiliária Beta",
+      },
+    });
+
+    // 2. Recebível de Cartão
+    await prisma.recebivelCartao.create({
+      data: {
+        id_operadora: operadora.id_operadora,
+        valor_liquido: 340.0, // simplificado
+        valor_bruto: 350.5,
+        taxa_aplicada: 10.5,
+        num_parcela: futureDates.indexOf(fd) + 1,
+        total_parcelas: 3,
+        data_prevista: fd,
+        status: "PENDENTE",
+      },
+    });
+  }
+
+  console.log("✅ Seeding completed! Financial data populated.");
 }
 
 main()
@@ -27682,33 +28649,34 @@ export const prisma = new PrismaClient();
 ================================================================================
 FILE PATH: server\src\server.ts
 ================================================================================
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
 
 // Importar todas as rotas primeiro
-import { pessoaRoutes } from './routes/pessoa.routes.js';
-import { tipoRoutes } from './routes/tipo.routes.js';
-import { pessoaFisicaRoutes } from './routes/pessoaFisica.routes.js';
-import { pessoaJuridicaRoutes } from './routes/pessoaJuridica.routes.js';
-import { clienteRoutes } from './routes/cliente.routes.js';
-import { funcionarioRoutes } from './routes/funcionario.routes.js';
-import { pecasEstoqueRoutes } from './routes/pecasEstoque.routes.js';
-import { veiculoRoutes } from './routes/veiculo.routes.js';
-import { ordemDeServicoRoutes } from './routes/ordemDeServico.routes.js';
-import { itensOsRoutes } from './routes/itensOs.routes.js';
-import { servicoMaoDeObraRoutes } from './routes/servicoMaoDeObra.routes.js';
-import { fechamentoFinanceiroRoutes } from './routes/fechamentoFinanceiro.routes.js';
-import { fornecedorRoutes } from './routes/fornecedor.routes.js';
-import { pagamentoPecaRoutes } from './routes/pagamentoPeca.routes.js';
-import { pagamentoClienteRoutes } from './routes/pagamentoCliente.routes.js';
-import contasPagarRoutes from './routes/contasPagar.routes.js';
-import { pagamentoEquipeRoutes } from './routes/pagamentoEquipe.routes.js';
-import { livroCaixaRoutes } from './routes/livroCaixa.routes.js';
-import { categoriaFinanceiraRoutes } from './routes/categoriaFinanceira.routes.js';
-import { contaBancariaRoutes } from './routes/contaBancaria.routes.js';
-import { operadoraRoutes } from './routes/operadoraCartao.routes.js';
-import { recebivelCartaoRoutes } from './routes/recebivelCartao.routes.js';
+import { pessoaRoutes } from "./routes/pessoa.routes.js";
+import { tipoRoutes } from "./routes/tipo.routes.js";
+import { pessoaFisicaRoutes } from "./routes/pessoaFisica.routes.js";
+import { pessoaJuridicaRoutes } from "./routes/pessoaJuridica.routes.js";
+import { clienteRoutes } from "./routes/cliente.routes.js";
+import { funcionarioRoutes } from "./routes/funcionario.routes.js";
+import { pecasEstoqueRoutes } from "./routes/pecasEstoque.routes.js";
+import { veiculoRoutes } from "./routes/veiculo.routes.js";
+import { ordemDeServicoRoutes } from "./routes/ordemDeServico.routes.js";
+import { itensOsRoutes } from "./routes/itensOs.routes.js";
+import { servicoMaoDeObraRoutes } from "./routes/servicoMaoDeObra.routes.js";
+import { fechamentoFinanceiroRoutes } from "./routes/fechamentoFinanceiro.routes.js";
+import { fornecedorRoutes } from "./routes/fornecedor.routes.js";
+import { pagamentoPecaRoutes } from "./routes/pagamentoPeca.routes.js";
+import { pagamentoClienteRoutes } from "./routes/pagamentoCliente.routes.js";
+import contasPagarRoutes from "./routes/contasPagar.routes.js";
+import { pagamentoEquipeRoutes } from "./routes/pagamentoEquipe.routes.js";
+import { livroCaixaRoutes } from "./routes/livroCaixa.routes.js";
+import { categoriaFinanceiraRoutes } from "./routes/categoriaFinanceira.routes.js";
+import { contaBancariaRoutes } from "./routes/contaBancaria.routes.js";
+import { operadoraRoutes } from "./routes/operadoraCartao.routes.js";
+import { recebivelCartaoRoutes } from "./routes/recebivelCartao.routes.js";
+import { relatorioRoutes } from "./routes/relatorio.routes.js";
 
 dotenv.config();
 
@@ -27719,33 +28687,34 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => {
-  res.send('Centro Automotivo API is running');
+app.get("/", (req, res) => {
+  res.send("Centro Automotivo API is running");
 });
 
 // Registrar todas as rotas
-app.use('/api/pessoa', pessoaRoutes);
-app.use('/api/tipo', tipoRoutes);
-app.use('/api/pessoa-fisica', pessoaFisicaRoutes);
-app.use('/api/pessoa-juridica', pessoaJuridicaRoutes);
-app.use('/api/cliente', clienteRoutes);
-app.use('/api/funcionario', funcionarioRoutes);
-app.use('/api/pecas-estoque', pecasEstoqueRoutes);
-app.use('/api/veiculo', veiculoRoutes);
-app.use('/api/ordem-de-servico', ordemDeServicoRoutes);
-app.use('/api/itens-os', itensOsRoutes);
-app.use('/api/servico-mao-de-obra', servicoMaoDeObraRoutes);
-app.use('/api/fechamento-financeiro', fechamentoFinanceiroRoutes);
-app.use('/api/fornecedor', fornecedorRoutes);
-app.use('/api/pagamento-peca', pagamentoPecaRoutes);
-app.use('/api/pagamento-cliente', pagamentoClienteRoutes);
-app.use('/api/contas-pagar', contasPagarRoutes);
-app.use('/api/pagamento-equipe', pagamentoEquipeRoutes);
-app.use('/api/livro-caixa', livroCaixaRoutes);
-app.use('/api/categoria-financeira', categoriaFinanceiraRoutes);
-app.use('/api/conta-bancaria', contaBancariaRoutes);
-app.use('/api/operadora-cartao', operadoraRoutes);
-app.use('/api/recebivel-cartao', recebivelCartaoRoutes);
+app.use("/api/pessoa", pessoaRoutes);
+app.use("/api/tipo", tipoRoutes);
+app.use("/api/pessoa-fisica", pessoaFisicaRoutes);
+app.use("/api/pessoa-juridica", pessoaJuridicaRoutes);
+app.use("/api/cliente", clienteRoutes);
+app.use("/api/funcionario", funcionarioRoutes);
+app.use("/api/pecas-estoque", pecasEstoqueRoutes);
+app.use("/api/veiculo", veiculoRoutes);
+app.use("/api/ordem-de-servico", ordemDeServicoRoutes);
+app.use("/api/itens-os", itensOsRoutes);
+app.use("/api/servico-mao-de-obra", servicoMaoDeObraRoutes);
+app.use("/api/fechamento-financeiro", fechamentoFinanceiroRoutes);
+app.use("/api/fornecedor", fornecedorRoutes);
+app.use("/api/pagamento-peca", pagamentoPecaRoutes);
+app.use("/api/pagamento-cliente", pagamentoClienteRoutes);
+app.use("/api/contas-pagar", contasPagarRoutes);
+app.use("/api/pagamento-equipe", pagamentoEquipeRoutes);
+app.use("/api/livro-caixa", livroCaixaRoutes);
+app.use("/api/categoria-financeira", categoriaFinanceiraRoutes);
+app.use("/api/conta-bancaria", contaBancariaRoutes);
+app.use("/api/operadora-cartao", operadoraRoutes);
+app.use("/api/recebivel-cartao", recebivelCartaoRoutes);
+app.use("/api/relatorios", relatorioRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
@@ -27884,145 +28853,6 @@ export const remove = async (req: Request, res: Response) => {
 ================================================================================
 FILE PATH: server\src\controllers\cliente.controller.ts
 ================================================================================
-import { Request, Response } from "express";
-import { ClienteRepository } from "../repositories/cliente.repository.js";
-
-const repository = new ClienteRepository();
-
-export class ClienteController {
-  async create(req: Request, res: Response) {
-    console.log("🔵 ClienteController.create - Received request");
-    console.log("📦 Request body:", JSON.stringify(req.body, null, 2));
-
-    try {
-      const cliente = await repository.create(req.body);
-      console.log("✅ ClienteController.create - Success:", cliente.id_cliente);
-      res.status(201).json(cliente);
-    } catch (error: any) {
-      console.error("❌ ClienteController.create - Error:", error);
-      console.error("❌ Error message:", error.message);
-      console.error("❌ Error stack:", error.stack);
-      res
-        .status(400)
-        .json({ error: "Failed to create Cliente", details: error.message });
-    }
-  }
-
-  async findAll(req: Request, res: Response) {
-    try {
-      const clientes = await repository.findAll();
-      res.json(clientes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Clientes" });
-    }
-  }
-
-  async findById(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const cliente = await repository.findById(id);
-      if (!cliente) {
-        return res.status(404).json({ error: "Cliente not found" });
-      }
-      res.json(cliente);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Cliente" });
-    }
-  }
-
-  async update(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const cliente = await repository.update(id, req.body);
-      res.json(cliente);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to update Cliente" });
-    }
-  }
-
-  async delete(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-
-      // Check if client has service orders or vehicles with service orders
-      const clienteWithOS = await repository.findById(id);
-
-      if (!clienteWithOS) {
-        return res.status(404).json({ error: "Cliente não encontrado." });
-      }
-
-      // Check if client has service orders directly
-      if (
-        clienteWithOS &&
-        clienteWithOS.ordens_de_servico &&
-        clienteWithOS.ordens_de_servico.length > 0
-      ) {
-        return res.status(400).json({
-          error:
-            "Não é possível excluir cliente com ordens de serviço cadastradas.",
-          message:
-            "Este cliente possui ordens de serviço associadas. Não é possível excluí-lo.",
-        });
-      }
-
-      // Check if client has vehicles with service orders
-      if (clienteWithOS.veiculos && clienteWithOS.veiculos.length > 0) {
-        // Import prisma to check each vehicle
-        const { prisma } = await import("../prisma.js");
-
-        for (const veiculo of clienteWithOS.veiculos) {
-          const veiculoWithOS = await prisma.veiculo.findUnique({
-            where: { id_veiculo: veiculo.id_veiculo },
-            include: { ordens_de_servico: true },
-          });
-
-          if (
-            veiculoWithOS &&
-            veiculoWithOS.ordens_de_servico &&
-            veiculoWithOS.ordens_de_servico.length > 0
-          ) {
-            return res.status(400).json({
-              error:
-                "Não é possível excluir cliente com veículos vinculados a ordens de serviço.",
-              message: `O veículo ${veiculoWithOS.placa} possui ordens de serviço associadas. Não é possível excluir o cliente.`,
-            });
-          }
-        }
-
-        // Delete all vehicles without OS
-        await prisma.veiculo.deleteMany({
-          where: { id_cliente: id },
-        });
-      }
-
-      await repository.delete(id);
-      res.status(204).send();
-    } catch (error: any) {
-      console.error("Error deleting cliente:", error);
-      res.status(400).json({
-        error: "Failed to delete Cliente",
-        message: error.message || "Unknown error",
-        details: error.code || "",
-      });
-    }
-  }
-
-  async searchByName(req: Request, res: Response) {
-    try {
-      const { name } = req.query;
-      if (!name || typeof name !== "string") {
-        return res
-          .status(400)
-          .json({ error: "Name query parameter is required" });
-      }
-      const clientes = await repository.searchByName(name);
-      res.json(clientes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to search Clientes" });
-    }
-  }
-}
-
 
 
 ================================================================================
@@ -28610,135 +29440,65 @@ export class ItensOsController {
 ================================================================================
 FILE PATH: server\src\controllers\livroCaixa.controller.ts
 ================================================================================
-import { Request, Response } from 'express';
-import { prisma } from '../prisma.js';
-
-export const getAll = async (req: Request, res: Response) => {
-    try {
-        const registros = await prisma.livroCaixa.findMany({
-            include: { conta: true },
-            orderBy: { dt_movimentacao: 'desc' },
-            take: 200 // Limit to last 200 for performance? Or pagination later.
-        });
-        res.json(registros);
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar livro caixa' });
-    }
-};
-
-export const create = async (req: Request, res: Response) => {
-    try {
-        const { descricao, valor, tipo_movimentacao, categoria, obs, origem, id_conta_bancaria } = req.body;
-        
-        // Transaction to update balance if account provided
-        const result = await prisma.$transaction(async (tx) => {
-             const registro = await tx.livroCaixa.create({
-                data: { 
-                    descricao, 
-                    valor, 
-                    tipo_movimentacao, 
-                    categoria,
-                    obs,
-                    origem: origem || 'MANUAL',
-                    id_conta_bancaria: id_conta_bancaria ? Number(id_conta_bancaria) : null
-                }
-            });
-
-            if (id_conta_bancaria) {
-                 if (tipo_movimentacao === 'ENTRADA') {
-                     await tx.contaBancaria.update({
-                         where: { id_conta: Number(id_conta_bancaria) },
-                         data: { saldo_atual: { increment: valor } }
-                     });
-                 } else {
-                     await tx.contaBancaria.update({
-                         where: { id_conta: Number(id_conta_bancaria) },
-                         data: { saldo_atual: { decrement: valor } }
-                     });
-                 }
-            }
-            return registro;
-        });
-
-        res.status(201).json(result);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Erro ao criar registro' });
-    }
-};
-
-export const update = async (req: Request, res: Response) => {
-    const { id } = req.params;
-    try {
-        const { descricao, valor, tipo_movimentacao, categoria, obs } = req.body;
-        const registro = await prisma.livroCaixa.update({
-            where: { id_livro_caixa: Number(id) },
-            data: { descricao, valor, tipo_movimentacao, categoria, obs }
-        });
-        res.json(registro);
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao atualizar registro' });
-    }
-};
-
-export const softDelete = async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const { obs } = req.body;
-    try {
-        const registro = await prisma.livroCaixa.update({
-             where: { id_livro_caixa: Number(id) },
-             data: { 
-                 deleted_at: new Date(),
-                 obs: obs // Update obs if provided
-             }
-        });
-        res.json(registro);
-    } catch (error) {
-         res.status(500).json({ error: 'Erro ao deletar registro' });
-    }
-};
-
-
-
 ================================================================================
 FILE PATH: server\src\controllers\operadoraCartao.controller.ts
 ================================================================================
-import { Request, Response } from 'express';
-import { prisma } from '../prisma.js';
+import { Request, Response } from "express";
+import { prisma } from "../prisma.js";
 
 export const getAll = async (req: Request, res: Response) => {
-    try {
-        const operadoras = await prisma.operadoraCartao.findMany({
-            include: { conta_destino: true }
-        });
-        res.json(operadoras);
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar operadoras' });
-    }
+  try {
+    const operadoras = await prisma.operadoraCartao.findMany({
+      include: { conta_destino: true },
+    });
+    res.json(operadoras);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar operadoras" });
+  }
 };
 
 export const create = async (req: Request, res: Response) => {
-    try {
-        const data = req.body;
-        const operadora = await prisma.operadoraCartao.create({ data });
-        res.status(201).json(operadora);
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao criar operadora' });
-    }
+  try {
+    const data = req.body;
+    const operadora = await prisma.operadoraCartao.create({ data });
+    res.status(201).json(operadora);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao criar operadora" });
+  }
 };
 
 export const update = async (req: Request, res: Response) => {
-    const { id } = req.params;
-    try {
-        const data = req.body;
-        const operadora = await prisma.operadoraCartao.update({
-            where: { id_operadora: Number(id) },
-            data
-        });
-        res.json(operadora);
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao atualizar operadora' });
+  const { id } = req.params;
+  try {
+    const data = req.body;
+    const operadora = await prisma.operadoraCartao.update({
+      where: { id_operadora: Number(id) },
+      data,
+    });
+    res.json(operadora);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao atualizar operadora" });
+  }
+};
+
+export const toggleStatus = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const op = await prisma.operadoraCartao.findUnique({
+      where: { id_operadora: Number(id) },
+    });
+    if (!op) {
+      return res.status(404).json({ error: "Operadora não encontrada" });
     }
+
+    const operadora = await prisma.operadoraCartao.update({
+      where: { id_operadora: Number(id) },
+      data: { ativo: !op.ativo },
+    });
+    res.json(operadora);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao alterar status da operadora" });
+  }
 };
 
 
@@ -29515,10 +30275,6 @@ export class PessoaFisicaController {
   }
 }
 
-
-
-================================================================================
-FILE PATH: server\src\controllers\pessoaJuridica.controller.ts
 ================================================================================
 import { Request, Response } from 'express';
 import { PessoaJuridicaRepository } from '../repositories/pessoaJuridica.repository.js';
@@ -29743,6 +30499,286 @@ export class RecebivelCartaoController {
         error: 'Failed to confirm Recebíveis', 
         details: error.message 
       });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\RelatorioFinanceiroController.ts
+================================================================================
+import { Request, Response } from "express";
+import { prisma } from "../prisma.js";
+
+export class RelatorioFinanceiroController {
+  async getDashboard(req: Request, res: Response) {
+    try {
+      const { startDate, endDate } = req.query;
+
+      // Definição de datas base
+      const start = startDate
+        ? new Date(String(startDate))
+        : new Date(new Date().getFullYear(), 0, 1);
+      const end = endDate ? new Date(String(endDate)) : new Date();
+      end.setHours(23, 59, 59, 999);
+
+      // 1. DRE (Demonstrativo de Resultados) e KPIs Principais
+      const ordensServico = await prisma.ordemDeServico.findMany({
+        where: {
+          status: { in: ["FINALIZADO", "ENTREGUE"] },
+          dt_entrega: { gte: start, lte: end },
+          deleted_at: null,
+        },
+        include: {
+          itens_os: {
+            include: {
+              pecas_estoque: true,
+              pagamentos_peca: true,
+            },
+          },
+          servicos_mao_de_obra: {
+            include: {
+              funcionario: {
+                include: {
+                  pessoa_fisica: {
+                    include: {
+                      pessoa: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      let receitaTotal = 0;
+      let receitaPecasDiretas = 0;
+      let custoPecasDiretas = 0;
+
+      let receitaEstoque = 0;
+      let custoEstoque = 0;
+
+      let receitaMaoDeObra = 0;
+      let custoMaoDeObra = 0;
+
+      let lucroPecas = 0;
+      let lucroMaoDeObra = 0;
+
+      const performancePorColaborador: Record<
+        string,
+        { faturamento: number; comissao: number; qtd_servicos: number }
+      > = {};
+      const receitaPorCategoria: Record<string, number> = {
+        Mecânica: 0,
+        Elétrica: 0,
+        Outros: 0,
+      };
+
+      for (const os of ordensServico) {
+        // Peças
+        for (const item of os.itens_os) {
+          if (item.deleted_at) continue;
+
+          const valorVenda = Number(item.valor_total);
+
+          if (item.id_pecas_estoque && item.pecas_estoque) {
+            // É Estoque
+            receitaEstoque += valorVenda;
+            custoEstoque +=
+              Number(item.pecas_estoque.valor_custo) * item.quantidade;
+          } else {
+            // É Compra Direta
+            receitaPecasDiretas += valorVenda;
+            let custoDireto = 0;
+            if (item.pagamentos_peca && item.pagamentos_peca.length > 0) {
+              custoDireto = item.pagamentos_peca.reduce(
+                (acc: number, p: any) => acc + Number(p.custo_real),
+                0,
+              );
+            }
+            custoPecasDiretas += custoDireto;
+          }
+        }
+
+        // Mão de Obra
+        for (const servico of os.servicos_mao_de_obra) {
+          if (servico.deleted_at) continue;
+
+          const valorServico = Number(servico.valor);
+          receitaMaoDeObra += valorServico;
+
+          let comissao = 0;
+          if (servico.funcionario) {
+            const percentual = servico.funcionario.comissao || 0;
+            comissao = valorServico * (percentual / 100);
+
+            // Acesso seguro ao nome via Pessoa
+            const nomeFunc =
+              servico.funcionario.pessoa_fisica?.pessoa?.nome ||
+              servico.funcionario.razao_social ||
+              "Não definido";
+
+            if (!performancePorColaborador[nomeFunc]) {
+              performancePorColaborador[nomeFunc] = {
+                faturamento: 0,
+                comissao: 0,
+                qtd_servicos: 0,
+              };
+            }
+            performancePorColaborador[nomeFunc].faturamento += valorServico;
+            performancePorColaborador[nomeFunc].comissao += comissao;
+            performancePorColaborador[nomeFunc].qtd_servicos += 1;
+
+            const especialidade = servico.funcionario.especialidade || "Outros";
+            let catKey = "Outros";
+            if (especialidade.toLowerCase().includes("mec"))
+              catKey = "Mecânica";
+            else if (especialidade.toLowerCase().includes("elét"))
+              catKey = "Elétrica";
+
+            if (!receitaPorCategoria[catKey]) receitaPorCategoria[catKey] = 0;
+            receitaPorCategoria[catKey] += valorServico;
+          }
+
+          custoMaoDeObra += comissao;
+        }
+      }
+
+      const receitaPecas = receitaPecasDiretas + receitaEstoque;
+      const custoPecas = custoPecasDiretas + custoEstoque;
+
+      const lucroPecasDiretas = receitaPecasDiretas - custoPecasDiretas;
+      const lucroEstoque = receitaEstoque - custoEstoque;
+
+      receitaTotal = receitaPecas + receitaMaoDeObra;
+      lucroPecas = receitaPecas - custoPecas;
+      lucroMaoDeObra = receitaMaoDeObra - custoMaoDeObra;
+
+      // Calculo de Despesas Fixas
+      const despesasOperacionais = await prisma.livroCaixa.aggregate({
+        _sum: { valor: true },
+        where: {
+          tipo_movimentacao: "SAIDA",
+          dt_movimentacao: { gte: start, lte: end },
+          deleted_at: null,
+          categoria: { notIn: ["PEÇAS", "COMISSAO", "SERV. TERCEIROS"] },
+          pagamento_peca: { is: null },
+          pagamento_equipe: { is: null },
+        },
+      });
+
+      const totalDespesasFixas = Number(despesasOperacionais._sum?.valor || 0);
+
+      const lucroBruto = lucroPecas + lucroMaoDeObra;
+      const lucroLiquido = lucroBruto - totalDespesasFixas;
+
+      // 3. New Tremor Data Structures
+
+      // A. Fluxo de Caixa Diário (Realizado)
+      const movimentacoes = await prisma.livroCaixa.findMany({
+        where: {
+          dt_movimentacao: { gte: start, lte: end },
+          deleted_at: null,
+        },
+        orderBy: { dt_movimentacao: "asc" },
+      });
+
+      // Group by date formatted (e.g., "21 Jan")
+      const cashFlowMap = new Map<
+        string,
+        { date: string; Receitas: number; Despesas: number }
+      >();
+
+      movimentacoes.forEach((mov) => {
+        const dateKey = new Date(mov.dt_movimentacao).toLocaleDateString(
+          "pt-BR",
+          { day: "2-digit", month: "short" },
+        );
+
+        if (!cashFlowMap.has(dateKey)) {
+          cashFlowMap.set(dateKey, { date: dateKey, Receitas: 0, Despesas: 0 });
+        }
+
+        const entry = cashFlowMap.get(dateKey)!;
+        if (mov.tipo_movimentacao === "ENTRADA") {
+          entry.Receitas += Number(mov.valor);
+        } else {
+          entry.Despesas += Number(mov.valor);
+        }
+      });
+
+      const fluxo_caixa = Array.from(cashFlowMap.values());
+
+      // B. Categories for Donut Chart (Receita por Categoria de Serviço)
+      const categorias = Object.entries(receitaPorCategoria)
+        .map(([name, value]) => ({
+          name,
+          value,
+        }))
+        .filter((c) => c.value > 0);
+
+      // C. DRE Breakdown Items
+      const dreDetails = [
+        {
+          category: "Receita de Serviços (Mão de Obra)",
+          value: receitaMaoDeObra,
+          type: "revenue",
+        },
+        {
+          category: "Receita de Peças (Estoque + Direta)",
+          value: receitaPecas,
+          type: "revenue",
+        },
+        {
+          category: "(-) Custo de Peças",
+          value: custoPecas * -1,
+          type: "expense",
+        },
+        {
+          category: "(-) Comissões",
+          value: custoMaoDeObra * -1,
+          type: "expense",
+        },
+        {
+          category: "(-) Despesas Fixas Operacionais",
+          value: totalDespesasFixas * -1,
+          type: "expense",
+        },
+      ];
+
+      res.json({
+        kpis: {
+          receitaTotal,
+          receitaPecasDiretas,
+          custoPecasDiretas,
+          lucroPecasDiretas,
+          receitaEstoque,
+          custoEstoque,
+          lucroEstoque,
+          receitaPecas,
+          custoPecas,
+          lucroPecas,
+          receitaMaoDeObra,
+          custoMaoDeObra,
+          lucroMaoDeObra,
+          lucroBruto,
+          despesasFixas: totalDespesasFixas,
+          lucroLiquido,
+          margemLiquida:
+            receitaTotal > 0 ? (lucroLiquido / receitaTotal) * 100 : 0,
+          ticketMedio:
+            ordensServico.length > 0 ? receitaTotal / ordensServico.length : 0,
+        },
+        fluxo_caixa,
+        categorias,
+        dreDetails,
+        performancePorColaborador,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Erro ao gerar relatório financeiro" });
     }
   }
 }
@@ -30205,8 +31241,10 @@ export class ContasPagarRepository {
   async create(data: any) {
     console.log("[ContasPagarRepo] Creating:", data);
 
-    // Helper para normalizar datas para Meio-Dia UTC (Garante fidelidade do dia no Fuso BRT)
-    // Evita que 00:00 UTC vire 21:00 do dia anterior.
+    const { repetir_parcelas, ...mainData } = data;
+    const repetitions = Number(repetir_parcelas || 0);
+
+    // Helper para normalizar datas para Meio-Dia UTC
     const normalizeDate = (dateInfo: any) => {
       if (!dateInfo) return null;
       const dt = new Date(dateInfo);
@@ -30214,22 +31252,22 @@ export class ContasPagarRepository {
       return dt;
     };
 
-    if (data.dt_vencimento)
-      data.dt_vencimento = normalizeDate(data.dt_vencimento);
-    if (data.dt_pagamento) data.dt_pagamento = normalizeDate(data.dt_pagamento);
+    if (mainData.dt_vencimento)
+      mainData.dt_vencimento = normalizeDate(mainData.dt_vencimento);
+    if (mainData.dt_pagamento)
+      mainData.dt_pagamento = normalizeDate(mainData.dt_pagamento);
 
     return prisma.$transaction(async (tx) => {
-      const created = await tx.contasPagar.create({ data });
+      const created = await tx.contasPagar.create({ data: mainData });
       console.log("[ContasPagarRepo] Created Status:", created.status);
 
       // Se já nascer PAGO, lança no caixa
       if (created.status === "PAGO") {
         console.log("[ContasPagarRepo] Auto-launching Livro Caixa for Create");
 
-        // Smart Date Logic for Livro Caixa
         let movimentoDate = new Date();
-        if (data.dt_pagamento) {
-          const pgDate = new Date(data.dt_pagamento);
+        if (mainData.dt_pagamento) {
+          const pgDate = new Date(mainData.dt_pagamento);
           const now = new Date();
           const isSameDay =
             pgDate.toISOString().split("T")[0] ===
@@ -30245,10 +31283,29 @@ export class ContasPagarRepository {
             categoria: created.categoria || "DESPESAS GERAIS",
             dt_movimentacao: movimentoDate,
             origem: "AUTOMATICA",
-            obs: `Referente à conta a pagar #${created.id_conta_pagar}. ${data.obs || ""}`,
+            obs: `Referente à conta a pagar #${created.id_conta_pagar}. ${mainData.obs || ""}`,
           },
         });
       }
+
+      // Lógica de Repetição (Novas Parcelas)
+      if (repetitions > 0 && mainData.dt_vencimento) {
+        const baseDate = new Date(mainData.dt_vencimento);
+
+        for (let i = 1; i <= repetitions; i++) {
+          const newDate = new Date(baseDate);
+          newDate.setMonth(baseDate.getMonth() + i);
+
+          const repData = { ...mainData };
+          repData.dt_vencimento = newDate;
+          repData.status = "PENDENTE"; // Repetições futuras nascem pendentes
+          repData.dt_pagamento = null;
+          repData.obs = `${repData.obs || ""} (Recorrência ${i + 1}/${repetitions + 1})`;
+
+          await tx.contasPagar.create({ data: repData });
+        }
+      }
+
       return created;
     });
   }
@@ -32913,14 +33970,15 @@ livroCaixaRoutes.delete('/:id', LivroCaixaController.softDelete);
 ================================================================================
 FILE PATH: server\src\routes\operadoraCartao.routes.ts
 ================================================================================
-import { Router } from 'express';
-import * as OperadoraController from '../controllers/operadoraCartao.controller.js';
+import { Router } from "express";
+import * as OperadoraController from "../controllers/operadoraCartao.controller.js";
 
 export const operadoraRoutes = Router();
 
-operadoraRoutes.get('/', OperadoraController.getAll);
-operadoraRoutes.post('/', OperadoraController.create);
-operadoraRoutes.put('/:id', OperadoraController.update);
+operadoraRoutes.get("/", OperadoraController.getAll);
+operadoraRoutes.post("/", OperadoraController.create);
+operadoraRoutes.put("/:id/toggle-status", OperadoraController.toggleStatus);
+operadoraRoutes.put("/:id", OperadoraController.update);
 
 
 
@@ -33106,6 +34164,21 @@ recebivelCartaoRoutes.post('/:id/confirmar', controller.confirmarRecebimento);
 recebivelCartaoRoutes.post('/:id/estornar', controller.estornarRecebimento);
 
 export { recebivelCartaoRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\relatorio.routes.ts
+================================================================================
+import { Router } from "express";
+import { RelatorioFinanceiroController } from "../controllers/RelatorioFinanceiroController.js";
+
+const relatorioRoutes = Router();
+const controller = new RelatorioFinanceiroController();
+
+relatorioRoutes.get("/dashboard", controller.getDashboard);
+
+export { relatorioRoutes };
 
 
 

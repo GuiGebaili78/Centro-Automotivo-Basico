@@ -42,6 +42,7 @@ const menuItems = [
       { path: "/financeiro/equipe", label: "Pagamento de Equipe" },
       { path: "/financeiro/pagamento-pecas", label: "Pagamento Auto Peças" },
       { path: "/financeiro/contas-pagar", label: "Contas a Pagar (Geral)" },
+      { path: "/financeiro/relatorios", label: "Relatórios Inteligentes ✨" },
       { path: "/fechamento-financeiro", label: "Consolidação" },
     ],
   },
@@ -55,7 +56,7 @@ export const Sidebar = () => {
     setExpandedMenus((prev) =>
       prev.includes(label)
         ? prev.filter((item) => item !== label)
-        : [...prev, label]
+        : [...prev, label],
     );
   };
 

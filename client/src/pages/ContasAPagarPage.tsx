@@ -64,6 +64,7 @@ export const ContasAPagarPage = () => {
     dt_pagamento: "",
     url_anexo: "",
     obs: "",
+    repetir_parcelas: 0,
   });
 
   // Payment Confirmation Modal
@@ -190,6 +191,7 @@ export const ContasAPagarPage = () => {
         : "",
       url_anexo: conta.url_anexo || "",
       obs: conta.obs || "",
+      repetir_parcelas: 0,
     });
     setModalOpen(true);
   };
@@ -209,6 +211,7 @@ export const ContasAPagarPage = () => {
       dt_pagamento: "",
       url_anexo: "",
       obs: "",
+      repetir_parcelas: 0,
     });
   };
 

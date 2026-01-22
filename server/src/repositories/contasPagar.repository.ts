@@ -4,8 +4,10 @@ export class ContasPagarRepository {
   async create(data: any) {
     console.log("[ContasPagarRepo] Creating:", data);
 
-    // Helper para normalizar datas para Meio-Dia UTC (Garante fidelidade do dia no Fuso BRT)
-    // Evita que 00:00 UTC vire 21:00 do dia anterior.
+    const { repetir_parcelas, ...mainData } = data;
+    const repetitions = Number(repetir_parcelas || 0);
+
+    // Helper para normalizar datas para Meio-Dia UTC
     const normalizeDate = (dateInfo: any) => {
       if (!dateInfo) return null;
       const dt = new Date(dateInfo);
@@ -13,22 +15,22 @@ export class ContasPagarRepository {
       return dt;
     };
 
-    if (data.dt_vencimento)
-      data.dt_vencimento = normalizeDate(data.dt_vencimento);
-    if (data.dt_pagamento) data.dt_pagamento = normalizeDate(data.dt_pagamento);
+    if (mainData.dt_vencimento)
+      mainData.dt_vencimento = normalizeDate(mainData.dt_vencimento);
+    if (mainData.dt_pagamento)
+      mainData.dt_pagamento = normalizeDate(mainData.dt_pagamento);
 
     return prisma.$transaction(async (tx) => {
-      const created = await tx.contasPagar.create({ data });
+      const created = await tx.contasPagar.create({ data: mainData });
       console.log("[ContasPagarRepo] Created Status:", created.status);
 
       // Se já nascer PAGO, lança no caixa
       if (created.status === "PAGO") {
         console.log("[ContasPagarRepo] Auto-launching Livro Caixa for Create");
 
-        // Smart Date Logic for Livro Caixa
         let movimentoDate = new Date();
-        if (data.dt_pagamento) {
-          const pgDate = new Date(data.dt_pagamento);
+        if (mainData.dt_pagamento) {
+          const pgDate = new Date(mainData.dt_pagamento);
           const now = new Date();
           const isSameDay =
             pgDate.toISOString().split("T")[0] ===
@@ -44,10 +46,29 @@ export class ContasPagarRepository {
             categoria: created.categoria || "DESPESAS GERAIS",
             dt_movimentacao: movimentoDate,
             origem: "AUTOMATICA",
-            obs: `Referente à conta a pagar #${created.id_conta_pagar}. ${data.obs || ""}`,
+            obs: `Referente à conta a pagar #${created.id_conta_pagar}. ${mainData.obs || ""}`,
           },
         });
       }
+
+      // Lógica de Repetição (Novas Parcelas)
+      if (repetitions > 0 && mainData.dt_vencimento) {
+        const baseDate = new Date(mainData.dt_vencimento);
+
+        for (let i = 1; i <= repetitions; i++) {
+          const newDate = new Date(baseDate);
+          newDate.setMonth(baseDate.getMonth() + i);
+
+          const repData = { ...mainData };
+          repData.dt_vencimento = newDate;
+          repData.status = "PENDENTE"; // Repetições futuras nascem pendentes
+          repData.dt_pagamento = null;
+          repData.obs = `${repData.obs || ""} (Recorrência ${i + 1}/${repetitions + 1})`;
+
+          await tx.contasPagar.create({ data: repData });
+        }
+      }
+
       return created;
     });
   }

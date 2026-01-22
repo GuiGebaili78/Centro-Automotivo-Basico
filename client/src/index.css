@@ -1,98 +1,101 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  /* Tipografia */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+@layer base {
+  :root {
+    /* Tipografia */
+    --font-sans: "Roboto", "Inter", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
-  /* Escala Azul (Oficina/Principal) */
-  --color-primary-25: #eff6ff;
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+    /* Escala Azul (Oficina/Principal) */
+    --color-primary-25: #eff6ff;
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+    --color-primary-800: #1e40af;
+    --color-primary-900: #1e3a8a;
 
-  /* Escala Laranja (Oficina/Destaque) */
-  --color-secondary-25: #fffaf5;
-  --color-secondary-50: #fff7ed;
-  --color-secondary-100: #ffedd5;
-  --color-secondary-200: #fed7aa;
-  --color-secondary-300: #fdba74;
-  --color-secondary-400: #fb923c;
-  --color-secondary-500: #f97316;
-  --color-secondary-600: #ea580c;
-  --color-secondary-700: #c2410c;
-  --color-secondary-800: #9a3412;
-  --color-secondary-900: #7c2d12;
+    /* Escala Laranja (Oficina/Destaque) */
+    --color-secondary-25: #fffaf5;
+    --color-secondary-50: #fff7ed;
+    --color-secondary-100: #ffedd5;
+    --color-secondary-200: #fed7aa;
+    --color-secondary-300: #fdba74;
+    --color-secondary-400: #fb923c;
+    --color-secondary-500: #f97316;
+    --color-secondary-600: #ea580c;
+    --color-secondary-700: #c2410c;
+    --color-secondary-800: #9a3412;
+    --color-secondary-900: #7c2d12;
 
-  /* Neutros */
-  --color-neutral-25: #fcfcfd;
-  --color-neutral-50: #f9fafb;
-  --color-neutral-100: #f3f4f6;
-  --color-neutral-200: #e5e7eb;
-  --color-neutral-300: #d1d5db;
-  --color-neutral-400: #9ca3af;
-  --color-neutral-500: #6b7280;
-  --color-neutral-600: #4b5563;
-  --color-neutral-700: #374151;
-  --color-neutral-800: #1f2937;
-  --color-neutral-900: #0d121d;
+    /* Neutros */
+    --color-neutral-25: #fcfcfd;
+    --color-neutral-50: #f9fafb;
+    --color-neutral-100: #f3f4f6;
+    --color-neutral-200: #e5e7eb;
+    --color-neutral-300: #d1d5db;
+    --color-neutral-400: #9ca3af;
+    --color-neutral-500: #6b7280;
+    --color-neutral-600: #4b5563;
+    --color-neutral-700: #374151;
+    --color-neutral-800: #1f2937;
+    --color-neutral-900: #0d121d;
 
-  /* Accent / Cyan */
-  --color-accent-25: #f0fdfa;
-  --color-accent-50: #ecfeff;
-  --color-accent-100: #cffafe;
-  --color-accent-200: #a5f3fc;
-  --color-accent-300: #67e8f9;
-  --color-accent-400: #22d3ee;
-  --color-accent-500: #06b6d4;
-  --color-accent-600: #0891b2;
-  --color-accent-700: #0e7490;
-  --color-accent-800: #155e75;
-  --color-accent-900: #164e63;
+    /* Accent / Cyan */
+    --color-accent-25: #f0fdfa;
+    --color-accent-50: #ecfeff;
+    --color-accent-100: #cffafe;
+    --color-accent-200: #a5f3fc;
+    --color-accent-300: #67e8f9;
+    --color-accent-400: #22d3ee;
+    --color-accent-500: #06b6d4;
+    --color-accent-600: #0891b2;
+    --color-accent-700: #0e7490;
+    --color-accent-800: #155e75;
+    --color-accent-900: #164e63;
 
-  /* Semânticas */
-  --color-success: #059669;
-  --color-success-50: #ecfdf5;
-  --color-warning: #d97706;
-  --color-warning-50: #fffbeb;
-  --color-error: #dc2626;
-  --color-error-50: #fef2f2;
-  --color-info: #2563eb;
+    /* Semânticas */
+    --color-success: #059669;
+    --color-success-50: #ecfdf5;
+    --color-warning: #d97706;
+    --color-warning-50: #fffbeb;
+    --color-error: #dc2626;
+    --color-error-50: #fef2f2;
+    --color-info: #2563eb;
 
-  /* UI Tokens */
-  --color-background: var(--color-neutral-50);
-  --color-surface: #ffffff;
-  --color-border: var(--color-neutral-200);
-  --color-text-main: var(--color-neutral-900);
-  --color-text-muted: var(--color-neutral-500);
-  --color-sidebar: var(--color-neutral-900);
-}
+    /* UI Tokens */
+    --color-background: var(--color-neutral-50);
+    --color-surface: #ffffff;
+    --color-border: var(--color-neutral-200);
+    --color-text-main: var(--color-neutral-900);
+    --color-text-muted: var(--color-neutral-500);
+    --color-sidebar: var(--color-neutral-900);
+  }
 
-:root {
-  font-family: var(--font-sans);
-  line-height: 1.5;
-  font-weight: 400;
-  color: #334155;
-  /* Slate 700 */
-  background-color: var(--color-background);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  html {
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    font-weight: 400;
+    color: #334155;
+    background-color: var(--color-background);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-body {
-  margin: 0;
-  display: flex;
-  min-width: 320px;
-  min-height: 100vh;
+  body {
+    margin: 0;
+    display: flex;
+    min-width: 320px;
+    min-height: 100vh;
+  }
 }
 
 /* Scrollbar moderna */
