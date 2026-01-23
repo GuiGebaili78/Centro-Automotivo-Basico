@@ -39,6 +39,7 @@ export const OperadorasTab = () => {
     type: "success" | "error" | null;
     text: string;
   }>({ type: null, text: "" });
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -71,7 +72,9 @@ export const OperadorasTab = () => {
       taxa_antecipacao: 0,
       antecipacao_auto: false,
       id_conta_destino: contas.length > 0 ? contas[0].id_conta : 0,
+      taxas_cartao: [],
     });
+    setIsDirty(false);
     setIsModalOpen(true);
   };
 
@@ -83,8 +86,26 @@ export const OperadorasTab = () => {
       taxa_credito_vista: Number(op.taxa_credito_vista),
       taxa_credito_parc: Number(op.taxa_credito_parc),
       taxa_antecipacao: Number(op.taxa_antecipacao),
+      taxas_cartao: op.taxas_cartao || [],
     });
+    setIsDirty(false);
     setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    if (isDirty) {
+      if (confirm("Deseja sair sem salvar as alterações?")) {
+        setIsModalOpen(false);
+        setIsDirty(false);
+      }
+    } else {
+      setIsModalOpen(false);
+    }
+  };
+
+  const handleChange = (newFormData: Partial<IOperadoraCartao>) => {
+    setFormData(newFormData);
+    setIsDirty(true);
   };
 
   const handleOpenDelete = (op: IOperadoraCartao) => {
@@ -109,6 +130,7 @@ export const OperadorasTab = () => {
         setStatusMsg({ type: "success", text: "Operadora cadastrada!" });
       }
       setIsModalOpen(false);
+      setIsDirty(false);
       loadData();
     } catch (error) {
       console.error(error);
@@ -249,7 +271,7 @@ export const OperadorasTab = () => {
       {isModalOpen && (
         <Modal
           title={editingOp ? "Editar Operadora" : "Nova Operadora"}
-          onClose={() => setIsModalOpen(false)}
+          onClose={handleModalClose}
         >
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
@@ -259,7 +281,7 @@ export const OperadorasTab = () => {
                   required
                   value={formData.nome}
                   onChange={(e) =>
-                    setFormData({ ...formData, nome: e.target.value })
+                    handleChange({ ...formData, nome: e.target.value })
                   }
                   placeholder="Ex: Stone, PagSeguro..."
                 />
@@ -272,7 +294,7 @@ export const OperadorasTab = () => {
                   required
                   value={formData.id_conta_destino}
                   onChange={(e) =>
-                    setFormData({
+                    handleChange({
                       ...formData,
                       id_conta_destino: Number(e.target.value),
                     })
@@ -293,140 +315,177 @@ export const OperadorasTab = () => {
 
             <div className="bg-neutral-50 p-6 rounded-2xl space-y-4">
               <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-200 pb-2 mb-4">
-                Taxas e Prazos
+                Tabela de Taxas Intermediárias & Juros
               </h3>
 
-              {/* DEBITO */}
-              <div className="grid grid-cols-12 gap-4 items-center">
-                <div className="col-span-4 text-sm font-bold text-neutral-700">
+              {/* TABLE HEADER */}
+              <div className="grid grid-cols-12 gap-2 text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-2 text-center">
+                <div className="col-span-2 text-left">Parcelas</div>
+                <div className="col-span-3">Modalidade</div>
+                <div className="col-span-3">Taxa Total (%)</div>
+                <div className="col-span-3">Taxa Antec. (a.m)</div>
+              </div>
+
+              {/* DÉBITO */}
+              <div className="grid grid-cols-12 gap-2 items-center mb-2">
+                <div className="col-span-2 text-xs font-bold text-neutral-700">
                   Débito
                 </div>
-                <div className="col-span-4">
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.taxa_debito}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          taxa_debito: Number(e.target.value),
-                        })
-                      }
-                      className={`${inputClass} pl-3 pr-8 py-2`}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
-                      %
-                    </span>
-                  </div>
+                <div className="col-span-3">
+                  <span className="text-[10px] font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded">
+                    DÉBITO
+                  </span>
                 </div>
-                <div className="col-span-4">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
-                      Dias
-                    </span>
-                    <input
-                      type="number"
-                      value={formData.prazo_debito}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          prazo_debito: Number(e.target.value),
-                        })
-                      }
-                      className={`${inputClass} pl-12 pr-3 py-2`}
-                    />
-                  </div>
+                <div className="col-span-3">
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.taxa_debito}
+                    onChange={(e) =>
+                      handleChange({
+                        ...formData,
+                        taxa_debito: Number(e.target.value),
+                      })
+                    }
+                    className="w-full h-8 px-2 rounded-lg border border-neutral-200 text-sm font-bold text-center focus:border-primary-500 outline-none"
+                  />
+                </div>
+                <div className="col-span-3 opacity-50 text-center text-xs">
+                  -
                 </div>
               </div>
 
-              {/* CRED VISTA */}
-              <div className="grid grid-cols-12 gap-4 items-center">
-                <div className="col-span-4 text-sm font-bold text-neutral-700">
-                  Crédito à Vista
+              {/* CRÉDITO VISTA */}
+              <div className="grid grid-cols-12 gap-2 items-center mb-2">
+                <div className="col-span-2 text-xs font-bold text-neutral-700">
+                  1x (Vista)
                 </div>
-                <div className="col-span-4">
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.taxa_credito_vista}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          taxa_credito_vista: Number(e.target.value),
-                        })
-                      }
-                      className={`${inputClass} pl-3 pr-8 py-2`}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
-                      %
-                    </span>
-                  </div>
+                <div className="col-span-3">
+                  <span className="text-[10px] font-bold bg-green-100 text-green-600 px-2 py-1 rounded">
+                    CRÉDITO
+                  </span>
                 </div>
-                <div className="col-span-4">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
-                      Dias
-                    </span>
-                    <input
-                      type="number"
-                      value={formData.prazo_credito_vista}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          prazo_credito_vista: Number(e.target.value),
-                        })
-                      }
-                      className={`${inputClass} pl-12 pr-3 py-2`}
-                    />
-                  </div>
+                <div className="col-span-3">
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.taxa_credito_vista}
+                    onChange={(e) =>
+                      handleChange({
+                        ...formData,
+                        taxa_credito_vista: Number(e.target.value),
+                      })
+                    }
+                    className="w-full h-8 px-2 rounded-lg border border-neutral-200 text-sm font-bold text-center focus:border-primary-500 outline-none"
+                  />
+                </div>
+                <div className="col-span-3 text-center">
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.taxa_antecipacao}
+                    onChange={(e) =>
+                      handleChange({
+                        ...formData,
+                        taxa_antecipacao: Number(e.target.value),
+                      })
+                    }
+                    className="w-full h-8 px-2 rounded-lg border border-neutral-200 text-sm font-bold text-center focus:border-primary-500 outline-none"
+                  />
                 </div>
               </div>
 
-              {/* CRED PARC */}
-              <div className="grid grid-cols-12 gap-4 items-center">
-                <div className="col-span-4 text-sm font-bold text-neutral-700">
-                  Crédito Parcelado
-                </div>
-                <div className="col-span-4">
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.taxa_credito_parc}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          taxa_credito_parc: Number(e.target.value),
-                        })
-                      }
-                      className={`${inputClass} pl-3 pr-8 py-2`}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
-                      %
-                    </span>
+              {/* Dynamic 2x to 18x */}
+              {Array.from({ length: 17 }, (_, i) => i + 2).map((num) => {
+                const existingTaxa = formData.taxas_cartao?.find(
+                  (t) => t.num_parcelas === num && t.modalidade === "CREDITO",
+                );
+
+                return (
+                  <div
+                    key={num}
+                    className="grid grid-cols-12 gap-2 items-center mb-1"
+                  >
+                    <div className="col-span-2 text-xs font-bold text-neutral-600">
+                      {num}x
+                    </div>
+                    <div className="col-span-3">
+                      <span className="text-[10px] font-bold bg-green-50 text-green-500 px-2 py-0.5 rounded">
+                        PARC.
+                      </span>
+                    </div>
+                    <div className="col-span-3">
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={existingTaxa?.taxa_total || ""}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          const newTaxas = [...(formData.taxas_cartao || [])];
+                          const idx = newTaxas.findIndex(
+                            (t) =>
+                              t.num_parcelas === num &&
+                              t.modalidade === "CREDITO",
+                          );
+
+                          if (idx >= 0) {
+                            newTaxas[idx] = {
+                              ...newTaxas[idx],
+                              taxa_total: val,
+                            };
+                          } else {
+                            newTaxas.push({
+                              modalidade: "CREDITO",
+                              num_parcelas: num,
+                              taxa_total: val,
+                              taxa_antecipacao: 0,
+                            });
+                          }
+                          handleChange({ ...formData, taxas_cartao: newTaxas });
+                        }}
+                        className="w-full h-8 px-2 rounded-lg border border-neutral-200 text-sm font-bold text-center focus:border-primary-500 outline-none hover:bg-white bg-neutral-50 focus:bg-white transition-colors"
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00" // Antecipacao rate
+                        value={existingTaxa?.taxa_antecipacao || ""}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          const newTaxas = [...(formData.taxas_cartao || [])];
+                          const idx = newTaxas.findIndex(
+                            (t) =>
+                              t.num_parcelas === num &&
+                              t.modalidade === "CREDITO",
+                          );
+
+                          if (idx >= 0) {
+                            newTaxas[idx] = {
+                              ...newTaxas[idx],
+                              taxa_antecipacao: val,
+                            };
+                          } else {
+                            newTaxas.push({
+                              modalidade: "CREDITO",
+                              num_parcelas: num,
+                              taxa_total: 0,
+                              taxa_antecipacao: val,
+                            });
+                          }
+                          handleChange({ ...formData, taxas_cartao: newTaxas });
+                        }}
+                        className="w-full h-8 px-2 rounded-lg border border-neutral-200 text-sm font-bold text-center focus:border-primary-500 outline-none hover:bg-white bg-neutral-50 focus:bg-white transition-colors"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="col-span-4">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
-                      Dias
-                    </span>
-                    <input
-                      type="number"
-                      value={formData.prazo_credito_parc}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          prazo_credito_parc: Number(e.target.value),
-                        })
-                      }
-                      className={`${inputClass} pl-12 pr-3 py-2`}
-                    />
-                  </div>
-                </div>
-              </div>
+                );
+              })}
             </div>
 
             <div className="flex items-center gap-4 bg-blue-50 p-4 rounded-xl">
@@ -435,7 +494,7 @@ export const OperadorasTab = () => {
                 id="auto_antecipa"
                 checked={formData.antecipacao_auto}
                 onChange={(e) =>
-                  setFormData({
+                  handleChange({
                     ...formData,
                     antecipacao_auto: e.target.checked,
                   })
@@ -460,7 +519,7 @@ export const OperadorasTab = () => {
                     step="0.01"
                     value={formData.taxa_antecipacao}
                     onChange={(e) =>
-                      setFormData({
+                      handleChange({
                         ...formData,
                         taxa_antecipacao: Number(e.target.value),
                       })
@@ -475,7 +534,7 @@ export const OperadorasTab = () => {
             </div>
 
             <div className="pt-4 flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
+              <Button variant="ghost" type="button" onClick={handleModalClose}>
                 Cancelar
               </Button>
               <Button

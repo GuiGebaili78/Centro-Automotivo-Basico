@@ -31,6 +31,7 @@ export const PagamentoClienteForm = ({
   const [bandeira, setBandeira] = useState("");
   const [parcelas, setParcelas] = useState("1");
   const [codigoTransacao, setCodigoTransacao] = useState("");
+  const [tipoParcelamento, setTipoParcelamento] = useState("LOJA");
 
   useEffect(() => {
     if (initialData) {
@@ -132,6 +133,7 @@ export const PagamentoClienteForm = ({
         id_operadora:
           metodo === "CREDITO" || metodo === "DEBITO" ? idOperadora : undefined,
         id_conta_bancaria: metodo === "PIX" ? idContaBancaria : undefined,
+        tipo_parcelamento: metodo === "CREDITO" ? tipoParcelamento : "LOJA",
       };
 
       let response;
@@ -237,22 +239,45 @@ export const PagamentoClienteForm = ({
               </select>
             </div>
             {metodo === "CREDITO" && (
-              <div>
-                <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
-                  Parcelas
-                </label>
-                <select
-                  value={parcelas}
-                  onChange={(e) => setParcelas(e.target.value)}
-                  className="w-full p-3 bg-neutral-25 border border-neutral-200 rounded-xl outline-none focus:border-green-500 font-bold text-neutral-600"
-                >
-                  {[1, 2, 3, 4, 5, 6, 10, 12].map((p) => (
-                    <option key={p} value={p}>
-                      {p}x
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <>
+                <div>
+                  <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
+                    Parcelas
+                  </label>
+                  <select
+                    value={parcelas}
+                    onChange={(e) => setParcelas(e.target.value)}
+                    className="w-full p-3 bg-neutral-25 border border-neutral-200 rounded-xl outline-none focus:border-green-500 font-bold text-neutral-600"
+                  >
+                    {Array.from({ length: 18 }, (_, i) => i + 1).map((p) => (
+                      <option key={p} value={p}>
+                        {p}x
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
+                    Juros / Taxas Assumidas Por:
+                  </label>
+                  <div className="flex bg-neutral-100 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setTipoParcelamento("LOJA")}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${tipoParcelamento === "LOJA" ? "bg-white shadow text-neutral-800" : "text-neutral-500 hover:text-neutral-700"}`}
+                    >
+                      Loja
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTipoParcelamento("CLIENTE")}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${tipoParcelamento === "CLIENTE" ? "bg-white shadow text-neutral-800" : "text-neutral-500 hover:text-neutral-700"}`}
+                    >
+                      Cliente
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
             <div className="md:col-span-2">
               <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">

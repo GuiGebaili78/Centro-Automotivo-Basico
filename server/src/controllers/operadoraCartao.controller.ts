@@ -4,7 +4,11 @@ import { prisma } from "../prisma.js";
 export const getAll = async (req: Request, res: Response) => {
   try {
     const operadoras = await prisma.operadoraCartao.findMany({
-      include: { conta_destino: true },
+      include: {
+        conta_destino: true,
+        taxas_cartao: true,
+      },
+      orderBy: { id_operadora: "desc" },
     });
     res.json(operadoras);
   } catch (error) {
@@ -61,6 +65,7 @@ const getValidData = (body: any) => {
 export const create = async (req: Request, res: Response) => {
   try {
     const data = getValidData(req.body);
+    const taxas = req.body.taxas_cartao; // Extract taxas array
 
     // Validate Account Existence
     if (data.id_conta_destino) {
@@ -79,7 +84,23 @@ export const create = async (req: Request, res: Response) => {
       }
     }
 
-    const operadora = await prisma.operadoraCartao.create({ data });
+    const operadora = await prisma.operadoraCartao.create({
+      data: {
+        ...data,
+        taxas_cartao:
+          taxas && Array.isArray(taxas)
+            ? {
+                create: taxas.map((t: any) => ({
+                  modalidade: t.modalidade,
+                  num_parcelas: Number(t.num_parcelas),
+                  taxa_total: Number(t.taxa_total),
+                  taxa_antecipacao: Number(t.taxa_antecipacao || 0),
+                })),
+              }
+            : undefined,
+      },
+      include: { taxas_cartao: true },
+    });
     res.status(201).json(operadora);
   } catch (error: any) {
     console.error("Erro ao criar operadora:", error);
@@ -90,6 +111,7 @@ export const create = async (req: Request, res: Response) => {
 export const update = async (req: Request, res: Response) => {
   const { id } = req.params;
   const idOperadora = Number(id);
+  const taxas = req.body.taxas_cartao;
 
   if (isNaN(idOperadora)) {
     return res.status(400).json({ error: "ID inválido" });
@@ -115,10 +137,39 @@ export const update = async (req: Request, res: Response) => {
       }
     }
 
-    const operadora = await prisma.operadoraCartao.update({
-      where: { id_operadora: idOperadora },
-      data,
+    // Transaction to update basic data and replace taxas
+    const operadora = await prisma.$transaction(async (tx) => {
+      // 1. Update basic fields
+      await tx.operadoraCartao.update({
+        where: { id_operadora: idOperadora },
+        data,
+      });
+
+      // 2. Handle Taxas (Delete all and recreate needed ones if provided)
+      if (taxas && Array.isArray(taxas)) {
+        await tx.taxaCartao.deleteMany({
+          where: { id_operadora: idOperadora },
+        });
+
+        if (taxas.length > 0) {
+          await tx.taxaCartao.createMany({
+            data: taxas.map((t: any) => ({
+              id_operadora: idOperadora,
+              modalidade: t.modalidade,
+              num_parcelas: Number(t.num_parcelas),
+              taxa_total: Number(t.taxa_total),
+              taxa_antecipacao: Number(t.taxa_antecipacao || 0),
+            })),
+          });
+        }
+      }
+
+      return tx.operadoraCartao.findUnique({
+        where: { id_operadora: idOperadora },
+        include: { taxas_cartao: true, conta_destino: true },
+      });
     });
+
     res.json(operadora);
   } catch (error: any) {
     console.error("Erro ao atualizar operadora:", error);

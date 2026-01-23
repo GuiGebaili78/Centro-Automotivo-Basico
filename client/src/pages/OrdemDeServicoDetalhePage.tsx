@@ -170,17 +170,65 @@ export const OrdemDeServicoDetalhePage = () => {
     }
   };
 
-  const selectPart = (p: any) => {
-    setNewItem({
-      ...newItem,
-      id_pecas_estoque: String(p.id_pecas_estoque),
-      valor_venda: String(p.valor_venda),
+  const selectPart = async (p: any) => {
+    // Basic update
+    setNewItem((prev) => ({
+      ...prev,
+      id_pecas_estoque: p.id_pecas_estoque ? String(p.id_pecas_estoque) : "",
+      valor_venda: p.valor_venda ? String(p.valor_venda) : "",
       descricao: p.nome,
-    });
+    }));
     setPartSearch(p.nome);
     setPartResults([]);
     setHighlightIndex(-1);
     setIsDirty(true);
+
+    // If it's a stock item, fetch latest availability
+    if (p.id_pecas_estoque) {
+      try {
+        const res = await api.get(
+          `/pecas-estoque/${p.id_pecas_estoque}/availability`,
+        );
+        const partDetails = res.data;
+
+        setNewItem((prev) => ({
+          ...prev,
+          id_pecas_estoque: String(partDetails.id_pecas_estoque),
+          valor_venda: Number(partDetails.valor_venda).toFixed(2),
+          descricao: partDetails.nome,
+        }));
+
+        const freeStock =
+          (partDetails.estoque_atual || 0) - (partDetails.reserved || 0);
+        setSelectedStockInfo({
+          qtd: freeStock,
+          reserved: partDetails.reserved,
+        });
+
+        if (freeStock <= 0) {
+          setStatusMsg({
+            type: "error",
+            text: `⚠️ Sem Estoque! (Reservado: ${partDetails.reserved || 0})`,
+          });
+        } else if (freeStock < 2) {
+          setStatusMsg({
+            type: "error",
+            text: `⚠️ Estoque Baixo! Disp: ${freeStock}`,
+          });
+        } else {
+          setStatusMsg({
+            type: "success",
+            text: `Item selecionado. Disp: ${freeStock}`,
+          });
+          setTimeout(() => setStatusMsg({ type: null, text: "" }), 1500);
+        }
+      } catch (e) {
+        console.error("Erro ao checar disponibilidade", e);
+      }
+    } else {
+      setSelectedStockInfo(null);
+    }
+
     requestAnimationFrame(() => referenceInputRef.current?.focus());
   };
 
@@ -587,27 +635,116 @@ export const OrdemDeServicoDetalhePage = () => {
             Peças e Produtos
           </h3>
           {/* Form Add Item */}
+          {/* Form Add Item */}
           {os.status !== "FINALIZADA" && os.status !== "PAGA_CLIENTE" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* LEFT: MANUAL FORM / SELECTED ITEM */}
               <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 shadow-sm relative">
                 <h4 className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Package size={14} /> Item a Inserir
+                  <Package size={14} /> Adicionar Item / Buscar
                 </h4>
                 <form onSubmit={handleAddItem} className="space-y-3">
-                  <div className="relative">
+                  <div className="relative group/search">
                     <label className="text-[9px] font-bold text-neutral-400 uppercase">
-                      Descrição / Nome
+                      Descrição / Nome (Busca Automática)
                     </label>
                     <input
                       ref={partInputRef}
-                      className="w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all"
-                      placeholder="Nome do Item ou Serviço"
+                      className="w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all placeholder:font-normal"
+                      placeholder="Digite para buscar peças (ex: 'Oleo')..."
                       value={newItem.descricao}
-                      onChange={(e) =>
-                        setNewItem({ ...newItem, descricao: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewItem({ ...newItem, descricao: val });
+                        handlePartSearch(val);
+                        setHighlightIndex(-1);
+                      }}
+                      onKeyDown={(e) => {
+                        if (partResults.length === 0) return;
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setHighlightIndex((prev) =>
+                            Math.min(prev + 1, partResults.length - 1),
+                          );
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setHighlightIndex((prev) => Math.max(prev - 1, -1)); // -1 means input focus
+                        } else if (e.key === "Enter") {
+                          if (
+                            highlightIndex >= 0 &&
+                            partResults[highlightIndex]
+                          ) {
+                            e.preventDefault();
+                            selectPart(partResults[highlightIndex]);
+                            setHighlightIndex(-1);
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        // Delay hiding to allow click
+                        setTimeout(() => {
+                          if (
+                            !document.activeElement?.className.includes(
+                              "search-result-item",
+                            )
+                          ) {
+                            setPartResults([]);
+                          }
+                        }, 200);
+                      }}
                     />
+
+                    {/* SEARCH RESULTS DROPDOWN */}
+                    {partResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-2 bg-white border border-neutral-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2 ring-4 ring-black/5">
+                        {partResults.map((p, idx) => (
+                          <button
+                            key={`${p.id_pecas_estoque || "hist"}-${p.nome}-${idx}`}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault(); // Prevent form submit
+                              selectPart(p);
+                            }}
+                            className={`w-full text-left p-3 text-sm font-medium border-b border-neutral-50 flex justify-between items-center group/item transition-colors search-result-item ${
+                              idx === highlightIndex
+                                ? "bg-blue-50 ring-1 ring-inset ring-blue-100 z-10"
+                                : "hover:bg-neutral-50"
+                            }`}
+                          >
+                            <span className="text-neutral-700 group-hover/item:text-blue-600 flex-1 flex flex-col">
+                              <span className="font-bold">{p.nome}</span>
+                              {p.isHistory && (
+                                <span className="text-[10px] text-orange-400 uppercase font-bold tracking-wider">
+                                  Histórico
+                                </span>
+                              )}
+                              {!p.isHistory && (
+                                <span className="text-[10px] text-blue-400 uppercase font-bold tracking-wider">
+                                  Estoque
+                                </span>
+                              )}
+                            </span>
+
+                            <div className="flex items-center gap-3">
+                              {p.estoque_atual !== undefined && (
+                                <span
+                                  className={`text-xs font-bold px-2 py-0.5 rounded ${p.estoque_atual > 0 ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}
+                                >
+                                  Qt: {p.estoque_atual}
+                                </span>
+                              )}
+                              <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                {formatCurrency(Number(p.valor_venda))}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                        <div className="p-2 text-[10px] text-center text-neutral-400 bg-neutral-50 border-t border-neutral-100 uppercase font-bold tracking-widest">
+                          Use as setas para navegar e Enter para selecionar
+                        </div>
+                      </div>
+                    )}
+
                     {newItem.id_pecas_estoque && (
                       <div className="absolute right-2 top-6 flex items-center gap-1">
                         {selectedStockInfo && (
@@ -693,7 +830,7 @@ export const OrdemDeServicoDetalhePage = () => {
                 </form>
               </div>
 
-              {/* RIGHT: STOCK SEARCH */}
+              {/* RIGHT: STOCK SEARCH (RESTORED) */}
               <div className="p-4 rounded-2xl border border-blue-100 bg-blue-50/30 shadow-sm relative">
                 <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                   <Search size={14} /> Buscar no Estoque
@@ -704,6 +841,7 @@ export const OrdemDeServicoDetalhePage = () => {
                     size={18}
                   />
                   <input
+                    id="stock-search-input"
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-blue-100 bg-neutral-25 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 font-bold text-sm text-blue-600 transition-all shadow-sm placeholder:text-blue-200"
                     placeholder="Digite para buscar peças..."
                     value={partSearch}
@@ -711,111 +849,36 @@ export const OrdemDeServicoDetalhePage = () => {
                       handlePartSearch(e.target.value);
                       setHighlightIndex(-1);
                     }}
-                    onKeyDown={(e) => {
-                      if (partResults.length === 0) return;
-                      if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        setHighlightIndex((prev) =>
-                          Math.min(prev + 1, partResults.length - 1),
-                        );
-                      } else if (e.key === "ArrowUp") {
-                        e.preventDefault();
-                        setHighlightIndex((prev) => Math.max(prev - 1, -1)); // -1 means input focus
-                      } else if (e.key === "Enter") {
-                        if (
-                          highlightIndex >= 0 &&
-                          partResults[highlightIndex]
-                        ) {
-                          e.preventDefault();
-                          selectPart(partResults[highlightIndex]);
-                          setHighlightIndex(-1);
-                        }
-                      }
-                    }}
                   />
-                  {partResults.length > 0 && (
-                    <div className="absolute z-50 w-full mt-2 bg-neutral-25 border border-blue-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2">
-                      {partResults.map((p, idx) => (
-                        <button
-                          key={p.id_pecas_estoque || p.nome}
-                          onClick={async () => {
-                            // Custom Select Logic for Stock Items
-                            try {
-                              const res = await api.get(
-                                `/pecas-estoque/${p.id_pecas_estoque}/availability`,
-                              );
-                              const partDetails = res.data;
 
-                              setNewItem({
-                                ...newItem,
-                                id_pecas_estoque: String(
-                                  partDetails.id_pecas_estoque,
-                                ),
-                                valor_venda: Number(
-                                  partDetails.valor_venda,
-                                ).toFixed(2),
-                                descricao: partDetails.nome,
-                                codigo_referencia: "",
-                              });
-
-                              const freeStock =
-                                (partDetails.estoque_atual || 0) -
-                                (partDetails.reserved || 0);
-                              setSelectedStockInfo({
-                                qtd: freeStock,
-                                reserved: partDetails.reserved,
-                              }); // Store stock info
-
-                              if (freeStock < 2) {
-                                setStatusMsg({
-                                  type: "error",
-                                  text: `⚠️ Estoque Baixo! Disp: ${freeStock} (Reservado: ${partDetails.reserved || 0})`,
-                                });
-                              } else if (partDetails.reserved > 0) {
-                                setStatusMsg({
-                                  type: "success",
-                                  text: `Item selecionado. Disp: ${freeStock} (Reservado em outras OS: ${partDetails.reserved})`,
-                                });
-                              } else {
-                                setStatusMsg({
-                                  type: "success",
-                                  text: `Item selecionado do estoque.`,
-                                });
-                                setTimeout(
-                                  () => setStatusMsg({ type: null, text: "" }),
-                                  1500,
-                                );
-                              }
-
-                              setPartSearch("");
-                              setPartResults([]);
-                              requestAnimationFrame(() =>
-                                referenceInputRef.current?.focus(),
-                              );
-                            } catch (e) {
-                              console.error(e);
-                            }
-                          }}
-                          className={`w-full text-left p-3 text-sm font-medium border-b border-neutral-50 flex justify-between group/item transition-colors ${idx === highlightIndex ? "bg-blue-50 ring-1 ring-inset ring-blue-100 z-10" : "hover:bg-neutral-50"}`}
-                        >
-                          <span className="text-neutral-700 group-hover/item:text-blue-600 flex-1">
-                            {p.nome}
-                          </span>
-                          {p.estoque_atual !== undefined && (
-                            <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded mr-2">
-                              Qt: {p.estoque_atual}
+                  {partSearch &&
+                    partResults.length > 0 &&
+                    document.activeElement?.id === "stock-search-input" && (
+                      <div className="absolute z-50 w-full mt-2 bg-neutral-25 border border-blue-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2">
+                        {partResults.map((p) => (
+                          <button
+                            key={p.id_pecas_estoque || p.nome}
+                            onClick={() => selectPart(p)}
+                            className={`w-full text-left p-3 text-sm font-medium border-b border-neutral-50 flex justify-between group/item transition-colors hover:bg-neutral-50`}
+                          >
+                            <span className="text-neutral-700 group-hover/item:text-blue-600 flex-1">
+                              {p.nome}
                             </span>
-                          )}
-                          <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                            {formatCurrency(Number(p.valor_venda))}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                            {p.estoque_atual !== undefined && (
+                              <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded mr-2">
+                                Qt: {p.estoque_atual}
+                              </span>
+                            )}
+                            <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                              {formatCurrency(Number(p.valor_venda))}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                 </div>
                 <div className="mt-2 text-[9px] text-blue-400 font-medium">
-                  Use as setas para navegar e Enter para selecionar.
+                  Use o campo acima para buscar especificamente no estoque.
                 </div>
               </div>
             </div>

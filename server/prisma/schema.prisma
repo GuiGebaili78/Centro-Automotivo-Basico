@@ -297,6 +297,7 @@ model PagamentoCliente {
   bandeira_cartao      String?          @db.VarChar(50)
   codigo_transacao     String?          @db.VarChar(100)
   qtd_parcelas         Int              @default(1)
+  tipo_parcelamento    String?          @default("LOJA") @db.VarChar(20) // 'LOJA' or 'CLIENTE'
   deleted_at           DateTime?        @db.Timestamp(6)
   id_livro_caixa       Int?             @unique
   id_operadora         Int?
@@ -475,9 +476,23 @@ model OperadoraCartao {
   ativo               Boolean            @default(true)
   conta_destino       ContaBancaria      @relation(fields: [id_conta_destino], references: [id_conta])
   pagamentos_cliente  PagamentoCliente[]
-  recebiveis          RecebivelCartao[]
+  recebivel_cartao     RecebivelCartao[]
+  taxas_cartao         TaxaCartao[]
 
   @@map("operadora_cartao")
+}
+
+model TaxaCartao {
+  id_taxa          Int             @id @default(autoincrement())
+  id_operadora     Int
+  modalidade       String          @db.VarChar(20) // 'DEBITO', 'CREDITO'
+  num_parcelas     Int             // 1 for Debit/Sight(1x), 2-18 for installments
+  taxa_total       Decimal         @db.Decimal(5, 2) // Total fee deducted (Intermediation + Installment Interest)
+  taxa_antecipacao Decimal?        @default(0) @db.Decimal(5, 2) // Monthly rate for anticipation calculation
+  operadora        OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
+
+  @@unique([id_operadora, modalidade, num_parcelas])
+  @@map("taxa_cartao")
 }
 
 model RecebivelCartao {
@@ -489,6 +504,7 @@ model RecebivelCartao {
   valor_bruto      Decimal         @db.Decimal(10, 2)
   valor_liquido    Decimal         @db.Decimal(10, 2)
   taxa_aplicada    Decimal         @db.Decimal(10, 2)
+  tipo_parcelamento String?        @default("LOJA") @db.VarChar(20)
   data_venda       DateTime        @default(now()) @db.Date
   data_prevista    DateTime        @db.Date
   data_recebimento DateTime?       @db.Date

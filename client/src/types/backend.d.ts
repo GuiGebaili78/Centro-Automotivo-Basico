@@ -306,6 +306,15 @@ export interface IContaBancaria {
   dt_cadastro: string;
 }
 
+export interface ITaxaCartao {
+  id_taxa?: number;
+  id_operadora?: number;
+  modalidade: "DEBITO" | "CREDITO";
+  num_parcelas: number;
+  taxa_total: number;
+  taxa_antecipacao?: number;
+}
+
 export interface IOperadoraCartao {
   id_operadora: number;
   nome: string;
@@ -326,6 +335,8 @@ export interface IOperadoraCartao {
 
   id_conta_destino: number;
   conta_destino?: IContaBancaria;
+
+  taxas_cartao?: ITaxaCartao[];
 }
 
 export interface IRecebivelCartao {
