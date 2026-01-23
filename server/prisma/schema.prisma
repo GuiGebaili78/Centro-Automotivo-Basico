@@ -1,673 +1,502 @@
-// server/prisma/schema.prisma
-
-// 1. Configuração do Client: Deve ser 'prisma-client-js'
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
-// 2. Configuração do Banco de Dados
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// --- TABELAS DE GENERALIZAÇÃO ---
-
-// Tabela 1: Pessoa (Base)
 model Pessoa {
-  id_pessoa       Int      @id @default(autoincrement())
-  nome            String   @db.VarChar(100)
-  genero          String?  @db.VarChar(20)
-  dt_nascimento   DateTime? @db.Date // DATE
-  obs             String?  @db.VarChar(500)
-  dt_cadastro     DateTime @default(now()) @db.Timestamp()
-
-  // Relacionamentos 1:1 (Para Especialização)
+  id_pessoa       Int             @id @default(autoincrement())
+  nome            String          @db.VarChar(100)
+  genero          String?         @db.VarChar(20)
+  dt_nascimento   DateTime?       @db.Date
+  obs             String?         @db.VarChar(500)
+  dt_cadastro     DateTime        @default(now()) @db.Timestamp(6)
   pessoa_fisica   PessoaFisica?
   pessoa_juridica PessoaJuridica?
 
   @@map("pessoa")
 }
 
-// Tabela 2: Pessoa Física (Especialização)
 model PessoaFisica {
-  id_pessoa_fisica Int      @id @default(autoincrement())
-  id_pessoa        Int      @unique
-  cpf              String?  @db.VarChar(11)
-  dt_cadastro      DateTime @default(now()) @db.Timestamp()
-
-  // Relacionamento com Pessoa
-  pessoa           Pessoa   @relation(fields: [id_pessoa], references: [id_pessoa])
-
-  // Relacionamentos para outras tabelas
+  id_pessoa_fisica Int          @id @default(autoincrement())
+  id_pessoa        Int          @unique
+  cpf              String?      @db.VarChar(11)
+  dt_cadastro      DateTime     @default(now()) @db.Timestamp(6)
+  clientes         Cliente[]
   funcionario      Funcionario?
-  clientes         Cliente[] // Mapeamento 1:N
-  
+  pessoa           Pessoa       @relation(fields: [id_pessoa], references: [id_pessoa])
+
   @@map("pessoa_fisica")
 }
 
-// Tabela 3: Pessoa Jurídica (Especialização)
 model PessoaJuridica {
-  id_pessoa_juridica Int      @id @default(autoincrement())
-  id_pessoa          Int      @unique
-  razao_social       String   @db.VarChar(100)
-  nome_fantasia      String?  @db.VarChar(100)
-  cnpj               String?  @unique @db.VarChar(14)
-  inscricao_estadual String?  @db.VarChar(50)
-  dt_cadastro        DateTime @default(now()) @db.Timestamp()
-
-  // Relacionamento com Pessoa
-  pessoa             Pessoa   @relation(fields: [id_pessoa], references: [id_pessoa])
-
-  // Relacionamentos para outras tabelas
+  id_pessoa_juridica Int       @id @default(autoincrement())
+  id_pessoa          Int       @unique
+  razao_social       String    @db.VarChar(100)
+  nome_fantasia      String?   @db.VarChar(100)
+  cnpj               String?   @unique @db.VarChar(14)
+  inscricao_estadual String?   @db.VarChar(50)
+  dt_cadastro        DateTime  @default(now()) @db.Timestamp(6)
   clientes           Cliente[]
+  pessoa             Pessoa    @relation(fields: [id_pessoa], references: [id_pessoa])
 
   @@map("pessoa_juridica")
 }
 
-// Tabela 4: Tipo (Função da Pessoa/Empresa)
 model Tipo {
-  id_tipo     Int      @id @default(autoincrement())
-  funcao      String?  @db.VarChar(50)
-  dt_cadastro DateTime @default(now()) @db.Timestamp()
-  
-  // Relacionamento com Cliente
+  id_tipo     Int       @id @default(autoincrement())
+  funcao      String?   @db.VarChar(50)
+  dt_cadastro DateTime  @default(now()) @db.Timestamp(6)
   clientes    Cliente[]
-  
+
   @@map("tipo")
 }
 
-// --- TABELAS PRINCIPAIS ---
-
-// Tabela 5: Cliente (Endereço e Contato)
 model Cliente {
-  id_cliente          Int       @id @default(autoincrement())
-  
-  // FKs OPCIONAIS (NULLABLE)
-  id_pessoa_fisica    Int?      
-  id_pessoa_juridica  Int?      
-  tipo_pessoa         Int       // FK
-  
-  telefone_1          String    @db.VarChar(15)
-  telefone_2          String?   @db.VarChar(15)
-  telefone_3          String?   @db.VarChar(15)
-  email               String?   @db.VarChar(100)
-  logradouro          String?   @db.VarChar(150)
-  nr_logradouro       String?   @db.VarChar(10)
-  compl_logradouro    String?   @db.VarChar(50)
-  bairro              String?   @db.VarChar(100)
-  cidade              String?   @db.VarChar(100)
-  estado              String?   @db.Char(2)
-  cep                 String?   @db.VarChar(10)
-  dt_cadastro         DateTime  @default(now()) @db.Timestamp()
-  
-  // Relacionamentos (Chaves Estrangeiras)
-  pessoa_fisica       PessoaFisica?  @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
-  pessoa_juridica     PessoaJuridica? @relation(fields: [id_pessoa_juridica], references: [id_pessoa_juridica])
-  tipo                Tipo          @relation(fields: [tipo_pessoa], references: [id_tipo])
-  
-  // Relacionamentos de Volta
-  veiculos            Veiculo[]
-  ordens_de_servico   OrdemDeServico[]
+  id_cliente         Int              @id @default(autoincrement())
+  id_pessoa_fisica   Int?
+  id_pessoa_juridica Int?
+  tipo_pessoa        Int
+  telefone_1         String           @db.VarChar(15)
+  telefone_2         String?          @db.VarChar(15)
+  telefone_3         String?          @db.VarChar(15)
+  email              String?          @db.VarChar(100)
+  logradouro         String?          @db.VarChar(150)
+  nr_logradouro      String?          @db.VarChar(10)
+  compl_logradouro   String?          @db.VarChar(50)
+  bairro             String?          @db.VarChar(100)
+  cidade             String?          @db.VarChar(100)
+  estado             String?          @db.Char(2)
+  dt_cadastro        DateTime         @default(now()) @db.Timestamp(6)
+  cep                String?          @db.VarChar(10)
+  pessoa_fisica      PessoaFisica?    @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
+  pessoa_juridica    PessoaJuridica?  @relation(fields: [id_pessoa_juridica], references: [id_pessoa_juridica])
+  tipo               Tipo             @relation(fields: [tipo_pessoa], references: [id_tipo])
+  ordens_de_servico  OrdemDeServico[]
+  veiculos           Veiculo[]
 
-  // Índices para as FKs para otimização
   @@index([id_pessoa_fisica])
   @@index([id_pessoa_juridica])
   @@index([tipo_pessoa])
-  
   @@map("cliente")
 }
 
-// Tabela 6: Funcionário
-// Tabela 6: Funcionário
 model Funcionario {
-  id_funcionario      Int      @id @default(autoincrement())
-  id_pessoa_fisica    Int      @unique 
-  ativo               String   @db.Char(1) 
-  cargo               String   @db.VarChar(50)
-  dt_admissao         DateTime @db.Timestamp()
-  dt_recisao          DateTime? @db.Timestamp()
-  motivo_saida        String?  @db.VarChar(200)
-  obs                 String?  @db.VarChar(500) // Observações gerais
-  dt_cadastro         DateTime @default(now()) @db.Timestamp()
-  
-  // Identificação Profissional (MEI)
-  razao_social        String?  @db.VarChar(100)
-  nome_fantasia       String?  @db.VarChar(100)
-  cnpj_mei            String?  @db.VarChar(20)
-  inscricao_municipal String?  @db.VarChar(50)
-
-  // Dados Pessoais Extras (Endereço e Docs)
-  rg                  String?  @db.VarChar(20)
-  cep                 String?  @db.VarChar(10)
-  logradouro          String?  @db.VarChar(150)
-  numero              String?  @db.VarChar(20)
-  complemento         String?  @db.VarChar(100)
-  bairro              String?  @db.VarChar(100)
-  cidade              String?  @db.VarChar(100)
-  uf                  String?  @db.Char(2)
-  telefone_pessoal    String?  @db.VarChar(20)
-  email_pessoal       String?  @db.VarChar(100)
-
-  // Operacional
-  especialidade       String?  @db.VarChar(100)
-  tipo_pagamento      String?  @db.VarChar(50) // 'HORA', 'FIXO_MENSAL'
-  valor_pagamento     Decimal? @db.Decimal(10, 2)
-  
-  // Comissões
-  salario             Decimal? @db.Decimal(10, 2) // Mantido como referência base se necessário
-  comissao            Int?     // Mantido (Comissão Mão de Obra %)
-  comissao_pecas      Decimal? @db.Decimal(5, 2) // Novo (Comissão Peças %)
-
-  // Financeiro e Pagamento
-  banco               String?  @db.VarChar(50)
-  agencia             String?  @db.VarChar(20)
-  conta               String?  @db.VarChar(20)
-  chave_pix           String?  @db.VarChar(100)
-  periodicidade_pagamento String? @db.VarChar(50)
-  dia_vencimento      Int?
-  
-  // Documentação (Links)
-  url_ccmei           String?  @db.VarChar(500)
-  url_cnh             String?  @db.VarChar(500)
-  equipamentos_epis   String?  @db.Text
-  
-  // Relacionamento 1:1 com PessoaFisica
-  pessoa_fisica       PessoaFisica @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
-  
-  // Relacionamento de Volta
-  ordens_de_servico   OrdemDeServico[]
-  servicos_mao_de_obra ServicoMaoDeObra[]
-  pagamentos           PagamentoEquipe[]
+  id_funcionario          Int                @id @default(autoincrement())
+  id_pessoa_fisica        Int                @unique
+  ativo                   String             @db.Char(1)
+  cargo                   String             @db.VarChar(50)
+  salario                 Decimal?           @db.Decimal(10, 2)
+  comissao                Int?
+  dt_admissao             DateTime           @db.Timestamp(6)
+  dt_recisao              DateTime?          @db.Timestamp(6)
+  motivo_saida            String?            @db.VarChar(200)
+  obs                     String?            @db.VarChar(500)
+  dt_cadastro             DateTime           @default(now()) @db.Timestamp(6)
+  agencia                 String?            @db.VarChar(20)
+  bairro                  String?            @db.VarChar(100)
+  banco                   String?            @db.VarChar(50)
+  cep                     String?            @db.VarChar(10)
+  chave_pix               String?            @db.VarChar(100)
+  cidade                  String?            @db.VarChar(100)
+  cnpj_mei                String?            @db.VarChar(20)
+  comissao_pecas          Decimal?           @db.Decimal(5, 2)
+  complemento             String?            @db.VarChar(100)
+  conta                   String?            @db.VarChar(20)
+  dia_vencimento          Int?
+  email_pessoal           String?            @db.VarChar(100)
+  equipamentos_epis       String?
+  especialidade           String?            @db.VarChar(100)
+  inscricao_municipal     String?            @db.VarChar(50)
+  logradouro              String?            @db.VarChar(150)
+  nome_fantasia           String?            @db.VarChar(100)
+  numero                  String?            @db.VarChar(20)
+  periodicidade_pagamento String?            @db.VarChar(50)
+  razao_social            String?            @db.VarChar(100)
+  rg                      String?            @db.VarChar(20)
+  telefone_pessoal        String?            @db.VarChar(20)
+  tipo_pagamento          String?            @db.VarChar(50)
+  uf                      String?            @db.Char(2)
+  url_ccmei               String?            @db.VarChar(500)
+  url_cnh                 String?            @db.VarChar(500)
+  valor_pagamento         Decimal?           @db.Decimal(10, 2)
+  pessoa_fisica           PessoaFisica       @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
+  ordens_de_servico       OrdemDeServico[]
+  pagamentos              PagamentoEquipe[]
+  servicos_mao_de_obra    ServicoMaoDeObra[]
 
   @@map("funcionario")
 }
 
-// Tabela 7: Peças Estoque
 model PecasEstoque {
-    id_pecas_estoque    Int      @id @default(autoincrement())
-    fabricante          String?  @db.VarChar(50)
-    nome                String   @db.VarChar(255)
-    descricao           String   @db.VarChar(255)
-    valor_custo         Decimal    @db.Decimal(10, 2)
-    valor_venda         Decimal    @db.Decimal(10, 2)
-    estoque_atual       Int      
-    unidade_medida      String?  @db.VarChar(20)
-    dt_ultima_compra    DateTime? @db.Timestamp()
-    
-    // Novo Campo
-    custo_unitario_padrao Decimal @default(0) @db.Decimal(10, 2)
-    
-    dt_cadastro         DateTime @default(now()) @db.Timestamp()
-    
-    // Relacionamento de Volta (M:N com OS)
-    itens_os            ItensOs[]
-    itens_entrada       ItemEntrada[] // Histórico de Compras desse item
+  id_pecas_estoque      Int           @id @default(autoincrement())
+  fabricante            String?       @db.VarChar(50)
+  nome                  String        @db.VarChar(255)
+  descricao             String        @db.VarChar(255)
+  valor_custo           Decimal       @db.Decimal(10, 2)
+  valor_venda           Decimal       @db.Decimal(10, 2)
+  estoque_atual         Int
+  unidade_medida        String?       @db.VarChar(20)
+  dt_ultima_compra      DateTime?     @db.Timestamp(6)
+  dt_cadastro           DateTime      @default(now()) @db.Timestamp(6)
+  custo_unitario_padrao Decimal       @default(0) @db.Decimal(10, 2)
+  itens_entrada         ItemEntrada[]
+  itens_os              ItensOs[]
 
-    @@map("pecas_estoque")
+  @@map("pecas_estoque")
 }
 
-// Tabela 8: Veículo
 model Veiculo {
-    id_veiculo          Int      @id @default(autoincrement())
-    id_cliente          Int      
-    placa               String   @unique @db.VarChar(8)
-    chassi              String?  @db.VarChar(20)
-    marca               String   @db.VarChar(50)
-    modelo              String   @db.VarChar(50)
-    versao              String?  @db.VarChar(50)
-    ano_modelo          String   @db.VarChar(10)
-    cor                 String   @db.VarChar(30)
-    combustivel         String   @db.VarChar(20)
-    obs                 String?  @db.VarChar(500)
-    dt_cadastro         DateTime @default(now()) @db.Timestamp()
-    
-    // Relacionamento 1:N com Cliente
-    cliente             Cliente  @relation(fields: [id_cliente], references: [id_cliente])
-    
-    // Relacionamento de Volta
-    ordens_de_servico   OrdemDeServico[]
+  id_veiculo        Int              @id @default(autoincrement())
+  id_cliente        Int
+  placa             String           @unique @db.VarChar(8)
+  chassi            String?          @db.VarChar(20)
+  marca             String           @db.VarChar(50)
+  modelo            String           @db.VarChar(50)
+  versao            String?          @db.VarChar(50)
+  ano_modelo        String           @db.VarChar(10)
+  cor               String           @db.VarChar(30)
+  combustivel       String           @db.VarChar(20)
+  obs               String?          @db.VarChar(500)
+  dt_cadastro       DateTime         @default(now()) @db.Timestamp(6)
+  ordens_de_servico OrdemDeServico[]
+  cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
 
-    @@map("veiculo")
+  @@map("veiculo")
 }
 
-// Tabela 9: Ordem de Serviço (OS)
 model OrdemDeServico {
-    id_os               Int      @id @default(autoincrement())
-    id_cliente          Int
-    id_veiculo          Int
-    id_funcionario      Int?
-    dt_abertura         DateTime @default(now()) @db.Timestamp()
-    dt_entrega          DateTime? @db.Timestamp()
-    km_entrada          Int      
-    status              String   @db.VarChar(50)
-    defeito_relatado    String?  @db.VarChar(500)
-    diagnostico         String?  @db.VarChar(500)
-    
-    // Campos Existentes de Valores
-    valor_servico       Decimal?   @db.Decimal(10, 2)
-    valor_pecas         Decimal?   @db.Decimal(10, 2)
-    valor_final         Decimal?   @db.Decimal(12, 2)
-    
-    // Novos Campos Solicitados
-    valor_total_cliente Decimal?   @db.Decimal(10, 2) // Receita do Cliente
-    valor_mao_de_obra   Decimal?   @db.Decimal(10, 2) // Valor M.O. padrão
-    
-    modo_pagamento      String?  @db.VarChar(50)
-    cod_pagamento       String?  @db.VarChar(80)
-    parcelas            Int      
-    obs                 String?  @db.VarChar(500)
-    obs_final           String?  @db.VarChar(500)
-    dt_cadastro         DateTime @default(now()) @db.Timestamp()
-    deleted_at          DateTime? @db.Timestamp() // Soft Delete Marker
-    
-    // Relacionamentos (Chaves Estrangeiras)
-    cliente             Cliente    @relation(fields: [id_cliente], references: [id_cliente])
-    veiculo             Veiculo    @relation(fields: [id_veiculo], references: [id_veiculo])
-    funcionario         Funcionario? @relation(fields: [id_funcionario], references: [id_funcionario])
-    
-    // Relacionamentos de Volta
-    itens_os            ItensOs[]
-    servicos_mao_de_obra ServicoMaoDeObra[]
-    fechamento_financeiro FechamentoFinanceiro?
-    pagamentos_cliente  PagamentoCliente[]
-    recebiveis_cartao   RecebivelCartao[]
+  id_os                 Int                   @id @default(autoincrement())
+  id_cliente            Int
+  id_veiculo            Int
+  id_funcionario        Int?
+  dt_abertura           DateTime              @default(now()) @db.Timestamp(6)
+  dt_entrega            DateTime?             @db.Timestamp(6)
+  km_entrada            Int
+  status                String                @db.VarChar(50)
+  defeito_relatado      String?               @db.VarChar(500)
+  diagnostico           String?               @db.VarChar(500)
+  valor_servico         Decimal?              @db.Decimal(10, 2)
+  valor_pecas           Decimal?              @db.Decimal(10, 2)
+  valor_final           Decimal?              @db.Decimal(12, 2)
+  modo_pagamento        String?               @db.VarChar(50)
+  cod_pagamento         String?               @db.VarChar(80)
+  parcelas              Int
+  obs                   String?               @db.VarChar(500)
+  dt_cadastro           DateTime              @default(now()) @db.Timestamp(6)
+  valor_mao_de_obra     Decimal?              @db.Decimal(10, 2)
+  valor_total_cliente   Decimal?              @db.Decimal(10, 2)
+  obs_final             String?               @db.VarChar(500)
+  deleted_at            DateTime?             @db.Timestamp(6)
+  updated_at            DateTime              @default(now()) @updatedAt @db.Timestamp(6)
+  fechamento_financeiro FechamentoFinanceiro?
+  itens_os              ItensOs[]
+  cliente               Cliente               @relation(fields: [id_cliente], references: [id_cliente])
+  funcionario           Funcionario?          @relation(fields: [id_funcionario], references: [id_funcionario])
+  veiculo               Veiculo               @relation(fields: [id_veiculo], references: [id_veiculo])
+  pagamentos_cliente    PagamentoCliente[]
+  recebiveis_cartao     RecebivelCartao[]
+  servicos_mao_de_obra  ServicoMaoDeObra[]
 
-    @@map("ordem_de_servico")
-    
-    @@index([id_cliente])
-    @@index([id_veiculo])
-    @@index([status])
-    @@index([deleted_at])
-    
-    updated_at          DateTime @default(now()) @updatedAt @db.Timestamp()
+  @@index([id_cliente])
+  @@index([id_veiculo])
+  @@index([status])
+  @@index([deleted_at])
+  @@map("ordem_de_servico")
 }
 
-// Tabela 10: Tabela Associativa M:N (ITENS_OS)
 model ItensOs {
-    id_iten             Int      @id @default(autoincrement())
-    id_os               Int      
-    id_pecas_estoque    Int?      
-    descricao           String   @db.VarChar(500) 
-    codigo_referencia   String?  @db.VarChar(50) // Identificação da Peça (Nota) 
-    
-    // Campos Renomeados/Garantidos
-    quantidade          Int      
-    valor_venda         Decimal    @db.Decimal(10, 2)
-    valor_total         Decimal    @db.Decimal(12, 2)
-    
-    dt_cadastro         DateTime @default(now()) @db.Timestamp()
-    deleted_at          DateTime? @db.Timestamp()
-    
-    // Relacionamentos (Chaves Estrangeiras)
-    ordem_de_servico    OrdemDeServico @relation(fields: [id_os], references: [id_os])
-    pecas_estoque       PecasEstoque?   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
-    
-    // Relacionamento com PagamentoPeca
-    pagamentos_peca     PagamentoPeca[]
+  id_iten           Int             @id @default(autoincrement())
+  id_os             Int
+  id_pecas_estoque  Int?
+  descricao         String          @db.VarChar(500)
+  valor_total       Decimal         @db.Decimal(12, 2)
+  dt_cadastro       DateTime        @default(now()) @db.Timestamp(6)
+  quantidade        Int
+  valor_venda       Decimal         @db.Decimal(10, 2)
+  codigo_referencia String?         @db.VarChar(50)
+  deleted_at        DateTime?       @db.Timestamp(6)
+  ordem_de_servico  OrdemDeServico  @relation(fields: [id_os], references: [id_os])
+  pecas_estoque     PecasEstoque?   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
+  pagamentos_peca   PagamentoPeca[]
 
-    @@map("itens_os")
+  @@map("itens_os")
 }
 
-// Nova Entidade: Fornecedor
 model Fornecedor {
-    id_fornecedor Int      @id @default(autoincrement())
-    
-    // Identificação
-    tipo_pessoa   String?  @default("JURIDICA") @db.VarChar(20) // FISICA ou JURIDICA
-    nome          String   @db.VarChar(100) // Razão Social / Nome Completo
-    nome_fantasia String?  @db.VarChar(100)
-    documento     String?  @db.VarChar(20) // CPF ou CNPJ
-    inscricao_estadual String? @db.VarChar(50)
-    inscricao_municipal String? @db.VarChar(50)
+  id_fornecedor       Int              @id @default(autoincrement())
+  nome                String           @db.VarChar(100)
+  documento           String?          @db.VarChar(20)
+  contato             String?          @db.VarChar(100)
+  dt_cadastro         DateTime         @default(now()) @db.Timestamp(6)
+  agencia             String?          @db.VarChar(20)
+  bairro              String?          @db.VarChar(100)
+  banco               String?          @db.VarChar(50)
+  categoria_produto   String?          @db.VarChar(100)
+  cep                 String?          @db.VarChar(10)
+  chave_pix           String?          @db.VarChar(100)
+  cidade              String?          @db.VarChar(100)
+  complemento         String?          @db.VarChar(100)
+  condicoes_pagamento String?          @db.VarChar(100)
+  conta               String?          @db.VarChar(20)
+  email               String?          @db.VarChar(100)
+  inscricao_estadual  String?          @db.VarChar(50)
+  inscricao_municipal String?          @db.VarChar(50)
+  logradouro          String?          @db.VarChar(150)
+  nome_fantasia       String?          @db.VarChar(100)
+  numero              String?          @db.VarChar(20)
+  obs                 String?          @db.VarChar(500)
+  telefone            String?          @db.VarChar(20)
+  tipo_pessoa         String?          @default("JURIDICA") @db.VarChar(20)
+  uf                  String?          @db.Char(2)
+  whatsapp            String?          @db.VarChar(20)
+  entradas_estoque    EntradaEstoque[]
+  pagamentos_peca     PagamentoPeca[]
 
-    // Contato
-    contato       String?  @db.VarChar(100) // Nome do vendedor/contato
-    telefone      String?  @db.VarChar(20)
-    whatsapp      String?  @db.VarChar(20)
-    email         String?  @db.VarChar(100)
-
-    // Endereço
-    cep           String?  @db.VarChar(10)
-    logradouro    String?  @db.VarChar(150)
-    numero        String?  @db.VarChar(20)
-    complemento   String?  @db.VarChar(100)
-    bairro        String?  @db.VarChar(100)
-    cidade        String?  @db.VarChar(100)
-    uf            String?  @db.Char(2)
-
-    // Financeiro
-    banco         String?  @db.VarChar(50)
-    agencia       String?  @db.VarChar(20)
-    conta         String?  @db.VarChar(20)
-    chave_pix     String?  @db.VarChar(100)
-    condicoes_pagamento String? @db.VarChar(100)
-    categoria_produto   String? @db.VarChar(100)
-
-    // Extras
-    obs           String?  @db.VarChar(500)
-    dt_cadastro   DateTime @default(now()) @db.Timestamp()
-    
-    pagamentos_peca PagamentoPeca[]
-    entradas_estoque EntradaEstoque[] 
-
-    @@map("fornecedor")
+  @@map("fornecedor")
 }
 
-// Nova Entidade: PagamentoPeca (Rastreio de Custo Real)
 model PagamentoPeca {
-    id_pagamento_peca     Int      @id @default(autoincrement())
-    id_item_os            Int
-    id_fornecedor         Int
-    
-    custo_real            Decimal  @db.Decimal(10, 2)
-    data_compra           DateTime @db.Timestamp()
-    data_pagamento_fornecedor DateTime? @db.Timestamp()
-    pago_ao_fornecedor    Boolean  @default(false)
-    deleted_at            DateTime? @db.Timestamp()
-    
-    id_livro_caixa        Int?     @unique
-    livro_caixa           LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
+  id_pagamento_peca         Int         @id @default(autoincrement())
+  id_item_os                Int
+  id_fornecedor             Int
+  custo_real                Decimal     @db.Decimal(10, 2)
+  data_compra               DateTime    @db.Timestamp(6)
+  data_pagamento_fornecedor DateTime?   @db.Timestamp(6)
+  pago_ao_fornecedor        Boolean     @default(false)
+  deleted_at                DateTime?   @db.Timestamp(6)
+  id_livro_caixa            Int?        @unique
+  fornecedor                Fornecedor  @relation(fields: [id_fornecedor], references: [id_fornecedor])
+  item_os                   ItensOs     @relation(fields: [id_item_os], references: [id_iten])
+  livro_caixa               LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
 
-    item_os               ItensOs  @relation(fields: [id_item_os], references: [id_iten])
-    fornecedor            Fornecedor @relation(fields: [id_fornecedor], references: [id_fornecedor])
-
-    @@map("pagamento_peca")
+  @@map("pagamento_peca")
 }
 
-// Nova Entidade: FechamentoFinanceiro (Substitui Finalizacao)
 model FechamentoFinanceiro {
-    id_fechamento_financeiro Int      @id @default(autoincrement())
-    id_os                    Int      @unique
-    custo_total_pecas_real   Decimal  @db.Decimal(10, 2)
-    data_fechamento_financeiro DateTime @default(now()) @db.Timestamp()
-    deleted_at               DateTime? @db.Timestamp()
-    
-    ordem_de_servico         OrdemDeServico @relation(fields: [id_os], references: [id_os])
+  id_fechamento_financeiro   Int            @id @default(autoincrement())
+  id_os                      Int            @unique
+  custo_total_pecas_real     Decimal        @db.Decimal(10, 2)
+  data_fechamento_financeiro DateTime       @default(now()) @db.Timestamp(6)
+  deleted_at                 DateTime?      @db.Timestamp(6)
+  ordem_de_servico           OrdemDeServico @relation(fields: [id_os], references: [id_os])
 
-    @@map("fechamento_financeiro")
+  @@map("fechamento_financeiro")
 }
 
-// Nova Entidade: PagamentoCliente (Recebimentos)
 model PagamentoCliente {
-    id_pagamento_cliente  Int      @id @default(autoincrement())
-    id_os                 Int      
-    
-    metodo_pagamento      String   @db.VarChar(50) // 'CREDITO', 'DEBITO', 'PIX', 'DINHEIRO'
-    valor                 Decimal  @db.Decimal(10, 2)
-    data_pagamento        DateTime @default(now()) @db.Timestamp()
-    deleted_at            DateTime? @db.Timestamp()
-    
-    // Detalhes
-    bandeira_cartao       String?  @db.VarChar(50) // 'VISA', 'MASTER', 'ELO'
-    codigo_transacao      String?  @db.VarChar(100) // NSU, ID PIX
-    qtd_parcelas          Int      @default(1)
-    id_operadora          Int?     // Operadora de cartão (se aplicável)
-    operadora             OperadoraCartao? @relation(fields: [id_operadora], references: [id_operadora])
+  id_pagamento_cliente Int              @id @default(autoincrement())
+  id_os                Int
+  metodo_pagamento     String           @db.VarChar(50)
+  valor                Decimal          @db.Decimal(10, 2)
+  data_pagamento       DateTime         @default(now()) @db.Timestamp(6)
+  bandeira_cartao      String?          @db.VarChar(50)
+  codigo_transacao     String?          @db.VarChar(100)
+  qtd_parcelas         Int              @default(1)
+  deleted_at           DateTime?        @db.Timestamp(6)
+  id_livro_caixa       Int?             @unique
+  id_operadora         Int?
+  id_conta_bancaria    Int?
+  conta_bancaria       ContaBancaria?   @relation(fields: [id_conta_bancaria], references: [id_conta])
+  livro_caixa          LivroCaixa?      @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
+  operadora            OperadoraCartao? @relation(fields: [id_operadora], references: [id_operadora])
+  ordem_de_servico     OrdemDeServico   @relation(fields: [id_os], references: [id_os])
 
-    id_conta_bancaria     Int?     // Conta bancária (para PIX e Dinheiro)
-    conta_bancaria        ContaBancaria? @relation(fields: [id_conta_bancaria], references: [id_conta])
-    
-    // Vínculo com Livro Caixa (lançamento de faturamento)
-    id_livro_caixa        Int?     @unique
-    livro_caixa           LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
-    
-    ordem_de_servico      OrdemDeServico @relation(fields: [id_os], references: [id_os])
-
-    @@map("pagamento_cliente")
+  @@map("pagamento_cliente")
 }
 
 model ServicoMaoDeObra {
-    id_servico_mao_de_obra Int      @id @default(autoincrement())
-    id_os                 Int
-    id_funcionario        Int
-    valor                 Decimal  @db.Decimal(10, 2)
-    descricao             String?  @db.VarChar(255)
-    
-    dt_cadastro           DateTime @default(now()) @db.Timestamp()
-    deleted_at            DateTime? @db.Timestamp()
+  id_servico_mao_de_obra Int              @id @default(autoincrement())
+  id_os                  Int
+  id_funcionario         Int
+  valor                  Decimal          @db.Decimal(10, 2)
+  descricao              String?          @db.VarChar(255)
+  dt_cadastro            DateTime         @default(now()) @db.Timestamp(6)
+  deleted_at             DateTime?        @db.Timestamp(6)
+  id_pagamento_equipe    Int?
+  status_pagamento       String           @default("PENDENTE") @db.VarChar(20)
+  funcionario            Funcionario      @relation(fields: [id_funcionario], references: [id_funcionario])
+  ordem_de_servico       OrdemDeServico   @relation(fields: [id_os], references: [id_os])
+  pagamento_equipe       PagamentoEquipe? @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
 
-    // Controle Financeiro
-    status_pagamento      String   @default("PENDENTE") @db.VarChar(20) // 'PENDENTE', 'PAGO'
-    id_pagamento_equipe   Int?
-    pagamento_equipe      PagamentoEquipe? @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
-    
-    ordem_de_servico      OrdemDeServico @relation(fields: [id_os], references: [id_os])
-    funcionario           Funcionario    @relation(fields: [id_funcionario], references: [id_funcionario])
-
-    @@map("servico_mao_de_obra")
+  @@map("servico_mao_de_obra")
 }
 
 model AuditLog {
-    id_log          Int      @id @default(autoincrement())
-    tabela          String   @db.VarChar(50)
-    registro_id     Int
-    acao            String   @db.VarChar(50) 
-    valor_antigo    String?  @db.Text
-    valor_novo      String?  @db.Text
-    usuario_id      Int?
-    dt_criacao      DateTime @default(now()) @db.Timestamp()
+  id_log       Int      @id @default(autoincrement())
+  tabela       String   @db.VarChar(50)
+  registro_id  Int
+  acao         String   @db.VarChar(50)
+  valor_antigo String?
+  valor_novo   String?
+  usuario_id   Int?
+  dt_criacao   DateTime @default(now()) @db.Timestamp(6)
 
-    @@map("audit_log")
+  @@map("audit_log")
 }
 
-// Nova Tabela: Contas a Pagar (Despesas Gerais)
 model ContasPagar {
-    id_conta_pagar      Int      @id @default(autoincrement())
-    descricao           String   @db.VarChar(255)
-    valor               Decimal  @db.Decimal(10, 2)
-    dt_vencimento       DateTime @db.Date
-    dt_pagamento        DateTime? @db.Date
-    status              String   @db.VarChar(20) // 'PENDENTE', 'PAGO'
-    categoria           String?  @db.VarChar(50) // 'AGUA', 'LUZ', 'ALUGUEL', 'INTERNET', 'OUTROS'
-    
-    // Novos campos
-    credor              String?  @db.VarChar(100)
-    dt_emissao          DateTime? @db.Date
-    num_documento       String?  @db.VarChar(50)
-    forma_pagamento     String?  @db.VarChar(50)
-    url_anexo           String?  @db.VarChar(500)
-    
-    obs                 String?  @db.VarChar(500)
-    
-    dt_cadastro         DateTime @default(now()) @db.Timestamp()
-    updated_at          DateTime @default(now()) @updatedAt @db.Timestamp()
-    deleted_at          DateTime? @db.Timestamp()
+  id_conta_pagar  Int       @id @default(autoincrement())
+  descricao       String    @db.VarChar(255)
+  valor           Decimal   @db.Decimal(10, 2)
+  dt_vencimento   DateTime  @db.Date
+  dt_pagamento    DateTime? @db.Date
+  status          String    @db.VarChar(20)
+  categoria       String?   @db.VarChar(50)
+  obs             String?   @db.VarChar(500)
+  dt_cadastro     DateTime  @default(now()) @db.Timestamp(6)
+  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  deleted_at      DateTime? @db.Timestamp(6)
+  credor          String?   @db.VarChar(100)
+  dt_emissao      DateTime? @db.Date
+  forma_pagamento String?   @db.VarChar(50)
+  num_documento   String?   @db.VarChar(50)
+  url_anexo       String?   @db.VarChar(500)
 
-    @@map("contas_pagar")
+  @@map("contas_pagar")
 }
 
-// ---------------------------------------------------------
-// MÓDULO FINANCEIRO AVANÇADO (LIVRO CAIXA E EQUIPE)
-// ---------------------------------------------------------
-
-// Tabela 13: Pagamento de Equipe (Comissões e Salários Consolidados)
 model PagamentoEquipe {
-    id_pagamento_equipe Int      @id @default(autoincrement())
-    id_funcionario      Int
-    
-    valor_total         Decimal  @db.Decimal(10, 2)
-    forma_pagamento     String?  @db.VarChar(50) 
-    premio_valor        Decimal? @db.Decimal(10, 2)
-    premio_descricao    String?  @db.VarChar(255)
-    dt_pagamento        DateTime @default(now()) @db.Timestamp()
-    
-    tipo_lancamento     String   @default("COMISSAO") @db.VarChar(50) // 'COMISSAO', 'SALARIO', 'VALE'
-    referencia_inicio   DateTime? @db.Date // Para Salário/Vale
-    referencia_fim      DateTime? @db.Date // Para Salário/Vale
-    
-    obs                 String?  @db.VarChar(500)
+  id_pagamento_equipe  Int                @id @default(autoincrement())
+  id_funcionario       Int
+  valor_total          Decimal            @db.Decimal(10, 2)
+  forma_pagamento      String?            @db.VarChar(50)
+  premio_valor         Decimal?           @db.Decimal(10, 2)
+  premio_descricao     String?            @db.VarChar(255)
+  dt_pagamento         DateTime           @default(now()) @db.Timestamp(6)
+  tipo_lancamento      String             @default("COMISSAO") @db.VarChar(50)
+  referencia_inicio    DateTime?          @db.Date
+  referencia_fim       DateTime?          @db.Date
+  obs                  String?            @db.VarChar(500)
+  descontado           Boolean            @default(false)
+  id_pagamento_deducao Int?
+  movimentacoes_caixa  LivroCaixa[]
+  funcionario          Funcionario        @relation(fields: [id_funcionario], references: [id_funcionario])
+  pagamento_deducao    PagamentoEquipe?   @relation("DeducaoVale", fields: [id_pagamento_deducao], references: [id_pagamento_equipe])
+  vales_deduzidos      PagamentoEquipe[]  @relation("DeducaoVale")
+  servicos_pagos       ServicoMaoDeObra[]
 
-    // Controle de Vales/Adiantamentos (Novo)
-    descontado          Boolean  @default(false) // Indica se esse VALE já foi descontado de um salário futuro
-    id_pagamento_deducao Int?     // ID do pagamento que descontou este vale
-    pagamento_deducao   PagamentoEquipe? @relation("DeducaoVale", fields: [id_pagamento_deducao], references: [id_pagamento_equipe])
-    vales_deduzidos     PagamentoEquipe[] @relation("DeducaoVale")
-    
-    // Relações
-    funcionario         Funcionario @relation(fields: [id_funcionario], references: [id_funcionario])
-    servicos_pagos      ServicoMaoDeObra[] // 1 Pagamento pode quitar vários serviços
-    movimentacoes_caixa LivroCaixa[]       // Gera 1 ou mais saídas no caixa
-
-    @@map("pagamento_equipe")
+  @@map("pagamento_equipe")
 }
 
-// Tabela 14: Livro Caixa (Registro Central de Movimentações)
 model LivroCaixa {
-    id_livro_caixa      Int      @id @default(autoincrement())
-    descricao           String   @db.VarChar(255)
-    valor               Decimal  @db.Decimal(10, 2)
-    tipo_movimentacao   String   @db.VarChar(10) // 'ENTRADA' ou 'SAIDA'
-    categoria           String   @db.VarChar(50) // 'EQUIPE', 'FORNECEDOR', 'VENDA', 'OUTROS'
-    dt_movimentacao     DateTime @default(now()) @db.Timestamp()
-    
-    // New fields
-    obs                 String?  @db.VarChar(500)
-    origem              String   @default("MANUAL") @db.VarChar(20) // 'MANUAL' or 'AUTOMATICA'
-    deleted_at          DateTime? @db.Timestamp()
+  id_livro_caixa      Int               @id @default(autoincrement())
+  descricao           String            @db.VarChar(255)
+  valor               Decimal           @db.Decimal(10, 2)
+  tipo_movimentacao   String            @db.VarChar(10)
+  categoria           String            @db.VarChar(50)
+  dt_movimentacao     DateTime          @default(now()) @db.Timestamp(6)
+  obs                 String?           @db.VarChar(500)
+  origem              String            @default("MANUAL") @db.VarChar(20)
+  deleted_at          DateTime?         @db.Timestamp(6)
+  id_pagamento_equipe Int?
+  id_conta_bancaria   Int?
+  conta               ContaBancaria?    @relation(fields: [id_conta_bancaria], references: [id_conta])
+  pagamento_equipe    PagamentoEquipe?  @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
+  pagamento_cliente   PagamentoCliente?
+  pagamento_peca      PagamentoPeca?
 
-    id_conta_bancaria   Int?
-    conta               ContaBancaria? @relation(fields: [id_conta_bancaria], references: [id_conta])
-
-    // Rastreabilidade (Opcional)
-    id_pagamento_equipe Int?
-    pagamento_equipe    PagamentoEquipe? @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
-    
-    pagamento_peca      PagamentoPeca?
-    pagamento_cliente   PagamentoCliente?
-
-    @@map("livro_caixa")
+  @@map("livro_caixa")
 }
-
 
 model CategoriaFinanceira {
-    id_categoria    Int      @id @default(autoincrement())
-    nome            String   @unique @db.VarChar(50)
-    tipo            String   @db.VarChar(10) // 'ENTRADA', 'SAIDA', 'AMBOS'
-    dt_cadastro     DateTime @default(now()) @db.Timestamp()
+  id_categoria Int      @id @default(autoincrement())
+  nome         String   @unique @db.VarChar(50)
+  tipo         String   @db.VarChar(10)
+  dt_cadastro  DateTime @default(now()) @db.Timestamp(6)
 
-    @@map("categoria_financeira")
+  @@map("categoria_financeira")
 }
 
-// ---------------------------------------------------------
-// MÓDULO ESTOQUE (ENTRADAS E COMPRAS)
-// ---------------------------------------------------------
-
 model EntradaEstoque {
-    id_entrada      Int      @id @default(autoincrement())
-    id_fornecedor   Int
-    
-    nota_fiscal     String?  @db.VarChar(50)
-    data_compra     DateTime @default(now()) @db.Timestamp()
-    valor_total     Decimal  @db.Decimal(10, 2)
-    obs             String?  @db.VarChar(500)
-    
-    created_at      DateTime @default(now()) @db.Timestamp()
+  id_entrada    Int           @id @default(autoincrement())
+  id_fornecedor Int
+  nota_fiscal   String?       @db.VarChar(50)
+  data_compra   DateTime      @default(now()) @db.Timestamp(6)
+  valor_total   Decimal       @db.Decimal(10, 2)
+  obs           String?       @db.VarChar(500)
+  created_at    DateTime      @default(now()) @db.Timestamp(6)
+  fornecedor    Fornecedor    @relation(fields: [id_fornecedor], references: [id_fornecedor])
+  itens         ItemEntrada[]
 
-    // Relações
-    fornecedor      Fornecedor @relation(fields: [id_fornecedor], references: [id_fornecedor])
-    itens           ItemEntrada[]
-
-    @@map("entrada_estoque")
+  @@map("entrada_estoque")
 }
 
 model ItemEntrada {
-    id_item_entrada   Int      @id @default(autoincrement())
-    id_entrada        Int
-    id_pecas_estoque  Int
+  id_item_entrada  Int            @id @default(autoincrement())
+  id_entrada       Int
+  id_pecas_estoque Int
+  quantidade       Int
+  valor_custo      Decimal        @db.Decimal(10, 2)
+  margem_lucro     Decimal?       @db.Decimal(10, 2)
+  valor_venda      Decimal        @db.Decimal(10, 2)
+  ref_cod          String?        @db.VarChar(50)
+  obs              String?        @db.VarChar(255)
+  entrada          EntradaEstoque @relation(fields: [id_entrada], references: [id_entrada])
+  peca             PecasEstoque   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
 
-    quantidade        Int
-    valor_custo       Decimal  @db.Decimal(10, 2)
-    margem_lucro      Decimal? @db.Decimal(10, 2) // Porcentagem
-    valor_venda       Decimal  @db.Decimal(10, 2)
-    
-    ref_cod           String?  @db.VarChar(50)
-    obs               String?  @db.VarChar(255)
-
-    // Relações
-    entrada           EntradaEstoque @relation(fields: [id_entrada], references: [id_entrada])
-    peca              PecasEstoque   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
-
-    @@map("item_entrada")
+  @@map("item_entrada")
 }
 
-// ---------------------------------------------------------
-// MÓDULO INTELIGÊNCIA FINANCEIRA (MULTICONTAS E CARTÕES)
-// ---------------------------------------------------------
-
 model ContaBancaria {
-  id_conta        Int          @id @default(autoincrement())
-  nome            String       @db.VarChar(50) // "Caixa Geral", "Itaú Empresas"
-  banco           String?      @db.VarChar(50)
-  agencia         String?      @db.VarChar(20)
-  conta           String?      @db.VarChar(20)
-  saldo_atual     Decimal      @default(0) @db.Decimal(12, 2)
-  ativo           Boolean      @default(true)
-  vincular_caixa  Boolean      @default(false) // Se TRUE, movimentações geram lançamento no Livro Caixa
-  
-  dt_cadastro     DateTime     @default(now()) @db.Timestamp()
+  id_conta           Int                @id @default(autoincrement())
+  nome               String             @db.VarChar(50)
+  banco              String?            @db.VarChar(50)
+  agencia            String?            @db.VarChar(20)
+  conta              String?            @db.VarChar(20)
+  saldo_atual        Decimal            @default(0) @db.Decimal(12, 2)
+  ativo              Boolean            @default(true)
+  dt_cadastro        DateTime           @default(now()) @db.Timestamp(6)
+  vincular_caixa     Boolean            @default(false)
+  movimentacoes      LivroCaixa[]
+  operadoras         OperadoraCartao[]
+  pagamentos_cliente PagamentoCliente[]
 
-  movimentacoes   LivroCaixa[]      
-  operadoras      OperadoraCartao[] 
-  pagamentos_cliente PagamentoCliente[] 
-  
   @@map("conta_bancaria")
 }
 
 model OperadoraCartao {
-  id_operadora          Int      @id @default(autoincrement())
-  nome                  String   @db.VarChar(50) // "Stone", "Cielo"
-  ativo                 Boolean  @default(true)
-  vincular_caixa        Boolean  @default(false) // Se TRUE, ativa gestão de recebíveis
-  
-  // Taxas e Prazos
-  taxa_debito           Decimal  @default(0) @db.Decimal(5, 2)
-  prazo_debito          Int      @default(1) // Dias
-  
-  taxa_credito_vista    Decimal  @default(0) @db.Decimal(5, 2)
-  prazo_credito_vista   Int      @default(30)
-  
-  taxa_credito_parc     Decimal  @default(0) @db.Decimal(5, 2)
-  prazo_credito_parc    Int      @default(30)
-  
-  taxa_antecipacao      Decimal  @default(0) @db.Decimal(5, 2)
-  antecipacao_auto      Boolean  @default(false)
-  
-  // Destino Automático
-  id_conta_destino      Int
-  conta_destino         ContaBancaria @relation(fields: [id_conta_destino], references: [id_conta])
-  
-  recebiveis            RecebivelCartao[]
-  pagamentos_cliente    PagamentoCliente[]
+  id_operadora        Int                @id @default(autoincrement())
+  nome                String             @db.VarChar(50)
+  taxa_debito         Decimal            @default(0) @db.Decimal(5, 2)
+  prazo_debito        Int                @default(1)
+  taxa_credito_vista  Decimal            @default(0) @db.Decimal(5, 2)
+  prazo_credito_vista Int                @default(30)
+  taxa_credito_parc   Decimal            @default(0) @db.Decimal(5, 2)
+  prazo_credito_parc  Int                @default(30)
+  taxa_antecipacao    Decimal            @default(0) @db.Decimal(5, 2)
+  antecipacao_auto    Boolean            @default(false)
+  id_conta_destino    Int
+  vincular_caixa      Boolean            @default(false)
+  ativo               Boolean            @default(true)
+  conta_destino       ContaBancaria      @relation(fields: [id_conta_destino], references: [id_conta])
+  pagamentos_cliente  PagamentoCliente[]
+  recebiveis          RecebivelCartao[]
 
   @@map("operadora_cartao")
 }
 
 model RecebivelCartao {
-  id_recebivel      Int      @id @default(autoincrement())
-  id_os             Int?     
-  id_operadora      Int
-  
-  num_parcela       Int      @default(1)
-  total_parcelas    Int      @default(1)
-  
-  valor_bruto       Decimal  @db.Decimal(10, 2)
-  valor_liquido     Decimal  @db.Decimal(10, 2) 
-  taxa_aplicada     Decimal  @db.Decimal(10, 2)
-  
-  data_venda        DateTime @default(now()) @db.Date
-  data_prevista     DateTime @db.Date 
-  data_recebimento  DateTime? @db.Date 
-  
-  status            String   @default("PENDENTE") // 'PENDENTE', 'RECEBIDO'
-  
-  // Rastreabilidade de confirmação
-  confirmado_em     DateTime? @db.Timestamp()
-  confirmado_por    String?   @db.VarChar(100)
-  
-  operadora         OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
-  ordem_de_servico  OrdemDeServico? @relation(fields: [id_os], references: [id_os])
+  id_recebivel     Int             @id @default(autoincrement())
+  id_os            Int?
+  id_operadora     Int
+  num_parcela      Int             @default(1)
+  total_parcelas   Int             @default(1)
+  valor_bruto      Decimal         @db.Decimal(10, 2)
+  valor_liquido    Decimal         @db.Decimal(10, 2)
+  taxa_aplicada    Decimal         @db.Decimal(10, 2)
+  data_venda       DateTime        @default(now()) @db.Date
+  data_prevista    DateTime        @db.Date
+  data_recebimento DateTime?       @db.Date
+  status           String          @default("PENDENTE")
+  confirmado_em    DateTime?       @db.Timestamp(6)
+  confirmado_por   String?         @db.VarChar(100)
+  operadora        OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
+  ordem_de_servico OrdemDeServico? @relation(fields: [id_os], references: [id_os])
 
   @@map("recebivel_cartao")
 }

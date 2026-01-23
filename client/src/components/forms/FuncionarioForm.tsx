@@ -665,11 +665,16 @@ export const FuncionarioForm = ({
                     onChange={(e) => handleChange("chave_pix", e.target.value)}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <Input
                     value={formData.banco}
                     onChange={(e) => handleChange("banco", e.target.value)}
                     placeholder="Banco"
+                  />
+                  <Input
+                    value={formData.agencia}
+                    onChange={(e) => handleChange("agencia", e.target.value)}
+                    placeholder="Agência"
                   />
                   <Input
                     value={formData.conta}

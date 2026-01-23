@@ -780,7 +780,7 @@ export const NovoPagamentoPage = () => {
                   </div>
 
                   <div className="border-t border-neutral-800 my-2 pt-3 flex justify-between items-end">
-                    <span className="font-bold uppercase tracking-widest text-xs text-white">
+                    <span className="font-bold uppercase tracking-widest text-xs text-neutral-200">
                       Total a Pagar
                     </span>
                     <span className="font-black text-3xl">
@@ -799,7 +799,7 @@ export const NovoPagamentoPage = () => {
                 </Button>
               </div>
             ) : (
-              <div className="bg-orange-500 text-white rounded-xl shadow-xl shadow-orange-900/10 p-6 space-y-4">
+              <div className="bg-orange-500 text-neutral-200 rounded-xl shadow-xl shadow-orange-900/10 p-6 space-y-4">
                 <div className="flex justify-between items-end border-b border-white/20 pb-4">
                   <span className="font-bold uppercase tracking-widest text-xs text-orange-100">
                     Valor Adiantamento
@@ -810,7 +810,7 @@ export const NovoPagamentoPage = () => {
                 </div>
                 <Button
                   onClick={handlePay}
-                  className="w-full bg-white text-orange-600 hover:bg-orange-50 border-transparent py-4 rounded-xl font-bold uppercase tracking-widest text-sm"
+                  className="w-full bg-neutral-50 text-orange-600 hover:bg-orange-50 border-transparent py-4 rounded-xl font-bold uppercase tracking-widest text-sm"
                   disabled={isLoading}
                 >
                   Confirmar Lançamento

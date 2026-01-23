@@ -94,6 +94,12 @@ export const OperadorasTab = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.id_conta_destino || formData.id_conta_destino <= 0) {
+      alert("Selecione uma conta bancária de destino.");
+      return;
+    }
+
     try {
       if (editingOp) {
         await api.put(`/operadora-cartao/${editingOp.id_operadora}`, formData);

@@ -102,7 +102,11 @@ export class ContasPagarRepository {
       data.dt_vencimento = normalizeDate(data.dt_vencimento);
     if (data.dt_pagamento) data.dt_pagamento = normalizeDate(data.dt_pagamento);
 
-    const { id_conta_bancaria: idContaRaw, ...updateData } = data;
+    const {
+      id_conta_bancaria: idContaRaw,
+      repetir_parcelas,
+      ...updateData
+    } = data;
 
     // ... dentro de update ...
     // Checar estado anterior
@@ -207,6 +211,35 @@ export class ContasPagarRepository {
             },
             data: { deleted_at: new Date() },
           });
+        }
+      }
+
+      // Lógica de Repetição para Edição (Gerar Novas Parcelas a partir desta)
+      // Se o usuário pedir para repetir X vezes ao editar, vamos gerar X novas contas
+      // baseadas nos dados ATUALIZADOS desta conta.
+      const repetitions = Number(repetir_parcelas || 0);
+      if (repetitions > 0 && updated.dt_vencimento) {
+        console.log(
+          `[ContasPagarRepo] Generating ${repetitions} future installments from updated bill`,
+        );
+        const baseDate = new Date(updated.dt_vencimento);
+
+        for (let i = 1; i <= repetitions; i++) {
+          const newDate = new Date(baseDate);
+          newDate.setMonth(baseDate.getMonth() + i);
+
+          const repData: any = { ...updateData };
+          // Garantir que não levamos ID ou status de pago
+          delete repData.id_conta_pagar;
+          delete repData.created_at;
+          delete repData.updated_at;
+
+          repData.dt_vencimento = newDate;
+          repData.status = "PENDENTE";
+          repData.dt_pagamento = null;
+          repData.obs = `${repData.obs || ""} (Recorrência ${i + 1}/${repetitions + 1} gerada via edição)`;
+
+          await tx.contasPagar.create({ data: repData });
         }
       }
 

@@ -53,6 +53,9 @@ export const VeiculoForm = ({
     message: string;
   }>({ type: null, message: "" });
 
+  // Vehicle Search State
+  // Removed vehicle automation states
+
   // Client Search State
   const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [clientResults, setClientResults] = useState<ClientResult[]>([]);
@@ -88,6 +91,7 @@ export const VeiculoForm = ({
       setAnoModelo(initialData.ano_modelo || "");
       setCombustivel(initialData.combustivel || "Flex");
       setChassi(initialData.chassi || "");
+      setChassi(initialData.chassi || "");
     }
   }, [initialData]);
 
@@ -121,6 +125,9 @@ export const VeiculoForm = ({
       selectClient(clientResults[clientActiveIndex]);
     }
   };
+
+  // --- Vehicle Lookup Logic ---
+  // Removed handlePlateBlur
 
   const handleSearchClient = async (term: string) => {
     setClientSearchTerm(term);
@@ -213,6 +220,9 @@ export const VeiculoForm = ({
   // Helper to determine if we need to show client selection
   const needsClientSelection = !vehicleId && !clientId;
 
+  // Smart ReadOnly Logic:
+  // Removed isSmartReadOnly helper
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6 text-neutral-900">
       {formStatus.type && (
@@ -228,7 +238,6 @@ export const VeiculoForm = ({
         </div>
       )}
 
-      {/* 1. Client Selection Section (Only for new vehicles where ID isn't pre-injected) */}
       {/* 1. Client Selection Section (Only for new vehicles where ID isn't pre-injected) */}
       {needsClientSelection && (
         <div className="space-y-3 p-4 bg-neutral-25 rounded-3xl border border-neutral-200">
@@ -327,29 +336,34 @@ export const VeiculoForm = ({
       )}
 
       {/* 2. Vehicle Info Section */}
-      <div className="bg-neutral-25 p-6 rounded-3xl border border-neutral-200">
-        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-neutral-100">
-          <div className="p-3 bg-primary-50 text-primary-600 rounded-xl">
-            <Car size={24} />
-          </div>
-          <div>
-            <h3 className="font-bold text-neutral-500 text-lg">
-              Dados do Veículo
-            </h3>
+      <div className="bg-neutral-25 p-6 rounded-3xl border border-neutral-200 relative">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-neutral-100">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-primary-50 text-primary-600 rounded-xl">
+              <Car size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-neutral-500 text-lg">
+                Dados do Veículo
+              </h3>
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
+          <div className="relative">
             <Input
               label="Placa *"
               ref={needsClientSelection ? null : firstInputRef}
               value={placa}
-              onChange={(e) => setPlaca(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                const val = e.target.value.toUpperCase();
+                setPlaca(val);
+              }}
               maxLength={7}
               placeholder="ABC1234"
               required
-              className="bg-neutral-25"
+              className="bg-neutral-25 font-mono uppercase tracking-wider"
             />
           </div>
           <div>
@@ -377,6 +391,7 @@ export const VeiculoForm = ({
               onChange={(e) => setCor(e.target.value)}
               required
               className="bg-neutral-25"
+              placeholder="Ex: Prata, Branco..."
             />
           </div>
           <div>
@@ -395,7 +410,7 @@ export const VeiculoForm = ({
             <select
               value={combustivel}
               onChange={(e) => setCombustivel(e.target.value)}
-              className="w-full transition-all outline-none rounded-lg border text-sm disabled:opacity-50 disabled:bg-neutral-100 border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-900 bg-neutral-25 px-4 py-2.5"
+              className="w-full transition-all outline-none rounded-lg border text-sm border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 px-4 py-2.5 bg-neutral-25 text-neutral-900"
             >
               <option value="Flex">Flex</option>
               <option value="Gasolina">Gasolina</option>

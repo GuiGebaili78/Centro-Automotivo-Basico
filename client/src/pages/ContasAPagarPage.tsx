@@ -6,6 +6,7 @@ import { Modal } from "../components/ui/Modal";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/input";
+import { CategoryManager } from "../components/financeiro/CategoryManager";
 import {
   Plus,
   Calendar,
@@ -17,6 +18,7 @@ import {
   Upload,
   User,
   Link,
+  Settings,
   ArrowDownCircle,
 } from "lucide-react";
 import type { IContasPagar } from "../types/backend";
@@ -28,6 +30,10 @@ export const ContasAPagarPage = () => {
     type: "success" | "error" | null;
     text: string;
   }>({ type: null, text: "" });
+
+  // Categories
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("TODOS"); // TODOS, PENDENTE, PAGO
@@ -77,7 +83,17 @@ export const ContasAPagarPage = () => {
   useEffect(() => {
     loadContas();
     loadAccounts();
+    loadCategories();
   }, []);
+
+  const loadCategories = async () => {
+    try {
+      const res = await api.get("/categoria-financeira");
+      setCategories(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const loadAccounts = async () => {
     try {
@@ -278,22 +294,19 @@ export const ContasAPagarPage = () => {
     })
     .reduce((acc, c) => acc + Number(c.valor), 0);
 
-  const categories = [
-    "AGUA",
-    "LUZ",
-    "ALUGUEL",
-    "INTERNET",
-    "CONTADOR",
-    "SALARIO",
-    "MANUTENCAO",
-    "OUTROS",
-  ];
-
   return (
     <div className="w-full mx-auto px-4 md:px-8 py-6 space-y-6">
       <StatusBanner
         msg={statusMsg}
         onClose={() => setStatusMsg({ type: null, text: "" })}
+      />
+
+      <CategoryManager
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onUpdate={() => {
+          loadCategories();
+        }}
       />
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -305,14 +318,23 @@ export const ContasAPagarPage = () => {
             Gerência de despesas operacionais da oficina.
           </p>
         </div>
-        <Button
-          onClick={openNewModal}
-          variant="primary"
-          icon={Plus}
-          className="text-neutral-200"
-        >
-          Nova Conta
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setIsCategoryModalOpen(true)}
+            variant="secondary"
+            icon={Settings}
+          >
+            Categorias
+          </Button>
+          <Button
+            onClick={openNewModal}
+            variant="primary"
+            icon={Plus}
+            className="text-neutral-200"
+          >
+            Nova Conta
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -639,9 +661,9 @@ export const ContasAPagarPage = () => {
               />
             </div>
 
-            {/* 2. Categoria & Valor */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+            {/* 2. Categoria & Valor & Repetição */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div className="md:col-span-12 lg:col-span-5">
                 <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
                   Categoria
                 </label>
@@ -653,24 +675,46 @@ export const ContasAPagarPage = () => {
                   }
                 >
                   {categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                    <option key={c.id_categoria} value={c.nome}>
+                      {c.nome}
                     </option>
                   ))}
                 </select>
               </div>
-              <Input
-                label="Valor do Título (R$)"
-                type="number"
-                step="0.01"
-                required
-                value={formData.valor}
-                onChange={(e) =>
-                  setFormData({ ...formData, valor: e.target.value })
-                }
-                placeholder="0.00"
-                className="font-bold text-neutral-600"
-              />
+
+              <div className="md:col-span-6 lg:col-span-3">
+                <Input
+                  label="Repetir (Meses)"
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={formData.repetir_parcelas}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      repetir_parcelas: Number(e.target.value),
+                    })
+                  }
+                  placeholder="0"
+                  title="Cria cópias desta conta para os próximos meses"
+                  className="font-bold text-neutral-600"
+                />
+              </div>
+
+              <div className="md:col-span-6 lg:col-span-4">
+                <Input
+                  label="Valor do Título (R$)"
+                  type="number"
+                  step="0.01"
+                  required
+                  value={formData.valor}
+                  onChange={(e) =>
+                    setFormData({ ...formData, valor: e.target.value })
+                  }
+                  placeholder="0.00"
+                  className="font-bold text-neutral-600"
+                />
+              </div>
             </div>
 
             {/* 3. Datas */}

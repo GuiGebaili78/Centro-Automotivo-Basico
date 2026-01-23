@@ -26,7 +26,6 @@ import { Modal } from "../components/ui/Modal";
 import { ActionButton } from "../components/ui/ActionButton";
 import { VeiculoForm } from "../components/forms/VeiculoForm";
 import type { FormEvent } from "react";
-// Importando seus componentes customizados
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/Button";
 
@@ -51,7 +50,9 @@ export const CadastroUnificadoPage = () => {
     text: string;
   }>({ type: null, text: "" });
 
-  // Estados do Cliente e Veículo mantidos...
+  // Vehicle Automation States
+  // Removed vehicle automation states and logic
+
   const [tipoPessoa, setTipoPessoa] = useState<"PF" | "PJ">("PF");
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
@@ -189,8 +190,7 @@ export const CadastroUnificadoPage = () => {
           text: "Dados atualizados com sucesso!",
         });
       } else {
-        // CREATE CLIENT (Logic from ClienteForm)
-        // A. Base Pessoa
+        // CREATE CLIENT
         const pessoaPayload = {
           nome: formatNameTitleCase(tipoPessoa === "PF" ? nome : razaoSocial),
           genero: null,
@@ -200,7 +200,6 @@ export const CadastroUnificadoPage = () => {
         const pessoaRes = await api.post("/pessoa", pessoaPayload);
         const idPessoa = pessoaRes.data.id_pessoa;
 
-        // B. Specific Type
         let fkId = null;
         let fkField = "";
         if (tipoPessoa === "PF") {
@@ -226,7 +225,6 @@ export const CadastroUnificadoPage = () => {
           fkField = "id_pessoa_juridica";
         }
 
-        // C. Create Cliente
         const clientePayload = {
           [fkField]: fkId,
           tipo_pessoa: 1,
@@ -245,7 +243,7 @@ export const CadastroUnificadoPage = () => {
         finalClientId = clienteRes.data.id_cliente;
       }
 
-      // 2. Create Vehicle (Only in Creation Mode or if filled)
+      // 2. Create Vehicle
       let finalVehicleId = null;
       if (!isEditMode && finalClientId && (placa || modelo)) {
         const vehiclePayload = {
@@ -256,15 +254,13 @@ export const CadastroUnificadoPage = () => {
           cor,
           ano_modelo: anoModelo,
           combustivel,
-          chassi: "", // Optional for quick registry
+          chassi: "",
         };
         const vehicleRes = await api.post("/veiculo", vehiclePayload);
         finalVehicleId = vehicleRes.data.id_veiculo;
       }
 
       // 3. Redirect Logic
-      // "Após salvar o novo cadastro, vai direto para o passo 3 para validação"
-      // Path: /ordem-de-servico?startWizard=true&clientId=X&vehicleId=Y&step=CONFIRM
       if (!isEditMode && finalClientId) {
         setStatusMsg({
           type: "success",
@@ -576,27 +572,38 @@ export const CadastroUnificadoPage = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="p-4 bg-primary-50 rounded-xl border border-primary-100 text-xs text-primary-800 font-medium">
-                  Preencha os dados do veículo agora para agilizar a abertura da
-                  OS.
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-primary-50 rounded-xl border border-primary-100 text-xs text-primary-800 font-medium flex-1">
+                    Preencha os dados do veículo agora para agilizar a abertura
+                    da OS.
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+
+                <div className="grid grid-cols-2 gap-4 relative">
+                  <div className="relative">
+                    <Input
+                      label="Placa *"
+                      icon={Hash}
+                      value={placa}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setPlaca(val);
+                      }}
+                      maxLength={7}
+                      placeholder="ABC1234"
+                      required={!isEditMode}
+                      className="font-mono font-bold tracking-widest uppercase"
+                    />
+                  </div>
+
                   <Input
-                    label="Placa *"
-                    icon={Hash}
-                    value={placa}
-                    onChange={(e) => setPlaca(e.target.value.toUpperCase())}
-                    maxLength={7}
-                    placeholder="ABC1234"
-                    required={!isEditMode}
-                    className="font-mono font-bold tracking-widest uppercase"
-                  />
-                  <Input
+                    id="input-marca-veiculo"
                     label="Marca *"
                     icon={Car}
                     value={marca}
                     onChange={(e) => setMarca(e.target.value)}
                     required={!isEditMode && !!placa}
+                    className="bg-neutral-25"
                   />
                   <div className="col-span-2">
                     <Input
@@ -604,6 +611,7 @@ export const CadastroUnificadoPage = () => {
                       value={modelo}
                       onChange={(e) => setModelo(e.target.value)}
                       required={!isEditMode && !!placa}
+                      className="bg-neutral-25"
                     />
                   </div>
                   <Input
@@ -612,6 +620,7 @@ export const CadastroUnificadoPage = () => {
                     value={cor}
                     onChange={(e) => setCor(e.target.value)}
                     required={!isEditMode && !!placa}
+                    className="bg-neutral-25"
                   />
                   <Input
                     label="Ano"
@@ -619,6 +628,7 @@ export const CadastroUnificadoPage = () => {
                     type="number"
                     value={anoModelo}
                     onChange={(e) => setAnoModelo(e.target.value)}
+                    className="bg-neutral-25"
                   />
                   <div className="col-span-2">
                     <label className="text-sm font-semibold text-neutral-700 ml-1 mb-1 block">
@@ -627,13 +637,14 @@ export const CadastroUnificadoPage = () => {
                     <select
                       value={combustivel}
                       onChange={(e) => setCombustivel(e.target.value)}
-                      className="select select-bordered w-full bg-neutral-25 border-neutral-200 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all rounded-xl"
+                      className="select select-bordered w-full border-neutral-200 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all rounded-xl bg-neutral-25"
                     >
                       <option value="Flex">Flex</option>
                       <option value="Gasolina">Gasolina</option>
                       <option value="Etanol">Etanol</option>
                       <option value="Diesel">Diesel</option>
                       <option value="GNV">GNV</option>
+                      <option value="Elétrico">Elétrico</option>
                     </select>
                   </div>
                 </div>

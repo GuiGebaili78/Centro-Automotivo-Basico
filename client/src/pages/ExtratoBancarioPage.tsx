@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
+import { CategoryManager } from "../components/financeiro/CategoryManager";
 import {
   ArrowLeft,
   ArrowUpCircle,
@@ -11,6 +12,7 @@ import {
   Calendar,
   Wallet,
   ArrowRight,
+  Settings,
 } from "lucide-react";
 import type { IContaBancaria } from "../types/backend";
 import { Button } from "../components/ui/Button";
@@ -39,6 +41,7 @@ export const ExtratoBancarioPage = () => {
 
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [formLoading, setFormLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -218,7 +221,20 @@ export const ExtratoBancarioPage = () => {
             </div>
 
             <div className="h-12 w-px bg-neutral-200 hidden md:block"></div>
-
+            <CategoryManager
+              isOpen={isCategoryModalOpen}
+              onClose={() => setIsCategoryModalOpen(false)}
+              onUpdate={() => {
+                loadCategories();
+              }}
+            />
+            <Button
+              onClick={() => setIsCategoryModalOpen(true)}
+              variant="secondary"
+              icon={Settings}
+            >
+              Categorias
+            </Button>
             <Button
               onClick={() => setIsModalOpen(true)}
               variant="primary"

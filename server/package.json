@@ -8,6 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "migrate:host": "set DATABASE_URL=postgresql://user:password@localhost:5434/automotivo_db&& npx prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:faker": "tsx prisma/seed_faker.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -24,6 +25,7 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.2.0",
     "prisma": "^5.22.0",
     "tsx": "^4.21.0"
   },
