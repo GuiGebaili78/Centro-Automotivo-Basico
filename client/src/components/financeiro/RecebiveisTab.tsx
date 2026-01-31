@@ -633,7 +633,9 @@ export const RecebiveisTab = () => {
                     </td>
                     <td className="p-5 text-right">
                       <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg">
-                        - {formatCurrency(Number(r.taxa_aplicada))}
+                        {/* Ajuste o '2' para quantas casas decimais você deseja */}
+                        - {Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}
+                        %
                       </span>
                     </td>
                     <td className="p-5 text-right">

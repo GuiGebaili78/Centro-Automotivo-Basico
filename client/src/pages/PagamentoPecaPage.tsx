@@ -41,7 +41,7 @@ export const PagamentoPecaPage = () => {
   // NEW FILTERS & QUICK FILTER
   const [activeFilter, setActiveFilter] = useState<
     "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
-  >("WEEK");
+  >("MONTH");
 
   const [filterOSStart, setFilterOSStart] = useState(() => {
     const now = new Date();
@@ -670,6 +670,7 @@ export const PagamentoPecaPage = () => {
         <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>
             <tr className="bg-neutral-50 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+              <th className="p-5">Data</th>
               <th className="p-5">Ref / Nota</th>
               <th className="p-5">Peça</th>
               <th className="p-5">Fornecedor</th>

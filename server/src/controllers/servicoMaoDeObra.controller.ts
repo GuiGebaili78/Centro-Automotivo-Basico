@@ -1,50 +1,52 @@
-import { Request, Response } from 'express';
-import { ServicoMaoDeObraRepository } from '../repositories/servicoMaoDeObra.repository.js';
+import { Request, Response } from "express";
+import { ServicoMaoDeObraRepository } from "../repositories/servicoMaoDeObra.repository.js";
 
 const repository = new ServicoMaoDeObraRepository();
 
 export class ServicoMaoDeObraController {
   async create(req: Request, res: Response) {
     try {
-      const { id_os, id_funcionario, valor, descricao } = req.body;
-      const result = await repository.create({ 
-          id_os: Number(id_os), 
-          id_funcionario: Number(id_funcionario), 
-          valor: Number(valor), 
-          descricao 
+      const { id_os, id_funcionario, valor, descricao, categoria } = req.body;
+      const result = await repository.create({
+        id_os: Number(id_os),
+        id_funcionario: Number(id_funcionario),
+        valor: Number(valor),
+        descricao,
+        categoria,
       });
       res.status(201).json(result);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Failed to add labor service' });
+      res.status(500).json({ error: "Failed to add labor service" });
     }
   }
 
   async index(req: Request, res: Response) {
-      try {
-          const { id_os } = req.params;
-          const result = await repository.findAllByOs(Number(id_os));
-          res.json(result);
-      } catch (error) {
-          res.status(500).json({ error: 'Failed to fetch labor services' });
-      }
+    try {
+      const { id_os } = req.params;
+      const result = await repository.findAllByOs(Number(id_os));
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch labor services" });
+    }
   }
 
   async update(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { id_funcionario, valor, descricao } = req.body;
-      
+      const { id_funcionario, valor, descricao, categoria } = req.body;
+
       const updateData: any = {};
       if (id_funcionario) updateData.id_funcionario = Number(id_funcionario);
       if (valor !== undefined) updateData.valor = Number(valor);
       if (descricao !== undefined) updateData.descricao = descricao;
+      if (categoria !== undefined) updateData.categoria = categoria;
 
       const result = await repository.update(Number(id), updateData);
       res.json(result);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Failed to update labor service' });
+      res.status(500).json({ error: "Failed to update labor service" });
     }
   }
 
@@ -54,7 +56,7 @@ export class ServicoMaoDeObraController {
       await repository.softDelete(Number(id));
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ error: 'Failed to delete labor service' });
+      res.status(500).json({ error: "Failed to delete labor service" });
     }
   }
 }

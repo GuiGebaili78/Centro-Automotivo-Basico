@@ -13,6 +13,7 @@ interface LaborService {
   id_funcionario: number | string;
   valor: number | string;
   descricao?: string;
+  categoria?: string; // 'MECANICA' | 'ELETRICA'
   funcionario?: {
     pessoa_fisica?: {
       pessoa?: {
@@ -47,6 +48,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
     id_funcionario: "",
     valor: "",
     descricao: "",
+    categoria: "MECANICA",
   });
   const [editingLaborId, setEditingLaborId] = useState<number | string | null>(
     null,
@@ -72,6 +74,38 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
     if (onTotalChange) onTotalChange(total);
   }, [laborServices, onTotalChange]);
 
+  const handleEmployeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    let cat = newLaborService.categoria;
+
+    if (id) {
+      const emp = employees.find(
+        (e) => String(e.id_funcionario) === String(id),
+      );
+      if (emp) {
+        const role = (emp.cargo || "").toUpperCase();
+        const spec = (emp.especialidade || "").toUpperCase();
+
+        if (
+          role.includes("ELETRIC") ||
+          spec.includes("ELETRIC") ||
+          role.includes("ELÉTRIC") ||
+          spec.includes("ELÉTRIC")
+        ) {
+          cat = "ELETRICA";
+        } else {
+          cat = "MECANICA";
+        }
+      }
+    }
+
+    setNewLaborService({
+      ...newLaborService,
+      id_funcionario: id,
+      categoria: cat,
+    });
+  };
+
   const handleAddLabor = async (e?: FormEvent) => {
     if (e) e.preventDefault();
 
@@ -94,6 +128,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
       id_funcionario: newLaborService.id_funcionario,
       valor: val,
       descricao: newLaborService.descricao,
+      categoria: newLaborService.categoria,
       funcionario: employee,
     };
 
@@ -105,6 +140,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             id_funcionario: newItem.id_funcionario,
             valor: newItem.valor,
             descricao: newItem.descricao,
+            categoria: newItem.categoria,
           };
           await api.put(`/servico-mao-de-obra/${editingLaborId}`, payload);
           setStatusMsg({ type: "success", text: "Mão de obra atualizada!" });
@@ -114,6 +150,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             id_funcionario: newItem.id_funcionario,
             valor: newItem.valor,
             descricao: newItem.descricao,
+            categoria: newItem.categoria,
           };
           await api.post("/servico-mao-de-obra", payload);
           setStatusMsg({ type: "success", text: "Mão de obra adicionada!" });
@@ -122,7 +159,12 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
         if (onChange) onChange([]); // Trigger reload request
 
         // Reset form
-        setNewLaborService({ id_funcionario: "", valor: "", descricao: "" });
+        setNewLaborService({
+          id_funcionario: "",
+          valor: "",
+          descricao: "",
+          categoria: "MECANICA",
+        });
         setEditingLaborId(null);
         setTimeout(() => setStatusMsg({ type: null, text: "" }), 1500);
       } catch (error) {
@@ -148,7 +190,12 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
         setLaborServices(newList);
         if (onChange) onChange(newList);
       }
-      setNewLaborService({ id_funcionario: "", valor: "", descricao: "" });
+      setNewLaborService({
+        id_funcionario: "",
+        valor: "",
+        descricao: "",
+        categoria: "MECANICA",
+      });
       setEditingLaborId(null);
     }
   };
@@ -158,6 +205,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
       id_funcionario: String(service.id_funcionario),
       valor: String(service.valor),
       descricao: service.descricao || "",
+      categoria: service.categoria || "MECANICA",
     });
     // Important: Store the correct ID depending on mode/existence
     const idToEdit = service.id_servico_mao_de_obra || service.id_temporary;
@@ -198,18 +246,13 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
 
       {!readOnly && (
         <div className="p-4 bg-neutral-25 rounded-2xl border border-primary-100 grid grid-cols-12 gap-3 items-end">
-          <div className="col-span-12 md:col-span-5">
+          <div className="col-span-12 md:col-span-4">
             <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1 block">
               Profissional / Mecânico
             </label>
             <select
               value={newLaborService.id_funcionario}
-              onChange={(e) =>
-                setNewLaborService({
-                  ...newLaborService,
-                  id_funcionario: e.target.value,
-                })
-              }
+              onChange={handleEmployeeChange}
               className="w-full p-3 rounded-xl border border-primary-200 outline-none focus:border-primary-500 font-bold text-sm bg-neutral-25"
             >
               <option value="">Selecione...</option>
@@ -219,6 +262,45 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+          <div className="col-span-12 md:col-span-2">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1 block">
+              Tipo de Serviço
+            </label>
+            <div className="flex gap-1 h-[46px] bg-neutral-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() =>
+                  setNewLaborService({
+                    ...newLaborService,
+                    categoria: "MECANICA",
+                  })
+                }
+                className={`flex-1 rounded-lg text-[9px] font-bold uppercase transition-all ${
+                  newLaborService.categoria === "MECANICA"
+                    ? "bg-blue-100 text-blue-700 shadow-sm"
+                    : "text-neutral-400 hover:text-neutral-600"
+                }`}
+              >
+                Mec.
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setNewLaborService({
+                    ...newLaborService,
+                    categoria: "ELETRICA",
+                  })
+                }
+                className={`flex-1 rounded-lg text-[9px] font-bold uppercase transition-all ${
+                  newLaborService.categoria === "ELETRICA"
+                    ? "bg-yellow-100 text-yellow-700 shadow-sm"
+                    : "text-neutral-400 hover:text-neutral-600"
+                }`}
+              >
+                Elét.
+              </button>
+            </div>
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1 block">
@@ -254,7 +336,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
               className="w-full p-3 rounded-xl border border-primary-200 outline-none focus:border-primary-500 font-bold text-sm bg-neutral-25"
             />
           </div>
-          <div className="col-span-12 md:col-span-2 flex gap-1 h-[46px] items-end">
+          <div className="col-span-12 md:col-span-1 flex gap-1 h-[46px] items-end">
             <Button
               type="button"
               onClick={handleAddLabor}
@@ -278,11 +360,12 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                     id_funcionario: "",
                     valor: "",
                     descricao: "",
+                    categoria: "MECANICA",
                   });
                   setEditingLaborId(null);
                 }}
                 variant="secondary"
-                className="h-[46px] w-[46px] flex items-center justify-center px-0 min-w-[46px]"
+                className="h-[46px] w-[46px] flex items-center justify-center px-0 min-w-[46px] absolute -right-12"
               >
                 <X size={20} />
               </Button>
@@ -303,6 +386,9 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
               <tr>
                 <th className="p-3 font-bold text-neutral-400 uppercase text-[9px] tracking-widest">
                   Profissional
+                </th>
+                <th className="p-3 font-bold text-neutral-400 uppercase text-[9px] tracking-widest text-center">
+                  Tipo
                 </th>
                 <th className="p-3 font-bold text-neutral-400 uppercase text-[9px] tracking-widest">
                   Descrição
@@ -327,6 +413,17 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                           String(svc.id_funcionario),
                       )?.pessoa_fisica?.pessoa?.nome ||
                       "Mecânico"}
+                  </td>
+                  <td className="p-3 text-center">
+                    {svc.categoria === "ELETRICA" ? (
+                      <span className="text-[8px] font-bold bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded uppercase">
+                        Elétrica
+                      </span>
+                    ) : (
+                      <span className="text-[8px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase">
+                        Mecânica
+                      </span>
+                    )}
                   </td>
                   <td className="p-3 text-neutral-600">
                     {svc.descricao || "-"}

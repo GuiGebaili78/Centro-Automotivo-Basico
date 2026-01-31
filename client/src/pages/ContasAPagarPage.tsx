@@ -40,18 +40,19 @@ export const ContasAPagarPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<
     "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
-  >("WEEK");
+  >("MONTH");
 
-  // Date Filters - Default to Current Week
+  // Date Filters - Default to Current Month
   const [filterStart, setFilterStart] = useState(() => {
     const now = new Date();
-    const weekAgo = new Date(now);
-    weekAgo.setDate(now.getDate() - 7);
-    return weekAgo.toLocaleDateString("en-CA");
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    return firstDay.toLocaleDateString("en-CA");
   });
 
   const [filterEnd, setFilterEnd] = useState(() => {
-    return new Date().toLocaleDateString("en-CA");
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return lastDay.toLocaleDateString("en-CA");
   });
 
   // Modal & Form
@@ -441,7 +442,7 @@ export const ContasAPagarPage = () => {
               let activeClass = "bg-primary-200 text-primary-600 shadow-sm"; // Default/Todos (Blue like Date Filters)
               if (filterStatus === s) {
                 if (s === "PENDENTE")
-                  activeClass = "bg-red-100 text-red-600 shadow-sm";
+                  activeClass = "bg-orange-100 text-orange-600 shadow-sm";
                 if (s === "PAGO")
                   activeClass = "bg-success-100 text-success-600 shadow-sm";
               }
@@ -587,8 +588,8 @@ export const ContasAPagarPage = () => {
                           : // Check overdue
                             new Date(conta.dt_vencimento) < new Date() &&
                               conta.status !== "PAGO"
-                            ? "bg-red-100 text-red-600"
-                            : "bg-warning-100 text-warning-700"
+                            ? "bg-red-600 text-red-100"
+                            : "bg-orange-100 text-orange-700"
                       }`}
                     >
                       {conta.status === "PAGO"

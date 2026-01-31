@@ -316,6 +316,7 @@ model ServicoMaoDeObra {
   id_funcionario         Int
   valor                  Decimal          @db.Decimal(10, 2)
   descricao              String?          @db.VarChar(255)
+  categoria              String           @default("MECANICA") @db.VarChar(50) // 'MECANICA' or 'ELETRICA'
   dt_cadastro            DateTime         @default(now()) @db.Timestamp(6)
   deleted_at             DateTime?        @db.Timestamp(6)
   id_pagamento_equipe    Int?
