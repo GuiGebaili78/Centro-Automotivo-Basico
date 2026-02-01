@@ -3,7 +3,6 @@ import { api } from "../services/api";
 import type { IFornecedor } from "../types/backend";
 import { FornecedorForm } from "../components/forms/FornecedorForm";
 import { Button } from "../components/ui/Button";
-import { StatusBanner } from "../components/ui/StatusBanner";
 import {
   Plus,
   Search,
@@ -16,16 +15,18 @@ import {
 } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { ActionButton } from "../components/ui/ActionButton";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { showMessage } from "../adapters/showMessage";
 
 export const FornecedorPage = () => {
   const [view, setView] = useState<"list" | "form">("list");
   const [fornecedores, setFornecedores] = useState<IFornecedor[]>([]);
   const [editData, setEditData] = useState<IFornecedor | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean;
+    id: number | null;
+  }>({ open: false, id: null });
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,22 +44,23 @@ export const FornecedorPage = () => {
       const response = await api.get("/fornecedor");
       setFornecedores(response.data);
     } catch (error) {
-      setStatusMsg({
-        type: "error",
-        text: "Erro ao carregar lista de fornecedores.",
-      });
+      showMessage.error("Erro ao carregar lista de fornecedores.");
     }
   };
 
-  const handleDeleteFornecedor = async (id: number) => {
-    if (!confirm("Deseja realmente remover este fornecedor?")) return;
+  const handleRequestDelete = (id: number) => {
+    setDeleteModal({ open: true, id });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
     try {
-      await api.delete(`/fornecedor/${id}`);
-      setStatusMsg({ type: "success", text: "Fornecedor removido." });
+      await api.delete(`/fornecedor/${deleteModal.id}`);
+      showMessage.success("Fornecedor removido com sucesso!");
       loadFornecedores();
-      setTimeout(() => setStatusMsg({ type: null, text: "" }), 3000);
+      setDeleteModal({ open: false, id: null });
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao deletar fornecedor." });
+      showMessage.error("Erro ao deletar fornecedor.");
     }
   };
 
@@ -73,13 +75,11 @@ export const FornecedorPage = () => {
   };
 
   const handleFormSuccess = () => {
-    setStatusMsg({
-      type: "success",
-      text: editData ? "Fornecedor atualizado!" : "Fornecedor cadastrado!",
-    });
+    showMessage.success(
+      editData ? "Fornecedor atualizado!" : "Fornecedor cadastrado!",
+    );
     setView("list");
     setEditData(null);
-    setTimeout(() => setStatusMsg({ type: null, text: "" }), 3000);
   };
 
   const filteredFornecedores = fornecedores.filter((f) => {
@@ -95,10 +95,6 @@ export const FornecedorPage = () => {
   if (view === "form") {
     return (
       <div className="space-y-6">
-        <StatusBanner
-          msg={statusMsg}
-          onClose={() => setStatusMsg({ type: null, text: "" })}
-        />
         <FornecedorForm
           initialData={editData}
           onSuccess={handleFormSuccess}
@@ -113,11 +109,6 @@ export const FornecedorPage = () => {
 
   return (
     <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6">
-      <StatusBanner
-        msg={statusMsg}
-        onClose={() => setStatusMsg({ type: null, text: "" })}
-      />
-
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-neutral-500">
@@ -230,9 +221,7 @@ export const FornecedorPage = () => {
                             icon={Trash2}
                             label="Excluir"
                             variant="danger"
-                            onClick={() =>
-                              handleDeleteFornecedor(f.id_fornecedor)
-                            }
+                            onClick={() => handleRequestDelete(f.id_fornecedor)}
                           />
                         </div>
                       </td>
@@ -244,6 +233,15 @@ export const FornecedorPage = () => {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, id: null })}
+        onConfirm={confirmDelete}
+        title="Excluir Fornecedor"
+        description="Tem certeza que deseja excluir este fornecedor? Esta ação não pode ser desfeita."
+        variant="danger"
+      />
     </div>
   );
 };
