@@ -5,10 +5,14 @@ import type { IVeiculo } from "../types/backend";
 import { ClienteForm } from "../components/forms/ClienteForm";
 import { VeiculoForm } from "../components/forms/VeiculoForm";
 import { Modal } from "../components/ui/Modal";
-import { Plus, Search, Trash2, Edit, Car, Wrench } from "lucide-react";
-import { StatusBanner } from "../components/ui/StatusBanner";
+import { Plus, Search, Trash2, Edit, Car, Wrench, Phone } from "lucide-react";
 import { ActionButton } from "../components/ui/ActionButton";
-import { Input } from "../components/ui/Input";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/Button";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { toast } from "react-toastify";
 
 export const VeiculoPage = () => {
   const navigate = useNavigate();
@@ -20,16 +24,10 @@ export const VeiculoPage = () => {
     undefined,
   );
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
+
+  // Confirmation Modal State
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
   const [activeIndex, setActiveIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,43 +73,40 @@ export const VeiculoPage = () => {
       setVeiculos(response.data);
     } catch (error) {
       console.error(error);
-      // alert('Erro ao carregar veículos'); // Suppress initial load error alert to avoid noise if empty
+      toast.error("Erro ao carregar veículos.");
     }
   };
 
-  const handleDelete = (id: number) => {
-    setConfirmModal({
-      isOpen: true,
-      title: "Excluir Veículo",
-      message: "Tem certeza que deseja excluir este veículo?",
-      onConfirm: async () => {
-        try {
-          await api.delete(`/veiculo/${id}`);
-          setStatusMsg({
-            type: "success",
-            text: "Veículo removido com sucesso!",
-          });
-          setTimeout(() => setStatusMsg({ type: null, text: "" }), 3000);
-          loadVeiculos();
-        } catch (error) {
-          setStatusMsg({
-            type: "error",
-            text: "Erro ao deletar veículo. Verifique se há O.S. vinculadas.",
-          });
-        }
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-      },
-    });
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return;
+
+    try {
+      await api.delete(`/veiculo/${confirmDeleteId}`);
+      toast.success("Veículo removido com sucesso!");
+      loadVeiculos();
+    } catch (error) {
+      toast.error("Erro ao deletar veículo. Verifique se há O.S. vinculadas.");
+    } finally {
+      setConfirmDeleteId(null);
+    }
   };
 
   const openCreateModal = () => {
+    // navigate("/novo-cadastro"); // Original logic used navigate, let's keep it or use modal?
+    // User code had: navigate("/novo-cadastro");
+    // But this page has a Modal logic too?
+    // Ah, line 108: navigate("/novo-cadastro").
+    // Wait, the "Novo Veículo" button calls openCreateModal which does navigate.
+    // BUT the page ALSO has <Modal> with <VeiculoForm>.
+    // It seems the Modal logic is used for EDITING (openEditModal).
+    // Let's stick to existing logic: Create -> Navigate. Edit -> Modal.
     navigate("/novo-cadastro");
   };
 
   const openEditModal = (vehicle: IVeiculo) => {
     setModalMode("vehicle");
     setEditingVehicle(vehicle);
-    setSelectedClientId(null); // Not needed for edit usually, or implicitly part of vehicle
+    setSelectedClientId(null);
     setShowModal(true);
   };
 
@@ -123,201 +118,176 @@ export const VeiculoPage = () => {
   );
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6">
-      {/* Header da Página */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-500">
-            Gerenciar Veículos
-          </h1>
-          <p className="text-neutral-500">
-            Cadastro e manutenção da frota de veículos.
-          </p>
-        </div>
-        <button
-          onClick={openCreateModal}
-          className="flex items-center gap-2 bg-primary-900 hover:bg-primary-800 hover:scale-105 transition-all shadow-xl shadow-primary-500/20 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm"
-        >
-          <Plus size={20} />
+    <PageLayout
+      title="Gerenciar Veículos"
+      actions={
+        <Button onClick={openCreateModal} variant="primary" icon={Plus}>
           Novo Veículo
-        </button>
-      </div>
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {/* Barra de Filtros */}
+        <Card className="bg-surface border-neutral-200">
+          <Input
+            variant="default"
+            ref={searchInputRef}
+            icon={Search}
+            placeholder="Buscar por fabricante, modelo ou placa"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+        </Card>
 
-      {/* Barra de Filtros */}
-      <div className="bg-surface p-4 rounded-xl shadow-sm border border-neutral-200 flex gap-4">
-        <Input
-          variant="default"
-          ref={searchInputRef}
-          icon={Search}
-          placeholder="Buscar por fabricante, modelo ou placa"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-      </div>
-
-      {/* Tabela */}
-      <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div>
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
-                <th className="p-4">Veículo</th>
-                <th className="p-4">Placa</th>
-                <th className="p-4">Cliente</th>
-                <th className="p-4">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {filteredVeiculos.map((v, idx) => (
-                <tr
-                  key={v.id_veiculo}
-                  className={`transition-colors hover:bg-neutral-25 ${
-                    idx === activeIndex
-                      ? "bg-primary-50 ring-2 ring-primary-500 ring-inset"
-                      : ""
-                  }`}
-                >
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary-50 p-2 rounded-lg text-primary-600">
-                        <Car size={18} />
-                      </div>
-                      <div className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
-                        {v.marca} {v.modelo} - {v.cor}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4 font-mono font-bold text-primary-500">
-                    {v.placa}{" "}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-neutral-500">
-                        {(v.cliente as any)?.pessoa_fisica?.pessoa?.nome ||
-                          (v.cliente as any)?.pessoa_juridica?.nome_fantasia ||
-                          "Cliente não identificado"}
-                      </span>
-                      <span className="text-xs text-neutral-500">
-                        {(v.cliente as any)?.pessoa_fisica?.pessoa?.telefone ||
-                          (v.cliente as any)?.pessoa_juridica?.pessoa
-                            ?.telefone ||
-                          ""}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex gap-1 justify-end">
-                      <ActionButton
-                        icon={Edit}
-                        label="Editar"
-                        variant="neutral"
-                        onClick={() => openEditModal(v)}
-                      />
-                      <ActionButton
-                        icon={Wrench}
-                        label="Abrir OS"
-                        variant="accent"
-                        onClick={() =>
-                          navigate(
-                            `/ordem-de-servico?clientId=${v.id_cliente}&vehicleId=${v.id_veiculo}`,
-                          )
-                        }
-                      />
-                      <ActionButton
-                        icon={Trash2}
-                        label="Excluir"
-                        variant="danger"
-                        onClick={() => handleDelete(v.id_veiculo)}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredVeiculos.length === 0 && (
+        {/* Tabela */}
+        <Card className="border-neutral-200 overflow-hidden !p-0">
+          <div className="overflow-x-auto">
+            <table className="tabela-limpa">
+              <thead>
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-neutral-400">
-                    Nenhum veículo encontrado.
-                  </td>
+                  <th className="w-[20%]">Veículo</th>
+                  <th className="w-[15%]">Cor</th>
+                  <th className="w-[15%]">Placa</th>
+                  <th className="w-[20%]">Cliente</th>
+                  <th className="w-[20%]">Contato</th>
+                  <th className="w-[10%] text-center">Ações</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {showModal && (
-        <Modal
-          title={
-            modalMode === "client"
-              ? "Novo Cliente"
-              : editingVehicle
-                ? "Editar Veículo"
-                : "Novo Veículo"
-          }
-          onClose={() => setShowModal(false)}
-        >
-          {modalMode === "vehicle" ? (
-            <VeiculoForm
-              clientId={selectedClientId}
-              vehicleId={editingVehicle?.id_veiculo}
-              initialData={editingVehicle}
-              onSuccess={() => {
-                setShowModal(false);
-                loadVeiculos();
-              }}
-              onCancel={() => setShowModal(false)}
-              onCreateClient={() => setModalMode("client")}
-            />
-          ) : (
-            <ClienteForm
-              onSuccess={(newClient) => {
-                setSelectedClientId(newClient.id_cliente);
-                setModalMode("vehicle");
-              }}
-              onCancel={() => setModalMode("vehicle")}
-            />
-          )}
-        </Modal>
-      )}
-
-      {/* Confirmation Modal */}
-      {confirmModal.isOpen && (
-        <Modal
-          title={confirmModal.title}
-          onClose={() =>
-            setConfirmModal((prev) => ({ ...prev, isOpen: false }))
-          }
-        >
-          <div className="space-y-6">
-            <p className="text-neutral-600 font-medium">
-              {confirmModal.message}
-            </p>
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() =>
-                  setConfirmModal((prev) => ({ ...prev, isOpen: false }))
-                }
-                className="px-5 py-2.5 text-neutral-600 font-bold hover:bg-neutral-100 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmModal.onConfirm}
-                className="px-5 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
-              >
-                Confirmar
-              </button>
-            </div>
+              </thead>
+              <tbody>
+                {filteredVeiculos.map((v, idx) => (
+                  <tr
+                    key={v.id_veiculo}
+                    className={`transition-colors hover:bg-neutral-25 group ${
+                      idx === activeIndex ? "bg-primary-50" : ""
+                    }`}
+                  >
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary-50 p-2 rounded-lg text-primary-600">
+                          <Car size={18} />
+                        </div>
+                        <div className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
+                          {v.marca} {v.modelo}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="text-sm text-neutral-600 font-medium uppercase">
+                      {v.cor}
+                    </td>
+                    <td className="font-mono font-bold text-primary-500 text-sm">
+                      {v.placa}
+                    </td>
+                    <td>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-neutral-500 text-sm">
+                          {(v.cliente as any)?.pessoa_fisica?.pessoa?.nome ||
+                            (v.cliente as any)?.pessoa_juridica
+                              ?.nome_fantasia ||
+                            "Cliente não identificado"}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex flex-col gap-1">
+                        <span className="flex items-center gap-2 text-sm text-neutral-700 font-medium">
+                          <Phone size={14} className="text-neutral-400" />
+                          {(v.cliente as any)?.telefone_1 || "-"}
+                        </span>
+                        {(v.cliente as any)?.email && (
+                          <span className="text-xs text-neutral-500 pl-6">
+                            {(v.cliente as any)?.email}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ActionButton
+                          icon={Edit}
+                          label="Editar"
+                          variant="neutral"
+                          onClick={() => openEditModal(v)}
+                        />
+                        <ActionButton
+                          icon={Wrench}
+                          label="Abrir OS"
+                          variant="accent"
+                          onClick={() =>
+                            navigate(
+                              `/ordem-de-servico?clientId=${v.id_cliente}&vehicleId=${v.id_veiculo}`,
+                            )
+                          }
+                        />
+                        <ActionButton
+                          icon={Trash2}
+                          label="Excluir"
+                          variant="danger"
+                          onClick={() => setConfirmDeleteId(v.id_veiculo)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredVeiculos.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="p-8 text-center text-neutral-400"
+                    >
+                      Nenhum veículo encontrado.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        </Modal>
-      )}
-      <div className="fixed bottom-8 right-8 z-100 min-w-[320px]">
-        <StatusBanner
-          msg={statusMsg}
-          onClose={() => setStatusMsg({ type: null, text: "" })}
+        </Card>
+
+        {showModal && (
+          <Modal
+            title={
+              modalMode === "client"
+                ? "Novo Cliente"
+                : editingVehicle
+                  ? "Editar Veículo"
+                  : "Novo Veículo"
+            }
+            onClose={() => setShowModal(false)}
+          >
+            {modalMode === "vehicle" ? (
+              <VeiculoForm
+                clientId={selectedClientId}
+                vehicleId={editingVehicle?.id_veiculo}
+                initialData={editingVehicle}
+                onSuccess={() => {
+                  setShowModal(false);
+                  loadVeiculos();
+                }}
+                onCancel={() => setShowModal(false)}
+                onCreateClient={() => setModalMode("client")}
+              />
+            ) : (
+              <ClienteForm
+                onSuccess={(newClient) => {
+                  setSelectedClientId(newClient.id_cliente);
+                  setModalMode("vehicle");
+                }}
+                onCancel={() => setModalMode("vehicle")}
+              />
+            )}
+          </Modal>
+        )}
+
+        <ConfirmModal
+          isOpen={!!confirmDeleteId}
+          onClose={() => setConfirmDeleteId(null)}
+          onConfirm={handleDelete}
+          title="Excluir Veículo"
+          description="Tem certeza que deseja excluir este veículo? Esta ação não pode ser desfeita."
+          variant="danger"
         />
       </div>
-    </div>
+    </PageLayout>
   );
 };
