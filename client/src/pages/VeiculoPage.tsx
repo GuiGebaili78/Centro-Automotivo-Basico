@@ -150,7 +150,7 @@ export const VeiculoPage = () => {
     >
       <div className="space-y-6">
         {/* Barra de Filtros */}
-        <Card className="bg-surface border-neutral-200">
+        <div className="mb-0">
           <Input
             variant="default"
             ref={searchInputRef}
@@ -160,7 +160,7 @@ export const VeiculoPage = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
           />
-        </Card>
+        </div>
 
         {/* Tabela */}
         <Card className="border-neutral-200 overflow-hidden !p-0">
