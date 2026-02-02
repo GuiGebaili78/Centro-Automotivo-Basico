@@ -87,10 +87,22 @@ export const ClientePage = () => {
 
   const filteredClientes = clientes.filter((c) => {
     const s = searchTerm.toLowerCase();
+    const nome = getNome(c).toLowerCase();
+    const email = (c.email || "").toLowerCase();
+    const cidade = (c.cidade || "").toLowerCase();
+    const estado = (c.estado || "").toLowerCase();
+    const telefone1 = (c.telefone_1 || "").toLowerCase();
+    const telefone2 = (c.telefone_2 || "").toLowerCase();
+    const tipo = c.id_pessoa_juridica ? "juridica jurídica" : "fisica física";
+
     return (
-      getNome(c).toLowerCase().includes(s) ||
-      (c.email || "").toLowerCase().includes(s) ||
-      (c.cidade || "").toLowerCase().includes(s)
+      nome.includes(s) ||
+      email.includes(s) ||
+      cidade.includes(s) ||
+      estado.includes(s) ||
+      telefone1.includes(s) ||
+      telefone2.includes(s) ||
+      tipo.includes(s)
     );
   });
 
@@ -146,7 +158,7 @@ export const ClientePage = () => {
                 <th>Contato</th>
                 <th>Localização</th>
                 <th>Tipo</th>
-                <th className="text-right">Ações</th>
+                <th className="text-center">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -223,10 +235,10 @@ export const ClientePage = () => {
                         </Badge>
                       </td>
                       <td
-                        className="text-right py-4 pr-6"
+                        className="py-4 pr-6"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <ActionButton
                             icon={Plus}
                             variant="primary"

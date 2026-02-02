@@ -635,7 +635,16 @@ export const CadastroUnificadoPage = () => {
         </div>
 
         {/* Footer Save Button */}
-        <div className="col-span-1 lg:col-span-2 flex justify-end pt-4 border-t border-neutral-200">
+        <div className="col-span-1 lg:col-span-2 flex justify-end gap-4 pt-4 border-t border-neutral-200">
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            onClick={() => navigate(-1)}
+            className="px-8 text-neutral-500 hover:text-neutral-700 font-bold"
+          >
+            CANCELAR
+          </Button>
           <Button
             type="submit"
             variant="primary"

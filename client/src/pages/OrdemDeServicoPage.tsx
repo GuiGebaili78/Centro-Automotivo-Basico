@@ -127,6 +127,16 @@ export const OrdemDeServicoPage = () => {
 
   // --- HANDLERS ---
 
+  /* Updated Logic */
+  const handleCancelWizard = () => {
+    setNewOsWizardStep("NONE");
+    // Check params directly to safely navigate back if opened via deep link
+    const params = new URLSearchParams(location.search);
+    if (params.get("clientId") && params.get("vehicleId")) {
+      navigate(-1);
+    }
+  };
+
   const handleOpenFromId = (id: number) => {
     navigate(`/ordem-de-servico/${id}`);
   };
@@ -433,7 +443,7 @@ export const OrdemDeServicoPage = () => {
               Passo 3: Confirmar Abertura
             </span>
           }
-          onClose={() => setNewOsWizardStep("NONE")}
+          onClose={handleCancelWizard}
           className="max-w-xl"
         >
           <div className="space-y-6">
@@ -491,7 +501,7 @@ export const OrdemDeServicoPage = () => {
               <div className="pt-2 flex gap-3">
                 <Button
                   type="button"
-                  onClick={() => setNewOsWizardStep("NONE")}
+                  onClick={handleCancelWizard}
                   variant="ghost"
                   className="flex-1"
                   size="lg"

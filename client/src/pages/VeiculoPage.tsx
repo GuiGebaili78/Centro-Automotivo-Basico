@@ -110,12 +110,34 @@ export const VeiculoPage = () => {
     setShowModal(true);
   };
 
-  const filteredVeiculos = veiculos.filter(
-    (v) =>
-      v.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.marca.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredVeiculos = veiculos.filter((v) => {
+    const s = searchTerm.toLowerCase();
+    const placa = v.placa.toLowerCase();
+    const modelo = v.modelo.toLowerCase();
+    const marca = v.marca.toLowerCase();
+    const cor = v.cor.toLowerCase();
+
+    // Client data access
+    const clientName = (
+      (v.cliente as any)?.pessoa_fisica?.pessoa?.nome ||
+      (v.cliente as any)?.pessoa_juridica?.nome_fantasia ||
+      ""
+    ).toLowerCase();
+    const clientPhone1 = ((v.cliente as any)?.telefone_1 || "").toLowerCase();
+    const clientPhone2 = ((v.cliente as any)?.telefone_2 || "").toLowerCase();
+    const clientEmail = ((v.cliente as any)?.email || "").toLowerCase();
+
+    return (
+      placa.includes(s) ||
+      modelo.includes(s) ||
+      marca.includes(s) ||
+      cor.includes(s) ||
+      clientName.includes(s) ||
+      clientPhone1.includes(s) ||
+      clientPhone2.includes(s) ||
+      clientEmail.includes(s)
+    );
+  });
 
   return (
     <PageLayout
