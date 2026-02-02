@@ -2,7 +2,14 @@ import React from "react";
 import { type LucideIcon } from "lucide-react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "ghost" | "success" | "dark";
+  variant?:
+    | "primary"
+    | "secondary"
+    | "danger"
+    | "ghost"
+    | "success"
+    | "dark"
+    | "outline";
   size?: "sm" | "md" | "lg" | "blocks";
   icon?: LucideIcon;
   isLoading?: boolean;
@@ -18,28 +25,30 @@ export const Button = ({
   className = "",
   ...props
 }: ButtonProps) => {
+  // Ajuste de centralização: 'items-center' + 'justify-center' + 'leading-none'
   const baseStyles =
-    "font-black uppercase tracking-wide rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center font-bold uppercase tracking-tight rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 leading-none";
 
   const variants = {
     primary:
-      "bg-primary-900 hover:bg-primary-800 hover:scale-105 transition-all shadow-xl shadow-primary-500/20 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm",
+      "bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-600/20",
     secondary:
-      "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:scale-105 transition-all ",
+      "bg-secondary-500 text-white hover:bg-secondary-600 shadow-lg shadow-secondary-500/20",
     danger:
-      "bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 hover:scale-105 transition-all",
-    ghost:
-      "bg-transparent text-gray-500 hover:text-gray-900 border border-transparent hover:border-gray-200 hover:scale-105 transition-all",
+      "bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/20",
+    outline:
+      "border-2 border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300",
+    ghost: "bg-transparent text-slate-500 hover:bg-slate-100",
     success:
-      "bg-green-600 text-white hover:bg-green-700 hover:scale-105 transition-all shadow-lg shadow-green-200",
-    dark: "bg-gray-900 text-white hover:bg-gray-800 hover:scale-105 transition-all shadow-lg shadow-gray-200",
+      "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20",
+    dark: "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/20",
   };
 
   const sizes = {
-    sm: "px-3 py-1.5 text-[10px]",
-    md: "px-5 py-2.5 text-xs",
-    lg: "px-8 py-4 text-sm",
-    blocks: "w-full py-4 text-sm",
+    sm: "h-8 px-3 text-[10px] gap-1.5", // Altura fixa 'h-8' ajuda na centralização
+    md: "h-11 px-5 text-[12px] gap-2", // Altura fixa 'h-11'
+    lg: "h-14 px-8 text-[14px] gap-2.5", // Altura fixa 'h-14'
+    blocks: "w-full h-14 text-[14px] gap-2.5",
   };
 
   return (
@@ -49,15 +58,23 @@ export const Button = ({
       {...props}
     >
       {isLoading ? (
-        <>
+        <div className="flex items-center justify-center gap-2">
           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          Processing...
-        </>
+          <span className="mt-0.5">Processando...</span>
+        </div>
       ) : (
-        <>
-          {Icon && <Icon size={size === "sm" ? 14 : size === "lg" ? 20 : 18} />}
-          {children}
-        </>
+        <div className="flex items-center justify-center gap-2">
+          {Icon && (
+            <Icon
+              size={size === "sm" ? 14 : size === "lg" ? 20 : 18}
+              className="shrink-0"
+            />
+          )}
+          {/* Adicionei um pequeno ajuste fino de margem se necessário, mas o leading-none deve resolver */}
+          <span className="flex items-center justify-center pt-[1px]">
+            {children}
+          </span>
+        </div>
       )}
     </button>
   );

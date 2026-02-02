@@ -2,16 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import type { FormEvent } from "react";
 import { api } from "../../services/api";
 import { normalizePlate } from "../../utils/normalize";
-import {
-  Car,
-  Search,
-  User,
-  Check,
-  X,
-  CheckCircle,
-  AlertCircle,
-  Save,
-} from "lucide-react";
+import { toast } from "react-toastify";
+import { Car, Search, User, Check, X, Save } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/input";
 
@@ -48,10 +40,6 @@ export const VeiculoForm = ({
   onCreateClient,
 }: VeiculoFormProps) => {
   const [loading, setLoading] = useState(false);
-  const [formStatus, setFormStatus] = useState<{
-    type: "success" | "error" | null;
-    message: string;
-  }>({ type: null, message: "" });
 
   // Vehicle Search State
   // Removed vehicle automation states
@@ -163,16 +151,12 @@ export const VeiculoForm = ({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setFormStatus({ type: null, message: "" });
 
     const finalClientId = clientId || selectedOwner?.id;
 
     // For creation, clientId is required.
     if (!vehicleId && !finalClientId) {
-      setFormStatus({
-        type: "error",
-        message: "É necessário selecionar um proprietário.",
-      });
+      toast.error("É necessário selecionar um proprietário.");
       return;
     }
 
@@ -191,27 +175,17 @@ export const VeiculoForm = ({
 
       if (vehicleId) {
         const response = await api.put(`/veiculo/${vehicleId}`, payload);
-        setFormStatus({
-          type: "success",
-          message: "Veículo atualizado com sucesso!",
-        });
-        setTimeout(() => onSuccess(response.data), 1500);
+        onSuccess(response.data);
       } else {
         const response = await api.post("/veiculo", payload);
-        setFormStatus({
-          type: "success",
-          message: "Veículo cadastrado com sucesso!",
-        });
-        setTimeout(() => onSuccess(response.data), 1500);
+        onSuccess(response.data);
       }
     } catch (error: any) {
       console.error(error);
-      setFormStatus({
-        type: "error",
-        message:
-          "Erro ao salvar veículo: " +
+      toast.error(
+        "Erro ao salvar veículo: " +
           (error.response?.data?.error || error.message),
-      });
+      );
     } finally {
       setLoading(false);
     }
@@ -225,19 +199,6 @@ export const VeiculoForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 text-neutral-900">
-      {formStatus.type && (
-        <div
-          className={`p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 ${formStatus.type === "success" ? "bg-success-50 text-success-700 border border-success-100" : "bg-red-50 text-red-700 border border-red-100"}`}
-        >
-          {formStatus.type === "success" ? (
-            <CheckCircle size={20} />
-          ) : (
-            <AlertCircle size={20} />
-          )}
-          <p className="text-sm font-bold">{formStatus.message}</p>
-        </div>
-      )}
-
       {/* 1. Client Selection Section (Only for new vehicles where ID isn't pre-injected) */}
       {needsClientSelection && (
         <div className="space-y-3 p-4 bg-neutral-25 rounded-3xl border border-neutral-200">

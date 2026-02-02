@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../services/api";
 import { formatNameTitleCase, normalizePlate } from "../utils/normalize";
+import { toast } from "react-toastify";
 import {
   User,
   Car,
@@ -21,13 +22,13 @@ import {
   Palette,
 } from "lucide-react";
 
-import { StatusBanner } from "../components/ui/StatusBanner";
 import { Modal } from "../components/ui/Modal";
 import { ActionButton } from "../components/ui/ActionButton";
 import { VeiculoForm } from "../components/forms/VeiculoForm";
 import type { FormEvent } from "react";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/Button";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
 
 interface IVeiculo {
   id_veiculo: number;
@@ -45,10 +46,6 @@ export const CadastroUnificadoPage = () => {
   const isEditMode = !!clienteId;
 
   const [loading, setLoading] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
 
   // Vehicle Automation States
   // Removed vehicle automation states and logic
@@ -130,10 +127,7 @@ export const CadastroUnificadoPage = () => {
       }
     } catch (error) {
       console.error(error);
-      setStatusMsg({
-        type: "error",
-        text: "Erro ao carregar dados do cliente.",
-      });
+      toast.error("Erro ao carregar dados do cliente.");
     } finally {
       setLoading(false);
     }
@@ -183,12 +177,10 @@ export const CadastroUnificadoPage = () => {
           cidade,
           estado,
           cep,
+          tipo_pessoa: tipoPessoa === "PF" ? 1 : 2, // Garantir envio correto
         };
         await api.put(`/cliente/${finalClientId}`, clientePayload);
-        setStatusMsg({
-          type: "success",
-          text: "Dados atualizados com sucesso!",
-        });
+        toast.success("Dados atualizados com sucesso!");
       } else {
         // CREATE CLIENT
         const pessoaPayload = {
@@ -227,7 +219,7 @@ export const CadastroUnificadoPage = () => {
 
         const clientePayload = {
           [fkField]: fkId,
-          tipo_pessoa: 1,
+          tipo_pessoa: tipoPessoa === "PF" ? 1 : 2,
           telefone_1: telefone,
           telefone_2: telefone2,
           email,
@@ -262,10 +254,7 @@ export const CadastroUnificadoPage = () => {
 
       // 3. Redirect Logic
       if (!isEditMode && finalClientId) {
-        setStatusMsg({
-          type: "success",
-          text: "Cadastro realizado! Redirecionando...",
-        });
+        toast.success("Cadastro realizado! Redirecionando...");
         setTimeout(() => {
           let url = `/ordem-de-servico?clientId=${finalClientId}`;
           if (finalVehicleId) {
@@ -276,44 +265,36 @@ export const CadastroUnificadoPage = () => {
       }
     } catch (error: any) {
       console.error(error);
-      setStatusMsg({
-        type: "error",
-        text:
-          "Erro ao salvar cadastro: " +
+      toast.error(
+        "Erro ao salvar cadastro: " +
           (error.response?.data?.error || error.message),
-      });
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteVehicle = async (vId: number) => {
+  const handleDeleteVehicle = async () => {
+    if (!confirmDeleteVehicle) return;
     try {
-      await api.delete(`/veiculo/${vId}`);
-      setVeiculos((prev) => prev.filter((v) => v.id_veiculo !== vId));
+      await api.delete(`/veiculo/${confirmDeleteVehicle}`);
+      setVeiculos((prev) =>
+        prev.filter((v) => v.id_veiculo !== confirmDeleteVehicle),
+      );
       setConfirmDeleteVehicle(null);
-      setStatusMsg({ type: "success", text: "Veículo removido." });
+      toast.success("Veículo removido com sucesso!");
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||
         "Erro ao remover veículo.";
-      setStatusMsg({ type: "error", text: errorMessage });
+      toast.error(errorMessage);
       setConfirmDeleteVehicle(null);
     }
   };
 
   return (
     <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">
-      {statusMsg.text && (
-        <div className="fixed bottom-8 right-8 z-50">
-          <StatusBanner
-            msg={statusMsg}
-            onClose={() => setStatusMsg({ type: null, text: "" })}
-          />
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
@@ -361,7 +342,7 @@ export const CadastroUnificadoPage = () => {
                 type="button"
                 onClick={() => !isEditMode && setTipoPessoa("PJ")}
                 disabled={isEditMode}
-                className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${tipoPessoa === "PJ" ? "bg-neutral-25 shadow text-accent-600" : "text-neutral-500"} ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${tipoPessoa === "PJ" ? "bg-neutral-25 shadow text-primary-600" : "text-neutral-500"} ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 Pessoa Jurídica
               </button>
@@ -681,10 +662,7 @@ export const CadastroUnificadoPage = () => {
             onSuccess={() => {
               setShowVehicleModal(false);
               loadClienteData(); // Reload to update list
-              setStatusMsg({
-                type: "success",
-                text: "Veículo salvo com sucesso!",
-              });
+              toast.success("Veículo salvo com sucesso!");
             }}
             onCancel={() => setShowVehicleModal(false)}
           />
@@ -692,30 +670,14 @@ export const CadastroUnificadoPage = () => {
       )}
 
       {/* CONFIRM DELETE VEHICLE */}
-      {confirmDeleteVehicle && (
-        <Modal
-          title="Excluir Veículo"
-          onClose={() => setConfirmDeleteVehicle(null)}
-        >
-          <div className="space-y-4">
-            <p>Tem certeza que deseja excluir este veículo?</p>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="ghost"
-                onClick={() => setConfirmDeleteVehicle(null)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => handleDeleteVehicle(confirmDeleteVehicle)}
-              >
-                Excluir
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <ConfirmModal
+        isOpen={!!confirmDeleteVehicle}
+        onClose={() => setConfirmDeleteVehicle(null)}
+        onConfirm={handleDeleteVehicle}
+        title="Excluir Veículo"
+        description="Tem certeza que deseja excluir este veículo?"
+        variant="danger"
+      />
     </div>
   );
 };

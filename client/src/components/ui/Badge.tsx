@@ -7,7 +7,9 @@ export type BadgeVariant =
   | "success"
   | "danger"
   | "warning"
-  | "neutral";
+  | "warning"
+  | "neutral"
+  | "secondary";
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -39,6 +41,9 @@ export const Badge = ({
 
     // Cinza (Neutro)
     neutral: "bg-neutral-500/10 text-neutral-700 border-neutral-500/20",
+
+    // Laranja (Secondary)
+    secondary: "bg-secondary-500/10 text-secondary-700 border-secondary-500/20",
   };
 
   return (

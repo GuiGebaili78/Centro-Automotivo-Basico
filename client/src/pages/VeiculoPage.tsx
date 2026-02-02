@@ -8,7 +8,7 @@ import { Modal } from "../components/ui/Modal";
 import { Plus, Search, Trash2, Edit, Car, Wrench } from "lucide-react";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { ActionButton } from "../components/ui/ActionButton";
-import { Input } from "../components/ui/input";
+import { Input } from "../components/ui/Input";
 
 export const VeiculoPage = () => {
   const navigate = useNavigate();

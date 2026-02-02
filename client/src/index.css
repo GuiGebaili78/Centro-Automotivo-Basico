@@ -4,115 +4,121 @@
 
 @layer base {
   :root {
-    /* Tipografia */
-    --font-sans: "Roboto", "Inter", system-ui, -apple-system, sans-serif;
-    --font-mono: "JetBrains Mono", "Fira Code", monospace;
-
-    /* Escala Azul (Oficina/Principal) */
-    --color-primary-25: #eff6ff;
-    --color-primary-50: #eff6ff;
+    /* Variáveis de Cores (Sincronizadas com o tailwind.config.js) */
     --color-primary-100: #dbeafe;
-    --color-primary-200: #bfdbfe;
-    --color-primary-300: #93c5fd;
-    --color-primary-400: #60a5fa;
-    --color-primary-500: #3b82f6;
     --color-primary-600: #2563eb;
     --color-primary-700: #1d4ed8;
-    --color-primary-800: #1e40af;
-    --color-primary-900: #1e3a8a;
 
-    /* Escala Laranja (Oficina/Destaque) */
-    --color-secondary-25: #fffaf5;
-    --color-secondary-50: #fff7ed;
-    --color-secondary-100: #ffedd5;
-    --color-secondary-200: #fed7aa;
-    --color-secondary-300: #fdba74;
-    --color-secondary-400: #fb923c;
     --color-secondary-500: #f97316;
     --color-secondary-600: #ea580c;
-    --color-secondary-700: #c2410c;
-    --color-secondary-800: #9a3412;
-    --color-secondary-900: #7c2d12;
-
-    /* Neutros */
-    --color-neutral-25: #fcfcfd;
-    --color-neutral-50: #f9fafb;
-    --color-neutral-100: #f3f4f6;
-    --color-neutral-200: #e5e7eb;
-    --color-neutral-300: #d1d5db;
-    --color-neutral-400: #9ca3af;
-    --color-neutral-500: #6b7280;
-    --color-neutral-600: #4b5563;
-    --color-neutral-700: #374151;
-    --color-neutral-800: #1f2937;
-    --color-neutral-900: #0d121d;
-
-    /* Accent / Cyan */
-    --color-accent-25: #f0fdfa;
-    --color-accent-50: #ecfeff;
-    --color-accent-100: #cffafe;
-    --color-accent-200: #a5f3fc;
-    --color-accent-300: #67e8f9;
-    --color-accent-400: #22d3ee;
-    --color-accent-500: #06b6d4;
-    --color-accent-600: #0891b2;
-    --color-accent-700: #0e7490;
-    --color-accent-800: #155e75;
-    --color-accent-900: #164e63;
-
-    /* Semânticas */
-    --color-success: #059669;
-    --color-success-50: #ecfdf5;
-    --color-warning: #d97706;
-    --color-warning-50: #fffbeb;
-    --color-error: #dc2626;
-    --color-error-50: #fef2f2;
-    --color-info: #2563eb;
-
-    /* UI Tokens */
-    --color-background: var(--color-neutral-50);
-    --color-surface: #ffffff;
-    --color-border: var(--color-neutral-200);
-    --color-text-main: var(--color-neutral-900);
-    --color-text-muted: var(--color-neutral-500);
-    --color-sidebar: var(--color-neutral-900);
   }
 
   html {
-    font-family: var(--font-sans);
-    line-height: 1.5;
-    font-weight: 400;
-    color: #334155;
-    background-color: var(--color-background);
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    /* Base: 1rem = 16px */
+    font-size: 16px;
+    @apply antialiased text-slate-800 bg-slate-50; /* Fundo da página cinza claro */
+    font-family:
+      "Inter",
+      system-ui,
+      -apple-system,
+      sans-serif;
   }
 
-  body {
-    margin: 0;
-    display: flex;
-    min-width: 320px;
-    min-height: 100vh;
+  /* --- PADRONIZAÇÃO DE TIPOGRAFIA (Escala de Mercado) --- */
+
+  /* H1: Títulos Principais de Página */
+  h1 {
+    @apply text-[1.5rem] font-black text-slate-900 tracking-tight leading-none mb-6;
+  }
+
+  /* H2: Títulos de Seções ou Cards */
+  h2 {
+    @apply text-[1.125rem] font-bold text-slate-800 leading-none mb-4;
+  }
+
+  /* Texto Padrão (Leitura Geral, Inputs e Tabelas) - 14px */
+  p,
+  span,
+  div,
+  li,
+  td {
+    @apply text-[0.875rem] leading-relaxed;
+  }
+
+  /* Labels e Cabeçalhos - 12px */
+  label {
+    @apply text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block;
+  }
+
+  /* --- INPUTS GLOBAIS --- */
+  input,
+  select,
+  textarea {
+    @apply w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[0.875rem]
+           placeholder:text-slate-400 transition-all outline-none
+           focus:ring-4 focus:ring-primary-100 focus:border-primary-600;
   }
 }
 
-/* Scrollbar moderna */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+@layer components {
+  /* --- CLASSE PARA TABELAS (LISTAS) --- */
+  .tabela-limpa {
+    @apply w-full border-separate border-spacing-0;
+  }
+
+  .tabela-limpa th {
+    @apply bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold p-4 
+           border-b border-slate-100 text-left leading-none;
+  }
+
+  .tabela-limpa td {
+    @apply p-4 text-[0.875rem] text-slate-600 border-b border-slate-50 transition-colors align-middle;
+  }
+
+  /* Remove borda da última linha para não conflitar com o arredondamento do Card */
+  .tabela-limpa tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .tabela-limpa tr:hover td {
+    @apply bg-slate-50/50;
+  }
+
+  /* --- CUSTOMIZAÇÃO TOASTIFY (Notificações) --- */
+  .Toastify__toast {
+    @apply rounded-2xl shadow-premium border border-slate-100 !important;
+  }
+
+  .Toastify__toast-body {
+    @apply text-sm font-bold text-slate-700 !important;
+  }
+
+  /* --- SCROLLBARS --- */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+/* Animação suave para troca de páginas */
+.animate-in {
+  animation: fadeIn 0.4s ease-out forwards;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

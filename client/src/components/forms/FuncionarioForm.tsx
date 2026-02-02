@@ -14,7 +14,7 @@ import {
 import type { IFuncionario } from "../../types/backend";
 
 import { Button } from "../ui/Button";
-import { Input } from "../ui/input";
+import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
 
 interface FuncionarioFormProps {

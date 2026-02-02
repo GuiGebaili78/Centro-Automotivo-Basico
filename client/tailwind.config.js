@@ -5,117 +5,76 @@ export default {
     content: [
         "./index.html",
         "./src/**/*.{js,ts,jsx,tsx}",
-        // ESSENCIAL: Permite que o Tailwind estilize os componentes do Tremor
-        "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
+        "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}", // Necessário para os relatórios Tremor
     ],
     theme: {
         transparent: "transparent",
-        current: "currentColor",
+        current: "current",
         extend: {
             colors: {
-                // --- RECUPERANDO O VISUAL ANTIGO DO SEU PROJETO ---
-                // Aqui mapeamos suas variáveis do index.css para o Tailwind v3
+                // Definindo as cores que usamos no index.css
                 primary: {
-                    25: "var(--color-primary-25)",
-                    50: "var(--color-primary-50)",
-                    100: "var(--color-primary-100)",
-                    200: "var(--color-primary-200)",
-                    300: "var(--color-primary-300)",
-                    400: "var(--color-primary-400)",
-                    500: "var(--color-primary-500)",
-                    600: "var(--color-primary-600)",
-                    700: "var(--color-primary-700)",
-                    800: "var(--color-primary-800)",
-                    900: "var(--color-primary-900)",
+                    100: "#dbeafe", // Azul clarinho (para anéis de foco e backgrounds)
+                    600: "#2563eb", // Azul principal
+                    700: "#1d4ed8", // Azul hover
                 },
                 secondary: {
-                    25: "var(--color-secondary-25)",
-                    50: "var(--color-secondary-50)",
-                    100: "var(--color-secondary-100)",
-                    200: "var(--color-secondary-200)",
-                    300: "var(--color-secondary-300)",
-                    400: "var(--color-secondary-400)",
-                    500: "var(--color-secondary-500)",
-                    600: "var(--color-secondary-600)",
-                    700: "var(--color-secondary-700)",
-                    800: "var(--color-secondary-800)",
-                    900: "var(--color-secondary-900)",
+                    500: "#f97316", // Laranja/Amber
+                    600: "#ea580c",
                 },
-                neutral: {
-                    50: "var(--color-neutral-50)",
-                    100: "var(--color-neutral-100)",
-                    200: "var(--color-neutral-200)",
-                    300: "var(--color-neutral-300)",
-                    400: "var(--color-neutral-400)",
-                    500: "var(--color-neutral-500)",
-                    600: "var(--color-neutral-600)",
-                    700: "var(--color-neutral-700)",
-                    800: "var(--color-neutral-800)",
-                    900: "var(--color-neutral-900)",
-                },
-                // Mapeamentos diretos
-                surface: "var(--color-surface)",
-                background: "var(--color-background)",
-                success: "var(--color-success)",
-                warning: "var(--color-warning)",
-                error: "var(--color-error)",
-                info: "var(--color-info)",
-
-                // --- CONFIGURAÇÃO DO TREMOR (VISUAL NOVO) ---
+                // Configuração específica para o Tremor herdar seu padrão
                 tremor: {
                     brand: {
-                        faint: colors.blue[50],
-                        muted: colors.blue[200],
-                        subtle: colors.blue[400],
-                        DEFAULT: colors.blue[500],
-                        emphasis: colors.blue[700],
-                        inverted: colors.white,
+                        faint: "#dbeafe",
+                        muted: "#bfdbfe",
+                        subtle: "#60a5fa",
+                        DEFAULT: "#2563eb",
+                        emphasis: "#1d4ed8",
+                        inverted: "#ffffff",
                     },
                     background: {
-                        muted: colors.gray[50],
-                        subtle: colors.gray[100],
-                        DEFAULT: colors.white,
-                        emphasis: colors.gray[700],
+                        muted: "#f9fafb",
+                        subtle: "#f3f4f6",
+                        DEFAULT: "#ffffff",
+                        emphasis: "#374151",
                     },
                     border: {
-                        DEFAULT: colors.gray[200],
+                        DEFAULT: "#e5e7eb",
                     },
                     ring: {
-                        DEFAULT: colors.gray[200],
+                        DEFAULT: "#e5e7eb",
                     },
                     content: {
-                        subtle: colors.gray[400],
-                        DEFAULT: colors.gray[500],
-                        emphasis: colors.gray[700],
-                        strong: colors.gray[900],
-                        inverted: colors.white,
+                        subtle: "#9ca3af",
+                        DEFAULT: "#6b7280",
+                        emphasis: "#374151",
+                        strong: "#111827",
+                        inverted: "#ffffff",
                     },
                 },
             },
-            // Configurações de UI do Tremor
             boxShadow: {
-                "tremor-input": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-                "tremor-card": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
-                "tremor-dropdown": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+                // Um sombreado mais suave e moderno para seus cards
+                'premium': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
             },
             borderRadius: {
-                "tremor-small": "0.375rem",
-                "tremor-default": "0.5rem",
-                "tremor-full": "9999px",
+                'tremor-small': '0.375rem',
+                'tremor-default': '0.5rem',
+                'tremor-full': '9999px',
             },
             fontSize: {
-                "tremor-label": ["0.875rem", { lineHeight: "1rem" }],
-                "tremor-default": ["1rem", { lineHeight: "1.5rem" }],
-                "tremor-title": ["1.25rem", { lineHeight: "1.75rem" }],
-                "tremor-metric": ["1.875rem", { lineHeight: "2.25rem" }],
+                'tremor-label': ['0.75rem', { lineHeight: '1rem' }],
+                'tremor-default': ['0.875rem', { lineHeight: '1.25rem' }],
+                'tremor-title': ['1.125rem', { lineHeight: '1.75rem' }],
+                'tremor-metric': ['1.875rem', { lineHeight: '2.25rem' }],
             },
         },
     },
+    // Esta parte é importante para o Tremor funcionar corretamente com as cores novas
     safelist: [
         {
-            pattern:
-                /^(bg|text|border|ring|stroke|fill)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300|400|500|600|700|800|900|950)$/,
-            variants: ["hover", "ui-selected"],
+            pattern: /^(bg|text|border|ring|stroke|fill)-(tremor|primary|secondary)/,
+            variants: ['hover', 'ui-selected'],
         },
     ],
     plugins: [],
