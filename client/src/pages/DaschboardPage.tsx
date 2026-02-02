@@ -260,7 +260,7 @@ export function DaschboardPage() {
     <div className="w-full mx-auto px-4 md:px-8 py-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-600 tracking-tight">
+          <h1 className="text-3xl font-bold text-neutral-600 tracking-tight">
             Visão Geral
           </h1>
           <p className="text-neutral-500">Acompanhamento diário da oficina.</p>
