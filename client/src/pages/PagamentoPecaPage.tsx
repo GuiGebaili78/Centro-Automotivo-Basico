@@ -4,7 +4,7 @@ import { api } from "../services/api";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
+import { Input } from "../components/ui/input";
 import {
   Search,
   Truck,

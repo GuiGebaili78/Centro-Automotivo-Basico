@@ -4,7 +4,7 @@ import { api } from "../services/api";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
-import { Input } from "../components/ui/Input";
+import { Input } from "../components/ui/input";
 import { FornecedorForm } from "../components/forms/FornecedorForm";
 import { Plus, Search, Trash2, Save, ShoppingCart, Edit } from "lucide-react";
 

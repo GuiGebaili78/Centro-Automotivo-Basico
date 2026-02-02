@@ -13,7 +13,7 @@ import {
   Phone,
   User,
 } from "lucide-react";
-import { Input } from "../components/ui/Input";
+import { Input } from "../components/ui/input";
 import { ActionButton } from "../components/ui/ActionButton";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { showMessage } from "../adapters/showMessage";

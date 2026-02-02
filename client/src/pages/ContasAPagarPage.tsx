@@ -5,7 +5,7 @@ import { StatusBanner } from "../components/ui/StatusBanner";
 import { Modal } from "../components/ui/Modal";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
+import { Input } from "../components/ui/input";
 import { CategoryManager } from "../components/financeiro/CategoryManager";
 import {
   Plus,

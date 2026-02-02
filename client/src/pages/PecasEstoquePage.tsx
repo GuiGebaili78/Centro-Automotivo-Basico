@@ -14,7 +14,7 @@ import {
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
+import { Input } from "../components/ui/input";
 
 export const PecasEstoquePage = () => {
   const navigate = useNavigate();

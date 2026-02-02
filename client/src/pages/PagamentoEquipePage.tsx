@@ -3,7 +3,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
+import { Input } from "../components/ui/input";
 import { DollarSign, User, Search, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 

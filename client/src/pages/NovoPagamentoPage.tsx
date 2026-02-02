@@ -13,7 +13,7 @@ import {
   Square,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Input } from "../components/ui/Input";
+import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/Button";
 
 export const NovoPagamentoPage = () => {
