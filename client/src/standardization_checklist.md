@@ -91,4 +91,4 @@ Este checklist define os padrões visuais e funcionais para páginas de "Gestão
 - **Modais**:
   - Usar componente `Modal` Compartilhado para edições/confirmações.
 
-  teste de
+  teste da vercel
