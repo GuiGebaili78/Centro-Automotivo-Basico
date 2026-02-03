@@ -12,13 +12,14 @@ import {
   Wallet,
   Edit,
   AlertTriangle,
+  FilterX,
 } from "lucide-react";
-import { StatusBanner } from "../ui/StatusBanner";
+import { ActionButton } from "../ui/ActionButton";
 import { CategoryManager } from "./CategoryManager";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
-import { ActionButton } from "../ui/ActionButton";
+import { toast } from "react-toastify";
 
 interface CashBookEntry {
   id: string; // 'man-1', 'in-5', 'out-10' (prefix to identify source)
@@ -48,10 +49,6 @@ interface Category {
 
 export const MovimentacoesTab = () => {
   const [cashBookEntries, setCashBookEntries] = useState<CashBookEntry[]>([]);
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
 
   // Filters
   const [cashSearch, setCashSearch] = useState("");
@@ -290,7 +287,7 @@ export const MovimentacoesTab = () => {
             category: "Receita de Serviços",
             vehicle: vehicleText,
             client: clientName,
-            obs: p.observacao || "",
+            obs: p.obs || p.observacao || p.livro_caixa?.obs || "",
             source: "AUTO",
             deleted_at: p.deleted_at,
             originalData: p,
@@ -306,10 +303,7 @@ export const MovimentacoesTab = () => {
       setCashBookEntries(combined);
     } catch (error) {
       console.error(error);
-      setStatusMsg({
-        type: "error",
-        text: "Erro ao carregar dados financeiros.",
-      });
+      toast.error("Erro ao carregar dados financeiros.");
     }
   };
 
@@ -335,6 +329,10 @@ export const MovimentacoesTab = () => {
         entry.obs,
         `#${entry.rawId}`,
         String(entry.value),
+        (Number(entry.value) || 0).toLocaleString("pt-BR", {
+          minimumFractionDigits: 2,
+        }),
+        new Date(entry.date).toLocaleDateString("pt-BR"),
         entry.conta_bancaria,
         entry.supplier,
         entry.paymentMethod,
@@ -428,24 +426,26 @@ export const MovimentacoesTab = () => {
         if (editingItem.id.startsWith("man-")) {
           await api.put(`/livro-caixa/${editingItem.rawId}`, formData);
         } else if (editingItem.id.startsWith("in-")) {
+          // Allow editing observation for Client Payments
           await api.put(`/pagamento-cliente/${editingItem.rawId}`, {
             valor: formData.valor,
+            observacao: formData.obs,
           });
         } else if (editingItem.id.startsWith("out-")) {
           await api.put(`/pagamento-peca/${editingItem.rawId}`, {
             custo_real: formData.valor,
           });
         }
-        setStatusMsg({ type: "success", text: "Lançamento atualizado!" });
+        toast.success("Lançamento atualizado!");
       } else {
         await api.post("/livro-caixa", { ...formData, origem: "MANUAL" });
-        setStatusMsg({ type: "success", text: "Lançamento criado!" });
+        toast.success("Lançamento criado!");
       }
       setIsModalOpen(false);
       loadData();
     } catch (err) {
       console.error(err);
-      setStatusMsg({ type: "error", text: "Erro ao salvar lançamento." });
+      toast.error("Erro ao salvar lançamento.");
     }
   };
 
@@ -462,32 +462,24 @@ export const MovimentacoesTab = () => {
         await api.delete(`/pagamento-peca/${itemToDelete.rawId}`);
       }
 
-      setStatusMsg({
-        type: "success",
-        text: "Lançamento deletado (estornado).",
-      });
+      toast.success("Lançamento deletado (estornado).");
       setIsDeleteModalOpen(false);
       loadData();
     } catch (err) {
       console.error(err);
-      setStatusMsg({ type: "error", text: "Erro ao deletar lançamento." });
+      toast.error("Erro ao deletar lançamento.");
     }
   };
 
   const getQuickFilterClass = (type: "TODAY" | "WEEK" | "MONTH") =>
     `flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
       activeQuickFilter === type
-        ? "bg-primary-200 text-primary-500 shadow-sm"
-        : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+        ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+        : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
     }`;
 
   return (
     <div className="p-6 space-y-6 animate-in fade-in duration-500 relative">
-      <StatusBanner
-        msg={statusMsg}
-        onClose={() => setStatusMsg({ type: null, text: "" })}
-      />
-
       <CategoryManager
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
@@ -575,7 +567,7 @@ export const MovimentacoesTab = () => {
                 <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
                   Período
                 </label>
-                <div className="flex bg-neutral-100 p-1 rounded-xl h-[42px] items-center w-full">
+                <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 h-[42px] items-center w-full">
                   <button
                     onClick={() => applyQuickFilter("TODAY")}
                     className={getQuickFilterClass("TODAY")}
@@ -643,14 +635,32 @@ export const MovimentacoesTab = () => {
               </div>
             </div>
 
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 flex gap-2">
+              <Button
+                variant="primary" // Changed to primary as requested
+                onClick={() => {
+                  setCashSearch("");
+                  setFilterSource("ALL");
+                  setFilterCategory("ALL");
+                  setActiveQuickFilter("TODAY");
+                  const now = new Date();
+                  setCashFilterStart(now.toLocaleDateString("en-CA"));
+                  setCashFilterEnd(now.toLocaleDateString("en-CA"));
+                }}
+                className="w-full h-[42px] shadow-lg shadow-primary-500/20"
+                icon={FilterX}
+                title="Limpar Filtros"
+              >
+                Limpar
+              </Button>
               <Button
                 variant="primary"
                 onClick={handleOpenCreate}
                 className="w-full h-[42px] shadow-lg shadow-primary-500/20"
                 icon={Plus}
+                title="Novo Lançamento"
               >
-                Novo Lançamento
+                Novo
               </Button>
             </div>
           </div>
@@ -684,9 +694,9 @@ export const MovimentacoesTab = () => {
               {formatCurrency(totalOutflow)}
             </p>
           </div>
-          <div className="bg-neutral-800 p-6 rounded-xl shadow-xl text-neutral-25">
+          <div className="bg-surface p-6 rounded-xl shadow-sm border border-neutral-200">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-neutral-800 text-neutral-400 rounded-lg">
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
                 <Wallet size={20} />
               </div>
               <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
@@ -694,7 +704,7 @@ export const MovimentacoesTab = () => {
               </p>
             </div>
             <p
-              className={`text-3xl font-bold ${balance >= 0 ? "text-neutral-25" : "text-red-400"}`}
+              className={`text-3xl font-black ${balance >= 0 ? "text-blue-600" : "text-red-600"}`}
             >
               {formatCurrency(balance)}
             </p>
@@ -702,8 +712,8 @@ export const MovimentacoesTab = () => {
         </div>
 
         {/* TABLE */}
-        <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden w-full">
-          <table className="w-full text-left border-collapse">
+        <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
+          <table className="tabela-limpa w-full">
             <thead className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
               <tr>
                 <th className="p-4">Data</th>
@@ -734,7 +744,7 @@ export const MovimentacoesTab = () => {
                 filteredCashBook.map((entry) => (
                   <tr
                     key={entry.id}
-                    className={`hover:bg-neutral-50 transition-colors ${entry.deleted_at ? "opacity-50" : ""}`}
+                    className={`hover:bg-neutral-50 transition-colors group ${entry.deleted_at ? "opacity-50" : ""}`}
                   >
                     <td className="p-4">
                       <div
@@ -834,7 +844,7 @@ export const MovimentacoesTab = () => {
                     </td>
                     <td className="p-4 text-center">
                       {!entry.deleted_at && (
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <ActionButton
                             icon={Edit}
                             onClick={() => handleOpenEdit(entry)}
@@ -957,7 +967,13 @@ export const MovimentacoesTab = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, obs: e.target.value })
                 }
-                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-lg font-medium text-neutral-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all"
+                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-lg font-medium text-neutral-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                readOnly={editingItem?.id.startsWith("out-")}
+                placeholder={
+                  editingItem?.id.startsWith("out-")
+                    ? "Observação indisponível para Peças"
+                    : "Detalhes do lançamento..."
+                }
               />
             </div>
 

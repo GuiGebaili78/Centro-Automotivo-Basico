@@ -1,20 +1,14 @@
 import { useState, useEffect } from "react";
 import { api } from "../../services/api";
-import {
-  Plus,
-  CreditCard,
-  Trash2,
-  AlertTriangle,
-  Edit,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { Plus, CreditCard, Trash2, Edit } from "lucide-react";
 import type { IOperadoraCartao, IContaBancaria } from "../../types/backend";
-import { StatusBanner } from "../ui/StatusBanner";
+
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
 import { ActionButton } from "../ui/ActionButton";
+import { ConfirmModal } from "../ui/ConfirmModal";
+import { toast } from "react-toastify";
 
 export const OperadorasTab = () => {
   const [operadoras, setOperadoras] = useState<IOperadoraCartao[]>([]);
@@ -35,10 +29,7 @@ export const OperadorasTab = () => {
     antecipacao_auto: false,
     id_conta_destino: 0,
   });
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
+
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
@@ -55,7 +46,7 @@ export const OperadorasTab = () => {
       setContas(accRes.data.filter((c: IContaBancaria) => c.ativo));
     } catch (error) {
       console.error(error);
-      setStatusMsg({ type: "error", text: "Erro ao carregar dados." });
+      toast.error("Erro ao carregar dados.");
     }
   };
 
@@ -124,17 +115,17 @@ export const OperadorasTab = () => {
     try {
       if (editingOp) {
         await api.put(`/operadora-cartao/${editingOp.id_operadora}`, formData);
-        setStatusMsg({ type: "success", text: "Operadora atualizada!" });
+        toast.success("Operadora atualizada!");
       } else {
         await api.post("/operadora-cartao", formData);
-        setStatusMsg({ type: "success", text: "Operadora cadastrada!" });
+        toast.success("Operadora cadastrada!");
       }
       setIsModalOpen(false);
       setIsDirty(false);
       loadData();
     } catch (error) {
       console.error(error);
-      setStatusMsg({ type: "error", text: "Erro ao salvar operadora." });
+      toast.error("Erro ao salvar operadora.");
     }
   };
 
@@ -142,15 +133,12 @@ export const OperadorasTab = () => {
     if (!opToDelete) return;
     try {
       await api.delete(`/operadora-cartao/${opToDelete.id_operadora}`);
-      setStatusMsg({ type: "success", text: "Operadora removida." });
+      toast.success("Operadora removida.");
       setIsDeleteModalOpen(false);
       loadData();
     } catch (error) {
       console.error(error);
-      setStatusMsg({
-        type: "error",
-        text: "Erro ao excluir operadora (possui vínculo?).",
-      });
+      toast.error("Erro ao excluir operadora (possui vínculo?).");
     }
   };
 
@@ -160,11 +148,6 @@ export const OperadorasTab = () => {
 
   return (
     <div className="p-6">
-      <StatusBanner
-        msg={statusMsg}
-        onClose={() => setStatusMsg({ type: null, text: "" })}
-      />
-
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-xl font-bold text-neutral-800">
@@ -549,58 +532,16 @@ export const OperadorasTab = () => {
         </Modal>
       )}
 
-      {/* TOGGLE STATUS MODAL (REPLACES DELETE) */}
-      {isDeleteModalOpen && (
-        <Modal
-          title={`Confirmar ${opToDelete?.ativo ? "Desativação" : "Ativação"}`}
-          onClose={() => setIsDeleteModalOpen(false)}
-        >
-          <div className="space-y-4">
-            <div
-              className={`${opToDelete?.ativo ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100"} border p-4 rounded-xl flex items-start gap-3`}
-            >
-              <AlertTriangle
-                className={`${opToDelete?.ativo ? "text-red-600" : "text-emerald-600"} shrink-0`}
-                size={24}
-              />
-              <div>
-                <h3
-                  className={`font-bold ${opToDelete?.ativo ? "text-red-900" : "text-emerald-900"}`}
-                >
-                  Atenção!
-                </h3>
-                <p
-                  className={`text-sm mt-1 ${opToDelete?.ativo ? "text-red-700" : "text-emerald-700"}`}
-                >
-                  Você deseja {opToDelete?.ativo ? "desativar" : "ativar"} a
-                  operadora{" "}
-                  <span className="font-black">{opToDelete?.nome}</span>?
-                  <br />
-                  <span className="text-xs opacity-80">
-                    O histórico financeiro será mantido.
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-4 flex gap-3 justify-end">
-              <Button
-                variant="ghost"
-                onClick={() => setIsDeleteModalOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant={opToDelete?.ativo ? "danger" : "primary"}
-                onClick={handleDelete}
-                icon={opToDelete?.ativo ? EyeOff : Eye}
-              >
-                Confirmar {opToDelete?.ativo ? "Desativação" : "Ativação"}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* TOGGLE STATUS CONFIRM MODAL */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title={`Confirmar ${opToDelete?.ativo ? "Desativação" : "Ativação"}`}
+        description={`Você deseja ${opToDelete?.ativo ? "desativar" : "ativar"} a operadora "${opToDelete?.nome}"? O histórico financeiro será mantido.`}
+        confirmText={`Confirmar ${opToDelete?.ativo ? "Desativação" : "Ativação"}`}
+        variant={opToDelete?.ativo ? "danger" : "primary"}
+      />
     </div>
   );
 };

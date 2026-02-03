@@ -298,6 +298,7 @@ model PagamentoCliente {
   codigo_transacao     String?          @db.VarChar(100)
   qtd_parcelas         Int              @default(1)
   tipo_parcelamento    String?          @default("LOJA") @db.VarChar(20) // 'LOJA' or 'CLIENTE'
+  obs                  String?          @db.VarChar(500)
   deleted_at           DateTime?        @db.Timestamp(6)
   id_livro_caixa       Int?             @unique
   id_operadora         Int?

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { api } from "../services/api";
 import { CategoryManager } from "../components/financeiro/CategoryManager";
 import {
@@ -13,6 +14,7 @@ import {
   Wallet,
   ArrowRight,
   Settings,
+  FilterX,
 } from "lucide-react";
 import type { IContaBancaria } from "../types/backend";
 import { Button } from "../components/ui/Button";
@@ -38,6 +40,9 @@ export const ExtratoBancarioPage = () => {
   });
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedType, setSelectedType] = useState("");
+  const [activeShortcut, setActiveShortcut] = useState<string | null>(
+    "30 Dias",
+  );
 
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -121,9 +126,26 @@ export const ExtratoBancarioPage = () => {
 
   // Apply Filters
   const filteredMovimentacoes = movimentacoes.filter((mov) => {
-    const matchesSearch =
-      mov.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (mov.obs && mov.obs.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = (() => {
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      const terms = term.split(" ").filter((t) => t.trim() !== "");
+      const searchString = [
+        mov.descricao || "",
+        mov.obs || "",
+        mov.categoria || "",
+        mov.paymentMethod || "",
+        mov.tipo_movimentacao === "ENTRADA" ? "entrada" : "saída",
+        mov.valor?.toString() || "",
+        (Number(mov.valor) || 0).toLocaleString("pt-BR", {
+          minimumFractionDigits: 2,
+        }),
+        new Date(mov.dt_movimentacao).toLocaleDateString("pt-BR"),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return terms.every((t) => searchString.includes(t));
+    })();
 
     const matchesCategory = selectedCategory
       ? mov.categoria === selectedCategory
@@ -249,6 +271,46 @@ export const ExtratoBancarioPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Date Shortcuts */}
+        <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 w-fit">
+          {[
+            { label: "Hoje", days: 0 },
+            { label: "7 Dias", days: 7 },
+            { label: "15 Dias", days: 15 },
+            { label: "30 Dias", days: 30 },
+            { label: "Mês Atual", type: "MONTH" },
+          ].map((item: any) => (
+            <button
+              key={item.label}
+              onClick={() => {
+                setActiveShortcut(item.label);
+                const end = new Date().toISOString().split("T")[0];
+                let start = "";
+                if (item.type === "MONTH") {
+                  const now = new Date();
+                  start = new Date(now.getFullYear(), now.getMonth(), 1)
+                    .toISOString()
+                    .split("T")[0];
+                } else {
+                  start = new Date(
+                    new Date().setDate(new Date().getDate() - item.days),
+                  )
+                    .toISOString()
+                    .split("T")[0];
+                }
+                setDateRange({ start, end });
+              }}
+              className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
+                activeShortcut === item.label
+                  ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
         {/* Filter Bar */}
         <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex flex-col xl:flex-row gap-4 items-end">
           <div className="flex-1 w-full xl:w-auto">
@@ -268,9 +330,10 @@ export const ExtratoBancarioPage = () => {
               <input
                 type="date"
                 value={dateRange.start}
-                onChange={(e) =>
-                  setDateRange({ ...dateRange, start: e.target.value })
-                }
+                onChange={(e) => {
+                  setDateRange({ ...dateRange, start: e.target.value });
+                  setActiveShortcut(null);
+                }}
                 className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
               />
             </div>
@@ -281,9 +344,10 @@ export const ExtratoBancarioPage = () => {
               <input
                 type="date"
                 value={dateRange.end}
-                onChange={(e) =>
-                  setDateRange({ ...dateRange, end: e.target.value })
-                }
+                onChange={(e) => {
+                  setDateRange({ ...dateRange, end: e.target.value });
+                  setActiveShortcut(null);
+                }}
                 className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
               />
             </div>
@@ -331,9 +395,10 @@ export const ExtratoBancarioPage = () => {
           </div>
           <div className="w-full xl:w-auto">
             <Button
-              variant="ghost"
+              variant="primary"
               onClick={() => {
                 setSearchTerm("");
+                setActiveShortcut(null);
                 setDateRange({
                   start: new Date(new Date().setDate(new Date().getDate() - 30))
                     .toISOString()
@@ -343,7 +408,8 @@ export const ExtratoBancarioPage = () => {
                 setSelectedCategory("");
                 setSelectedType("");
               }}
-              className="h-[42px] w-full"
+              className="h-[42px] w-full shadow-lg shadow-primary-500/20"
+              icon={FilterX}
             >
               Limpar
             </Button>
@@ -378,18 +444,20 @@ export const ExtratoBancarioPage = () => {
               <ArrowDownCircle size={24} />
             </div>
           </div>
-          <div className="bg-neutral-900 p-6 rounded-xl shadow-xl flex items-center justify-between text-neutral-25">
+          <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
                 Resultado
               </p>
               <p
-                className={`text-2xl font-black ${totalEntradas - totalSaidas >= 0 ? "text-neutral-25" : "text-red-400"}`}
+                className={`text-2xl font-black ${totalEntradas - totalSaidas >= 0 ? "text-blue-600" : "text-red-500"}`}
               >
                 {formatCurrency(totalEntradas - totalSaidas)}
               </p>
             </div>
-            <div className="p-3 bg-neutral-800 text-neutral-400 rounded-xl">
+            <div
+              className={`p-3 rounded-xl ${totalEntradas - totalSaidas >= 0 ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}
+            >
               <ArrowRight size={24} />
             </div>
           </div>
@@ -397,9 +465,9 @@ export const ExtratoBancarioPage = () => {
 
         {/* Transactions Table */}
         <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-          <table className="w-full text-left border-collapse">
+          <table className="tabela-limpa w-full">
             <thead>
-              <tr className="bg-neutral-50 text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-200">
+              <tr className="">
                 <th className="p-4 w-40">Data</th>
                 <th className="p-4">Descrição</th>
                 <th className="p-4 w-32">Forma Pagto</th>
@@ -532,7 +600,7 @@ export const ExtratoBancarioPage = () => {
                 loadData(); // Recarrega extrato e saldo
               } catch (error) {
                 console.error(error);
-                alert("Erro ao criar lançamento.");
+                toast.error("Erro ao criar lançamento.");
               } finally {
                 setFormLoading(false);
               }

@@ -10,6 +10,8 @@ interface ConfirmModalProps {
   title: string;
   description: string;
   variant?: "danger" | "primary";
+  confirmText?: string;
+  cancelText?: string;
 }
 
 export const ConfirmModal = ({
@@ -19,6 +21,8 @@ export const ConfirmModal = ({
   title,
   description,
   variant = "danger",
+  confirmText,
+  cancelText = "Cancelar",
 }: ConfirmModalProps) => {
   // Close on Escape key
   useEffect(() => {
@@ -69,10 +73,10 @@ export const ConfirmModal = ({
             onClick={onClose}
             className="hover:bg-neutral-50"
           >
-            Cancelar
+            {cancelText}
           </Button>
           <Button variant={isDanger ? "danger" : "primary"} onClick={onConfirm}>
-            {isDanger ? "Excluir" : "Confirmar"}
+            {confirmText || (isDanger ? "Excluir" : "Confirmar")}
           </Button>
         </div>
       </div>

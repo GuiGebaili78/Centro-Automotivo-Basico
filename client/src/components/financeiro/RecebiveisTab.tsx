@@ -7,22 +7,17 @@ import {
   Search,
   FilterX,
   Clock,
-  History,
   AlertCircle,
 } from "lucide-react";
 import type { IRecebivelCartao } from "../../types/backend";
-import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
+import { toast } from "react-toastify";
 
 export const RecebiveisTab = () => {
   const [recebiveis, setRecebiveis] = useState<IRecebivelCartao[]>([]);
   const [originalData, setOriginalData] = useState<IRecebivelCartao[]>([]);
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
 
   // Filters
   const [filterStatus, setFilterStatus] = useState<
@@ -30,6 +25,7 @@ export const RecebiveisTab = () => {
   >("PENDENTE");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeShortcut, setActiveShortcut] = useState<string | null>(null);
   const [selectedOperadoraId, setSelectedOperadoraId] = useState<
     number | "ALL"
   >("ALL");
@@ -68,7 +64,7 @@ export const RecebiveisTab = () => {
       applyFilters(res.data, filterStatus, searchTerm, selectedOperadoraId);
     } catch (error) {
       console.error(error);
-      setStatusMsg({ type: "error", text: "Erro ao carregar recebíveis." });
+      toast.error("Erro ao carregar recebíveis.");
     }
   };
 
@@ -104,17 +100,28 @@ export const RecebiveisTab = () => {
           (r as any).nsu || "",
           (r as any).ordem_de_servico?.veiculo?.placa || "",
           (r as any).ordem_de_servico?.veiculo?.modelo || "",
+          (r as any).ordem_de_servico?.veiculo?.cor || "",
           (r as any).ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome ||
             "",
           (r as any).ordem_de_servico?.cliente?.pessoa_juridica?.razao_social ||
             "",
           (r as any).operadora?.nome || "",
+          (r as any).bandeira_cartao || "",
           `#${r.id_os}`, // Permite busca exata "#22"
           r.id_os?.toString() || "", // Permite busca "22"
           r.valor_bruto?.toString() || "",
+          (Number(r.valor_bruto) || 0).toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+          }),
           r.valor_liquido?.toString() || "",
+          (Number(r.valor_liquido) || 0).toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+          }),
           r.num_parcela?.toString() || "",
+          `${r.num_parcela}/${r.total_parcelas}`,
           new Date(r.data_prevista).toLocaleDateString("pt-BR"),
+          r.total_parcelas > 1 ? "parcelado" : "vista",
+          r.status === "RECEBIDO" ? "recebido pago" : "pendente aberto",
         ]
           .join(" ")
           .toLowerCase();
@@ -135,6 +142,7 @@ export const RecebiveisTab = () => {
   }, [filterStatus, originalData, searchTerm, selectedOperadoraId]);
 
   const handleDateChange = (type: "start" | "end", val: string) => {
+    setActiveShortcut(null);
     const newRange = { ...dateRange, [type]: val };
     setDateRange(newRange);
     if (newRange.start && newRange.end) {
@@ -159,6 +167,7 @@ export const RecebiveisTab = () => {
     setSelectedOperadoraId("ALL");
     setSearchTerm("");
     setDateRange({ start: "", end: "" });
+    setActiveShortcut(null);
     loadData();
   };
 
@@ -183,10 +192,7 @@ export const RecebiveisTab = () => {
   const executeConciliacao = async () => {
     try {
       await api.post("/recebivel-cartao/confirmar", { ids: selectedIds });
-      setStatusMsg({
-        type: "success",
-        text: "Recebimentos confirmados e conciliados!",
-      });
+      toast.success("Recebimentos confirmados e conciliados!");
       setSelectedIds([]);
       loadData(dateRange.start, dateRange.end);
       setShowConciliateModal(false);
@@ -196,7 +202,7 @@ export const RecebiveisTab = () => {
         error.response?.data?.details ||
         error.response?.data?.error ||
         "Erro ao conciliar recebíveis.";
-      setStatusMsg({ type: "error", text: msg });
+      toast.error(msg);
     }
   };
 
@@ -222,31 +228,8 @@ export const RecebiveisTab = () => {
   ).length;
   const countTotal = originalData.length;
 
-  const getStatusButtonClass = (
-    isActive: boolean,
-    type: "PENDENTE" | "RECEBIDO" | "ALL",
-  ) => {
-    let colorClass = "text-neutral-500 hover:bg-white/50";
-    if (isActive) {
-      if (type === "PENDENTE")
-        colorClass =
-          "bg-primary-500 text-neutral-25 shadow-md shadow-primary-500/20 scale-105";
-      if (type === "RECEBIDO")
-        colorClass =
-          "bg-emerald-500 text-neutral-25 shadow-md shadow-emerald-500/20 scale-105";
-      if (type === "ALL")
-        colorClass = "bg-neutral-800 text-neutral-25 shadow-md scale-105";
-    }
-    return `flex flex-col items-center justify-center px-6 py-2.5 rounded-lg transition-all duration-300 ${colorClass}`;
-  };
-
   return (
     <div className="p-6 space-y-6">
-      <StatusBanner
-        msg={statusMsg}
-        onClose={() => setStatusMsg({ type: null, text: "" })}
-      />
-
       {/* HEADER AREA */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
@@ -259,55 +242,34 @@ export const RecebiveisTab = () => {
         </div>
 
         {/* Status Selection Cards */}
-        <div className="flex gap-2 bg-neutral-100 p-1.5 rounded-xl border border-neutral-200 shadow-inner">
-          <button
-            onClick={() => setFilterStatus("PENDENTE")}
-            className={getStatusButtonClass(
-              filterStatus === "PENDENTE",
-              "PENDENTE",
-            )}
-          >
-            <Clock size={18} className="mb-1" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">
-              Pendentes
-            </span>
-            <span
-              className={`mt-1 text-xs font-black ${filterStatus === "PENDENTE" ? "text-neutral-25" : "text-neutral-400"}`}
+        {/* Status Pills */}
+        <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 w-fit">
+          {[
+            { id: "PENDENTE", label: "Pendentes", count: countPendente },
+            { id: "RECEBIDO", label: "Recebidos", count: countRecebido },
+            { id: "ALL", label: "Todos", count: countTotal },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setFilterStatus(item.id as any)}
+              className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
+                filterStatus === item.id
+                  ? "bg-white text-primary-600 shadow-sm ring-1 ring-neutral-200"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
+              }`}
             >
-              {countPendente}
-            </span>
-          </button>
-          <button
-            onClick={() => setFilterStatus("RECEBIDO")}
-            className={getStatusButtonClass(
-              filterStatus === "RECEBIDO",
-              "RECEBIDO",
-            )}
-          >
-            <CheckCircle size={18} className="mb-1" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">
-              Recebidos
-            </span>
-            <span
-              className={`mt-1 text-xs font-black ${filterStatus === "RECEBIDO" ? "text-neutral-25" : "text-neutral-400"}`}
-            >
-              {countRecebido}
-            </span>
-          </button>
-          <button
-            onClick={() => setFilterStatus("ALL")}
-            className={getStatusButtonClass(filterStatus === "ALL", "ALL")}
-          >
-            <History size={18} className="mb-1" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">
-              Todos
-            </span>
-            <span
-              className={`mt-1 text-xs font-black ${filterStatus === "ALL" ? "text-neutral-25" : "text-neutral-400"}`}
-            >
-              {countTotal}
-            </span>
-          </button>
+              <span>{item.label}</span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[10px] ${
+                  filterStatus === item.id
+                    ? "bg-primary-50 text-primary-700"
+                    : "bg-neutral-200 text-neutral-600"
+                }`}
+              >
+                {item.count}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -381,9 +343,9 @@ export const RecebiveisTab = () => {
           {/* Clear Button */}
           <div className="xl:col-span-2">
             <Button
-              variant="danger"
+              variant="primary" // Changed to primary as requested
               onClick={clearFilters}
-              className="w-full h-[46px]"
+              className="w-full h-[46px] shadow-lg shadow-primary-500/20"
               icon={FilterX}
             >
               Limpar Filtro
@@ -391,39 +353,41 @@ export const RecebiveisTab = () => {
           </div>
         </div>
 
-        {/* QUICK DATE SHORTCARD CARDS */}
-        <div className="flex flex-wrap gap-3 pt-4 border-t border-neutral-100">
-          {[
-            { label: "Hoje", days: 0 },
-            { label: "7 Dias", days: 7 },
-            { label: "15 Dias", days: 15 },
-            { label: "30 Dias", days: 30 },
-            { label: "60 Dias", days: 60 },
-            { label: "90 Dias", days: 90 },
-          ].map((card) => (
-            <button
-              key={card.label}
-              onClick={() => setPresetRange(card.days)}
-              className="bg-white border border-neutral-200 px-5 py-3 rounded-xl shadow-sm hover:border-primary-400 hover:bg-primary-50 transition-all flex flex-col items-center group min-w-[100px]"
-            >
-              <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest group-hover:text-primary-500">
-                Próximos
-              </span>
-              <span className="text-sm font-bold text-neutral-700 group-hover:text-primary-700">
+        {/* Date Shortcut Pills */}
+        <div className="flex flex-wrap gap-2 pt-4 border-t border-neutral-100">
+          <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 w-fit">
+            {[
+              { label: "Hoje", days: 0 },
+              { label: "7 Dias", days: 7 },
+              { label: "15 Dias", days: 15 },
+              { label: "30 Dias", days: 30 },
+              { label: "60 Dias", days: 60 },
+              { label: "90 Dias", days: 90 },
+            ].map((card) => (
+              <button
+                key={card.label}
+                onClick={() => {
+                  setPresetRange(card.days);
+                  setActiveShortcut(card.label);
+                }}
+                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
+                  activeShortcut === card.label
+                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
+                }`}
+              >
                 {card.label}
-              </span>
-            </button>
-          ))}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* VALUE SUMMARY & ACTIONS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* PREVISÃO NO PERÍODO - DYNAMIC */}
-        <div className="bg-neutral-800 p-6 rounded-xl border border-neutral-800 shadow-xl relative overflow-hidden group">
-          {/* Background Glow */}
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl group-hover:bg-primary-500/20 transition-all"></div>
-
+        {/* PREVISÃO NO PERÍODO */}
+        <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm relative overflow-hidden group">
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle size={14} className="text-primary-400" />
@@ -431,10 +395,10 @@ export const RecebiveisTab = () => {
                 Previsão no Período (Filtrado)
               </p>
             </div>
-            <p className="text-3xl font-black text-neutral-25 tracking-tighter">
+            <p className="text-3xl font-black text-blue-600 tracking-tighter">
               {formatCurrency(totalPrevisto)}
             </p>
-            <p className="text-[10px] text-neutral-500 mt-2 font-bold uppercase tracking-wider italic">
+            <p className="text-[10px] text-neutral-400 mt-2 font-bold uppercase tracking-wider italic">
               * Soma total dos itens visíveis abaixo
             </p>
           </div>
@@ -442,26 +406,27 @@ export const RecebiveisTab = () => {
 
         {/* ACTION BOX (IF SELECTED) */}
         {selectedIds.length > 0 && (
-          <div className="lg:col-span-2 bg-primary-600 p-6 rounded-xl border border-primary-500 shadow-xl shadow-primary-200 flex flex-col md:flex-row items-center justify-between gap-4 animate-in zoom-in-95 duration-300">
+          <div className="lg:col-span-2 bg-surface p-6 rounded-xl border border-primary-100 shadow-xl shadow-primary-500/10 flex flex-col md:flex-row items-center justify-between gap-4 animate-in zoom-in-95 duration-300 ring-1 ring-primary-500">
             <div className="flex items-center gap-4">
-              <div className="bg-white/20 p-3 rounded-lg">
-                <CheckCircle size={28} className="text-neutral-25" />
+              <div className="bg-primary-50 p-3 rounded-lg text-primary-600">
+                <CheckCircle size={28} />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-primary-100 uppercase tracking-widest">
+                <p className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">
                   Confirmar Depósito
                 </p>
-                <p className="text-3xl font-black text-neutral-25 tracking-tighter">
+                <p className="text-3xl font-black text-neutral-900 tracking-tighter">
                   {formatCurrency(totalSelected)}
                 </p>
-                <p className="text-xs font-bold text-primary-100 mt-1">
+                <p className="text-xs font-bold text-neutral-500 mt-1">
                   {selectedIds.length} transações selecionadas
                 </p>
               </div>
             </div>
             <Button
               onClick={handleConciliar}
-              className="w-full md:w-auto text-primary-700 bg-primary-100 hover:bg-neutral-50 shadow-lg border-none!"
+              className="w-full md:w-auto shadow-lg"
+              variant="primary"
               icon={Calendar}
               size="lg"
             >
@@ -472,12 +437,12 @@ export const RecebiveisTab = () => {
       </div>
 
       {/* TABLE CONTAINER */}
-      <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="tabela-limpa w-full">
             <thead>
               <tr className="bg-neutral-50 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                <th className="p-5 w-14 text-center">
+                <th className="p-4 w-14 text-center">
                   <input
                     type="checkbox"
                     onChange={toggleSelectAll}
@@ -488,17 +453,17 @@ export const RecebiveisTab = () => {
                     className="w-5 h-5 rounded-lg border-neutral-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
                   />
                 </th>
-                <th className="p-5">Previsão</th>
-                <th className="p-5">Nº / Aut.</th>
-                <th className="p-5">Operadora</th>
-                <th className="p-5">Veículo / Cliente</th>
-                <th className="p-5">Detalhes</th>
-                <th className="p-5 text-right">Bruto</th>
-                <th className="p-5 text-right">Taxa</th>
-                <th className="p-5 text-right font-black text-neutral-900">
+                <th className="p-4">Previsão</th>
+                <th className="p-4">Nº / Aut.</th>
+                <th className="p-4">Operadora</th>
+                <th className="p-4">Veículo / Cliente</th>
+                <th className="p-4">Detalhes</th>
+                <th className="p-4 text-right">Bruto</th>
+                <th className="p-4 text-right">Taxa</th>
+                <th className="p-4 text-right font-black text-neutral-900">
                   Líquido
                 </th>
-                <th className="p-5 text-center">Status</th>
+                <th className="p-4 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -520,9 +485,9 @@ export const RecebiveisTab = () => {
                 recebiveis.map((r) => (
                   <tr
                     key={r.id_recebivel}
-                    className={`group hover:bg-primary-50/30 transition-colors ${r.status === "RECEBIDO" ? "opacity-80" : ""}`}
+                    className={`group hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0 ${r.status === "RECEBIDO" ? "opacity-60 bg-neutral-50/50" : ""}`}
                   >
-                    <td className="p-5 text-center">
+                    <td className="p-4 text-center">
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(r.id_recebivel)}
@@ -531,7 +496,7 @@ export const RecebiveisTab = () => {
                         className="w-5 h-5 rounded-lg border-neutral-300 text-primary-600 focus:ring-primary-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                       />
                     </td>
-                    <td className="p-5">
+                    <td className="p-4">
                       <div className="flex flex-col">
                         <span className="font-bold text-neutral-800 text-sm whitespace-nowrap">
                           {new Date(r.data_prevista).toLocaleDateString(
@@ -543,12 +508,12 @@ export const RecebiveisTab = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="p-5">
+                    <td className="p-4">
                       <div className="text-xs text-neutral-600 font-mono font-bold bg-neutral-100 px-3 py-1.5 rounded-lg border border-neutral-200 w-fit">
                         {(r as any).codigo_autorizacao || (r as any).nsu || "-"}
                       </div>
                     </td>
-                    <td className="p-5">
+                    <td className="p-4">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-black text-[10px]">
                           {(r as any).operadora?.nome?.substring(0, 1) || "O"}
@@ -558,7 +523,7 @@ export const RecebiveisTab = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="p-5">
+                    <td className="p-4">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-neutral-800 uppercase text-xs">
@@ -582,7 +547,7 @@ export const RecebiveisTab = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="p-5">
+                    <td className="p-4">
                       <div className="flex flex-col">
                         <span
                           className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md w-fit mb-1 cursor-help"
@@ -628,22 +593,22 @@ export const RecebiveisTab = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="p-5 text-right font-medium text-neutral-500 text-sm">
+                    <td className="p-4 text-right font-medium text-neutral-500 text-sm">
                       {formatCurrency(Number(r.valor_bruto))}
                     </td>
-                    <td className="p-5 text-right">
+                    <td className="p-4 text-right">
                       <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg">
                         {/* Ajuste o '2' para quantas casas decimais você deseja */}
                         - {Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}
                         %
                       </span>
                     </td>
-                    <td className="p-5 text-right">
+                    <td className="p-4 text-right">
                       <span className="font-black text-neutral-900 text-base">
                         {formatCurrency(Number(r.valor_liquido))}
                       </span>
                     </td>
-                    <td className="p-5 text-center">
+                    <td className="p-4 text-center">
                       {r.status === "RECEBIDO" ? (
                         <div className="flex flex-col items-center">
                           <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">

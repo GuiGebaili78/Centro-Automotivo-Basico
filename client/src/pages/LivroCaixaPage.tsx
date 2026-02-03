@@ -1,77 +1,71 @@
 import { useState } from "react";
-import {
-  LayoutDashboard,
-  CreditCard,
-  Landmark,
-  ArrowRightLeft,
-} from "lucide-react";
 import { MovimentacoesTab } from "../components/financeiro/MovimentacoesTab";
 import { ContasTab } from "../components/financeiro/ContasTab";
 import { OperadorasTab } from "../components/financeiro/OperadorasTab";
 import { RecebiveisTab } from "../components/financeiro/RecebiveisTab";
+import { PageLayout } from "../components/ui/PageLayout";
 
 export const LivroCaixaPage = () => {
   const [activeTab, setActiveTab] = useState<
     "MOVIMENTACOES" | "CONTAS" | "OPERADORAS" | "RECEBIVEIS"
   >("MOVIMENTACOES");
 
-  const getTabClass = (isActive: boolean) =>
-    `flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
-      isActive
-        ? "bg-primary-200 text-primary-500 shadow-sm"
-        : "text-neutral-500 hover:text-neutral-900 hover:bg-white"
-    }`;
-
   return (
-    <div className="p-8 max-w-[1600px] mx-auto animate-in fade-in duration-500">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-neutral-900 tracking-tight mb-2">
-          Gestão Financeira
-        </h1>
-        <p className="text-neutral-500 text-lg">
-          Controle consolidado de caixa, bancos e recebíveis.
-        </p>
-      </div>
-
+    <PageLayout
+      title="Gestão Financeira"
+      subtitle="Controle consolidado de caixa, bancos e recebíveis."
+    >
       {/* TAB NAVIGATION */}
-      <div className="flex flex-wrap gap-2 mb-8 bg-neutral-100 p-1.5 rounded-2xl w-fit">
+      <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 w-fit mb-6">
         <button
           onClick={() => setActiveTab("MOVIMENTACOES")}
-          className={getTabClass(activeTab === "MOVIMENTACOES")}
+          className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+            activeTab === "MOVIMENTACOES"
+              ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+              : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
+          }`}
         >
-          <ArrowRightLeft size={18} />
           Movimentações
         </button>
         <button
           onClick={() => setActiveTab("CONTAS")}
-          className={getTabClass(activeTab === "CONTAS")}
+          className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+            activeTab === "CONTAS"
+              ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+              : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
+          }`}
         >
-          <Landmark size={18} />
           Contas Bancárias
         </button>
         <button
           onClick={() => setActiveTab("OPERADORAS")}
-          className={getTabClass(activeTab === "OPERADORAS")}
+          className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+            activeTab === "OPERADORAS"
+              ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+              : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
+          }`}
         >
-          <CreditCard size={18} />
           Operadoras
         </button>
         <button
           onClick={() => setActiveTab("RECEBIVEIS")}
-          className={getTabClass(activeTab === "RECEBIVEIS")}
+          className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+            activeTab === "RECEBIVEIS"
+              ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+              : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
+          }`}
         >
-          <LayoutDashboard size={18} />
           Recebíveis
         </button>
       </div>
 
       {/* CONTENT AREA */}
-      <div className="bg-surface rounded-3xl min-h-[500px] border border-neutral-200 shadow-sm overflow-hidden">
+      <div>
         {activeTab === "MOVIMENTACOES" && <MovimentacoesTab />}
         {activeTab === "CONTAS" && <ContasTab />}
         {activeTab === "OPERADORAS" && <OperadorasTab />}
         {activeTab === "RECEBIVEIS" && <RecebiveisTab />}
       </div>
-    </div>
+    </PageLayout>
   );
 };

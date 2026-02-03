@@ -4,11 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api";
 import { Plus, Landmark, Eye, EyeOff, FileText, Edit } from "lucide-react";
 import type { IContaBancaria } from "../../types/backend";
-import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
 import { ActionButton } from "../ui/ActionButton";
+import { ConfirmModal } from "../ui/ConfirmModal";
+import { toast } from "react-toastify";
 
 export const ContasTab = () => {
   const navigate = useNavigate();
@@ -25,11 +26,14 @@ export const ContasTab = () => {
     saldo_atual: 0,
     ativo: true,
   });
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
+
   const [showBalance, setShowBalance] = useState<Record<number, boolean>>({});
+
+  // Confirm Modal State
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [accountToToggle, setAccountToToggle] = useState<IContaBancaria | null>(
+    null,
+  );
 
   useEffect(() => {
     loadAccounts();
@@ -41,10 +45,7 @@ export const ContasTab = () => {
       setAccounts(res.data);
     } catch (error) {
       console.error(error);
-      setStatusMsg({
-        type: "error",
-        text: "Erro ao carregar contas bancárias.",
-      });
+      toast.error("Erro ao carregar contas bancárias.");
     }
   };
 
@@ -82,34 +83,36 @@ export const ContasTab = () => {
     try {
       if (editingAccount) {
         await api.put(`/conta-bancaria/${editingAccount.id_conta}`, formData);
-        setStatusMsg({
-          type: "success",
-          text: "Conta atualizada com sucesso!",
-        });
+        toast.success("Conta atualizada com sucesso!");
       } else {
         await api.post("/conta-bancaria", formData);
-        setStatusMsg({ type: "success", text: "Conta criada com sucesso!" });
+        toast.success("Conta criada com sucesso!");
       }
       setIsModalOpen(false);
       loadAccounts();
     } catch (error) {
       console.error(error);
-      setStatusMsg({ type: "error", text: "Erro ao salvar conta." });
+      toast.error("Erro ao salvar conta.");
     }
   };
 
-  const toggleDelete = async (acc: IContaBancaria) => {
-    if (
-      !window.confirm(
-        `Tem certeza que deseja ${acc.ativo ? "desativar" : "ativar"} esta conta?`,
-      )
-    )
-      return;
+  const handleToggleClick = (acc: IContaBancaria) => {
+    setAccountToToggle(acc);
+    setIsConfirmOpen(true);
+  };
+
+  const confirmToggle = async () => {
+    if (!accountToToggle) return;
     try {
-      await api.put(`/conta-bancaria/${acc.id_conta}`, { ativo: !acc.ativo });
+      await api.put(`/conta-bancaria/${accountToToggle.id_conta}`, {
+        ativo: !accountToToggle.ativo,
+      });
       loadAccounts();
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao alterar status da conta." });
+      toast.error("Erro ao alterar status da conta.");
+    } finally {
+      setIsConfirmOpen(false);
+      setAccountToToggle(null);
     }
   };
 
@@ -119,11 +122,6 @@ export const ContasTab = () => {
 
   return (
     <div className="p-6">
-      <StatusBanner
-        msg={statusMsg}
-        onClose={() => setStatusMsg({ type: null, text: "" })}
-      />
-
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-xl font-bold text-neutral-800">
@@ -162,7 +160,7 @@ export const ContasTab = () => {
                   variant="neutral"
                 />
                 <ActionButton
-                  onClick={() => toggleDelete(acc)}
+                  onClick={() => handleToggleClick(acc)}
                   icon={acc.ativo ? EyeOff : Eye}
                   variant={acc.ativo ? "danger" : "primary"}
                   label={acc.ativo ? "Desativar" : "Ativar"}
@@ -328,6 +326,18 @@ export const ContasTab = () => {
           </div>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmToggle}
+        title={accountToToggle?.ativo ? "Desativar Conta" : "Ativar Conta"}
+        description={`Tem certeza que deseja ${
+          accountToToggle?.ativo ? "desativar" : "ativar"
+        } a conta "${accountToToggle?.nome}"?`}
+        confirmText={accountToToggle?.ativo ? "Desativar" : "Ativar"}
+        variant={accountToToggle?.ativo ? "danger" : "primary"}
+      />
     </div>
   );
 };

@@ -1,28 +1,31 @@
 import { useState, useEffect, useMemo } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
-import { StatusBanner } from "../components/ui/StatusBanner";
 import {
   User,
-  ArrowRight,
   Calculator,
   CheckCircle2,
   Circle,
   DollarSign,
   CheckSquare,
   Square,
+  Save,
+  X,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { toast } from "react-toastify";
 
 export const NovoPagamentoPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // --- STATE ---
   const [funcionarios, setFuncionarios] = useState<any[]>([]);
   const [selectedFuncionarioId, setSelectedFuncionarioId] = useState("");
-  const location = useLocation();
 
   const [funcPendentes, setFuncPendentes] = useState<any[]>([]); // Comissões Pendentes
   const [valesPendentes, setValesPendentes] = useState<any[]>([]); // Vales Pendentes
@@ -54,11 +57,6 @@ export const NovoPagamentoPage = () => {
   const [filterStart, setFilterStart] = useState("");
   const [filterEnd, setFilterEnd] = useState("");
 
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
-
   const [isLoading, setIsLoading] = useState(false);
 
   // --- EFFECTS ---
@@ -70,8 +68,6 @@ export const NovoPagamentoPage = () => {
   useEffect(() => {
     if (location.state?.funcionarioId && funcionarios.length > 0) {
       setSelectedFuncionarioId(String(location.state.funcionarioId));
-      // Clear state to avoid re-triggering if needed, but react-router handles this cleanly ideally
-      // window.history.replaceState({}, document.title);
     }
   }, [location.state, funcionarios]);
 
@@ -105,6 +101,7 @@ export const NovoPagamentoPage = () => {
       setFuncionarios(res.data);
     } catch (e) {
       console.error(e);
+      toast.error("Erro ao carregar colaboradores.");
     }
   };
 
@@ -127,6 +124,7 @@ export const NovoPagamentoPage = () => {
       setSelectedVales(resVales.data.map((v: any) => v.id_pagamento_equipe));
     } catch (error) {
       console.error(error);
+      toast.error("Erro ao carregar dados do colaborador.");
     }
   };
 
@@ -152,7 +150,6 @@ export const NovoPagamentoPage = () => {
   }, [funcPendentes, filterStart, filterEnd]);
 
   // --- TOTALS (Mode PAGAMENTO) ---
-  // Helper to calculate commission value per item
   const getCommissionValue = (itemVal: number) => {
     const func = funcionarios.find(
       (f) => String(f.id_funcionario) === String(selectedFuncionarioId),
@@ -171,7 +168,6 @@ export const NovoPagamentoPage = () => {
   }, [funcPendentes, selectedItems, funcionarios, selectedFuncionarioId]);
 
   const totalDescontos = useMemo(() => {
-    // Sum of SELECTED Vales to deduct
     return valesPendentes
       .filter((v) => selectedVales.includes(v.id_pagamento_equipe))
       .reduce((acc, v) => acc + Number(v.valor_total), 0);
@@ -209,130 +205,111 @@ export const NovoPagamentoPage = () => {
   };
 
   const handlePay = async () => {
-    if (!selectedFuncionarioId) return;
+    if (!selectedFuncionarioId) {
+      toast.warning("Selecione um colaborador.");
+      return;
+    }
 
     try {
       setIsLoading(true);
       if (mode === "ADIANTAMENTO") {
-        // Post ADIANTAMENTO (Vale)
         await api.post("/pagamento-equipe", {
           id_funcionario: selectedFuncionarioId,
           servicos_ids: [],
-          vales_ids: [], // No deduction when creating a vale
+          vales_ids: [],
           valor_total: valorAdiantamento,
-          obs: obsPagamento, // General Obs
+          obs: obsPagamento,
           forma_pagamento: paymentMethod,
           premio_valor: null,
-          tipo_lancamento: "VALE", // Backend uses VALE for Adiantamento
+          tipo_lancamento: "VALE",
           referencia_inicio: dataAdiantamento
             ? new Date(dataAdiantamento)
-            : null, // Use ref date as creation date override if needed, or just obs
+            : null,
         });
       } else {
-        // Post PAGAMENTO (Full)
         await api.post("/pagamento-equipe", {
           id_funcionario: selectedFuncionarioId,
           servicos_ids: selectedItems,
-          vales_ids: selectedVales, // Deduct these vales
-          valor_total: finalTotalPagamento, // Net Value
+          vales_ids: selectedVales,
+          valor_total: finalTotalPagamento,
           obs: obsPagamento,
           forma_pagamento: paymentMethod,
           premio_valor: valorPremio || null,
           premio_descricao: obsExtra || null,
-          tipo_lancamento: "COMISSAO", // Or 'PAGAMENTO' if backend supports, keeping 'COMISSAO' for now as it consolidates OSs
+          tipo_lancamento: "COMISSAO",
           referencia_inicio: null,
-          include_salary: includeSalary, // Helper for backend if needed, or simply logic handles it by value passed
+          include_salary: includeSalary,
         });
       }
 
-      setStatusMsg({
-        type: "success",
-        text: "Lançamento realizado com sucesso!",
-      });
+      toast.success("Lançamento realizado com sucesso!");
       setTimeout(() => navigate("/pagamento-equipe"), 1500);
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao processar lançamento." });
+      console.error(error);
+      toast.error("Erro ao processar lançamento.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">
-      <StatusBanner
-        msg={statusMsg}
-        onClose={() => setStatusMsg({ type: null, text: "" })}
-      />
+    <PageLayout title="Novo Pagamento / Adiantamento">
+      {/* 1. SELEÇÃO DE COLABORADOR & MODO */}
+      <Card className="mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-1">
+            <label className="text-sm font-medium text-neutral-700 block mb-1">
+              Colaborador
+            </label>
+            <div className="relative">
+              <User
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                size={18}
+              />
+              <select
+                value={selectedFuncionarioId}
+                onChange={(e) => setSelectedFuncionarioId(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-white border border-neutral-300 rounded-md text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors text-neutral-900"
+              >
+                <option value="">Selecione...</option>
+                {funcionarios.map((f: any) => (
+                  <option key={f.id_funcionario} value={f.id_funcionario}>
+                    {f.pessoa_fisica?.pessoa?.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <button
-            onClick={() => navigate("/pagamento-equipe")}
-            className="text-sm font-bold text-neutral-500 hover:text-neutral-800 mb-1 flex items-center gap-1"
-          >
-            <ArrowRight className="rotate-180" size={14} /> Voltar
-          </button>
-          <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
-            Novo Pagamento / Adiantamento
-          </h1>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100 grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* 1. SELEÇÃO DE COLABORADOR */}
-        <div className="md:col-span-1">
-          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-2">
-            Colaborador
-          </label>
-          <div className="relative">
-            <User
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-              size={18}
-            />
-            <select
-              value={selectedFuncionarioId}
-              onChange={(e) => setSelectedFuncionarioId(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white border border-neutral-200 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-colors text-neutral-600 appearance-none"
-            >
-              <option value="">Selecione...</option>
-              {funcionarios.map((f: any) => (
-                <option key={f.id_funcionario} value={f.id_funcionario}>
-                  {f.pessoa_fisica?.pessoa?.nome}
-                </option>
-              ))}
-            </select>
+          <div className="md:col-span-2">
+            <label className="text-sm font-medium text-neutral-700 block mb-1">
+              Modo de Lançamento
+            </label>
+            <div className="flex bg-neutral-100 p-1 rounded-lg w-fit">
+              <button
+                onClick={() => setMode("PAGAMENTO")}
+                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
+                  mode === "PAGAMENTO"
+                    ? "bg-white text-primary-600 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                }`}
+              >
+                Pagamento (Salário/Comissões)
+              </button>
+              <button
+                onClick={() => setMode("ADIANTAMENTO")}
+                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
+                  mode === "ADIANTAMENTO"
+                    ? "bg-white text-primary-600 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                }`}
+              >
+                Adiantamento (Novo Vale)
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* 2. TIPO DE LANÇAMENTO (MODE) */}
-        <div className="md:col-span-2">
-          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-2">
-            Modo de Lançamento
-          </label>
-          <div className="flex bg-neutral-100 p-1 rounded-xl w-fit">
-            <button
-              onClick={() => setMode("PAGAMENTO")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                mode === "PAGAMENTO"
-                  ? "bg-primary-200 text-primary-500 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
-              }`}
-            >
-              Pagamento (Salário/Comissões)
-            </button>
-            <button
-              onClick={() => setMode("ADIANTAMENTO")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                mode === "ADIANTAMENTO"
-                  ? "bg-primary-200 text-primary-500 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
-              }`}
-            >
-              Adiantamento (Novo Vale)
-            </button>
-          </div>
-        </div>
-      </div>
+      </Card>
 
       {selectedFuncionarioId && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -340,12 +317,12 @@ export const NovoPagamentoPage = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* CARD COMISSÕES (Only in PAGAMENTO mode) */}
             {mode === "PAGAMENTO" && (
-              <div className="bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden">
+              <Card className="p-0 overflow-hidden">
                 <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
-                  <h3 className="font-black text-neutral-700 flex items-center gap-2">
+                  <h3 className="font-bold text-neutral-700 flex items-center gap-2">
                     <Calculator size={18} className="text-primary-500" />{" "}
                     Comissões
-                    <span className="text-xs font-normal text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-normal text-neutral-500 bg-neutral-200 px-2 py-0.5 rounded-full">
                       {funcionarios.find(
                         (f) =>
                           String(f.id_funcionario) ===
@@ -357,7 +334,7 @@ export const NovoPagamentoPage = () => {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={handleSelectAllComissoes}
-                      className="text-[10px] font-black uppercase tracking-widest text-primary-600 hover:text-primary-700"
+                      className="text-[10px] font-bold uppercase tracking-widest text-primary-600 hover:text-primary-700"
                     >
                       {selectedItems.length > 0 &&
                       selectedItems.length >=
@@ -373,30 +350,30 @@ export const NovoPagamentoPage = () => {
 
                 <div className="grid grid-cols-2 gap-4 p-4 border-b border-neutral-100 bg-white">
                   <div>
-                    <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                       De
                     </label>
                     <Input
                       type="date"
                       value={filterStart}
                       onChange={(e) => setFilterStart(e.target.value)}
-                      className="bg-neutral-50 border-neutral-200 text-xs font-bold"
+                      className="h-9 text-xs"
                     />
                   </div>
                   <div>
-                    <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                       Até
                     </label>
                     <Input
                       type="date"
                       value={filterEnd}
                       onChange={(e) => setFilterEnd(e.target.value)}
-                      className="bg-neutral-50 border-neutral-200 text-xs font-bold"
+                      className="h-9 text-xs"
                     />
                   </div>
                 </div>
 
-                <div className="max-h-[400px] overflow-y-auto p-2 space-y-2 bg-neutral-50/30">
+                <div className="max-h-[400px] overflow-y-auto p-4 space-y-2 bg-neutral-50/30">
                   {filteredComissioes.length === 0 ? (
                     <div className="p-8 text-center text-neutral-400 text-sm italic">
                       Nenhuma comissão pendente.
@@ -496,49 +473,17 @@ export const NovoPagamentoPage = () => {
                                 {os?.veiculo?.placa}
                               </span>
                             </div>
-
-                            {/* ROW 3: Client */}
-                            <div className="text-xs font-bold text-neutral-500">
-                              Cliente:{" "}
-                              <span className="text-neutral-700">
-                                {os?.cliente?.pessoa_fisica?.pessoa?.nome ||
-                                  os?.cliente?.pessoa_juridica?.razao_social ||
-                                  "Desconhecido"}
-                              </span>
-                            </div>
-
-                            {/* ROW 4: Defect/Diag */}
-                            {(os?.defeito_relatado || os?.diagnostico) && (
-                              <div className="bg-neutral-50 p-2 rounded-lg text-[11px] space-y-1 mt-1 border border-neutral-100/50">
-                                {os?.defeito_relatado && (
-                                  <div className="text-neutral-600">
-                                    <strong className="text-neutral-400 uppercase tracking-wider text-[9px]">
-                                      Defeito:
-                                    </strong>{" "}
-                                    {os.defeito_relatado}
-                                  </div>
-                                )}
-                                {os?.diagnostico && (
-                                  <div className="text-neutral-600">
-                                    <strong className="text-neutral-400 uppercase tracking-wider text-[9px]">
-                                      Diag:
-                                    </strong>{" "}
-                                    {os.diagnostico}
-                                  </div>
-                                )}
-                              </div>
-                            )}
                           </div>
                         </div>
                       );
                     })
                   )}
                 </div>
-              </div>
+              </Card>
             )}
 
             {/* CARD ADIANTAMENTOS PENDENTES (Histórico) */}
-            <div className="bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden">
+            <Card className="p-0 overflow-hidden">
               <div className="p-4 bg-orange-50 border-b border-orange-100 flex items-center justify-between">
                 <h3 className="font-bold text-orange-800 flex items-center gap-2">
                   <DollarSign size={18} className="text-orange-600" />
@@ -558,7 +503,7 @@ export const NovoPagamentoPage = () => {
                   </button>
                 )}
               </div>
-              <div className="max-h-[250px] overflow-y-auto p-2 space-y-2 bg-neutral-50/30">
+              <div className="max-h-[250px] overflow-y-auto p-4 space-y-2 bg-neutral-50/30">
                 {valesPendentes.length === 0 ? (
                   <div className="p-6 text-center text-neutral-400 text-sm italic">
                     O colaborador não possui adiantamentos pendentes.
@@ -621,7 +566,7 @@ export const NovoPagamentoPage = () => {
               </div>
               {valesPendentes.length > 0 && mode === "PAGAMENTO" && (
                 <div className="p-3 bg-neutral-50 border-t border-neutral-100 text-right">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-orange-700">
+                  <span className="text-xs font-bold uppercase tracking-widest text-orange-700">
                     Total a Descontar:{" "}
                   </span>
                   <span className="text-sm font-bold text-red-600">
@@ -629,197 +574,196 @@ export const NovoPagamentoPage = () => {
                   </span>
                 </div>
               )}
-            </div>
+            </Card>
           </div>
 
           {/* RIGHT COLUMN: SUMMARY & ACTIONS */}
           <div className="lg:col-span-1 space-y-6">
-            {/* CARD FORMULÁRIO (Context Sensitive) */}
-            <div className="bg-white rounded-xl shadow-sm border border-neutral-100 p-6 space-y-4">
-              <h3 className="font-bold text-neutral-900 text-lg">Detalhes</h3>
+            <Card>
+              <h3 className="font-bold text-neutral-900 text-lg mb-4">
+                Detalhes do Lançamento
+              </h3>
 
-              {mode === "PAGAMENTO" ? (
-                <>
-                  {/* PAGAMENTO MODE INPUTS */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <input
-                        type="checkbox"
-                        id="chkSalary"
-                        checked={includeSalary}
-                        onChange={(e) => setIncludeSalary(e.target.checked)}
-                        className="w-4 h-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                      />
-                      <label
-                        htmlFor="chkSalary"
-                        className="text-[10px] font-black text-neutral-400 uppercase tracking-widest cursor-pointer select-none"
-                      >
-                        Incluir Pagamento de Contrato?
-                      </label>
-                    </div>
-                    <Input
-                      type="number"
-                      disabled={!includeSalary}
-                      value={valorSalario}
-                      onChange={(e) => setValorSalario(e.target.value)}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
-                      Prêmios / Extras (R$)
-                    </label>
-                    <Input
-                      type="number"
-                      value={valorPremio}
-                      onChange={(e) => setValorPremio(e.target.value)}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  {valorPremio && (
+              <div className="space-y-4">
+                {mode === "PAGAMENTO" ? (
+                  <>
+                    {/* PAGAMENTO MODE INPUTS */}
                     <div>
-                      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
-                        Motivo do Prêmio
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          id="chkSalary"
+                          checked={includeSalary}
+                          onChange={(e) => setIncludeSalary(e.target.checked)}
+                          className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <label
+                          htmlFor="chkSalary"
+                          className="text-xs font-bold text-neutral-500 uppercase tracking-widest cursor-pointer select-none"
+                        >
+                          Incluir Pagamento de Contrato?
+                        </label>
+                      </div>
+                      <Input
+                        type="number"
+                        disabled={!includeSalary}
+                        value={valorSalario}
+                        onChange={(e) => setValorSalario(e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-neutral-700 block mb-1">
+                        Prêmios / Extras (R$)
                       </label>
                       <Input
-                        value={obsExtra}
-                        onChange={(e) => setObsExtra(e.target.value)}
-                        placeholder="Ex: Meta Batida"
+                        type="number"
+                        value={valorPremio}
+                        onChange={(e) => setValorPremio(e.target.value)}
+                        placeholder="0.00"
                       />
                     </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* ADIANTAMENTO MODE INPUTS */}
-                  <div>
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
-                      Valor do Novo Adiantamento (R$)
-                    </label>
-                    <Input
-                      type="number"
-                      value={valorAdiantamento}
-                      onChange={(e) => setValorAdiantamento(e.target.value)}
-                      placeholder="0.00"
-                      autoFocus
-                      className="border-orange-200 focus:border-orange-500 focus:ring-orange-500/20"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
-                      Data do Lançamento
-                    </label>
-                    <Input
-                      type="date"
-                      value={dataAdiantamento}
-                      onChange={(e) => setDataAdiantamento(e.target.value)}
-                    />
-                  </div>
-                </>
-              )}
+                    {valorPremio && (
+                      <div>
+                        <label className="text-sm font-medium text-neutral-700 block mb-1">
+                          Motivo do Prêmio
+                        </label>
+                        <Input
+                          value={obsExtra}
+                          onChange={(e) => setObsExtra(e.target.value)}
+                          placeholder="Ex: Meta Batida"
+                        />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* ADIANTAMENTO MODE INPUTS */}
+                    <div>
+                      <label className="text-sm font-medium text-neutral-700 block mb-1">
+                        Valor do Novo Adiantamento (R$)
+                      </label>
+                      <Input
+                        type="number"
+                        value={valorAdiantamento}
+                        onChange={(e) => setValorAdiantamento(e.target.value)}
+                        placeholder="0.00"
+                        autoFocus
+                        className="border-orange-200 focus:border-orange-500 focus:ring-orange-500/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-neutral-700 block mb-1">
+                        Data do Lançamento
+                      </label>
+                      <Input
+                        type="date"
+                        value={dataAdiantamento}
+                        onChange={(e) => setDataAdiantamento(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
 
-              <div>
-                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
-                  Forma Pagto
-                </label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-colors"
-                >
-                  <option value="DINHEIRO">Dinheiro</option>
-                  <option value="PIX">Pix</option>
-                  <option value="TRANSFERENCIA">Transferência</option>
-                </select>
+                <div>
+                  <label className="text-sm font-medium text-neutral-700 block mb-1">
+                    Forma Pagamento
+                  </label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full px-4 py-2 bg-white border border-neutral-300 rounded-md text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
+                  >
+                    <option value="DINHEIRO">Dinheiro</option>
+                    <option value="PIX">Pix</option>
+                    <option value="TRANSFERENCIA">Transferência</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-neutral-700 block mb-1">
+                    Observações
+                  </label>
+                  <textarea
+                    value={obsPagamento}
+                    onChange={(e) => setObsPagamento(e.target.value)}
+                    className="w-full px-4 py-2 bg-white border border-neutral-300 rounded-md text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all resize-none"
+                    rows={2}
+                    placeholder="Observações gerais sobre este pagamento..."
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
-                  Obs Geral
-                </label>
-                <textarea
-                  value={obsPagamento}
-                  onChange={(e) => setObsPagamento(e.target.value)}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg font-bold text-xs outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all resize-none"
-                  rows={2}
-                />
-              </div>
-            </div>
-
-            {/* TOTAL FINAL CARD (Only in PAGAMENTO mode, or just Button in Adiantamento) */}
-            {mode === "PAGAMENTO" ? (
-              <div className="bg-neutral-900 text-white rounded-xl shadow-xl shadow-neutral-900/10 p-6 space-y-4">
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-neutral-400">
-                    <span>(+) Pagamento</span>
-                    <span
-                      className={`font-bold ${includeSalary ? "text-emerald-400" : "text-neutral-600 line-through opacity-50"}`}
-                    >
-                      {formatCurrency(
-                        includeSalary ? Number(valorSalario) || 0 : 0,
-                      )}
-                    </span>
+              {/* TOTAL DISPLAY */}
+              {mode === "PAGAMENTO" && (
+                <div className="mt-6 bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                  <div className="space-y-1 mb-3 pb-3 border-b border-neutral-200">
+                    <div className="flex justify-between text-xs text-neutral-500">
+                      <span>(+) Pagamento</span>
+                      <span
+                        className={
+                          includeSalary
+                            ? "text-emerald-600 font-bold"
+                            : "line-through opacity-50"
+                        }
+                      >
+                        {formatCurrency(
+                          includeSalary ? Number(valorSalario) || 0 : 0,
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-neutral-500">
+                      <span>(+) Comissões</span>
+                      <span className="text-emerald-600 font-bold">
+                        {formatCurrency(totalComissoes)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-neutral-500">
+                      <span>(+) Prêmios</span>
+                      <span className="text-emerald-600 font-bold">
+                        {formatCurrency(Number(valorPremio) || 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-neutral-500">
+                      <span>(-) Descontos</span>
+                      <span className="text-red-500 font-bold">
+                        {formatCurrency(totalDescontos)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-xs text-neutral-400">
-                    <span>(+) Comissões</span>
-                    <span className="font-bold text-emerald-400">
-                      {formatCurrency(totalComissoes)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs text-neutral-400">
-                    <span>(+) Prêmios</span>
-                    <span className="font-bold text-emerald-400">
-                      {formatCurrency(Number(valorPremio) || 0)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs text-neutral-400 pt-1 border-t border-dashed border-neutral-800">
-                    <span>(-) Descontos</span>
-                    <span className="font-bold text-red-400">
-                      {formatCurrency(totalDescontos)}
-                    </span>
-                  </div>
-
-                  <div className="border-t border-neutral-800 my-2 pt-3 flex justify-between items-end">
-                    <span className="font-bold uppercase tracking-widest text-xs text-neutral-200">
+                  <div className="flex justify-between items-end">
+                    <span className="text-xs font-bold uppercase tracking-widest text-neutral-500">
                       Total a Pagar
                     </span>
-                    <span className="font-black text-3xl">
+                    <span className="text-2xl font-black text-neutral-900">
                       {formatCurrency(finalTotalPagamento)}
                     </span>
                   </div>
                 </div>
+              )}
 
+              <div className="mt-6 pt-6 border-t border-neutral-100 flex gap-3">
                 <Button
-                  onClick={handlePay}
-                  variant="success"
-                  className="w-full py-4 rounded-xl font-bold uppercase tracking-widest text-sm"
-                  disabled={isLoading}
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={() => navigate("/pagamento-equipe")}
                 >
-                  Confirmar Pagamento
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1"
+                  onClick={handlePay}
+                  disabled={isLoading}
+                  icon={Save}
+                >
+                  Salvar
                 </Button>
               </div>
-            ) : (
-              <div className="bg-orange-500 text-neutral-200 rounded-xl shadow-xl shadow-orange-900/10 p-6 space-y-4">
-                <div className="flex justify-between items-end border-b border-white/20 pb-4">
-                  <span className="font-bold uppercase tracking-widest text-xs text-orange-100">
-                    Valor Adiantamento
-                  </span>
-                  <span className="font-black text-3xl">
-                    {formatCurrency(Number(valorAdiantamento))}
-                  </span>
-                </div>
-                <Button
-                  onClick={handlePay}
-                  className="w-full bg-neutral-50 text-orange-600 hover:bg-orange-50 border-transparent py-4 rounded-xl font-bold uppercase tracking-widest text-sm"
-                  disabled={isLoading}
-                >
-                  Confirmar Lançamento
-                </Button>
-              </div>
-            )}
+            </Card>
           </div>
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 };
