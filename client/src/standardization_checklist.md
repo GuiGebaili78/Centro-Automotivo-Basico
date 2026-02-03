@@ -90,3 +90,5 @@ Este checklist define os padrões visuais e funcionais para páginas de "Gestão
   - Evitar `StatusBanner` inline a menos que persista um estado crítico (ex: sistema offline).
 - **Modais**:
   - Usar componente `Modal` Compartilhado para edições/confirmações.
+
+  teste de
