@@ -2,11 +2,17 @@ import React from "react";
 
 interface PageLayoutProps {
   children: React.ReactNode;
-  title: string;
+  title: React.ReactNode;
+  subtitle?: string;
   actions?: React.ReactNode; // Para botões como "Novo Cliente" que ficam no topo
 }
 
-export const PageLayout = ({ children, title, actions }: PageLayoutProps) => {
+export const PageLayout = ({
+  children,
+  title,
+  subtitle,
+  actions,
+}: PageLayoutProps) => {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Container que limita a largura e centraliza */}
@@ -17,9 +23,9 @@ export const PageLayout = ({ children, title, actions }: PageLayoutProps) => {
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">
               {title}
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Gerencie as informações do seu sistema com clareza.
-            </p>
+            {subtitle && (
+              <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+            )}
           </div>
 
           {/* Espaço para botões de ação (ex: "+ Novo Cadastro") */}

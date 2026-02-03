@@ -18,12 +18,14 @@ import {
   Edit,
 } from "lucide-react";
 
-import { StatusBanner } from "../components/ui/StatusBanner";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
 import { ActionButton } from "../components/ui/ActionButton";
 import { PagamentoClienteForm } from "../components/forms/PagamentoClienteForm";
 import { LaborManager } from "../components/os/LaborManager";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { toast } from "react-toastify";
 
 export const OrdemDeServicoDetalhePage = () => {
   const { id } = useParams();
@@ -35,10 +37,7 @@ export const OrdemDeServicoDetalhePage = () => {
   const [laborServices, setLaborServices] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [availableParts, setAvailableParts] = useState<any[]>([]);
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
+
   const [isDirty, setIsDirty] = useState(false);
 
   // Confirm Modal
@@ -89,7 +88,7 @@ export const OrdemDeServicoDetalhePage = () => {
       setOsItems(response.data.itens_os || []);
       setLaborServices(response.data.servicos_mao_de_obra || []);
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao carregar OS." });
+      toast.error("Erro ao carregar OS.");
     }
   };
 
@@ -116,7 +115,7 @@ export const OrdemDeServicoDetalhePage = () => {
       const response = await api.get(`/itens-os/os/${idOs}`);
       setOsItems(response.data);
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao carregar itens." });
+      toast.error("Erro ao carregar itens.");
     }
   };
 
@@ -137,7 +136,7 @@ export const OrdemDeServicoDetalhePage = () => {
       await api.put(`/ordem-de-servico/${os.id_os}`, { [field]: value });
       setIsDirty(false);
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao salvar alteração." });
+      toast.error("Erro ao salvar alteração.");
     }
   };
 
@@ -205,21 +204,13 @@ export const OrdemDeServicoDetalhePage = () => {
         });
 
         if (freeStock <= 0) {
-          setStatusMsg({
-            type: "error",
-            text: `⚠️ Sem Estoque! (Reservado: ${partDetails.reserved || 0})`,
-          });
+          toast.error(
+            `⚠️ Sem Estoque! (Reservado: ${partDetails.reserved || 0})`,
+          );
         } else if (freeStock < 2) {
-          setStatusMsg({
-            type: "error",
-            text: `⚠️ Estoque Baixo! Disp: ${freeStock}`,
-          });
+          toast.warn(`⚠️ Estoque Baixo! Disp: ${freeStock}`);
         } else {
-          setStatusMsg({
-            type: "success",
-            text: `Item selecionado. Disp: ${freeStock}`,
-          });
-          setTimeout(() => setStatusMsg({ type: null, text: "" }), 1500);
+          toast.success(`Item selecionado. Disp: ${freeStock}`);
         }
       } catch (e) {
         console.error("Erro ao checar disponibilidade", e);
@@ -253,7 +244,7 @@ export const OrdemDeServicoDetalhePage = () => {
           codigo_referencia: newItem.codigo_referencia,
           id_fornecedor: newItem.id_fornecedor || null,
         });
-        setStatusMsg({ type: "success", text: "Item adicionado/atualizado!" });
+        toast.success("Item adicionado/atualizado!");
       } else {
         await api.post("/itens-os", {
           id_os: os.id_os,
@@ -267,7 +258,7 @@ export const OrdemDeServicoDetalhePage = () => {
           codigo_referencia: newItem.codigo_referencia,
           id_fornecedor: newItem.id_fornecedor || null,
         });
-        setStatusMsg({ type: "success", text: "Item adicionado!" });
+        toast.success("Item adicionado!");
       }
       setNewItem({
         id_pecas_estoque: "",
@@ -281,13 +272,15 @@ export const OrdemDeServicoDetalhePage = () => {
       setPartSearch("");
       setEditingItemId(null);
       loadOsItems(os.id_os);
-      setTimeout(() => setStatusMsg({ type: null, text: "" }), 1500);
       requestAnimationFrame(() => partInputRef.current?.focus());
       setTimeout(() => partInputRef.current?.focus(), 100);
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao salvar item." });
+      toast.error("Erro ao salvar item.");
     }
   };
+
+  // ... (handleDeleteItem, handleEditItem, handleSaveItemEdit unchanged except for toast)
+  // Re-implementing handlers to ensure toast conversion is complete
 
   const handleDeleteItem = (itemId: number) => {
     if (!os) return;
@@ -333,13 +326,32 @@ export const OrdemDeServicoDetalhePage = () => {
       setEditItemModalOpen(false);
       setEditingItemData(null);
     } catch (e) {
-      setStatusMsg({ type: "error", text: "Erro ao editar item." });
+      toast.error("Erro ao editar item.");
+    }
+  };
+
+  // ... (getStatusStyle)
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "FINALIZADA":
+        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
+      case "PAGA_CLIENTE":
+        return "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200";
+      case "PRONTO PARA FINANCEIRO":
+        return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
+      case "ABERTA":
+        return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
+      case "EM_ANDAMENTO":
+        return "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200";
+      default:
+        return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
     }
   };
 
   const handleFinishService = async () => {
     if (!os) return;
-
+    // ...
+    // Using simple confirm for now, logic below
     setConfirmModal({
       isOpen: true,
       title: "Finalizar OS",
@@ -375,18 +387,14 @@ export const OrdemDeServicoDetalhePage = () => {
           ? new Date(os.dt_entrega).toISOString()
           : new Date().toISOString(),
       });
-      setStatusMsg({
-        type: "success",
-        text: "OS Finalizada! Enviada para Financeiro.",
-      });
+      toast.success("OS Finalizada! Enviada para Financeiro.");
       setIsDirty(false);
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       setTimeout(() => {
-        setStatusMsg({ type: null, text: "" });
         navigate("/");
       }, 1000);
     } catch (e) {
-      setStatusMsg({ type: "error", text: "Erro ao finalizar OS." });
+      toast.error("Erro ao finalizar OS.");
     }
   };
 
@@ -399,10 +407,10 @@ export const OrdemDeServicoDetalhePage = () => {
         km_entrada: os.km_entrada,
       });
       setIsDirty(false);
-      setStatusMsg({ type: "success", text: "Alterações Salvas!" });
+      toast.success("Alterações Salvas!");
       setTimeout(() => navigate("/"), 500);
     } catch (e) {
-      setStatusMsg({ type: "error", text: "Erro ao salvar." });
+      toast.error("Erro ao salvar.");
     }
   };
 
@@ -422,23 +430,6 @@ export const OrdemDeServicoDetalhePage = () => {
     }
   };
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "FINALIZADA":
-        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-      case "PAGA_CLIENTE":
-        return "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200";
-      case "PRONTO PARA FINANCEIRO":
-        return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
-      case "ABERTA":
-        return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
-      case "EM_ANDAMENTO":
-        return "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200";
-      default:
-        return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
-    }
-  };
-
   if (!os) {
     return (
       <div className="p-8 text-center text-neutral-500">
@@ -448,169 +439,170 @@ export const OrdemDeServicoDetalhePage = () => {
   }
 
   return (
-    <div className="space-y-6 pb-20">
-      {statusMsg.text && (
-        <div className="fixed bottom-8 right-8 z-60">
-          <StatusBanner
-            msg={statusMsg}
-            onClose={() => setStatusMsg({ type: null, text: "" })}
-          />
+    <PageLayout
+      title={
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleBack}
+            className="p-1 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-600 mr-2"
+            title="Voltar"
+          >
+            <ArrowLeft size={24} />
+          </button>
+          <span>OS #{os.id_os}</span>
+          <span
+            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
+          >
+            {os.status === "PRONTO PARA FINANCEIRO"
+              ? "FINANCEIRO"
+              : os.status.replace(/_/g, " ")}
+          </span>
         </div>
-      )}
-
-      {/* HEADER with Back Button */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={handleBack}
-          className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-600"
-        >
-          <ArrowLeft size={24} />
-        </button>
-        <div className="flex-1">
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-2xl font-bold text-neutral-600 tracking-tight">
-              OS #{os.id_os}
-            </h1>
-            <span
-              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
-            >
-              {os.status === "PRONTO PARA FINANCEIRO"
-                ? "FINANCEIRO"
-                : os.status.replace(/_/g, " ")}
-            </span>
-          </div>
-        </div>
-      </div>
-
+      }
+      subtitle="Gerencie os detalhes, peças e serviços desta Ordem de Serviço."
+    >
       <div className="space-y-8">
-        {/* Header Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6 bg-primary-100 rounded-2xl border border-neutral-200 items-center shadow-sm">
-          {/* Coluna 1: Veículo */}
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-              Veículo
-            </p>
-            <div className="flex flex-col">
-              <h3 className="text-2xl font-bold text-neutral-600 leading-none tracking-tight">
-                {os.veiculo?.modelo} - {os.veiculo?.cor || "Cor N/I"}
-              </h3>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm font-medium text-neutral-600 uppercase tracking-widest  px-2 py-0.5 rounded-md">
-                  {os.veiculo?.placa}
+        {/* Header Info - Using Card */}
+        {/* Header Info - Using Card (Grid Layout as requested) */}
+        {/* Header Info - Using Card (Refined Grid Layout) */}
+        {/* Header Info - Using Card (Flex Layout for full distribution) */}
+        <Card className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+            {/* Coluna 1: Veículo */}
+            <div className="md:col-span-4 flex flex-col">
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">
+                Veículo
+              </p>
+              <div className="flex flex-col">
+                <h3 className="text-xl font-black text-neutral-700 leading-tight">
+                  {os.veiculo?.modelo}
+                </h3>
+                <p className="text-sm font-bold text-neutral-500">
+                  {os.veiculo?.cor || "Cor N/I"}
+                </p>
+                <div className="mt-1">
+                  <span className="text-xs font-black text-white bg-neutral-600 px-2 py-0.5 rounded uppercase tracking-widest inline-block">
+                    {os.veiculo?.placa}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna 2: Cliente */}
+            <div className="md:col-span-4 flex flex-col md:border-l md:border-neutral-100 md:pl-6">
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">
+                Cliente / Contato
+              </p>
+              <div className="flex flex-col">
+                <p className="font-bold text-lg text-neutral-600 leading-tight">
+                  {os.cliente?.pessoa_fisica?.pessoa?.nome ||
+                    os.cliente?.pessoa_juridica?.razao_social}
+                </p>
+                <p className="text-sm font-medium text-neutral-500 flex items-center gap-1">
+                  {os.cliente?.telefone_1 || "Sem telefone"}
+                </p>
+              </div>
+            </div>
+
+            {/* Coluna 3: Entrada */}
+            <div className="md:col-span-2 flex flex-col md:border-l md:border-neutral-100 md:pl-6">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+                Data de Entrada
+              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-neutral-700 tabular-nums">
+                  {new Date(os.dt_abertura).getDate()}
+                </span>
+                <div className="flex flex-col leading-none">
+                  <span className="text-xs font-bold text-neutral-500 capitalize">
+                    {new Date(os.dt_abertura).toLocaleString("pt-BR", {
+                      month: "long",
+                    })}
+                  </span>
+                  <span className="text-[10px] font-medium text-neutral-400">
+                    {new Date(os.dt_abertura).getFullYear()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna 4: KM */}
+            <div className="md:col-span-2 flex flex-col md:border-l md:border-neutral-100 md:pl-6">
+              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                KM Atual
+              </label>
+              <div className="relative group w-full">
+                <input
+                  className="w-full bg-neutral-50 border border-neutral-200 text-neutral-600 font-bold text-xl rounded-xl px-4 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all text-left"
+                  type="number"
+                  value={os.km_entrada}
+                  onChange={(e) =>
+                    setOs({ ...os, km_entrada: Number(e.target.value) })
+                  }
+                  onBlur={(e) =>
+                    updateOSField("km_entrada", Number(e.target.value))
+                  }
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-neutral-300 group-focus-within:text-primary-500 uppercase tracking-wider">
+                  KM
                 </span>
               </div>
             </div>
           </div>
-
-          {/* Coluna 2: Cliente */}
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-              Cliente / Contato
-            </p>
-            <div className="flex flex-col">
-              <p className="font-bold text-lg text-neutral-600 leading-tight">
-                {os.cliente?.pessoa_fisica?.pessoa?.nome ||
-                  os.cliente?.pessoa_juridica?.razao_social}
-              </p>
-              <p className="text-sm font-medium text-neutral-600 flex items-center gap-1">
-                {os.cliente?.telefone_1 || "Sem telefone"}
-              </p>
-            </div>
-          </div>
-
-          {/* Coluna 3: Entrada */}
-          <div className="flex flex-col gap-1 border-l-2 border-neutral-200 pl-3">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-              Data de Entrada
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-lg font-bold text-neutral-700 tabular-nums">
-                {new Date(os.dt_abertura).getDate()}
-              </span>
-              <span className="text-sm font-medium text-neutral-500 capitalize">
-                {new Date(os.dt_abertura).toLocaleString("pt-BR", {
-                  month: "long",
-                })}
-              </span>
-              <span className="text-sm font-normal text-neutral-400">
-                {new Date(os.dt_abertura).getFullYear()}
-              </span>
-            </div>
-          </div>
-
-          {/* Coluna 4: KM */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
-              KM Atual
-            </label>
-            <div className="relative group">
-              <input
-                className="w-full bg-neutral-50 border border-neutral-200 text-neutral-600 font-bold text-xl rounded-xl px-4 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all"
-                type="number"
-                value={os.km_entrada}
-                onChange={(e) =>
-                  setOs({ ...os, km_entrada: Number(e.target.value) })
-                }
-                onBlur={(e) =>
-                  updateOSField("km_entrada", Number(e.target.value))
-                }
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-neutral-300 group-focus-within:text-primary-500 uppercase tracking-wider">
-                KM
-              </span>
-            </div>
-          </div>
-        </div>
+        </Card>
 
         {/* SPLIT LAYOUT: Defects/Diagnosis (Left) & Labor (Right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* LEFT COL: Text Areas */}
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>{" "}
-                Defeito Relatado
-              </label>
-              <textarea
-                className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-red-300 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm"
-                placeholder="Descreva o defeito..."
-                value={os.defeito_relatado || ""}
-                onChange={(e) => {
-                  setOs({ ...os, defeito_relatado: e.target.value });
-                  setIsDirty(true);
-                }}
-                onBlur={(e) =>
-                  updateOSField("defeito_relatado", e.target.value)
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>{" "}
-                Diagnóstico Técnico
-              </label>
-              <textarea
-                className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-neutral-200 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm"
-                placeholder="Insira o diagnóstico..."
-                value={os.diagnostico || ""}
-                onChange={(e) => {
-                  setOs({ ...os, diagnostico: e.target.value });
-                  setIsDirty(true);
-                }}
-                onBlur={(e) => updateOSField("diagnostico", e.target.value)}
-              />
-            </div>
+        {/* SPLIT LAYOUT: Defects/Diagnosis (Smaller) & Labor (Larger) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* LEFT COL: Text Areas (1/3 width) */}
+          <div className="space-y-4 lg:col-span-1">
+            <Card className="space-y-4 p-4">
+              <div className="space-y-1">
+                <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>{" "}
+                  Defeito Relatado
+                </label>
+                <textarea
+                  className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-red-300 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm"
+                  placeholder="Descreva o defeito..."
+                  value={os.defeito_relatado || ""}
+                  onChange={(e) => {
+                    setOs({ ...os, defeito_relatado: e.target.value });
+                    setIsDirty(true);
+                  }}
+                  onBlur={(e) =>
+                    updateOSField("defeito_relatado", e.target.value)
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>{" "}
+                  Diagnóstico Técnico
+                </label>
+                <textarea
+                  className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-neutral-200 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm"
+                  placeholder="Insira o diagnóstico..."
+                  value={os.diagnostico || ""}
+                  onChange={(e) => {
+                    setOs({ ...os, diagnostico: e.target.value });
+                    setIsDirty(true);
+                  }}
+                  onBlur={(e) => updateOSField("diagnostico", e.target.value)}
+                />
+              </div>
+            </Card>
           </div>
 
-          {/* RIGHT COL: Labor Manager */}
-          <div className="w-full space-y-2 h-full">
-            <h3 className="text-xs font-bold text-neutral-400  uppercase tracking-widest flex items-center gap-2 pl-1">
-              <div className="p-1.5 bg-primary-100 rounded-lg text-primary-600">
-                <Wrench size={14} />
-              </div>
-              Mão de Obra
-            </h3>
-            <div className="h-full neutral-25bg-neutral-25 rounded-xl  overflow-hidden">
+          {/* RIGHT COL: Labor Manager (2/3 width) - Now in Card */}
+          <div className="w-full space-y-2 h-full lg:col-span-2">
+            <Card className="h-full p-4 space-y-2">
+              <h3 className="text-xs font-bold text-neutral-400  uppercase tracking-widest flex items-center gap-2 pb-2 border-b border-neutral-50">
+                <div className="p-1.5 bg-primary-100 rounded-lg text-primary-600">
+                  <Wrench size={14} />
+                </div>
+                Mão de Obra
+              </h3>
               <LaborManager
                 mode="api"
                 osId={os.id_os}
@@ -621,7 +613,7 @@ export const OrdemDeServicoDetalhePage = () => {
                   os.status === "FINALIZADA" || os.status === "PAGA_CLIENTE"
                 }
               />
-            </div>
+            </Card>
           </div>
         </div>
 
@@ -828,35 +820,25 @@ export const OrdemDeServicoDetalhePage = () => {
             </div>
           )}
           {/* List Items */}
-          <div className="border border-neutral-200 rounded-2xl overflow-hidden bg-neutral-25 shadow-sm">
-            <table className="w-full text-left">
-              <thead className="bg-neutral-50 border-b border-neutral-100">
+          <Card className="p-0 overflow-hidden">
+            <table className="tabela-limpa w-full">
+              <thead>
                 <tr>
-                  <th className="p-3 pl-4 text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
-                    Item
-                  </th>
-                  <th className="p-3 text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
-                    Ref/Código
-                  </th>
-                  <th className="p-3 text-[10px] uppercase font-bold text-neutral-400 tracking-wider text-center">
-                    Qtd
-                  </th>
-                  <th className="p-3 text-[10px] uppercase font-bold text-neutral-400 tracking-wider text-right">
-                    Unit.
-                  </th>
-                  <th className="p-3 text-[10px] uppercase font-bold text-neutral-400 tracking-wider text-right">
-                    Total
-                  </th>
-                  <th className="p-3 w-20"></th>
+                  <th className="w-[40%] text-left pl-6">Item</th>
+                  <th className="w-[15%] text-left">Ref/Código</th>
+                  <th className="w-[10%] text-center">Qtd</th>
+                  <th className="w-[15%] text-right">Unit.</th>
+                  <th className="w-[15%] text-right">Total</th>
+                  <th className="w-10"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-50 bg-primary-100">
+              <tbody className="divide-y divide-neutral-50">
                 {osItems.map((item) => (
                   <tr
                     key={item.id_iten}
-                    className="hover:bg-neutral-50/50 transition-colors group"
+                    className="hover:bg-neutral-50 transition-colors group"
                   >
-                    <td className="p-3 pl-4">
+                    <td className="pl-6 py-3">
                       <div className="font-bold text-sm text-neutral-700">
                         {item.descricao}
                         {/* STATUS PAGO */}
@@ -871,21 +853,21 @@ export const OrdemDeServicoDetalhePage = () => {
                           )}
                       </div>
                     </td>
-                    <td className="p-3">
+                    <td className="py-3">
                       <div className="text-[10px] text-neutral-400 font-medium font-mono px-2 py-0.5 rounded-md w-fit">
                         {item.codigo_referencia || "-"}
                       </div>
                     </td>
-                    <td className="p-3 text-center font-bold text-neutral-600 text-xs">
+                    <td className="text-center font-bold text-neutral-600 text-xs py-3">
                       {item.quantidade}
                     </td>
-                    <td className="p-3 text-right text-neutral-500 text-xs">
+                    <td className="text-right text-neutral-500 text-xs py-3">
                       {formatCurrency(Number(item.valor_venda))}
                     </td>
-                    <td className="p-3 text-right font-bold text-neutral-600 text-xs">
+                    <td className="text-right font-bold text-neutral-600 text-xs py-3">
                       {formatCurrency(Number(item.valor_total))}
                     </td>
-                    <td className="p-3 text-right pr-4">
+                    <td className="text-right pr-4 py-3">
                       {os.status !== "FINALIZADA" &&
                         os.status !== "PAGA_CLIENTE" && (
                           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -931,7 +913,7 @@ export const OrdemDeServicoDetalhePage = () => {
                 )}
               </tbody>
             </table>
-          </div>
+          </Card>
         </div>
 
         {/* SAVE & CLOSE BUTTON (New) */}
@@ -940,7 +922,7 @@ export const OrdemDeServicoDetalhePage = () => {
             <Button
               variant="primary"
               onClick={handleSaveAndClose}
-              className="bg-neutral-600 text-neutral-200 border border-neutral-700 hover:bg-neutral-600 shadow-lg px-8 py-4 text-sm font-bold uppercase tracking-wider flex items-center gap-2"
+              className="px-8 py-4 text-sm font-bold uppercase tracking-wider flex items-center gap-2 shadow-xl"
             >
               <Save size={18} /> Salvar e Fechar
             </Button>
@@ -961,16 +943,10 @@ export const OrdemDeServicoDetalhePage = () => {
                       await api.put(`/ordem-de-servico/${os.id_os}`, {
                         status: "CANCELADA",
                       });
-                      setStatusMsg({
-                        type: "success",
-                        text: "OS Cancelada e Estoque Estornado.",
-                      });
+                      toast.success("OS Cancelada e Estoque Estornado.");
                       loadOsData();
                     } catch (e) {
-                      setStatusMsg({
-                        type: "error",
-                        text: "Erro ao cancelar.",
-                      });
+                      toast.error("Erro ao cancelar.");
                     }
                     setConfirmModal((prev) => ({ ...prev, isOpen: false }));
                   },
@@ -1027,7 +1003,7 @@ export const OrdemDeServicoDetalhePage = () => {
                 <p className="text-xs font-bold text-success-500 uppercase tracking-widest mb-1">
                   VALOR TOTAL
                 </p>
-                <p className="font-bold text-5xl tracking-tighter text-neutral-25 drop-shadow-lg">
+                <p className="font-bold text-5xl tracking-tighter text-white drop-shadow-2xl">
                   {formatCurrency(
                     osItems.reduce((acc, i) => acc + Number(i.valor_total), 0) +
                       (laborServices.length > 0
@@ -1138,15 +1114,9 @@ export const OrdemDeServicoDetalhePage = () => {
                               status: "ABERTA",
                             });
                             loadOsData();
-                            setStatusMsg({
-                              type: "success",
-                              text: "OS Reaberta com sucesso!",
-                            });
+                            toast.success("OS Reaberta com sucesso!");
                           } catch (e) {
-                            setStatusMsg({
-                              type: "error",
-                              text: "Erro ao reabrir OS.",
-                            });
+                            toast.error("Erro ao reabrir OS.");
                           }
                         }}
                         className="bg-transparent border-2 border-dashed border-neutral-600 text-neutral-500 hover:text-neutral-25 hover:bg-neutral-600 hover:border-neutral-500 px-6 py-4 h-auto w-full sm:w-auto font-bold uppercase transition-all"
@@ -1412,6 +1382,6 @@ export const OrdemDeServicoDetalhePage = () => {
           />
         </Modal>
       )}
-    </div>
+    </PageLayout>
   );
 };

@@ -5,6 +5,7 @@ import { api } from "../../services/api";
 import type { FormEvent } from "react";
 import { Button } from "../ui/Button";
 import { ActionButton } from "../ui/ActionButton";
+import { Card } from "../ui/Card";
 
 // Tipagem básica para garantir o funcionamento
 interface LaborService {
@@ -302,7 +303,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
               </button>
             </div>
           </div>
-          <div className="col-span-12 md:col-span-3">
+          <div className="col-span-12 md:col-span-2">
             <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1 block">
               Descrição (Opcional)
             </label>
@@ -336,7 +337,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
               className="w-full p-3 rounded-xl border border-primary-200 outline-none focus:border-primary-500 font-bold text-sm bg-neutral-25"
             />
           </div>
-          <div className="col-span-12 md:col-span-1 flex gap-1 h-[46px] items-end">
+          <div className="col-span-12 md:col-span-2 flex gap-2 h-[46px] items-end">
             <Button
               type="button"
               onClick={handleAddLabor}
@@ -344,7 +345,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                 !newLaborService.id_funcionario || !newLaborService.valor
               }
               variant="primary"
-              className="w-full h-[46px] flex items-center justify-center p-0"
+              className="flex-1 h-[46px] flex items-center justify-center p-0 shadow-sm"
             >
               {editingLaborId ? (
                 <Check size={20} strokeWidth={3} />
@@ -365,7 +366,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                   setEditingLaborId(null);
                 }}
                 variant="secondary"
-                className="h-[46px] w-[46px] flex items-center justify-center px-0 min-w-[46px] absolute -right-12"
+                className="h-[46px] w-[46px] flex items-center justify-center px-0 min-w-[46px] border border-neutral-200"
               >
                 <X size={20} />
               </Button>
@@ -375,37 +376,29 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
       )}
 
       {/* Lista Mão de Obra */}
-      <div className="bg-neutral-25 border border-neutral-100 rounded-2xl overflow-hidden shadow-sm">
+      <Card className="p-0 overflow-hidden">
         {laborServices.length === 0 ? (
           <div className="p-6 text-center text-neutral-400 text-xs italic">
             Nenhum serviço de mão de obra lançado.
           </div>
         ) : (
-          <table className="w-full text-xs text-left">
-            <thead className="bg-neutral-50 border-b border-neutral-100">
+          <table className="tabela-limpa w-full text-left">
+            <thead>
               <tr>
-                <th className="p-3 font-bold text-neutral-400 uppercase text-[9px] tracking-widest">
-                  Profissional
-                </th>
-                <th className="p-3 font-bold text-neutral-400 uppercase text-[9px] tracking-widest text-center">
-                  Tipo
-                </th>
-                <th className="p-3 font-bold text-neutral-400 uppercase text-[9px] tracking-widest">
-                  Descrição
-                </th>
-                <th className="p-3 font-bold text-neutral-400 uppercase text-[9px] tracking-widest text-right">
-                  Valor
-                </th>
-                <th className="p-3 text-center"></th>
+                <th className="w-[30%] pl-6">Profissional</th>
+                <th className="w-[15%] text-center">Tipo</th>
+                <th className="w-[30%]">Descrição</th>
+                <th className="w-[15%] text-right">Valor</th>
+                <th className="w-[10%]"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-50 bg-primary-100 ">
+            <tbody className="divide-y divide-neutral-50">
               {laborServices.map((svc) => (
                 <tr
-                  className="hover:bg-neutral-50/50 transition-colors group"
+                  className="hover:bg-neutral-50 transition-colors group"
                   key={svc.id_servico_mao_de_obra || svc.id_temporary}
                 >
-                  <td className="p-3 font-bold text-neutral-700">
+                  <td className="pl-6 py-3 font-bold text-neutral-700">
                     {svc.funcionario?.pessoa_fisica?.pessoa?.nome ||
                       employees.find(
                         (e) =>
@@ -414,26 +407,26 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                       )?.pessoa_fisica?.pessoa?.nome ||
                       "Mecânico"}
                   </td>
-                  <td className="p-3 text-center">
+                  <td className="py-3 text-center">
                     {svc.categoria === "ELETRICA" ? (
-                      <span className="text-[8px] font-bold bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded uppercase">
+                      <span className="text-[9px] font-bold bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-md uppercase tracking-wide border border-yellow-200">
                         Elétrica
                       </span>
                     ) : (
-                      <span className="text-[8px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase">
+                      <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md uppercase tracking-wide border border-blue-200">
                         Mecânica
                       </span>
                     )}
                   </td>
-                  <td className="p-3 text-neutral-600">
+                  <td className="py-3 text-neutral-600">
                     {svc.descricao || "-"}
                   </td>
-                  <td className="p-3 text-right font-bold text-neutral-900">
+                  <td className="py-3 text-right font-bold text-neutral-900">
                     {formatCurrency(Number(svc.valor))}
                   </td>
-                  <td className="p-3 text-center">
+                  <td className="py-3 text-center">
                     {!readOnly && (
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <ActionButton
                           icon={Edit}
                           label="Editar"
@@ -458,7 +451,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             </tbody>
           </table>
         )}
-      </div>
+      </Card>
     </div>
   );
 };

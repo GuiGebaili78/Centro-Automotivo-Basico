@@ -7,8 +7,10 @@ import { Search, Plus, Phone, CheckCircle, Wrench } from "lucide-react";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/input";
-import { StatusBanner } from "../components/ui/StatusBanner";
 import { Modal } from "../components/ui/Modal";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { toast } from "react-toastify";
 
 export const OrdemDeServicoPage = () => {
   const navigate = useNavigate();
@@ -22,10 +24,6 @@ export const OrdemDeServicoPage = () => {
   const [oss, setOss] = useState<IOrdemDeServico[]>([]);
 
   // Status Feedback
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
 
   const location = useLocation();
 
@@ -35,10 +33,7 @@ export const OrdemDeServicoPage = () => {
       const response = await api.get("/ordem-de-servico");
       setOss(response.data);
     } catch (error) {
-      setStatusMsg({
-        type: "error",
-        text: "Erro ao carregar Ordens de Serviço.",
-      });
+      toast.error("Erro ao carregar Ordens de Serviço.");
     }
   }, []);
 
@@ -119,9 +114,9 @@ export const OrdemDeServicoPage = () => {
       setWizardClient(null);
       setWizardVehicle(null);
       handleNewOsSuccess(res.data.id_os);
-      setStatusMsg({ type: "success", text: "OS Criada com Sucesso!" });
+      toast.success("OS Criada com Sucesso!");
     } catch (e) {
-      setStatusMsg({ type: "error", text: "Erro ao criar OS." });
+      toast.error("Erro ao criar OS.");
     }
   };
 
@@ -216,225 +211,212 @@ export const OrdemDeServicoPage = () => {
   };
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">
-      {statusMsg.text && (
-        <div className="fixed bottom-8 right-8 z-60">
-          <StatusBanner
-            msg={statusMsg}
-            onClose={() => setStatusMsg({ type: null, text: "" })}
-          />
-        </div>
-      )}
+    <>
+      <PageLayout
+        title="Ordens de Serviço"
+        subtitle="Gestão centralizada de atendimentos."
+        actions={
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={() => navigate("/novo-cadastro")}
+          >
+            Novo Cadastro
+          </Button>
+        }
+      >
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+          <div className="flex-1 w-full relative">
+            <Input
+              ref={searchInputRef}
+              variant="default"
+              icon={Search}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por Placa, Cliente, Modelo ou OS..."
+            />
+          </div>
 
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-500">
-            Ordens de Serviço
-          </h1>
-          <p className="text-neutral-500">
-            Gestão centralizada de atendimentos.
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          icon={Plus}
-          onClick={() => navigate("/novo-cadastro")}
-        >
-          Novo Cadastro
-        </Button>
-      </div>
-
-      {/* MAIN INTERFACE: SEARCH & LIST */}
-      <div className="bg-surface p-4 rounded-xl shadow-sm border border-neutral-200 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex-1 w-full relative">
-          <Input
-            ref={searchInputRef}
-            variant="default"
-            icon={Search}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por Placa, Cliente ou Modelo..."
-          />
+          <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 shrink-0">
+            {["ALL", "HOJE", "SEMANA", "MES"].map((f) => (
+              <button
+                key={f}
+                onClick={() => setDateFilter(f as any)}
+                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  dateFilter === f
+                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100"
+                }`}
+              >
+                {f === "ALL" ? "Todos" : f === "MES" ? "Mês" : f}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Date Filters */}
-        <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
-          {["ALL", "HOJE", "SEMANA", "MES"].map((f) => (
-            <button
-              key={f}
-              onClick={() => setDateFilter(f as any)}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${dateFilter === f ? "bg-primary-200 text-primary-500 shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
-            >
-              {f === "ALL" ? "Todos" : f === "MES" ? "Mês" : f}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* SEARCH RESULTS */}
-      <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
-                <th className="p-4">OS / Data</th>
-                <th className="p-4">Veículo</th>
-                <th className="p-4">Diagnóstico / Ações</th>
-                <th className="p-4">Técnico</th>
-                <th className="p-4">Cliente</th>
-                <th className="p-4 text-center">Status</th>
-                <th className="p-4 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {filteredOss
-                .sort((a, b) => b.id_os - a.id_os)
-                .map((os) => (
-                  <tr
-                    key={os.id_os}
-                    className="hover:bg-neutral-25 transition-colors"
-                  >
-                    <td className="p-4">
-                      <div className="font-bold text-neutral-600">
-                        #{os.id_os}
-                      </div>
-                      <div className="text-[13px] text-neutral-600 font-medium">
-                        {new Date(os.dt_abertura).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
-                        {os.veiculo?.marca} {os.veiculo?.modelo} -{" "}
-                        {os.veiculo?.cor}
-                      </div>
-                      <div className="text-[14px] text-primary-500 font-bold uppercase">
-                        {os.veiculo?.placa || "Placa N/I"}
-                      </div>
-                    </td>
-                    <td
-                      className="p-4 max-w-[200px]"
-                      title={
-                        os.diagnostico ||
-                        os.defeito_relatado ||
-                        "Sem diagnóstico registrado"
-                      }
+        <Card className="p-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="tabela-limpa w-full">
+              <thead>
+                <tr>
+                  <th className="p-4">OS / Data</th>
+                  <th className="p-4">Veículo</th>
+                  <th className="p-4">Diagnóstico / Ações</th>
+                  <th className="p-4">Técnico</th>
+                  <th className="p-4">Cliente</th>
+                  <th className="p-4 text-center">Status</th>
+                  <th className="p-4 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {filteredOss
+                  .sort((a, b) => b.id_os - a.id_os)
+                  .map((os) => (
+                    <tr
+                      key={os.id_os}
+                      className="transition-colors hover:bg-neutral-50 group"
                     >
-                      <p className="text-xs font-medium text-neutral-600 line-clamp-2">
-                        {os.diagnostico || os.defeito_relatado || (
-                          <span className="text-neutral-300 italic">
-                            Pendente
-                          </span>
-                        )}
-                      </p>
-                    </td>
-                    <td className="p-4">
-                      <p
-                        className="text-xs font-bold text-neutral-700 uppercase truncate max-w-[120px]"
-                        title="Responsável Técnico"
+                      <td className="p-4">
+                        <div className="font-bold text-neutral-600">
+                          #{os.id_os}
+                        </div>
+                        <div className="text-[13px] text-neutral-600 font-medium">
+                          {new Date(os.dt_abertura).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
+                          {os.veiculo?.marca} {os.veiculo?.modelo} -{" "}
+                          {os.veiculo?.cor}
+                        </div>
+                        <div className="text-[14px] text-primary-500 font-bold uppercase">
+                          {os.veiculo?.placa || "Placa N/I"}
+                        </div>
+                      </td>
+                      <td
+                        className="p-4 max-w-[200px]"
+                        title={
+                          os.diagnostico ||
+                          os.defeito_relatado ||
+                          "Sem diagnóstico registrado"
+                        }
                       >
-                        {(() => {
-                          // @ts-ignore
-                          const mechanics = os.servicos_mao_de_obra
-                            ?.map(
-                              (s) =>
-                                s.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
-                                  " ",
-                                )[0],
-                            )
-                            .filter(Boolean);
-                          const uniqueMechanics = [...new Set(mechanics || [])];
+                        <p className="text-xs font-medium text-neutral-600 line-clamp-2">
+                          {os.diagnostico || os.defeito_relatado || (
+                            <span className="text-neutral-300 italic">
+                              Pendente
+                            </span>
+                          )}
+                        </p>
+                      </td>
+                      <td className="p-4">
+                        <p
+                          className="text-xs font-bold text-neutral-700 uppercase truncate max-w-[120px]"
+                          title="Responsável Técnico"
+                        >
+                          {(() => {
+                            // @ts-ignore
+                            const mechanics = os.servicos_mao_de_obra
+                              ?.map(
+                                (s) =>
+                                  s.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
+                                    " ",
+                                  )[0],
+                              )
+                              .filter(Boolean);
+                            const uniqueMechanics = [
+                              ...new Set(mechanics || []),
+                            ];
 
-                          if (uniqueMechanics.length > 0) {
-                            return uniqueMechanics.join(", ");
-                          }
-                          // Fallback to OS Creator/Owner
-                          return (
-                            os.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
-                              " ",
-                            )[0] || (
-                              <span className="text-neutral-300">---</span>
-                            )
-                          );
-                        })()}
-                      </p>
-                    </td>
-                    <td className="p-4">
-                      <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
-                        {os.cliente?.pessoa_fisica?.pessoa?.nome ||
-                          os.cliente?.pessoa_juridica?.razao_social ||
-                          "Desconhecido"}
-                      </div>
-                      <div className="text-[10px] text-neutral-400 font-medium">
-                        {os.cliente?.telefone_1}
-                      </div>
-                    </td>
-                    <td className="p-4 text-center">
-                      <span
-                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
-                      >
-                        {os.status === "PRONTO PARA FINANCEIRO"
-                          ? "FINANCEIRO"
-                          : os.status.replace(/_/g, " ")}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-1">
-                        <ActionButton
-                          onClick={() => handleManageItem(os)}
-                          label="Gerenciar"
-                          variant="neutral"
-                          icon={Wrench}
-                        />
-
-                        {(os.status === "FINALIZADA" ||
-                          os.status === "PRONTO PARA FINANCEIRO" ||
-                          os.status === "PAGA_CLIENTE") && (
-                          <ActionButton
-                            onClick={() =>
-                              handleOpenNewOsForExisting(os.veiculo, os.cliente)
+                            if (uniqueMechanics.length > 0) {
+                              return uniqueMechanics.join(", ");
                             }
-                            icon={Plus}
-                            label="Nova OS"
-                            variant="primary"
+                            return (
+                              os.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
+                                " ",
+                              )[0] || (
+                                <span className="text-neutral-300">---</span>
+                              )
+                            );
+                          })()}
+                        </p>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
+                          {os.cliente?.pessoa_fisica?.pessoa?.nome ||
+                            os.cliente?.pessoa_juridica?.razao_social ||
+                            "Desconhecido"}
+                        </div>
+                        <div className="text-[10px] text-neutral-400 font-medium">
+                          {os.cliente?.telefone_1}
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span
+                          className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
+                        >
+                          {os.status === "PRONTO PARA FINANCEIRO"
+                            ? "FINANCEIRO"
+                            : os.status.replace(/_/g, " ")}
+                        </span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ActionButton
+                            onClick={() => handleManageItem(os)}
+                            label="Gerenciar"
+                            variant="neutral"
+                            icon={Wrench}
                           />
-                        )}
+
+                          {(os.status === "FINALIZADA" ||
+                            os.status === "PRONTO PARA FINANCEIRO" ||
+                            os.status === "PAGA_CLIENTE") && (
+                            <ActionButton
+                              onClick={() =>
+                                handleOpenNewOsForExisting(
+                                  os.veiculo,
+                                  os.cliente,
+                                )
+                              }
+                              icon={Plus}
+                              label="Nova OS"
+                              variant="primary"
+                            />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                {filteredOss.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="p-12 text-center text-neutral-500"
+                    >
+                      <div className="flex flex-col items-center gap-4">
+                        <p className="font-bold text-neutral-400 mb-2">
+                          Nenhum registro encontrado.
+                        </p>
+                        <p className="text-sm text-neutral-400 mb-4">
+                          Deseja iniciar um novo atendimento?
+                        </p>
+                        <Button
+                          onClick={() => navigate("/novo-cadastro")}
+                          variant="primary"
+                          icon={Plus}
+                        >
+                          NOVO CADASTRO
+                        </Button>
                       </div>
                     </td>
                   </tr>
-                ))}
-              {/* Empty/No Results: Show 'INICIAR NOVA OS' Button */}
-              {filteredOss.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="p-12 text-center text-neutral-500">
-                    <div className="flex flex-col items-center gap-4">
-                      <p className="font-bold text-neutral-400 mb-2">
-                        Nenhum registro encontrado.
-                      </p>
-                      <p className="text-sm text-neutral-400 mb-4">
-                        Deseja iniciar um novo atendimento?
-                      </p>
-                      <Button
-                        onClick={() => navigate("/novo-cadastro")}
-                        variant="primary"
-                        icon={Plus}
-                      >
-                        NOVO CADASTRO
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* --- MODALS (SHARED) --- */}
-      {/* WIZARD MODALS */}
-
-      {/* WIZARD MODALS */}
-      {/* Step 1 & 2 replaced by CadastroUnificadoPage. Only Step 3 (OS Confirmation) remains. */}
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </PageLayout>
 
       {newOsWizardStep === "OS" && wizardClient && wizardVehicle && (
         <Modal
@@ -472,7 +454,6 @@ export const OrdemDeServicoPage = () => {
                     Veículo
                   </p>
                   <div className="flex items-center gap-3">
-                    {/* Gray Circle Removed */}
                     <div>
                       <p className="font-bold text-primary-900 text-xl tracking-tight">
                         {wizardVehicle.placa}
@@ -495,7 +476,7 @@ export const OrdemDeServicoPage = () => {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                handleCreateOsFinal(null, 0, ""); // No mechanic, No KM, No Defect for now
+                handleCreateOsFinal(null, 0, "");
               }}
             >
               <div className="pt-2 flex gap-3">
@@ -522,6 +503,6 @@ export const OrdemDeServicoPage = () => {
           </div>
         </Modal>
       )}
-    </div>
+    </>
   );
 };

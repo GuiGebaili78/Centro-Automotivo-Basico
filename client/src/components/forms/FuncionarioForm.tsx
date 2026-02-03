@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { api } from "../../services/api";
+import { toast } from "react-toastify";
 import {
   User,
   Briefcase,
@@ -15,7 +16,7 @@ import type { IFuncionario } from "../../types/backend";
 
 import { Button } from "../ui/Button";
 import { Input } from "../ui/input";
-import { Modal } from "../ui/Modal";
+import { ConfirmModal } from "../ui/ConfirmModal";
 
 interface FuncionarioFormProps {
   initialData?: IFuncionario | null;
@@ -291,7 +292,7 @@ export const FuncionarioForm = ({
     } catch (error: any) {
       console.error(error);
       const msg = error.response?.data?.error || "Erro ao salvar colaborador.";
-      alert(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -317,52 +318,28 @@ export const FuncionarioForm = ({
   };
 
   return (
-    <>
+    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={handleAttemptCancel}>
+          <ArrowLeft size={20} />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-800">
+            {initialData ? "Editar Colaborador" : "Novo Colaborador"}
+          </h1>
+          <p className="text-neutral-500 text-sm">
+            {initialData
+              ? "Atualize os dados e comissões do colaborador."
+              : "Preencha o formulário para adicionar um novo membro à equipe."}
+          </p>
+        </div>
+      </div>
+
       <form
         onSubmit={handleAttemptSubmit}
-        className="space-y-6 text-neutral-900"
+        className="space-y-6 text-neutral-900" // Standard spacing
       >
-        {/* Header */}
-        <div className="flex items-center justify-between sticky top-0 bg-neutral-25 ackdrop-blur-md p-4 rounded-2xl border border-neutral-200 shadow-sm z-10">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={handleAttemptCancel}
-              className="p-2 hover:bg-neutral-100 rounded-xl transition-colors text-neutral-500"
-            >
-              <ArrowLeft size={24} />
-            </button>
-            <div>
-              <h2 className="text-xl font-bold text-neutral-500 tracking-tight">
-                {initialData ? "Editar Colaborador" : "Novo Colaborador"}
-              </h2>
-              <p className="text-neutral-500">
-                {initialData
-                  ? "Atualizando dados do MEI/Funcionário."
-                  : "Cadastro completo do MEI."}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              variant="ghost"
-              icon={ArrowLeft}
-              onClick={handleAttemptCancel}
-              type="button"
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="primary"
-              icon={BadgeCheck}
-              type="submit"
-              disabled={loading}
-            >
-              Salvar Cadastro
-            </Button>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* COL 1 & 2 */}
           <div className="space-y-8 xl:col-span-2">
@@ -728,54 +705,48 @@ export const FuncionarioForm = ({
             </div>
           </div>
         </div>
+
+        {/* FOOTER ACTIONS */}
+        <div className="flex flex-col-reverse md:flex-row justify-end gap-4 pt-6 border-t border-neutral-200">
+          <Button
+            variant="ghost"
+            icon={ArrowLeft}
+            onClick={handleAttemptCancel}
+            type="button"
+            size="lg"
+            className="px-8 text-neutral-500 hover:text-neutral-700 font-bold"
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            icon={BadgeCheck}
+            type="submit"
+            disabled={loading}
+            size="lg"
+            className="px-12"
+          >
+            Salvar Cadastro
+          </Button>
+        </div>
       </form>
 
-      {/* CONFIRMATION MODAL */}
-      {confirmModal.show && (
-        <Modal
-          title={
-            confirmModal.type === "save"
-              ? "Salvar Alterações"
-              : "Descartar Alterações?"
-          }
-          onClose={() => setConfirmModal((prev) => ({ ...prev, show: false }))}
-          zIndex={60}
-        >
-          <div className="space-y-4">
-            <div
-              className={`p-4 rounded-xl border ${
-                confirmModal.type === "save"
-                  ? "bg-blue-50 border-blue-100 text-blue-700"
-                  : "bg-amber-50 border-amber-100 text-amber-700"
-              }`}
-            >
-              <p className="font-bold text-center">
-                {confirmModal.type === "save"
-                  ? "Deseja confirmar o cadastro/atualização deste colaborador?"
-                  : "Existem dados não salvos. Deseja realmente sair?"}
-              </p>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="ghost"
-                onClick={() =>
-                  setConfirmModal((prev) => ({ ...prev, show: false }))
-                }
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant={confirmModal.type === "save" ? "primary" : "danger"}
-                onClick={
-                  confirmModal.type === "save" ? executeSubmit : executeCancel
-                }
-              >
-                {confirmModal.type === "save" ? "Confirmar" : "Sair sem Salvar"}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </>
+      <ConfirmModal
+        isOpen={confirmModal.show}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, show: false }))}
+        onConfirm={confirmModal.type === "save" ? executeSubmit : executeCancel}
+        title={
+          confirmModal.type === "save"
+            ? "Salvar Alterações"
+            : "Descartar Alterações?"
+        }
+        description={
+          confirmModal.type === "save"
+            ? "Deseja confirmar o cadastro/atualização deste colaborador?"
+            : "Existem dados não salvos. Deseja realmente sair?"
+        }
+        variant={confirmModal.type === "save" ? "primary" : "danger"}
+      />
+    </div>
   );
 };

@@ -2,32 +2,24 @@ import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import type { IPecasEstoque } from "../types/backend";
-import { Modal } from "../components/ui/Modal";
-import {
-  Search,
-  Trash2,
-  Edit,
-  Package,
-  CheckCircle,
-  ShoppingCart,
-} from "lucide-react";
-import { StatusBanner } from "../components/ui/StatusBanner";
+import { Search, Trash2, Edit, CheckCircle, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/input";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { ActionButton } from "../components/ui/ActionButton";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { Modal } from "../components/ui/Modal";
+import { toast } from "react-toastify";
 
 export const PecasEstoquePage = () => {
   const navigate = useNavigate();
   const [pecas, setPecas] = useState<IPecasEstoque[]>([]);
 
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
-
   // Search
-  const [searchId, setSearchId] = useState("");
-  const [listSearchTerm, setListSearchTerm] = useState(""); // Global filter
+  // Unificado: Um único termo para filtrar tudo
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Edit Modal State
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -43,19 +35,44 @@ export const PecasEstoquePage = () => {
     estoque_atual: "",
   });
 
+  // Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    msg: string;
+    onConfirm: () => void;
+    type: "warning" | "info" | "danger";
+  }>({ show: false, title: "", msg: "", onConfirm: () => {}, type: "info" });
+
   useEffect(() => {
     loadPecas();
   }, []);
 
+  const loadPecas = async () => {
+    try {
+      const response = await api.get("/pecas-estoque");
+      setPecas(response.data);
+    } catch (error) {
+      toast.error("Erro ao carregar estoque.");
+    }
+  };
+
   // FILTERED LIST
   const filteredPecas = pecas.filter((p) => {
-    if (!listSearchTerm) return true;
-    const term = listSearchTerm.toLowerCase();
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+
+    // Safely access nested properties
+    const lastEntry = (p as any).itens_entrada?.[0]?.entrada;
+    const fornecedor =
+      lastEntry?.fornecedor?.nome_fantasia || lastEntry?.fornecedor?.nome || "";
+
     return (
       p.nome.toLowerCase().includes(term) ||
-      p.descricao.toLowerCase().includes(term) ||
+      (p.descricao && p.descricao.toLowerCase().includes(term)) ||
       (p.fabricante && p.fabricante.toLowerCase().includes(term)) ||
-      String(p.id_pecas_estoque).includes(term)
+      String(p.id_pecas_estoque).includes(term) ||
+      (fornecedor && fornecedor.toLowerCase().includes(term))
     );
   });
 
@@ -83,52 +100,6 @@ export const PecasEstoquePage = () => {
     });
   };
 
-  const loadPecas = async () => {
-    try {
-      const response = await api.get("/pecas-estoque");
-      setPecas(response.data);
-    } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao carregar estoque." });
-    }
-  };
-
-  const handleSearch = async () => {
-    if (!searchId) return;
-    try {
-      const response = await api.get(`/pecas-estoque/${searchId}`);
-      // Setup Form Data
-      const p = response.data;
-      setEditData(p);
-
-      // Calc Margin
-      let margin = "";
-      if (Number(p.valor_custo) > 0) {
-        margin = (
-          ((Number(p.valor_venda) - Number(p.valor_custo)) /
-            Number(p.valor_custo)) *
-          100
-        ).toFixed(2);
-      }
-
-      setFormData({
-        nome: p.nome,
-        fabricante: p.fabricante || "",
-        descricao: p.descricao || "",
-        unidade_medida: p.unidade_medida || "UN",
-        valor_custo: Number(p.valor_custo).toFixed(2),
-        margem_lucro: margin,
-        valor_venda: Number(p.valor_venda).toFixed(2),
-        estoque_atual: String(p.estoque_atual),
-      });
-
-      setEditModalOpen(true);
-      setSearchId(""); // Clear search ID after opening
-    } catch (error) {
-      setStatusMsg({ type: "error", text: "Peça não encontrada por ID." });
-      setEditData(null);
-    }
-  };
-
   const handleOpenEdit = (p: IPecasEstoque) => {
     setEditData(p);
     // Calc Margin
@@ -154,37 +125,9 @@ export const PecasEstoquePage = () => {
     setEditModalOpen(true);
   };
 
-  // Confirm Modal State
-  const [confirmModal, setConfirmModal] = useState<{
-    show: boolean;
-    title: string;
-    msg: string;
-    onConfirm: () => void;
-    type: "warning" | "info" | "danger";
-  }>({ show: false, title: "", msg: "", onConfirm: () => {}, type: "info" });
-
-  const handleCloseModal = () => {
-    if (editData) {
-      setConfirmModal({
-        show: true,
-        title: "Descartar Alterações?",
-        msg: "Existem dados carregados. Deseja sair sem salvar?",
-        type: "warning",
-        onConfirm: () => {
-          setEditModalOpen(false);
-          setEditData(null);
-          setConfirmModal((prev) => ({ ...prev, show: false }));
-        },
-      });
-    } else {
-      setEditModalOpen(false);
-    }
-  };
-
   const executeUpdate = async () => {
     if (!editData) return;
     try {
-      // Build a clean payload with only editable fields
       const payload = {
         nome: formData.nome,
         fabricante: formData.fabricante,
@@ -197,48 +140,52 @@ export const PecasEstoquePage = () => {
 
       await api.put(`/pecas-estoque/${editData.id_pecas_estoque}`, payload);
 
-      setStatusMsg({ type: "success", text: "Peça atualizada com sucesso!" });
-      setEditModalOpen(false); // Close edit modal
+      toast.success("Peça atualizada com sucesso!");
+      setEditModalOpen(false);
       setEditData(null);
-      loadPecas(); // Refresh list
+      loadPecas();
     } catch (error: any) {
       console.error(error);
       const errorMsg =
         error.response?.data?.error ||
         "Erro ao atualizar peça. Verifique os dados.";
-      setStatusMsg({ type: "error", text: errorMsg });
-      // Do NOT close edit modal so user can fix
+      toast.error(errorMsg);
     }
-    setConfirmModal((prev) => ({ ...prev, show: false })); // Always close confirm modal
   };
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
-    setConfirmModal({
-      show: true,
-      title: "Salvar Alterações",
-      msg: "Deseja confirmar as atualizações neste item?",
-      type: "info",
-      onConfirm: executeUpdate,
-    });
+    // Simplified confirmation for save inside modal
+    executeUpdate();
   };
 
   const executeDelete = async () => {
     if (!editData) return;
     try {
       await api.delete(`/pecas-estoque/${editData.id_pecas_estoque}`);
-      setStatusMsg({ type: "success", text: "Peça removida do sistema." });
+      toast.success("Peça removida do sistema.");
       loadPecas();
       setEditModalOpen(false);
       setEditData(null);
-      setSearchId("");
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao deletar peça." });
+      toast.error("Erro ao deletar peça.");
     }
     setConfirmModal((prev) => ({ ...prev, show: false }));
   };
 
-  const handleDelete = () => {
+  const handleDeleteClick = (p: IPecasEstoque) => {
+    setEditData(p); // Temporarily set editData for deletion context
+    setConfirmModal({
+      show: true,
+      title: "Excluir Item",
+      msg: "Tem certeza que deseja remover este item permanentemente?",
+      type: "danger",
+      onConfirm: executeDelete,
+    });
+  };
+
+  // Delete from within Edit Modal
+  const handleDeleteFromModal = () => {
     if (!editData) return;
     setConfirmModal({
       show: true,
@@ -250,240 +197,156 @@ export const PecasEstoquePage = () => {
   };
 
   return (
-    <div className="w-full mx-auto px-4 md:px-8 py-6 space-y-6">
-      <StatusBanner
-        msg={statusMsg}
-        onClose={() => setStatusMsg({ type: null, text: "" })}
-      />
-
-      {/* CONFIRMATION MODAL */}
-      {confirmModal.show && (
-        <Modal
-          title={confirmModal.title}
-          onClose={() => setConfirmModal((prev) => ({ ...prev, show: false }))}
-          zIndex={60}
-        >
-          <div className="space-y-4">
-            <div
-              className={`p-4 rounded-xl border ${confirmModal.type === "danger" ? "bg-red-50 border-red-100 text-red-700" : "bg-blue-50 border-blue-100 text-blue-700"}`}
-            >
-              <p className="font-bold text-center">{confirmModal.msg}</p>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="ghost"
-                onClick={() =>
-                  setConfirmModal((prev) => ({ ...prev, show: false }))
-                }
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant={confirmModal.type === "danger" ? "danger" : "primary"}
-                onClick={confirmModal.onConfirm}
-              >
-                Confirmar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">
-            Estoque de Peças
-          </h1>
-          <p className="text-neutral-500">
-            Gerencie o inventário de peças e serviços.
-          </p>
-        </div>
+    <PageLayout
+      title="Estoque de Peças"
+      subtitle="Gerencie o inventário de peças e serviços."
+      actions={
         <Button
           onClick={() => navigate("/entrada-estoque")}
           variant="primary"
-          icon={ShoppingCart}
-          className="shadow-lg shadow-primary-500/20"
+          icon={Plus}
         >
           Nova Compra / Entrada
         </Button>
-      </div>
-
-      {/* ACTION CARDS ROW */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 1. Maintenance By ID (Left) */}
-        <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm flex flex-col justify-between">
-          <h2 className="text-sm font-bold text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2 mb-4">
-            Manutenção de Item (Por ID)
-          </h2>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <Input
-                label="ID da Peça"
-                type="number"
-                value={searchId}
-                onChange={(e) => setSearchId(e.target.value)}
-                placeholder="123"
-              />
-            </div>
-            <Button
-              onClick={handleSearch}
-              disabled={!searchId}
-              variant="primary"
-              className="mb-1"
-              icon={Search}
-            >
-              ABRIR
-            </Button>
-          </div>
+      }
+    >
+      <div className="space-y-6">
+        {/* BUSCA UNIFICADA */}
+        <div className="relative">
+          <Input
+            variant="default"
+            icon={Search}
+            placeholder="Buscar por nome, fabricante, descrição ou ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+          />
         </div>
 
-        {/* 2. Global Search / Filtering (Right) */}
-        <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm flex flex-col justify-between">
-          <h2 className="text-sm font-bold text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2 mb-4">
-            Localizar / Filtrar Lista
-          </h2>
-          <div className="relative">
-            <Input
-              label="Buscar em todas as colunas"
-              value={listSearchTerm}
-              onChange={(e) => setListSearchTerm(e.target.value)}
-              placeholder="Nome, Fabricante, Descrição..."
-            />
-            <Search
-              className="absolute right-3 top-[34px] text-neutral-400 pointer-events-none"
-              size={18}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* LIST */}
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-neutral-50 border-b border-neutral-100">
-            <tr>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                ID
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                Produto / Peça
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                Fornecedor / Data
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-right">
-                Estoque
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-right">
-                Custo Unit.
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-right">
-                Valor Venda
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-right">
-                Ações
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-50">
-            {filteredPecas.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="p-8 text-center text-neutral-400 italic"
-                >
-                  Nenhum item encontrado.
-                </td>
-              </tr>
-            ) : (
-              filteredPecas.map((p) => {
-                const lastEntry = (p as any).itens_entrada?.[0]?.entrada;
-                const fornecedorName = lastEntry?.fornecedor?.nome || "-";
-                const dataCompra = lastEntry?.data_compra
-                  ? new Date(lastEntry.data_compra).toLocaleDateString()
-                  : "-";
-                const nf = lastEntry?.nota_fiscal || "-";
-
-                return (
-                  <tr
-                    key={p.id_pecas_estoque}
-                    className="hover:bg-neutral-50 group transition-colors"
-                  >
-                    <td className="p-4 text-neutral-500 font-mono text-xs font-bold">
-                      #{p.id_pecas_estoque}
-                    </td>
-                    <td className="p-4 font-medium">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-primary-50 p-2.5 rounded-xl text-primary-600">
-                          <Package size={20} />
-                        </div>
-                        <div>
-                          <div className="font-bold text-neutral-900">
-                            {p.nome}
-                          </div>
-                          <div className="text-xs text-neutral-500 max-w-[200px] truncate">
-                            {p.descricao}
-                          </div>
-                          {p.fabricante && (
-                            <div className="text-[10px] text-neutral-400 uppercase font-bold">
-                              {p.fabricante}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="text-xs">
-                        <div className="font-bold text-neutral-700">
-                          {fornecedorName}
-                        </div>
-                        <div className="text-neutral-400 font-medium">
-                          {dataCompra} • NF: {nf}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <span
-                        className={`px-2 py-1 rounded-md text-xs font-bold ${p.estoque_atual > 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}
-                      >
-                        {p.estoque_atual} {p.unidade_medida || "UN"}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right font-medium text-neutral-600">
-                      {formatCurrency(Number(p.valor_custo))}
-                    </td>
-                    <td className="p-4 text-right font-bold text-neutral-900">
-                      {formatCurrency(Number(p.valor_venda))}
-                    </td>
-                    <td className="p-4 text-right">
-                      <Button
-                        onClick={() => handleOpenEdit(p)}
-                        variant="secondary"
-                        size="sm"
-                        icon={Edit}
-                        className="py-1 px-2"
-                      >
-                        Editar
-                      </Button>
+        {/* TABELA */}
+        <Card className="p-0 overflow-hidden border-neutral-200">
+          <div className="overflow-x-auto">
+            <table className="tabela-limpa w-full">
+              <thead>
+                <tr>
+                  <th className="w-[8%] text-left pl-4">ID</th>
+                  <th className="w-[20%] text-left">Produto / Peça</th>
+                  <th className="w-[20%] text-left">Descrição</th>
+                  <th className="w-[15%] text-left">Última Compra</th>
+                  <th className="w-[12%] text-left">Estoque</th>
+                  <th className="w-[12%] text-left">Venda</th>
+                  <th className="w-[13%] text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPecas.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="p-8 text-center text-neutral-400 italic"
+                    >
+                      Nenhum item encontrado.
                     </td>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                ) : (
+                  filteredPecas.map((p) => {
+                    const lastEntry = (p as any).itens_entrada?.[0]?.entrada;
+                    const fornecedorName =
+                      lastEntry?.fornecedor?.nome_fantasia ||
+                      lastEntry?.fornecedor?.nome ||
+                      "-";
+                    const dataCompra = lastEntry?.data_compra
+                      ? new Date(lastEntry.data_compra).toLocaleDateString()
+                      : "-";
+
+                    return (
+                      <tr
+                        key={p.id_pecas_estoque}
+                        className="hover:bg-neutral-50 transition-colors group"
+                      >
+                        <td className="font-mono text-xs font-bold text-neutral-400 text-left pl-4">
+                          #{p.id_pecas_estoque}
+                        </td>
+                        <td className="text-left">
+                          <div className="flex flex-col items-start">
+                            <span className="font-bold text-neutral-700 text-sm">
+                              {p.nome}
+                            </span>
+                            <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">
+                              {p.fabricante || "GENÉRICO"}
+                            </span>
+                          </div>
+                        </td>
+                        <td
+                          className="text-left text-xs text-neutral-500 max-w-[200px] truncate px-2"
+                          title={p.descricao}
+                        >
+                          {p.descricao || "-"}
+                        </td>
+                        <td className="text-left">
+                          <div className="flex flex-col items-start">
+                            <span
+                              className="text-xs font-bold text-neutral-600 truncate max-w-[150px]"
+                              title={fornecedorName}
+                            >
+                              {fornecedorName}
+                            </span>
+                            <span className="text-[10px] text-neutral-400">
+                              {dataCompra}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-left">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-block ${
+                              p.estoque_atual > 0
+                                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                : "bg-red-50 text-red-600 border border-red-100"
+                            }`}
+                          >
+                            {p.estoque_atual} {p.unidade_medida || "UN"}
+                          </span>
+                        </td>
+                        <td className="text-left text-sm font-bold text-neutral-800">
+                          {formatCurrency(Number(p.valor_venda))}
+                        </td>
+                        <td>
+                          <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ActionButton
+                              icon={Edit}
+                              label="Editar"
+                              variant="neutral"
+                              onClick={() => handleOpenEdit(p)}
+                            />
+                            <ActionButton
+                              icon={Trash2}
+                              label="Excluir"
+                              variant="danger"
+                              onClick={() => handleDeleteClick(p)}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </div>
 
       {/* EDIT MODAL */}
       {editModalOpen && (
         <Modal
-          title={`Manutenção de Item: ${editData?.nome}`}
-          onClose={handleCloseModal}
-          className="max-w-4xl"
+          title={`Editar Item: ${editData?.nome}`}
+          onClose={() => setEditModalOpen(false)}
+          className="max-w-3xl"
         >
-          <form onSubmit={handleUpdate} className="space-y-6 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+          <form onSubmit={handleUpdate} className="space-y-6 pt-2">
+            {/* GRID LAYOUT */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
                 <Input
                   label="Nome do Item"
                   value={formData.nome}
@@ -492,9 +355,7 @@ export const PecasEstoquePage = () => {
                   }
                   required
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Fabricante"
                     value={formData.fabricante}
@@ -503,116 +364,129 @@ export const PecasEstoquePage = () => {
                     }
                     placeholder="Marca..."
                   />
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-neutral-500">
+                      Unidade
+                    </label>
+                    <select
+                      value={formData.unidade_medida}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          unidade_medida: e.target.value,
+                        })
+                      }
+                      className="w-full p-2.5 rounded-lg border border-neutral-200 bg-white focus:bg-white outline-none focus:border-primary-500 font-medium text-sm transition-all h-[42px]"
+                    >
+                      <option value="UN">Unidade (UN)</option>
+                      <option value="L">Litro (L)</option>
+                      <option value="KG">Quilo (KG)</option>
+                      <option value="KIT">Kit</option>
+                      <option value="PAR">Par</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                    Unidade
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-neutral-500">
+                    Descrição / Notas
                   </label>
-                  <select
-                    value={formData.unidade_medida}
+                  <textarea
+                    value={formData.descricao}
+                    onChange={(e) =>
+                      setFormData({ ...formData, descricao: e.target.value })
+                    }
+                    className="w-full p-3 rounded-lg border border-neutral-200 bg-white focus:bg-white outline-none focus:border-primary-500 font-medium text-sm h-24 resize-none transition-all"
+                    placeholder="Detalhes adicionais..."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4 bg-neutral-50 p-4 rounded-xl border border-neutral-100">
+                <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-200 pb-2">
+                  Valores e Estoque
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Estoque Atual"
+                    type="number"
+                    value={formData.estoque_atual}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        unidade_medida: e.target.value,
+                        estoque_atual: e.target.value,
                       })
                     }
-                    className="w-full p-[10px] rounded-lg border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-bold text-sm h-[42px] transition-all"
-                  >
-                    <option value="UN">Unidade (UN)</option>
-                    <option value="L">Litro (L)</option>
-                    <option value="KG">Quilo (KG)</option>
-                    <option value="KIT">Kit</option>
-                    <option value="PAR">Par</option>
-                  </select>
+                    className="text-center font-bold"
+                  />
+                  <Input
+                    label="Margem (%)"
+                    type="number"
+                    step="0.5"
+                    value={formData.margem_lucro}
+                    onChange={(e) => handleRecalcSale(e.target.value)}
+                    className="text-center font-medium"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Custo (R$)"
+                    type="number"
+                    step="0.01"
+                    value={formData.valor_custo}
+                    onChange={(e) =>
+                      setFormData({ ...formData, valor_custo: e.target.value })
+                    }
+                    className="text-right font-medium text-neutral-600"
+                  />
+                  <Input
+                    label="Venda (R$)"
+                    type="number"
+                    step="0.01"
+                    value={formData.valor_venda}
+                    onChange={(e) => handleRecalcMargin(e.target.value)}
+                    className="text-right font-bold border-emerald-200 bg-emerald-50 text-emerald-700"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Values Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <Input
-                  label="Estoque Atual"
-                  type="number"
-                  value={formData.estoque_atual}
-                  onChange={(e) =>
-                    setFormData({ ...formData, estoque_atual: e.target.value })
-                  }
-                  className="text-center font-bold"
-                />
-              </div>
-              <div>
-                <Input
-                  label="Custo Unit (R$)"
-                  type="number"
-                  step="0.01"
-                  value={formData.valor_custo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, valor_custo: e.target.value })
-                  }
-                  className="text-right font-medium"
-                />
-              </div>
-              <div>
-                <Input
-                  label="Margem (%)"
-                  type="number"
-                  step="0.5"
-                  value={formData.margem_lucro}
-                  onChange={(e) => handleRecalcSale(e.target.value)}
-                  className="text-center font-medium"
-                />
-              </div>
-              <div>
-                <Input
-                  label="Venda Unit (R$)"
-                  type="number"
-                  step="0.01"
-                  value={formData.valor_venda}
-                  onChange={(e) => handleRecalcMargin(e.target.value)}
-                  className="text-right font-bold border-primary-200 bg-primary-50 text-primary-800"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                  Descrição / Aplicação / Obs
-                </label>
-                <textarea
-                  value={formData.descricao}
-                  onChange={(e) =>
-                    setFormData({ ...formData, descricao: e.target.value })
-                  }
-                  className="w-full p-3 rounded-lg border border-neutral-200 bg-neutral-50 focus:bg-white outline-none focus:border-primary-500 font-medium text-sm h-24 resize-none transition-all"
-                  placeholder="Detalhes adicionais..."
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center pt-2">
+            {/* FOOTER ACTIONS */}
+            <div className="flex justify-between items-center pt-6 border-t border-neutral-100">
               <Button
                 type="button"
-                onClick={handleDelete}
+                onClick={handleDeleteFromModal}
                 variant="danger"
                 icon={Trash2}
+                className="opacity-70 hover:opacity-100"
               >
-                Excluir Item
+                Excluir
               </Button>
-
-              <Button
-                type="submit"
-                variant="primary"
-                icon={CheckCircle}
-                className="px-8 shadow-lg shadow-primary-500/20"
-              >
-                Salvar Alterações
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setEditModalOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" variant="primary" icon={CheckCircle}>
+                  Salvar Alterações
+                </Button>
+              </div>
             </div>
           </form>
         </Modal>
       )}
-    </div>
+
+      {/* CONFIRM DELETE MODAL */}
+      <ConfirmModal
+        isOpen={confirmModal.show}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, show: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        description={confirmModal.msg}
+        variant={confirmModal.type === "danger" ? "danger" : "primary"}
+      />
+    </PageLayout>
   );
 };
