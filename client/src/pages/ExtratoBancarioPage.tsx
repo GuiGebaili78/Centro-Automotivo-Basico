@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import type { IContaBancaria } from "../types/backend";
 import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/input";
+import { Input } from "../components/ui/Input";
 import { Modal } from "../components/ui/Modal";
 
 export const ExtratoBancarioPage = () => {

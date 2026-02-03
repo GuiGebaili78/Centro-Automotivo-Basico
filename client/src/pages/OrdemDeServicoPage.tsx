@@ -6,7 +6,7 @@ import { Search, Plus, Phone, CheckCircle, Wrench } from "lucide-react";
 
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/input";
+import { Input } from "../components/ui/Input";
 import { Modal } from "../components/ui/Modal";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Fragment } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "../services/api";
 import type { IFornecedor } from "../types/backend";
 import { FornecedorForm } from "../components/forms/FornecedorForm";
@@ -14,13 +14,12 @@ import {
   User,
   Building2,
 } from "lucide-react";
-import { Input } from "../components/ui/input";
+import { Input } from "../components/ui/Input";
 import { ActionButton } from "../components/ui/ActionButton";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { toast } from "react-toastify";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
-import { Badge } from "../components/ui/Badge";
 
 export const FornecedorPage = () => {
   const [view, setView] = useState<"list" | "form">("list");

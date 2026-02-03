@@ -7,7 +7,7 @@ import { VeiculoForm } from "../components/forms/VeiculoForm";
 import { Modal } from "../components/ui/Modal";
 import { Plus, Search, Trash2, Edit, Car, Wrench, Phone } from "lucide-react";
 import { ActionButton } from "../components/ui/ActionButton";
-import { Input } from "../components/ui/input";
+import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";

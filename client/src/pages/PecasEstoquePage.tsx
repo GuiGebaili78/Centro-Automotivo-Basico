@@ -5,7 +5,7 @@ import type { IPecasEstoque } from "../types/backend";
 import { Search, Trash2, Edit, CheckCircle, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/input";
+import { Input } from "../components/ui/Input";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ActionButton } from "../components/ui/ActionButton";

@@ -3,7 +3,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
-import { Input } from "../components/ui/input";
+import { Input } from "../components/ui/Input";
 import { FornecedorForm } from "../components/forms/FornecedorForm";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";

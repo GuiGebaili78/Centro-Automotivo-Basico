@@ -3,7 +3,7 @@ import { api } from "../../services/api";
 import { CreditCard, DollarSign, CheckCircle, Smartphone } from "lucide-react";
 import type { IOperadoraCartao } from "../../types/backend";
 
-import { Input } from "../ui/input";
+import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 
 interface PagamentoClienteFormProps {

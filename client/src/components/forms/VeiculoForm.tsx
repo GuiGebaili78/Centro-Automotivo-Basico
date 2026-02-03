@@ -5,7 +5,7 @@ import { normalizePlate } from "../../utils/normalize";
 import { toast } from "react-toastify";
 import { Car, Search, User, Check, X, Save } from "lucide-react";
 import { Button } from "../ui/Button";
-import { Input } from "../ui/input";
+import { Input } from "../ui/Input";
 
 interface VeiculoFormProps {
   clientId?: number | null;

@@ -6,7 +6,7 @@ import { Plus, Landmark, Eye, EyeOff, FileText, Edit } from "lucide-react";
 import type { IContaBancaria } from "../../types/backend";
 import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
-import { Input } from "../ui/input";
+import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
 import { ActionButton } from "../ui/ActionButton";
 
