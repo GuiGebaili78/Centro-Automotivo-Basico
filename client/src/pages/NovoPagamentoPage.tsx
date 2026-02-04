@@ -10,7 +10,6 @@ import {
   CheckSquare,
   Square,
   Save,
-  X,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Input } from "../components/ui/Input";

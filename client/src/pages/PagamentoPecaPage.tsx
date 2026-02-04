@@ -20,12 +20,11 @@ import {
   DollarSign,
   X,
   Plus,
-  Filter,
 } from "lucide-react";
 import { Modal } from "../components/ui/Modal";
 
 export const PagamentoPecaPage = () => {
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   // --- STATES FOR ACCOUNTS PAYABLE (PEÇAS) ---
   const [payments, setPayments] = useState<any[]>([]);
