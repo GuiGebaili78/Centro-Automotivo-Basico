@@ -68,6 +68,7 @@ interface OSData {
     pessoa_fisica?: { pessoa: { nome: string } };
     pessoa_juridica?: { nome_fantasia: string };
     telefone_1?: string;
+    id_cliente?: number;
   };
   veiculo: {
     placa: string;
@@ -533,42 +534,52 @@ export const FechamentoFinanceiroDetalhePage = () => {
       {/* HEADER */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate(-1)}
-          className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-600"
+          onClick={() => navigate("/")}
+          className="p-2 hover:bg-neutral-100 rounded-lg transition-all text-neutral-500 hover:text-neutral-700 active:scale-95"
+          title="Voltar"
         >
-          <ArrowLeft size={24} />
+          <ArrowLeft size={20} />
         </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">
-              Fechamento Financeiro
-            </h1>
-            <span className="text-neutral-400 font-medium">
-              OS #{osData.id_os}
+
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-neutral-700 leading-none m-0 tracking-tight">
+            Fechamento Financeiro #{osData.id_os}
+          </h1>
+          <span className="h-6 w-px bg-neutral-300 mx-1"></span>
+          <span
+            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(osData.status)}`}
+          >
+            {osData.status === "PRONTO PARA FINANCEIRO"
+              ? "FINANCEIRO"
+              : osData.status.replace(/_/g, " ")}
+          </span>
+          {isDirty && (
+            <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+              <AlertCircle size={10} /> Alterações Pendentes
             </span>
-            <span
-              className={`px-3 py-1 rounded-md text-[10px] font-black uppercase whitespace-nowrap ${getStatusStyle(osData.status)}`}
-            >
-              {osData.status === "PRONTO PARA FINANCEIRO"
-                ? "FINANCEIRO"
-                : osData.status.replace(/_/g, " ")}
-            </span>
-            {isDirty && (
-              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                <AlertCircle size={10} /> Alterações Pendentes
-              </span>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Col 1: Vehicle */}
+          {/* Col 1: Vehicle */}
           <div className="space-y-1">
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-              Veículo
-            </p>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                Veículo
+              </p>
+              <button
+                onClick={() =>
+                  navigate(`/cadastro/${osData.cliente?.id_cliente}`)
+                }
+                className="text-primary-600 hover:text-primary-700 p-0.5 hover:bg-primary-50 rounded transition-colors"
+                title="Editar Veículo"
+              >
+                <Edit size={12} />
+              </button>
+            </div>
             <div className="flex flex-col">
               <h3 className="text-2xl font-bold text-neutral-600 leading-none tracking-tight">
                 {osData.veiculo?.modelo} - {osData.veiculo?.cor || "Cor N/I"}
@@ -583,9 +594,20 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
           {/* Col 2: Client */}
           <div className="md:border-l md:border-gray-100 md:pl-8">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-              Cliente
-            </p>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                Cliente
+              </p>
+              <button
+                onClick={() =>
+                  navigate(`/cadastro/${osData.cliente?.id_cliente}`)
+                }
+                className="text-primary-600 hover:text-primary-700 p-0.5 hover:bg-primary-50 rounded transition-colors"
+                title="Editar Cliente"
+              >
+                <Edit size={12} />
+              </button>
+            </div>
             <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">
               {getClientName()}
             </h3>

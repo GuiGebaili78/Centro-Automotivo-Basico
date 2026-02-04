@@ -441,38 +441,52 @@ export const OrdemDeServicoDetalhePage = () => {
   return (
     <PageLayout
       title={
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <button
             onClick={handleBack}
-            className="p-1 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-600 mr-2"
+            className="p-2 hover:bg-neutral-100 rounded-lg transition-all text-neutral-500 hover:text-neutral-700 active:scale-95"
             title="Voltar"
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft size={20} />
           </button>
-          <span>OS #{os.id_os}</span>
-          <span
-            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
-          >
-            {os.status === "PRONTO PARA FINANCEIRO"
-              ? "FINANCEIRO"
-              : os.status.replace(/_/g, " ")}
-          </span>
+
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-neutral-700 leading-none m-0">
+              OS #{os.id_os}
+            </h1>
+            <span className="h-6 w-px bg-neutral-300 mx-1"></span>
+            <span
+              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(os.status)}`}
+            >
+              {os.status === "PRONTO PARA FINANCEIRO"
+                ? "FINANCEIRO"
+                : os.status.replace(/_/g, " ")}
+            </span>
+          </div>
         </div>
       }
       subtitle="Gerencie os detalhes, peças e serviços desta Ordem de Serviço."
     >
       <div className="space-y-8">
         {/* Header Info - Using Card */}
-        {/* Header Info - Using Card (Grid Layout as requested) */}
-        {/* Header Info - Using Card (Refined Grid Layout) */}
-        {/* Header Info - Using Card (Flex Layout for full distribution) */}
         <Card className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
             {/* Coluna 1: Veículo */}
             <div className="md:col-span-4 flex flex-col">
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">
-                Veículo
-              </p>
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                  Veículo
+                </p>
+                <button
+                  onClick={() =>
+                    navigate(`/cadastro/${os.cliente?.id_cliente}`)
+                  }
+                  className="text-primary-600 hover:text-primary-700 p-0.5 hover:bg-primary-50 rounded transition-colors"
+                  title="Editar Veículo"
+                >
+                  <Edit size={12} />
+                </button>
+              </div>
               <div className="flex flex-col">
                 <h3 className="text-xl font-black text-neutral-700 leading-tight">
                   {os.veiculo?.modelo}
@@ -490,9 +504,20 @@ export const OrdemDeServicoDetalhePage = () => {
 
             {/* Coluna 2: Cliente */}
             <div className="md:col-span-4 flex flex-col md:border-l md:border-neutral-100 md:pl-6">
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">
-                Cliente / Contato
-              </p>
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                  Cliente / Contato
+                </p>
+                <button
+                  onClick={() =>
+                    navigate(`/cadastro/${os.cliente?.id_cliente}`)
+                  }
+                  className="text-primary-600 hover:text-primary-700 p-0.5 hover:bg-primary-50 rounded transition-colors"
+                  title="Editar Cliente"
+                >
+                  <Edit size={12} />
+                </button>
+              </div>
               <div className="flex flex-col">
                 <p className="font-bold text-lg text-neutral-600 leading-tight">
                   {os.cliente?.pessoa_fisica?.pessoa?.nome ||

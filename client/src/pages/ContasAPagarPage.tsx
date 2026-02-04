@@ -37,7 +37,7 @@ export const ContasAPagarPage = () => {
   const [filterStatus, setFilterStatus] = useState("TODOS"); // TODOS, PENDENTE, PAGO
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<
-    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
+    "TODAY" | "WEEK" | "MONTH" | "ALL" | "CUSTOM"
   >("MONTH");
 
   // Date Filters - Default to Current Month
@@ -239,8 +239,8 @@ export const ContasAPagarPage = () => {
     setModalOpen(true);
   };
 
-  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
-    setActiveFilter(type);
+  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH" | "ALL") => {
+    setActiveFilter(type as any);
     const now = new Date();
     const todayStr = now.toLocaleDateString("en-CA"); // Local YYYY-MM-DD
 
@@ -257,6 +257,9 @@ export const ContasAPagarPage = () => {
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       setFilterStart(firstDay.toLocaleDateString("en-CA"));
       setFilterEnd(lastDay.toLocaleDateString("en-CA"));
+    } else if (type === "ALL") {
+      setFilterStart("");
+      setFilterEnd("");
     }
   };
 
@@ -388,6 +391,16 @@ export const ContasAPagarPage = () => {
               }`}
             >
               Mês
+            </button>
+            <button
+              onClick={() => applyQuickFilter("ALL")}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                activeFilter === ("ALL" as any)
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
+              }`}
+            >
+              Todos
             </button>
           </div>
 
