@@ -4,22 +4,18 @@ import { api } from "../services/api";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { Modal } from "../components/ui/Modal";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { toast } from "react-toastify";
+
 import { Search, Trash2, Edit, CheckCircle } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { StatusBanner } from "../components/ui/StatusBanner";
-
-interface IFechamentoFinanceiro {
-  id_fechamento_financeiro: number;
-  id_os: number;
-  custo_total_pecas_real: number;
-  data_fechamento_financeiro: string;
-  ordem_de_servico: IOS;
-}
 
 interface IOS {
   id_os: number;
   status: string;
+  dt_abertura: string; // Ensure this exists in backend type, otherwise maybe use created_at or verify
   valor_total_cliente: number;
   cliente: {
     pessoa_fisica?: { pessoa: { nome: string } };
@@ -46,24 +42,23 @@ interface IOS {
   diagnostico?: string;
 }
 
+interface IFechamentoFinanceiro {
+  id_fechamento_financeiro: number;
+  id_os: number;
+  custo_total_pecas_real: number;
+  data_fechamento_financeiro: string;
+  ordem_de_servico: IOS;
+}
+
 export const FechamentoFinanceiroPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [fechamentos, setFechamentos] = useState<IFechamentoFinanceiro[]>([]);
   const [pendingOss, setPendingOss] = useState<IOS[]>([]);
-  // Removed showModal state
-  // Removed selectedOsId state
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
+
+  // Confirm Delete Modal
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   // Date Filters
   const [activeFilter, setActiveFilter] = useState<
@@ -121,10 +116,7 @@ export const FechamentoFinanceiroPage = () => {
       setPendingOss(pending);
     } catch (error) {
       console.error("Erro ao carregar dados", error);
-      setStatusMsg({
-        type: "error",
-        text: "Erro ao carregar dados financeiros",
-      });
+      toast.error("Erro ao carregar dados financeiros");
     }
   };
 
@@ -136,26 +128,16 @@ export const FechamentoFinanceiroPage = () => {
     navigate(`/fechamento-financeiro/${fechamento.id_os}`);
   };
 
-  const handleDelete = async (id: number) => {
-    setConfirmModal({
-      isOpen: true,
-      title: "Cancelar Fechamento",
-      message:
-        "Tem certeza que deseja cancelar este fechamento financeiro? Isso não apaga a OS, apenas a consolidação.",
-      onConfirm: async () => {
-        try {
-          await api.delete(`/fechamento-financeiro/${id}`);
-          setStatusMsg({
-            type: "success",
-            text: "Fechamento cancelado com sucesso!",
-          });
-          loadData();
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        } catch (error) {
-          setStatusMsg({ type: "error", text: "Erro ao deletar fechamento" });
-        }
-      },
-    });
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return;
+    try {
+      await api.delete(`/fechamento-financeiro/${confirmDeleteId}`);
+      toast.success("Fechamento cancelado com sucesso!");
+      loadData();
+      setConfirmDeleteId(null);
+    } catch (error) {
+      toast.error("Erro ao deletar fechamento");
+    }
   };
 
   const getClientName = (os: IOS) => {
@@ -235,374 +217,371 @@ export const FechamentoFinanceiroPage = () => {
   };
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">
-      <StatusBanner
-        msg={statusMsg}
-        onClose={() => setStatusMsg({ type: null, text: "" })}
-      />
-
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-500">Consolidação</h1>
-          <p className="text-neutral-500">Consolidação de custos e serviços.</p>
-        </div>
-      </div>
-
+    <PageLayout
+      title="Consolidação"
+      subtitle="Consolidação de custos e serviços."
+    >
       {/* PENDING OS LIST */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold text-neutral-600 flex items-center gap-2">
-          <span className="w-2 h-8 bg-orange-500 rounded-full"></span>
-          Aguardando Consolidação
-        </h2>
-
+      <h2 className="text-xl font-bold text-neutral-600 flex items-center gap-2 mb-4">
+        <span className="w-2 h-8 bg-orange-500 rounded-full"></span>
+        Aguardando Consolidação
+      </h2>
+      <Card className="p-0 overflow-hidden mb-8">
         {pendingOss.length === 0 ? (
-          <div className="bg-surface p-8 rounded-xl border border-neutral-200 text-center text-neutral-400 italic font-medium">
+          <div className="p-8 text-center text-neutral-400 italic font-medium">
             Nenhum fechamento pendente
           </div>
         ) : (
-          <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
-                    <th className="p-4">OS</th>
-                    <th className="p-4">Cliente</th>
-                    <th className="p-4">Veículo</th>
-                    <th className="p-4 w-1/4">Defeito / Diagnóstico</th>
-                    <th className="p-4 text-center">Status</th>
-                    <th className="p-4 text-right">Ação</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {pendingOss.map((os) => (
-                    <tr
-                      key={os.id_os}
-                      className="hover:bg-neutral-25 transition-colors"
-                    >
-                      <td className="p-4 font-bold text-neutral-600">
-                        #{os.id_os}
-                      </td>
-                      <td className="p-4 text-neutral-600 font-medium text-sm">
-                        <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
-                          {getClientName(os)}
-                        </div>
-                        <div className="text-[12px] text-neutral-400 font-medium">
-                          {os.cliente?.telefone_1 || "Sem telefone"}
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
-                            {os.veiculo?.marca} {os.veiculo?.modelo} -{" "}
-                            {os.veiculo?.cor}
-                          </span>
-                          <span className="text-[14px] text-primary-500 font-bold uppercase">
-                            {os.veiculo?.placa || "Placa N/I"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex flex-col gap-2 max-w-xs transition-opacity hover:opacity-100 opacity-80">
-                          <div className="leading-tight">
-                            <span className="text-[10px] font-bold text-neutral-600 uppercase block">
-                              Defeito
-                            </span>
-                            <span
-                              className="text-xs text-primary-500 font-medium line-clamp-2"
-                              title={os.defeito_relatado}
-                            >
-                              {os.defeito_relatado || "-"}
-                            </span>
-                          </div>
-                          <div className="leading-tight">
-                            <span className="text-[10px] font-bold text-neutral-600 uppercase block">
-                              Diagnóstico
-                            </span>
-                            <span
-                              className="text-xs text-primary-500 font-medium line-clamp-2"
-                              title={os.diagnostico}
-                            >
-                              {os.diagnostico || "-"}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span
-                          className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
-                        >
-                          {os.status === "PRONTO PARA FINANCEIRO"
-                            ? "FINANCEIRO"
-                            : os.status.replace(/_/g, " ")}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            onClick={() => handleOpenFechamento(os.id_os)}
-                            variant="primary"
-                            size="sm"
-                            icon={CheckCircle}
-                          >
-                            Fechar Financeiro
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* HISTORY LIST */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold text-neutral-600 flex items-center gap-2">
-          <span className="w-2 h-8 bg-green-600 rounded-full"></span>
-          Histórico de Fechamentos
-        </h2>
-
-        {/* FILTERS & SEARCH */}
-        <div className="bg-surface p-4 rounded-xl shadow-sm border border-neutral-200 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex-1 w-full relative">
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por ID ou Placa..."
-              icon={Search}
-            />
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-            {/* Quick Filters Group */}
-            <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
-              <button
-                onClick={() => applyQuickFilter("TODAY")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  activeFilter === "TODAY"
-                    ? "bg-primary-200 text-primary-500 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
-                }`}
-              >
-                Hoje
-              </button>
-              <button
-                onClick={() => applyQuickFilter("WEEK")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  activeFilter === "WEEK"
-                    ? "bg-primary-200 text-primary-500 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
-                }`}
-              >
-                Semana
-              </button>
-              <button
-                onClick={() => applyQuickFilter("MONTH")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  activeFilter === "MONTH"
-                    ? "bg-primary-200 text-primary-500 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
-                }`}
-              >
-                Mês
-              </button>
-            </div>
-
-            {/* Manual Date Inputs */}
-            <div className="flex gap-2 items-center">
-              <input
-                type="date"
-                value={filterStart}
-                onChange={(e) => {
-                  setFilterStart(e.target.value);
-                  setActiveFilter("CUSTOM");
-                }}
-                className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
-                  activeFilter === "CUSTOM"
-                    ? "border-primary-300 text-primary-700"
-                    : "border-neutral-200 text-neutral-600"
-                }`}
-              />
-              <span className="text-neutral-400 self-center">-</span>
-              <input
-                type="date"
-                value={filterEnd}
-                onChange={(e) => {
-                  setFilterEnd(e.target.value);
-                  setActiveFilter("CUSTOM");
-                }}
-                className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
-                  activeFilter === "CUSTOM"
-                    ? "border-primary-300 text-primary-700"
-                    : "border-neutral-200 text-neutral-600"
-                }`}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden min-h-[300px]">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="tabela-limpa w-full">
               <thead>
-                <tr className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
-                  <th className="p-4">OS</th>
-                  <th className="p-4">Cliente</th>
-                  <th className="p-4">Veículo (Placa/Cor)</th>
-                  <th className="p-4">Valor Serviço</th>
-                  <th className="p-4">Mão de Obra (Execução)</th>
-                  <th className="p-4">Data</th>
-                  <th className="p-4 text-right">Ações</th>
+                <tr>
+                  <th>OS / Data</th>
+                  <th>Cliente</th>
+                  <th>Veículo</th>
+                  <th className="w-1/4">Defeito / Diagnóstico</th>
+                  <th className="text-center">Status</th>
+                  <th className="text-right">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {filteredFechamentos.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="p-12 text-center text-neutral-500"
-                    >
-                      <div className="flex flex-col items-center gap-4">
-                        <p className="font-bold text-neutral-400 mb-2">
-                          {searchTerm || filterStart
-                            ? "Nenhum registro encontrado para a busca."
-                            : "Nenhum fechamento realizado ainda."}
-                        </p>
+              <tbody>
+                {pendingOss.map((os) => (
+                  <tr
+                    key={os.id_os}
+                    className="hover:bg-neutral-50 transition-colors group"
+                  >
+                    <td className="p-4">
+                      <div className="font-bold text-neutral-600">
+                        #{os.id_os}
+                      </div>
+                      {/* Show both Date and Time if available */}
+                      {os.dt_abertura && (
+                        <div className="flex flex-col mt-1">
+                          <span className="text-[10px] font-bold text-neutral-500">
+                            {new Date(os.dt_abertura).toLocaleDateString(
+                              "pt-BR",
+                            )}
+                          </span>
+                          <span className="text-[10px] text-neutral-400">
+                            {new Date(os.dt_abertura).toLocaleTimeString(
+                              "pt-BR",
+                              { hour: "2-digit", minute: "2-digit" },
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
+                        {getClientName(os)}
+                      </div>
+                      <div className="text-[12px] text-neutral-400 font-medium">
+                        {os.cliente?.telefone_1 || "Sem telefone"}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
+                          {os.veiculo?.marca} {os.veiculo?.modelo} -{" "}
+                          {os.veiculo?.cor}
+                        </span>
+                        <span className="text-[14px] text-primary-500 font-bold uppercase">
+                          {os.veiculo?.placa || "Placa N/I"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col gap-2 max-w-xs transition-opacity opacity-80 group-hover:opacity-100">
+                        <div className="leading-tight">
+                          <span className="text-[10px] font-bold text-neutral-600 uppercase block">
+                            Defeito
+                          </span>
+                          <span
+                            className="text-xs text-primary-500 font-medium line-clamp-2"
+                            title={os.defeito_relatado}
+                          >
+                            {os.defeito_relatado || "-"}
+                          </span>
+                        </div>
+                        <div className="leading-tight">
+                          <span className="text-[10px] font-bold text-neutral-600 uppercase block">
+                            Diagnóstico
+                          </span>
+                          <span
+                            className="text-xs text-primary-500 font-medium line-clamp-2"
+                            title={os.diagnostico}
+                          >
+                            {os.diagnostico || "-"}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span
+                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
+                      >
+                        {os.status === "PRONTO PARA FINANCEIRO"
+                          ? "FINANCEIRO"
+                          : os.status.replace(/_/g, " ")}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          onClick={() => handleOpenFechamento(os.id_os)}
+                          variant="primary"
+                          size="sm"
+                          icon={CheckCircle}
+                        >
+                          Fechar Financeiro
+                        </Button>
                       </div>
                     </td>
                   </tr>
-                ) : (
-                  filteredFechamentos.map((fech) => (
-                    <tr
-                      key={fech.id_fechamento_financeiro}
-                      className="hover:bg-neutral-25 transition-colors"
-                    >
-                      <td className="p-4">
-                        <span className="font-bold text-neutral-600 px-2 py-1 rounded text-sm">
-                          #{fech.id_os}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
-                          {getClientName(fech.ordem_de_servico)}
-                        </div>
-                        <div className="text-[12px] text-neutral-400 font-medium">
-                          {fech.ordem_de_servico?.cliente?.telefone_1 ||
-                            "Sem telefone"}
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
-                            {fech.ordem_de_servico?.veiculo?.marca}{" "}
-                            {fech.ordem_de_servico?.veiculo?.modelo} -{" "}
-                            {fech.ordem_de_servico?.veiculo?.cor}
-                          </span>
-                          <span className="text-[14px] text-primary-500 font-bold uppercase">
-                            {fech.ordem_de_servico?.veiculo?.placa ||
-                              "Placa N/I"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-1 text-primary-600 font-bold bg-primary-50 w-fit px-3 py-1 rounded-lg">
-                          {formatCurrency(
-                            Number(
-                              fech.ordem_de_servico?.valor_total_cliente || 0,
-                            ),
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex flex-wrap gap-1">
-                          {fech.ordem_de_servico?.servicos_mao_de_obra &&
-                          fech.ordem_de_servico.servicos_mao_de_obra.length >
-                            0 ? (
-                            Array.from(
-                              new Set(
-                                fech.ordem_de_servico.servicos_mao_de_obra
-                                  .map(
-                                    (svc) =>
-                                      svc.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
-                                        " ",
-                                      )[0],
-                                  )
-                                  .filter(Boolean),
-                              ),
-                            ).map((name, idx) => (
-                              <span
-                                key={idx}
-                                className="text-xs font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded"
-                              >
-                                {name}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-neutral-400 italic">
-                              Não informado
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-4 text-sm font-medium text-neutral-500">
-                        {new Date(
-                          fech.data_fechamento_financeiro,
-                        ).toLocaleDateString("pt-BR")}
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex justify-end gap-1">
-                          <ActionButton
-                            onClick={() => handleEditFechamento(fech)}
-                            icon={Edit}
-                            label="Editar"
-                            variant="primary"
-                          />
-                          <ActionButton
-                            onClick={() =>
-                              handleDelete(fech.id_fechamento_financeiro)
-                            }
-                            icon={Trash2}
-                            label="Cancelar"
-                            variant="danger"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </Card>
+
+      {/* HISTORY LIST */}
+      <h2 className="text-xl font-bold text-neutral-600 flex items-center gap-2 mb-4">
+        <span className="w-2 h-8 bg-green-600 rounded-full"></span>
+        Histórico de Fechamentos
+      </h2>
+
+      {/* FILTERS & SEARCH */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+        <div className="w-full md:flex-1 relative">
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por ID ou Placa..."
+            icon={Search}
+            className="w-full"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+          {/* Quick Filters Group */}
+          <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
+            <button
+              onClick={() => applyQuickFilter("TODAY")}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                activeFilter === "TODAY"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
+              }`}
+            >
+              Hoje
+            </button>
+            <button
+              onClick={() => applyQuickFilter("WEEK")}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                activeFilter === "WEEK"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
+              }`}
+            >
+              Semana
+            </button>
+            <button
+              onClick={() => applyQuickFilter("MONTH")}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                activeFilter === "MONTH"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
+              }`}
+            >
+              Mês
+            </button>
+          </div>
+
+          {/* Manual Date Inputs */}
+          <div className="flex gap-2 items-center">
+            <input
+              type="date"
+              value={filterStart}
+              onChange={(e) => {
+                setFilterStart(e.target.value);
+                setActiveFilter("CUSTOM");
+              }}
+              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
+                activeFilter === "CUSTOM"
+                  ? "border-primary-300 text-primary-700"
+                  : "border-neutral-200 text-neutral-600"
+              }`}
+            />
+            <span className="text-neutral-400 self-center">-</span>
+            <input
+              type="date"
+              value={filterEnd}
+              onChange={(e) => {
+                setFilterEnd(e.target.value);
+                setActiveFilter("CUSTOM");
+              }}
+              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
+                activeFilter === "CUSTOM"
+                  ? "border-primary-300 text-primary-700"
+                  : "border-neutral-200 text-neutral-600"
+              }`}
+            />
           </div>
         </div>
       </div>
 
-      {confirmModal.isOpen && (
-        <Modal
-          title={confirmModal.title}
-          onClose={() =>
-            setConfirmModal((prev) => ({ ...prev, isOpen: false }))
-          }
-        >
-          <p className="mb-6 text-neutral-600">{confirmModal.message}</p>
-          <div className="flex justify-end gap-2">
-            <Button
-              onClick={() =>
-                setConfirmModal((prev) => ({ ...prev, isOpen: false }))
-              }
-              variant="ghost"
-              size="md"
-            >
-              Cancelar
-            </Button>
-            <Button onClick={confirmModal.onConfirm} variant="danger" size="md">
-              Confirmar
-            </Button>
-          </div>
-        </Modal>
-      )}
-    </div>
+      <Card className="p-0 overflow-hidden min-h-[300px]">
+        <div className="overflow-x-auto">
+          <table className="tabela-limpa w-full">
+            <thead>
+              <tr>
+                <th>OS</th>
+                <th>Cliente</th>
+                <th>Veículo (Placa/Cor)</th>
+                <th>Valor Serviço</th>
+                <th>Mão de Obra (Execução)</th>
+                <th>Data</th>
+                <th className="text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredFechamentos.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-12 text-center text-neutral-500">
+                    <div className="flex flex-col items-center gap-4">
+                      <p className="font-bold text-neutral-400 mb-2">
+                        {searchTerm || filterStart
+                          ? "Nenhum registro encontrado para a busca."
+                          : "Nenhum fechamento realizado ainda."}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredFechamentos.map((fech) => (
+                  <tr
+                    key={fech.id_fechamento_financeiro}
+                    className="hover:bg-neutral-50 transition-colors group"
+                  >
+                    <td className="p-4">
+                      <span className="font-bold text-neutral-600 px-2 py-1 rounded text-sm">
+                        #{fech.id_os}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
+                        {getClientName(fech.ordem_de_servico)}
+                      </div>
+                      <div className="text-[12px] text-neutral-400 font-medium">
+                        {fech.ordem_de_servico?.cliente?.telefone_1 ||
+                          "Sem telefone"}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
+                          {fech.ordem_de_servico?.veiculo?.marca}{" "}
+                          {fech.ordem_de_servico?.veiculo?.modelo} -{" "}
+                          {fech.ordem_de_servico?.veiculo?.cor}
+                        </span>
+                        <span className="text-[14px] text-primary-500 font-bold uppercase">
+                          {fech.ordem_de_servico?.veiculo?.placa || "Placa N/I"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-1 text-primary-600 font-bold bg-primary-50 w-fit px-3 py-1 rounded-lg">
+                        {formatCurrency(
+                          Number(
+                            fech.ordem_de_servico?.valor_total_cliente || 0,
+                          ),
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap gap-1">
+                        {fech.ordem_de_servico?.servicos_mao_de_obra &&
+                        fech.ordem_de_servico.servicos_mao_de_obra.length >
+                          0 ? (
+                          Array.from(
+                            new Set(
+                              fech.ordem_de_servico.servicos_mao_de_obra
+                                .map(
+                                  (svc) =>
+                                    svc.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
+                                      " ",
+                                    )[0],
+                                )
+                                .filter(Boolean),
+                            ),
+                          ).map((name, idx) => (
+                            <span
+                              key={idx}
+                              className="text-xs font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded"
+                            >
+                              {name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-neutral-400 italic">
+                            Não informado
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4 text-sm font-medium text-neutral-500">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-neutral-600">
+                          {new Date(
+                            fech.data_fechamento_financeiro,
+                          ).toLocaleDateString("pt-BR")}
+                        </span>
+                        <span className="text-[10px] text-neutral-400">
+                          {new Date(
+                            fech.data_fechamento_financeiro,
+                          ).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ActionButton
+                          onClick={() => handleEditFechamento(fech)}
+                          icon={Edit}
+                          label="Editar"
+                          variant="primary"
+                        />
+                        <ActionButton
+                          onClick={() =>
+                            setConfirmDeleteId(fech.id_fechamento_financeiro)
+                          }
+                          icon={Trash2}
+                          label="Cancelar"
+                          variant="danger"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Cancelar Fechamento"
+        description="Tem certeza que deseja cancelar este fechamento financeiro? Isso não apaga a OS, apenas a consolidação."
+        variant="danger"
+      />
+    </PageLayout>
   );
 };

@@ -553,17 +553,17 @@ export const OrdemDeServicoDetalhePage = () => {
 
         {/* SPLIT LAYOUT: Defects/Diagnosis (Left) & Labor (Right) */}
         {/* SPLIT LAYOUT: Defects/Diagnosis (Smaller) & Labor (Larger) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* LEFT COL: Text Areas (1/3 width) */}
           <div className="space-y-4 lg:col-span-1">
-            <Card className="space-y-4 p-4">
+            <Card className="space-y-4 p-4 h-full">
               <div className="space-y-1">
                 <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>{" "}
                   Defeito Relatado
                 </label>
                 <textarea
-                  className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-red-300 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm"
+                  className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-32 outline-none focus:border-red-300 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm"
                   placeholder="Descreva o defeito..."
                   value={os.defeito_relatado || ""}
                   onChange={(e) => {
@@ -581,7 +581,7 @@ export const OrdemDeServicoDetalhePage = () => {
                   Diagnóstico Técnico
                 </label>
                 <textarea
-                  className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-24 outline-none focus:border-neutral-200 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm"
+                  className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-32 outline-none focus:border-neutral-200 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm"
                   placeholder="Insira o diagnóstico..."
                   value={os.diagnostico || ""}
                   onChange={(e) => {
@@ -839,7 +839,7 @@ export const OrdemDeServicoDetalhePage = () => {
                     className="hover:bg-neutral-50 transition-colors group"
                   >
                     <td className="pl-6 py-3">
-                      <div className="font-bold text-sm text-neutral-700">
+                      <div className="font-bold text-sm text-neutral-700 flex flex-wrap items-center gap-2">
                         {item.descricao}
                         {/* STATUS PAGO */}
                         {item.pagamentos_peca &&
@@ -847,10 +847,16 @@ export const OrdemDeServicoDetalhePage = () => {
                           item.pagamentos_peca.some(
                             (pp: any) => pp.pago_ao_fornecedor,
                           ) && (
-                            <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-green-100 text-green-700 tracking-wider border border-green-200">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-green-100 text-green-700 tracking-wider border border-green-200">
                               PAGO
                             </span>
                           )}
+                        {/* STATUS ESTOQUE */}
+                        {item.id_pecas_estoque && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-100 text-blue-700 tracking-wider border border-blue-200">
+                            ESTOQUE
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3">

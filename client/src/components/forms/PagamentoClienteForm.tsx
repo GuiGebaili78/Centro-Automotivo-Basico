@@ -177,14 +177,14 @@ export const PagamentoClienteForm = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
-          <label className="text-xs font-bold text-neutral-500 uppercase mb-2 block ml-1">
-            Valor do Pagamento (R$)
+          <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest block mb-1">
+            Valor do Pagamento
           </label>
           <div className="relative">
-            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-4xl font-black text-green-300 pointer-events-none">
+            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-bold text-emerald-600 pointer-events-none">
               R$
             </span>
-            <Input
+            <input
               type="text"
               value={valor}
               onChange={(e) => {
@@ -197,7 +197,7 @@ export const PagamentoClienteForm = ({
                   }),
                 );
               }}
-              className="w-full pl-8 pr-4 py-4 border-4 border-green-500 rounded-3xl text-6xl text-green-700 focus:border-green-600 focus:ring-8 focus:ring-green-500/20 bg-white shadow-xl h-24 tracking-tighter transition-all"
+              className="w-full bg-emerald-50/50 border border-emerald-100 rounded-2xl py-6 pl-16 pr-4 text-4xl font-bold text-emerald-700 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all placeholder:text-emerald-300/50"
             />
           </div>
         </div>
@@ -233,7 +233,7 @@ export const PagamentoClienteForm = ({
               <select
                 value={bandeira}
                 onChange={(e) => setBandeira(e.target.value)}
-                className={`w-full p-3 bg-neutral-25 border border-neutral-200 rounded-xl outline-none focus:border-green-500 font-bold ${bandeira ? "text-neutral-600" : "text-neutral-400"}`}
+                className={`w-full p-3 bg-neutral-25 border border-neutral-200 rounded-xl outline-none focus:border-green-500 font-bold ${bandeira ? "text-neutral-600" : "text-neutral-600"}`}
               >
                 <option value="">Selecione...</option>
                 <option value="VISA">Visa</option>

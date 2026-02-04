@@ -17,9 +17,10 @@ import { PagamentoClienteForm } from "../components/forms/PagamentoClienteForm";
 import { FornecedorForm } from "../components/forms/FornecedorForm";
 import { LaborManager } from "../components/os/LaborManager";
 import { Modal } from "../components/ui/Modal";
-import { StatusBanner } from "../components/ui/StatusBanner";
 import { Button } from "../components/ui/Button";
 import { ActionButton } from "../components/ui/ActionButton";
+import { Card } from "../components/ui/Card";
+import { toast } from "react-toastify";
 
 interface ItemOS {
   id_iten: number;
@@ -107,10 +108,6 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
   const [loading, setLoading] = useState(false);
   const [fetchingOs, setFetchingOs] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
 
   const [osData, setOsData] = useState<OSData | null>(null);
   const [fornecedores, setFornecedores] = useState<IFornecedor[]>([]);
@@ -193,7 +190,6 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
   const fetchOsData = async (osId: number) => {
     setFetchingOs(true);
-    setStatusMsg({ type: null, text: "" });
     try {
       const response = await api.get(`/ordem-de-servico/${osId}`);
       const os: OSData = response.data;
@@ -229,10 +225,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
       setIsDirty(false); // Reset dirty after fetch
     } catch (error) {
       console.error(error);
-      setStatusMsg({
-        type: "error",
-        text: "OS não encontrada ou erro ao buscar dados.",
-      });
+      toast.error("OS não encontrada ou erro ao buscar dados.");
     } finally {
       setFetchingOs(false);
     }
@@ -246,10 +239,10 @@ export const FechamentoFinanceiroDetalhePage = () => {
       onConfirm: async () => {
         try {
           await api.delete(`/pagamento-cliente/${paymentId}`);
-          setStatusMsg({ type: "success", text: "Pagamento removido!" });
+          toast.success("Pagamento removido!");
           if (osData) fetchOsData(osData.id_os);
         } catch (error) {
-          setStatusMsg({ type: "error", text: "Erro ao remover pagamento." });
+          toast.error("Erro ao remover pagamento.");
         }
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       },
@@ -294,11 +287,11 @@ export const FechamentoFinanceiroDetalhePage = () => {
       onConfirm: async () => {
         try {
           await api.delete(`/itens-os/${itemId}`);
-          setStatusMsg({ type: "success", text: "Item removido com sucesso!" });
+          toast.success("Item removido com sucesso!");
           if (osData) fetchOsData(osData.id_os);
         } catch (error) {
           console.error(error);
-          setStatusMsg({ type: "error", text: "Erro ao excluir item." });
+          toast.error("Erro ao excluir item.");
         }
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       },
@@ -319,11 +312,12 @@ export const FechamentoFinanceiroDetalhePage = () => {
       });
 
       setEditItemModal({ isOpen: false, item: null });
+      setEditItemModal({ isOpen: false, item: null });
       fetchOsData(osData.id_os);
-      setStatusMsg({ type: "success", text: "Item atualizado!" });
+      toast.success("Item atualizado!");
     } catch (error) {
       console.error(error);
-      setStatusMsg({ type: "error", text: "Erro ao atualizar item." });
+      toast.error("Erro ao atualizar item.");
     }
   };
 
@@ -427,6 +421,13 @@ export const FechamentoFinanceiroDetalhePage = () => {
           await api.post("/fechamento-financeiro", fechamentoPayload);
         }
 
+        // Update Defect/Diagnosis
+        await api.put(`/ordem-de-servico/${osData.id_os}`, {
+          status: osData.status, // Preserve status unless finalizing
+          defeito_relatado: osData.defeito_relatado,
+          diagnostico: osData.diagnostico,
+        });
+
         // Validation: Check Revenue
         const totalPago =
           osData.pagamentos_cliente?.reduce(
@@ -434,10 +435,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             0,
           ) || 0;
         if (totalPago === 0) {
-          setStatusMsg({
-            type: "error",
-            text: "Aviso: Nenhum recebimento registrado.",
-          });
+          toast.warn("Aviso: Nenhum recebimento registrado.");
         }
 
         if (osData.status !== "FINALIZADA") {
@@ -447,18 +445,18 @@ export const FechamentoFinanceiroDetalhePage = () => {
             valor_pecas: totalItemsRevenue,
           });
         }
-        setStatusMsg({ type: "success", text: "OS Finalizada com Sucesso!" });
+        toast.success("OS Finalizada com Sucesso!");
         setIsDirty(false);
         setTimeout(() => navigate("/fechamento-financeiro"), 1000);
       } else {
-        setStatusMsg({ type: "success", text: "Dados Salvos!" });
+        toast.success("Dados Salvos!");
         setIsDirty(false);
         // Refresh data
         fetchOsData(osData.id_os);
       }
     } catch (error: any) {
       console.error(error);
-      setStatusMsg({ type: "error", text: error.message || "Erro ao salvar." });
+      toast.error(error.message || "Erro ao salvar.");
     } finally {
       setLoading(false);
     }
@@ -502,15 +500,6 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
   return (
     <div className="space-y-6 pb-20">
-      {statusMsg.text && (
-        <div className="fixed bottom-8 right-8 z-60 animate-in fade-in slide-in-from-bottom-5">
-          <StatusBanner
-            msg={statusMsg}
-            onClose={() => setStatusMsg({ type: null, text: "" })}
-          />
-        </div>
-      )}
-
       {blocker.state === "blocked" && (
         <Modal
           title="Salvar Alterações?"
@@ -574,7 +563,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Col 1: Vehicle */}
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
@@ -606,52 +595,70 @@ export const FechamentoFinanceiroDetalhePage = () => {
             </p>
           </div>
 
-          {/* Col 3: Defect / Diagnosis */}
-          <div className="md:border-l md:border-gray-100 md:pl-8 space-y-4">
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
-                Defeito
-              </p>
-              <p className="text-sm font-medium text-gray-700 leading-snug">
-                {osData.defeito_relatado || (
-                  <span className="text-gray-300 italic">Não informado</span>
-                )}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
-                Diagnóstico
-              </p>
-              <p className="text-sm font-medium text-blue-700 leading-snug">
-                {osData.diagnostico || (
-                  <span className="text-gray-300 italic">Não informado</span>
-                )}
-              </p>
-            </div>
-          </div>
+          {/* Col 3: Removed (Moved to body) */}
         </div>
       </div>
 
-      {/* LABOR MANAGER (Separated) */}
-      <div className="mt-4 border border-blue-100 rounded-xl overflow-hidden text-left bg-blue-50/30">
-        <div className="px-4 py-2 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center">
-          <span className="text-xs font-black uppercase text-blue-600 flex items-center gap-2">
-            <BadgeCheck size={14} /> Mão de Obra (Execução)
-          </span>
+      {/* SPLIT LAYOUT: Obs (Left) & Labor (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start mt-6">
+        {/* LEFT COL: Obs */}
+        <div className="space-y-4 lg:col-span-1">
+          <Card className="space-y-4 p-4">
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>{" "}
+                Defeito Relatado
+              </label>
+              <textarea
+                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-32 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                placeholder="Descreva o defeito..."
+                value={osData.defeito_relatado || ""}
+                onChange={(e) => {
+                  setOsData({ ...osData, defeito_relatado: e.target.value });
+                  setIsDirty(true);
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>{" "}
+                Observações / Diagnóstico
+              </label>
+              <textarea
+                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-32 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                placeholder="Insira observações ou diagnóstico..."
+                value={osData.diagnostico || ""}
+                onChange={(e) => {
+                  setOsData({ ...osData, diagnostico: e.target.value });
+                  setIsDirty(true);
+                }}
+              />
+            </div>
+          </Card>
         </div>
-        <div className="p-3">
-          <LaborManager
-            osId={osData.id_os}
-            mode="api"
-            employees={employees}
-            initialData={osData.servicos_mao_de_obra as any[]}
-            onChange={() => {
-              fetchOsData(osData.id_os);
-              setIsDirty(true);
-            }}
-            readOnly={false}
-            onTotalChange={handleLaborTotalChange}
-          />
+
+        {/* RIGHT COL: Labor Manager */}
+        <div className="w-full space-y-2 h-full lg:col-span-2">
+          <Card className="h-full p-4 space-y-2">
+            <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2 pb-2 border-b border-neutral-50">
+              <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
+                <BadgeCheck size={14} />
+              </div>
+              Mão de Obra (Execução)
+            </h3>
+            <LaborManager
+              osId={osData.id_os}
+              mode="api"
+              employees={employees}
+              initialData={osData.servicos_mao_de_obra as any[]}
+              onChange={() => {
+                fetchOsData(osData.id_os);
+                setIsDirty(true);
+              }}
+              readOnly={false}
+              onTotalChange={handleLaborTotalChange}
+            />
+          </Card>
         </div>
       </div>
 
@@ -807,7 +814,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
       {/* RECEBIMENTOS */}
       <div className="border border-green-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-        <div className="bg-green-50 px-4 py-3 border-b border-green-200 flex justify-between items-center">
+        <div className="bg-green-100 px-4 py-3 border-b border-green-200 flex justify-between items-center">
           <h4 className="font-bold text-sm text-green-800 uppercase tracking-wide">
             Recebimentos
           </h4>

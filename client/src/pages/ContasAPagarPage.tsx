@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
-import { StatusBanner } from "../components/ui/StatusBanner";
 import { Modal } from "../components/ui/Modal";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { CategoryManager } from "../components/financeiro/CategoryManager";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { toast } from "react-toastify";
 import {
   Plus,
   Calendar,
@@ -19,17 +22,12 @@ import {
   User,
   Link,
   Settings,
-  ArrowDownCircle,
 } from "lucide-react";
 import type { IContasPagar } from "../types/backend";
 
 export const ContasAPagarPage = () => {
   const [contas, setContas] = useState<IContasPagar[]>([]);
   const [loading, setLoading] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<{
-    type: "success" | "error" | null;
-    text: string;
-  }>({ type: null, text: "" });
 
   // Categories
   const [categories, setCategories] = useState<any[]>([]);
@@ -80,6 +78,10 @@ export const ContasAPagarPage = () => {
   const [paymentDate, setPaymentDate] = useState("");
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [selectedBank, setSelectedBank] = useState("");
+  const [paymentValue, setPaymentValue] = useState("");
+
+  // Confirm Delete Modal
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   useEffect(() => {
     loadContas();
@@ -111,7 +113,7 @@ export const ContasAPagarPage = () => {
       const res = await api.get("/contas-pagar");
       setContas(res.data);
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao carregar contas." });
+      toast.error("Erro ao carregar contas.");
     } finally {
       setLoading(false);
     }
@@ -138,37 +140,36 @@ export const ContasAPagarPage = () => {
 
       if (editingId) {
         await api.put(`/contas-pagar/${editingId}`, payload);
-        setStatusMsg({
-          type: "success",
-          text: "Conta atualizada com sucesso!",
-        });
+        toast.success("Conta atualizada com sucesso!");
       } else {
         await api.post("/contas-pagar", payload);
-        setStatusMsg({ type: "success", text: "Conta lançada com sucesso!" });
+        toast.success("Conta lançada com sucesso!");
       }
       setModalOpen(false);
       resetForm();
       loadContas();
     } catch (error) {
       console.error(error);
-      setStatusMsg({ type: "error", text: "Erro ao salvar conta." });
+      toast.error("Erro ao salvar conta.");
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir esta conta?")) return;
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return;
     try {
-      await api.delete(`/contas-pagar/${id}`);
-      setStatusMsg({ type: "success", text: "Conta excluída." });
+      await api.delete(`/contas-pagar/${confirmDeleteId}`);
+      toast.success("Conta excluída.");
       loadContas();
+      setConfirmDeleteId(null);
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao excluir conta." });
+      toast.error("Erro ao excluir conta.");
     }
   };
 
   const handleQuickPay = (conta: any) => {
     setSelectedConta(conta);
     setPaymentDate(new Date().toISOString().split("T")[0]); // Default to today
+    setPaymentValue(Number(conta.valor).toFixed(2));
     setSelectedBank(""); // Reset bank selection
     setPayModalOpen(true);
   };
@@ -178,14 +179,15 @@ export const ContasAPagarPage = () => {
     try {
       await api.put(`/contas-pagar/${selectedConta.id_conta_pagar}`, {
         status: "PAGO",
+        valor: Number(paymentValue),
         dt_pagamento: new Date(paymentDate).toISOString(),
         id_conta_bancaria: selectedBank || null,
       });
-      setStatusMsg({ type: "success", text: "Conta marcada como PAGA." });
+      toast.success("Conta marcada como PAGA.");
       loadContas();
       setPayModalOpen(false);
     } catch (error) {
-      setStatusMsg({ type: "error", text: "Erro ao atualizar pagamento." });
+      toast.error("Erro ao atualizar pagamento.");
     }
   };
 
@@ -221,7 +223,7 @@ export const ContasAPagarPage = () => {
       categoria: "OUTROS",
       valor: "",
       dt_emissao: new Date().toISOString().split("T")[0],
-      dt_vencimento: new Date().toISOString().split("T")[0],
+      dt_vencimento: new Date().toISOString().split("T")[0], // Default today
       num_documento: "",
       status: "PENDENTE",
       forma_pagamento: "",
@@ -296,29 +298,10 @@ export const ContasAPagarPage = () => {
     .reduce((acc, c) => acc + Number(c.valor), 0);
 
   return (
-    <div className="w-full mx-auto px-4 md:px-8 py-6 space-y-6">
-      <StatusBanner
-        msg={statusMsg}
-        onClose={() => setStatusMsg({ type: null, text: "" })}
-      />
-
-      <CategoryManager
-        isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
-        onUpdate={() => {
-          loadCategories();
-        }}
-      />
-
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-600 tracking-tight">
-            Contas a Pagar (Geral)
-          </h1>
-          <p className="text-neutral-500">
-            Gerência de despesas operacionais da oficina.
-          </p>
-        </div>
+    <PageLayout
+      title="Contas a Pagar"
+      subtitle="Gerencie despesas operacionais da oficina."
+      actions={
         <div className="flex gap-2">
           <Button
             onClick={() => setIsCategoryModalOpen(true)}
@@ -327,19 +310,22 @@ export const ContasAPagarPage = () => {
           >
             Categorias
           </Button>
-          <Button
-            onClick={openNewModal}
-            variant="primary"
-            icon={Plus}
-            className="text-neutral-200"
-          >
+          <Button onClick={openNewModal} variant="primary" icon={Plus}>
             Nova Conta
           </Button>
         </div>
-      </div>
+      }
+    >
+      <CategoryManager
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onUpdate={() => {
+          loadCategories();
+        }}
+      />
 
       {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <div className="bg-red-50 border border-red-100 p-6 rounded-2xl">
           <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">
             Total Pendente
@@ -348,25 +334,25 @@ export const ContasAPagarPage = () => {
             {formatCurrency(totalPending)}
           </p>
         </div>
-        <div className="bg-primary-50 border border-success-100 p-6 rounded-2xl">
-          <p className="text-xs font-bold text-success-400 uppercase tracking-widest mb-1">
+        <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-2xl">
+          <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">
             Pago este Mês
           </p>
-          <p className="text-3xl font-bold text-success-600">
+          <p className="text-3xl font-bold text-emerald-600">
             {formatCurrency(totalPaidMonth)}
           </p>
         </div>
       </div>
 
-      {/* FILTERS */}
       {/* FILTERS & SEARCH */}
-      <div className="bg-surface p-4 rounded-xl shadow-sm border border-neutral-200 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex-1 w-full relative">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+        <div className="w-full md:flex-1 relative">
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por Descrição, Credor..."
             icon={Search}
+            className="w-full"
           />
         </div>
 
@@ -377,8 +363,8 @@ export const ContasAPagarPage = () => {
               onClick={() => applyQuickFilter("TODAY")}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                 activeFilter === "TODAY"
-                  ? "bg-primary-200 text-primary-500 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
               }`}
             >
               Hoje
@@ -387,8 +373,8 @@ export const ContasAPagarPage = () => {
               onClick={() => applyQuickFilter("WEEK")}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                 activeFilter === "WEEK"
-                  ? "bg-primary-200 text-primary-500 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
               }`}
             >
               Semana
@@ -397,8 +383,8 @@ export const ContasAPagarPage = () => {
               onClick={() => applyQuickFilter("MONTH")}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                 activeFilter === "MONTH"
-                  ? "bg-primary-200 text-primary-500 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
               }`}
             >
               Mês
@@ -439,12 +425,12 @@ export const ContasAPagarPage = () => {
           {/* Status Type */}
           <div className="flex bg-neutral-100 p-1.5 rounded-xl h-[42px] items-center ml-2">
             {["TODOS", "PENDENTE", "PAGO"].map((s) => {
-              let activeClass = "bg-primary-200 text-primary-600 shadow-sm"; // Default/Todos (Blue like Date Filters)
+              let activeClass = "bg-white text-primary-600 shadow-sm";
               if (filterStatus === s) {
                 if (s === "PENDENTE")
-                  activeClass = "bg-orange-100 text-orange-600 shadow-sm";
+                  activeClass = "bg-white text-orange-600 shadow-sm";
                 if (s === "PAGO")
-                  activeClass = "bg-success-100 text-success-600 shadow-sm";
+                  activeClass = "bg-white text-emerald-600 shadow-sm";
               }
 
               return (
@@ -454,7 +440,7 @@ export const ContasAPagarPage = () => {
                   className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap transition-colors ${
                     filterStatus === s
                       ? activeClass
-                      : "text-neutral-400 hover:text-neutral-700"
+                      : "text-neutral-400 hover:text-neutral-700 hover:bg-black/5"
                   }`}
                 >
                   {s}
@@ -466,31 +452,19 @@ export const ContasAPagarPage = () => {
       </div>
 
       {/* TABLE */}
-      <div className="bg-surface border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-neutral-50 border-b border-neutral-100">
+      <Card className="p-0 overflow-hidden">
+        <table className="tabela-limpa w-full">
+          <thead>
             <tr>
-              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
-                Vencimento
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
-                Descrição
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
-                Credor / Docs
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest text-right">
-                Valor
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest text-center">
-                Status
-              </th>
-              <th className="p-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest text-right">
-                Ações
-              </th>
+              <th>Vencimento</th>
+              <th>Descrição</th>
+              <th>Credor / Docs</th>
+              <th className="text-right">Valor</th>
+              <th className="text-center">Status</th>
+              <th className="text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-50">
+          <tbody>
             {loading ? (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-neutral-400">
@@ -510,7 +484,7 @@ export const ContasAPagarPage = () => {
               filteredContas.map((conta) => (
                 <tr
                   key={conta.id_conta_pagar}
-                  className="hover:bg-neutral-25 group"
+                  className="hover:bg-neutral-50 transition-colors group"
                 >
                   <td className="p-4">
                     <div className="font-bold text-neutral-700 text-sm flex items-center gap-2">
@@ -526,9 +500,17 @@ export const ContasAPagarPage = () => {
                         .padStart(2, "0")}
                       /{new Date(conta.dt_vencimento).getUTCFullYear()}
                     </div>
+                    {conta.dt_vencimento && conta.dt_cadastro && (
+                      <div className="text-[10px] text-neutral-400 mt-0.5 ml-6">
+                        {new Date(conta.dt_cadastro).toLocaleTimeString(
+                          "pt-BR",
+                          { hour: "2-digit", minute: "2-digit" },
+                        )}
+                      </div>
+                    )}
                     {conta.dt_pagamento && conta.status === "PAGO" && (
-                      <div className="text-[10px] text-success-600 font-bold mt-1">
-                        Pago em{" "}
+                      <div className="text-[10px] text-emerald-600 font-bold mt-1 ml-6">
+                        Pago em:{" "}
                         {new Date(conta.dt_pagamento)
                           .getUTCDate()
                           .toString()
@@ -548,7 +530,7 @@ export const ContasAPagarPage = () => {
                       {conta.categoria}
                     </div>
                     {conta.obs && (
-                      <div className="text-[10px] text-neutral-500 mt-1 italic max-w-[200px] truncate">
+                      <div className="text-[14px] text-neutral-500 mt-1 italic max-w-[200px] truncate">
                         {conta.obs}
                       </div>
                     )}
@@ -584,11 +566,11 @@ export const ContasAPagarPage = () => {
                     <span
                       className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
                         conta.status === "PAGO"
-                          ? "bg-success-100 text-success-700"
+                          ? "bg-emerald-100 text-emerald-700"
                           : // Check overdue
                             new Date(conta.dt_vencimento) < new Date() &&
                               conta.status !== "PAGO"
-                            ? "bg-red-600 text-red-100"
+                            ? "bg-red-100 text-red-600"
                             : "bg-orange-100 text-orange-700"
                       }`}
                     >
@@ -601,13 +583,13 @@ export const ContasAPagarPage = () => {
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    <div className="flex justify-end gap-2 transition-opacity">
+                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {conta.status !== "PAGO" && (
                         <ActionButton
                           onClick={() => handleQuickPay(conta)}
                           icon={CheckCircle}
                           label="Marcar como Pago"
-                          variant="primary" // Changed from bg-success-50 text-success-600 to component variant
+                          variant="primary"
                         />
                       )}
                       <ActionButton
@@ -617,7 +599,7 @@ export const ContasAPagarPage = () => {
                         variant="accent"
                       />
                       <ActionButton
-                        onClick={() => handleDelete(conta.id_conta_pagar)}
+                        onClick={() => setConfirmDeleteId(conta.id_conta_pagar)}
                         icon={Trash2}
                         label="Excluir"
                         variant="danger"
@@ -629,7 +611,7 @@ export const ContasAPagarPage = () => {
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
 
       {/* MODAL */}
       {modalOpen && (
@@ -649,7 +631,6 @@ export const ContasAPagarPage = () => {
                   setFormData({ ...formData, descricao: e.target.value })
                 }
                 placeholder="Ex: Compra Material Limpeza"
-                className="font-bold text-neutral-600"
               />
               <Input
                 label="Credor"
@@ -658,18 +639,17 @@ export const ContasAPagarPage = () => {
                   setFormData({ ...formData, credor: e.target.value })
                 }
                 placeholder="Ex: Fornecedor X"
-                className="font-bold text-neutral-600"
               />
             </div>
 
             {/* 2. Categoria & Valor & Repetição */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="md:col-span-12 lg:col-span-5">
-                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
                   Categoria
                 </label>
                 <select
-                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-bold text-sm h-[42px] outline-none bg-white transition-all"
+                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
                   value={formData.categoria}
                   onChange={(e) =>
                     setFormData({ ...formData, categoria: e.target.value })
@@ -698,7 +678,6 @@ export const ContasAPagarPage = () => {
                   }
                   placeholder="0"
                   title="Cria cópias desta conta para os próximos meses"
-                  className="font-bold text-neutral-600"
                 />
               </div>
 
@@ -713,7 +692,6 @@ export const ContasAPagarPage = () => {
                     setFormData({ ...formData, valor: e.target.value })
                   }
                   placeholder="0.00"
-                  className="font-bold text-neutral-600"
                 />
               </div>
             </div>
@@ -727,7 +705,6 @@ export const ContasAPagarPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, dt_emissao: e.target.value })
                 }
-                className="font-bold text-neutral-600"
               />
               <Input
                 label="Data de Vencimento"
@@ -737,7 +714,6 @@ export const ContasAPagarPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, dt_vencimento: e.target.value })
                 }
-                className="font-bold text-neutral-600"
               />
             </div>
 
@@ -750,14 +726,13 @@ export const ContasAPagarPage = () => {
                   setFormData({ ...formData, num_documento: e.target.value })
                 }
                 placeholder="Nota Fiscal / Boleto"
-                className="font-bold text-neutral-600"
               />
               <div>
-                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
                   Status
                 </label>
                 <select
-                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-bold text-sm h-[42px] outline-none bg-white transition-all"
+                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
                   value={formData.status}
                   onChange={(e) =>
                     setFormData({ ...formData, status: e.target.value })
@@ -772,11 +747,11 @@ export const ContasAPagarPage = () => {
             {/* 5. Forma Pagto & Anexos */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
                   Forma de Pagamento Prevista
                 </label>
                 <select
-                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-bold text-sm h-[42px] outline-none bg-white transition-all"
+                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
                   value={formData.forma_pagamento}
                   onChange={(e) =>
                     setFormData({
@@ -800,107 +775,127 @@ export const ContasAPagarPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, url_anexo: e.target.value })
                 }
-                placeholder="http://..."
-                className="font-bold text-neutral-600"
+                placeholder="https://..."
               />
             </div>
 
+            {/* 6. Obs */}
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+              <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
                 Observações
               </label>
               <textarea
-                className="w-full px-4 py-3 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-20 resize-none outline-none bg-white transition-all"
+                className="w-full px-4 py-3 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm outline-none bg-white h-24 resize-none transition-all"
                 value={formData.obs}
                 onChange={(e) =>
                   setFormData({ ...formData, obs: e.target.value })
                 }
-                placeholder="Observações adicionais..."
+                placeholder="Detalhes adicionais..."
               />
             </div>
 
-            <Button
-              variant="primary"
-              size="blocks"
-              icon={CheckCircle}
-              className="text-neutral-200"
-            >
-              Salvar Conta
-            </Button>
+            {/* Actions Footer */}
+            <div className="flex justify-end gap-2 border-t pt-6">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" variant="primary">
+                Salvar
+              </Button>
+            </div>
           </form>
         </Modal>
       )}
 
-      {/* PAYMENT DATE MODAL */}
-      {payModalOpen && selectedConta && (
+      {/* MODAL PAGAMENTO */}
+      {payModalOpen && (
         <Modal
-          title="Confirmar Pagamento"
+          title="Baixa de Pagamento"
           onClose={() => setPayModalOpen(false)}
           className="max-w-md"
         >
-          <div className="space-y-4 pt-2">
+          <div className="space-y-6 pt-2">
             <div>
-              <p className="text-sm text-neutral-600 mb-4">
-                Confirmar pagamento de{" "}
-                <span className="font-bold">{selectedConta.descricao}</span>?
+              <p className="text-sm font-medium text-neutral-500 mb-1">
+                Referência
               </p>
-              <Input
-                label="Data do Pagamento"
-                type="date"
-                required
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                className="font-bold text-neutral-600"
-              />
+              <p className="text-lg font-bold text-neutral-700">
+                {selectedConta?.descricao}
+              </p>
+              <p className="text-sm text-neutral-500">
+                {selectedConta?.credor}
+              </p>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                Conta Bancária (Opcional)
+              <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest block mb-1">
+                Valor do Pagamento
               </label>
-
-              {/* Only show select if there are active bank accounts */}
-              {bankAccounts.filter((a) => a.ativo).length > 0 ? (
-                <div className="relative">
-                  <select
-                    value={selectedBank}
-                    onChange={(e) => setSelectedBank(e.target.value)}
-                    className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer text-neutral-600"
-                  >
-                    <option value="">Sem vínculo (Apenas Caixa)</option>
-                    {bankAccounts
-                      .filter((acc: any) => acc.ativo) // Only showing active accounts
-                      .map((acc: any) => (
-                        <option key={acc.id_conta} value={acc.id_conta}>
-                          {acc.nome} ({acc.banco})
-                        </option>
-                      ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                    <ArrowDownCircle size={14} />
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg text-sm text-orange-700 flex items-center gap-2">
-                  <span className="font-semibold">Apenas Caixa</span>
-                  <span className="text-xs opacity-75">
-                    (Nenhum banco ativo disponível)
-                  </span>
-                </div>
-              )}
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 font-bold text-xl">
+                  R$
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full bg-emerald-50/50 border border-emerald-100 rounded-xl py-4 pl-12 pr-4 text-2xl font-bold text-emerald-700 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all placeholder:text-emerald-300/50"
+                  value={paymentValue}
+                  onChange={(e) => setPaymentValue(e.target.value)}
+                />
+              </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <Input
+              label="Data do Pagamento"
+              type="date"
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
+                Conta Bancária de Saída
+              </label>
+              <select
+                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
+                value={selectedBank}
+                onChange={(e) => setSelectedBank(e.target.value)}
+              >
+                <option value="">Selecione a conta...</option>
+                {bankAccounts.map((b) => (
+                  <option key={b.id_conta} value={b.id_conta}>
+                    {b.nome} ({b.banco}) - Saldo:{" "}
+                    {formatCurrency(Number(b.saldo_atual))}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t">
               <Button variant="ghost" onClick={() => setPayModalOpen(false)}>
                 Cancelar
               </Button>
-              <Button variant="primary" onClick={executePay}>
-                Confirmar
+              <Button onClick={executePay} variant="primary">
+                Confirmar Pagamento
               </Button>
             </div>
           </div>
         </Modal>
       )}
-    </div>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Excluir Conta"
+        description="Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita."
+        variant="danger"
+      />
+    </PageLayout>
   );
 };
