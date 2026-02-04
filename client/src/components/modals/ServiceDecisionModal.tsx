@@ -1,6 +1,6 @@
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
-import { Calendar, Wrench, ArrowRight } from "lucide-react";
+import { Calendar, Wrench } from "lucide-react";
 
 interface ServiceDecisionModalProps {
   isOpen: boolean;
@@ -22,11 +22,7 @@ export const ServiceDecisionModal = ({
   if (!isOpen) return null;
 
   return (
-    <Modal
-      title="Como deseja prosseguir?"
-      onClose={onClose}
-      maxWidth="max-w-2xl"
-    >
+    <Modal title="Como deseja prosseguir?" onClose={onClose}>
       <div className="space-y-6">
         <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 text-center">
           <p className="text-sm text-neutral-500 uppercase font-bold tracking-widest mb-1">

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, User, Car, Plus, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api";
 import { Button } from "../ui/Button";
 
