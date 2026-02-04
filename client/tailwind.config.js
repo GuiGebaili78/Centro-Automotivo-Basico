@@ -17,6 +17,7 @@ export default {
                     100: "#dbeafe", // Azul clarinho (para anéis de foco e backgrounds)
                     600: "#2563eb", // Azul principal
                     700: "#1d4ed8", // Azul hover
+                    800: "#2b458a", // Azul Botão Sidebar
                 },
                 secondary: {
                     500: "#f97316", // Laranja/Amber

@@ -99,20 +99,20 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
                       }
                       className="bg-white p-1.5 rounded-lg border border-neutral-200 shadow-sm cursor-pointer hover:border-purple-300 hover:shadow-md transition-all group shrink-0"
                     >
-                      <p className="text-[10px] font-bold text-purple-700 line-clamp-1">
-                        {item.clientName}
-                      </p>
-                      <p className="text-[9px] text-neutral-500 line-clamp-1 mt-0.5">
-                        {item.vehicleModel || "Veículo N/I"}
-                      </p>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-[9px] text-neutral-400 font-medium bg-neutral-50 px-1 rounded ml-auto">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-[10px] font-bold text-purple-700 line-clamp-1 flex-1">
+                          {item.clientName}
+                        </p>
+                        <span className="text-[9px] text-neutral-400 font-medium bg-neutral-50 px-1 rounded shrink-0">
                           {item.date.toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
                         </span>
                       </div>
+                      <p className="text-[9px] text-neutral-500 line-clamp-1 mt-0.5">
+                        {item.vehicleModel || "Veículo N/I"}
+                      </p>
                     </div>
                   ))
                 ) : (

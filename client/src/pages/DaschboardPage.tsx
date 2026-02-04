@@ -126,7 +126,7 @@ export function DaschboardPage() {
   const [recentOss, setRecentOss] = useState<any[]>([]);
   const [filterPeriod, setFilterPeriod] = useState<
     "HOJE" | "SEMANA" | "MES" | "STATUS"
-  >("HOJE");
+  >("STATUS");
 
   const [stats, setStats] = useState({
     osAberta: 0,

@@ -565,7 +565,10 @@ export const OrdemDeServicoDetalhePage = () => {
                 <div className="relative group w-full">
                   <input
                     type="date"
-                    className="w-full bg-neutral-50 border border-neutral-200 text-neutral-600 font-bold text-sm rounded-xl px-3 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all text-left"
+                    disabled={
+                      os.status !== "ORCAMENTO" && os.status !== "AGENDA"
+                    }
+                    className="w-full bg-neutral-50 border border-neutral-200 text-neutral-600 font-bold text-sm rounded-xl px-3 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
                     value={
                       os.dt_abertura
                         ? new Date(os.dt_abertura).toLocaleDateString("en-CA")
@@ -586,7 +589,10 @@ export const OrdemDeServicoDetalhePage = () => {
                 <div className="relative group w-24">
                   <input
                     type="time"
-                    className="w-full bg-neutral-50 border border-neutral-200 text-neutral-600 font-bold text-sm rounded-xl px-2 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all text-center"
+                    disabled={
+                      os.status !== "ORCAMENTO" && os.status !== "AGENDA"
+                    }
+                    className="w-full bg-neutral-50 border border-neutral-200 text-neutral-600 font-bold text-sm rounded-xl px-2 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
                     value={
                       os.dt_abertura
                         ? new Date(os.dt_abertura).toLocaleTimeString("en-GB", {
@@ -618,6 +624,7 @@ export const OrdemDeServicoDetalhePage = () => {
                   size="sm"
                   className="w-full text-xs h-7 py-0"
                   onClick={() => updateOSField("dt_abertura", os.dt_abertura)}
+                  disabled={os.status !== "ORCAMENTO" && os.status !== "AGENDA"}
                 >
                   Salvar Agendamento
                 </Button>

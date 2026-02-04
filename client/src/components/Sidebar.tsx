@@ -61,8 +61,8 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="w-64 bg-neutral-900 text-neutral-400 flex flex-col h-screen fixed left-0 top-0 overflow-y-auto border-r border-neutral-500">
-      <div className="p-6 border-b border-neutral-800">
+    <aside className="w-64 bg-slate-900 text-slate-400 flex flex-col h-screen fixed left-0 top-0 overflow-y-auto border-r border-slate-800 shadow-2xl">
+      <div className="p-6 border-b border-slate-800 bg-slate-950">
         <h1 className="text-2xl font-bold text-white tracking-tight">
           Auto<span className="text-primary-500">Center</span>
         </h1>
@@ -81,17 +81,17 @@ export const Sidebar = () => {
               {item.subItems ? (
                 <button
                   onClick={() => toggleMenu(item.label)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 font-semibold cursor-pointer ${
                     isActive
-                      ? "bg-neutral-800 text-white shadow-lg shadow-primary-900/50"
-                      : "hover:bg-neutral-800 hover:text-white"
+                      ? "bg-primary-800 text-white shadow-lg shadow-green-400/20"
+                      : "hover:bg-slate-800/50 hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <item.icon
                       size={20}
                       className={
-                        isActive ? "text-primary-500" : "text-neutral-500"
+                        isActive ? "text-primary-400" : "text-slate-500"
                       }
                     />
                     {item.label}
@@ -105,15 +105,15 @@ export const Sidebar = () => {
               ) : (
                 <Link
                   to={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-semibold ${
                     isActive
-                      ? "bg-neutral-800 text-neutral-400 shadow-lg shadow-primary-900/50"
-                      : "hover:bg-neutral-800 hover:text-white"
+                      ? "bg-primary-800 text-white shadow-lg shadow-green-400/20"
+                      : "hover:bg-slate-800/50 hover:text-white"
                   }`}
                 >
                   <item.icon
                     size={20}
-                    className={isActive ? "text-white" : "text-neutral-500"}
+                    className={isActive ? "text-primary-400" : "text-slate-500"}
                   />
                   {item.label}
                 </Link>
@@ -121,17 +121,17 @@ export const Sidebar = () => {
 
               {/* Submenu Rendering */}
               {item.subItems && isExpanded && (
-                <div className="mt-1 ml-4 space-y-1 border-l border-neutral-800 pl-2">
+                <div className="mt-1 ml-4 space-y-1 border-l-2 border-slate-800 pl-2">
                   {item.subItems.map((sub) => {
                     const isSubActive = location.pathname === sub.path;
                     return (
                       <Link
                         key={sub.path}
                         to={sub.path}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${
                           isSubActive
-                            ? " neutral-400 bg-neutral-800 shadow-lg shadow-primary-900/30 font-bold"
-                            : "text-primary-500 hover:text-neutral-300"
+                            ? "text-white bg-primary-800 shadow-lg shadow-green-200/20 font-bold"
+                            : "text-primary-500 hover:text-primary-400 hover:bg-slate-800/30 font-medium"
                         }`}
                       >
                         {sub.label}
@@ -145,9 +145,9 @@ export const Sidebar = () => {
         })}
       </nav>
 
-      <div className="p-4 border-t border-neutral-800">
-        <div className="bg-neutral-800/50 rounded-lg p-3">
-          <p className="text-xs text-center text-neutral-500">
+      <div className="p-4 border-t border-slate-800 bg-slate-950">
+        <div className="bg-slate-800/50 rounded-lg p-3">
+          <p className="text-xs text-center text-slate-500">
             &copy; 2026 Centro Automotivo <br /> Guilherme Gebaili <br />{" "}
             https://github.com/GuiGebaili78
           </p>
