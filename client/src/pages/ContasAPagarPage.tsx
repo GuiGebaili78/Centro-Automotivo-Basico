@@ -34,24 +34,15 @@ export const ContasAPagarPage = () => {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Filters
-  const [filterStatus, setFilterStatus] = useState("TODOS"); // TODOS, PENDENTE, PAGO
+  const [filterStatus, setFilterStatus] = useState("PENDENTE"); // TODOS, PENDENTE, PAGO
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<
     "TODAY" | "WEEK" | "MONTH" | "ALL" | "CUSTOM"
-  >("MONTH");
+  >("ALL");
 
-  // Date Filters - Default to Current Month
-  const [filterStart, setFilterStart] = useState(() => {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    return firstDay.toLocaleDateString("en-CA");
-  });
-
-  const [filterEnd, setFilterEnd] = useState(() => {
-    const now = new Date();
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    return lastDay.toLocaleDateString("en-CA");
-  });
+  // Date Filters - Start empty for ALL filter
+  const [filterStart, setFilterStart] = useState("");
+  const [filterEnd, setFilterEnd] = useState("");
 
   // Modal & Form
   const [modalOpen, setModalOpen] = useState(false);
@@ -265,13 +256,15 @@ export const ContasAPagarPage = () => {
 
   // Calculations
   const filteredContas = contas.filter((c) => {
-    // Date Filter (Vencimento)
-    if (filterStart) {
-      if (c.dt_vencimento < filterStart) return false;
-    }
-    if (filterEnd) {
-      const vencC = c.dt_vencimento.split("T")[0];
-      if (vencC > filterEnd) return false;
+    // Date Filter (Vencimento) - Only apply if not ALL
+    if (activeFilter !== "ALL") {
+      if (filterStart) {
+        if (c.dt_vencimento < filterStart) return false;
+      }
+      if (filterEnd) {
+        const vencC = c.dt_vencimento.split("T")[0];
+        if (vencC > filterEnd) return false;
+      }
     }
 
     if (filterStatus !== "TODOS" && c.status !== filterStatus) return false;

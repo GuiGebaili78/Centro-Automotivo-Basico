@@ -41,6 +41,8 @@ export const OrdemDeServicoPage = () => {
   const [newOsWizardStep, setNewOsWizardStep] = useState<"NONE" | "OS">("NONE");
   const [wizardClient, setWizardClient] = useState<any>(null);
   const [wizardVehicle, setWizardVehicle] = useState<any>(null);
+  const [wizardInitialStatus, setWizardInitialStatus] =
+    useState<string>("ABERTA");
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -57,6 +59,7 @@ export const OrdemDeServicoPage = () => {
     const osId = params.get("id");
     const paramClientId = params.get("clientId");
     const paramVehicleId = params.get("vehicleId");
+    const paramStatus = params.get("initialStatus"); // ORCAMENTO
 
     if (osId) {
       handleOpenFromId(Number(osId));
@@ -69,6 +72,7 @@ export const OrdemDeServicoPage = () => {
           ]);
           setWizardClient(cRes.data);
           setWizardVehicle(vRes.data);
+          setWizardInitialStatus(paramStatus || "ABERTA");
           setNewOsWizardStep("OS");
         } catch (e) {
           console.error("Error loading for direct open", e);
@@ -104,7 +108,7 @@ export const OrdemDeServicoPage = () => {
         id_funcionario: mechanicId || null,
         km_entrada: km,
         defeito_relatado: defect,
-        status: "ABERTA",
+        status: wizardInitialStatus,
         valor_total_cliente: 0,
         valor_mao_de_obra: 0,
         parcelas: 1,
@@ -422,7 +426,9 @@ export const OrdemDeServicoPage = () => {
         <Modal
           title={
             <span className="text-neutral-600">
-              Passo 3: Confirmar Abertura
+              {wizardInitialStatus === "ORCAMENTO"
+                ? "Confirmar Agendamento / Orçamento"
+                : "Passo 3: Confirmar Abertura"}
             </span>
           }
           onClose={handleCancelWizard}
@@ -496,7 +502,9 @@ export const OrdemDeServicoPage = () => {
                   size="lg"
                   icon={CheckCircle}
                 >
-                  ABRIR ORDEM DE SERVIÇO
+                  {wizardInitialStatus === "ORCAMENTO"
+                    ? "CRIAR ORÇAMENTO"
+                    : "ABRIR ORDEM DE SERVIÇO"}
                 </Button>
               </div>
             </form>

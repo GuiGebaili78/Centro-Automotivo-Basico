@@ -29,6 +29,7 @@ import type { FormEvent } from "react";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { ServiceDecisionModal } from "../components/modals/ServiceDecisionModal";
 
 interface IVeiculo {
   id_veiculo: number;
@@ -79,6 +80,15 @@ export const CadastroUnificadoPage = () => {
   const [confirmDeleteVehicle, setConfirmDeleteVehicle] = useState<
     number | null
   >(null);
+
+  // Decision Modal State
+  const [decisionModalOpen, setDecisionModalOpen] = useState(false);
+  const [savedData, setSavedData] = useState<{
+    clientId: number;
+    vehicleId?: number | null;
+    clientName: string;
+    vehicleName?: string;
+  } | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -253,15 +263,17 @@ export const CadastroUnificadoPage = () => {
       }
 
       // 3. Redirect Logic
+      // 3. Redirect Logic (Intercepted by Decision Modal)
       if (!isEditMode && finalClientId) {
-        toast.success("Cadastro realizado! Redirecionando...");
-        setTimeout(() => {
-          let url = `/ordem-de-servico?clientId=${finalClientId}`;
-          if (finalVehicleId) {
-            url += `&vehicleId=${finalVehicleId}`;
-          }
-          navigate(url);
-        }, 1000);
+        toast.success("Cadastro realizado! O que deseja fazer?");
+
+        setSavedData({
+          clientId: finalClientId,
+          vehicleId: finalVehicleId,
+          clientName: tipoPessoa === "PF" ? nome : razaoSocial,
+          vehicleName: placa || modelo ? `${modelo} - ${placa}` : undefined,
+        });
+        setDecisionModalOpen(true);
       }
     } catch (error: any) {
       console.error(error);
@@ -686,6 +698,25 @@ export const CadastroUnificadoPage = () => {
         title="Excluir Veículo"
         description="Tem certeza que deseja excluir este veículo?"
         variant="danger"
+      />
+
+      <ServiceDecisionModal
+        isOpen={decisionModalOpen}
+        onClose={() => setDecisionModalOpen(false)}
+        onOpenOS={() => {
+          if (!savedData) return;
+          let url = `/ordem-de-servico?clientId=${savedData.clientId}`;
+          if (savedData.vehicleId) url += `&vehicleId=${savedData.vehicleId}`;
+          navigate(url);
+        }}
+        onSchedule={() => {
+          if (!savedData) return;
+          let url = `/ordem-de-servico?clientId=${savedData.clientId}&initialStatus=ORCAMENTO`;
+          if (savedData.vehicleId) url += `&vehicleId=${savedData.vehicleId}`;
+          navigate(url);
+        }}
+        clientName={savedData?.clientName}
+        vehicleName={savedData?.vehicleName}
       />
     </div>
   );

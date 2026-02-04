@@ -398,6 +398,18 @@ export const OrdemDeServicoDetalhePage = () => {
     }
   };
 
+  const handleOpenOsNow = async () => {
+    if (!os) return;
+    try {
+      await updateOSField("status", "ABERTA");
+      toast.success(
+        "OS Aberta com sucesso! Agora você pode gerenciar os itens.",
+      );
+    } catch (e) {
+      toast.error("Erro ao abrir OS.");
+    }
+  };
+
   const handleSaveAndClose = async () => {
     if (!os) return;
     try {
@@ -466,13 +478,25 @@ export const OrdemDeServicoDetalhePage = () => {
         </div>
       }
       subtitle="Gerencie os detalhes, peças e serviços desta Ordem de Serviço."
+      actions={
+        (os.status === "ORCAMENTO" || os.status === "AGENDA") && (
+          <Button
+            variant="primary"
+            icon={CheckCircle}
+            onClick={handleOpenOsNow}
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            ABRIR OS AGORA
+          </Button>
+        )
+      }
     >
       <div className="space-y-8">
         {/* Header Info - Using Card */}
         <Card className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
             {/* Coluna 1: Veículo */}
-            <div className="md:col-span-4 flex flex-col">
+            <div className="md:col-span-3 flex flex-col">
               <div className="flex items-center gap-2 mb-2">
                 <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                   Veículo
@@ -503,7 +527,7 @@ export const OrdemDeServicoDetalhePage = () => {
             </div>
 
             {/* Coluna 2: Cliente */}
-            <div className="md:col-span-4 flex flex-col md:border-l md:border-neutral-100 md:pl-6">
+            <div className="md:col-span-3 flex flex-col md:border-l md:border-neutral-100 md:pl-6">
               <div className="flex items-center gap-2 mb-2">
                 <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                   Cliente / Contato
@@ -530,24 +554,73 @@ export const OrdemDeServicoDetalhePage = () => {
             </div>
 
             {/* Coluna 3: Entrada */}
-            <div className="md:col-span-2 flex flex-col md:border-l md:border-neutral-100 md:pl-6">
+            {/* Coluna 3: Entrada / Agendamento */}
+            {/* Coluna 3: Entrada / Agendamento */}
+            {/* Coluna 3: Entrada / Agendamento */}
+            <div className="md:col-span-4 flex flex-col md:border-l md:border-neutral-100 md:pl-6">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
-                Data de Entrada
+                Data e Hora do Agendamento
               </span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-neutral-700 tabular-nums">
-                  {new Date(os.dt_abertura).getDate()}
-                </span>
-                <div className="flex flex-col leading-none">
-                  <span className="text-xs font-bold text-neutral-500 capitalize">
-                    {new Date(os.dt_abertura).toLocaleString("pt-BR", {
-                      month: "long",
-                    })}
-                  </span>
-                  <span className="text-[10px] font-medium text-neutral-400">
-                    {new Date(os.dt_abertura).getFullYear()}
-                  </span>
+              <div className="flex gap-2">
+                <div className="relative group w-full">
+                  <input
+                    type="date"
+                    className="w-full bg-neutral-50 border border-neutral-200 text-neutral-600 font-bold text-sm rounded-xl px-3 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all text-left"
+                    value={
+                      os.dt_abertura
+                        ? new Date(os.dt_abertura).toLocaleDateString("en-CA")
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const newDatePart = e.target.value;
+                      const current = os.dt_abertura
+                        ? new Date(os.dt_abertura)
+                        : new Date();
+                      // Preserve time
+                      const timePart = current.toTimeString().split(" ")[0]; // HH:MM:SS
+                      const combined = new Date(`${newDatePart}T${timePart}`);
+                      setOs({ ...os, dt_abertura: combined.toISOString() });
+                    }}
+                  />
                 </div>
+                <div className="relative group w-24">
+                  <input
+                    type="time"
+                    className="w-full bg-neutral-50 border border-neutral-200 text-neutral-600 font-bold text-sm rounded-xl px-2 py-2 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all text-center"
+                    value={
+                      os.dt_abertura
+                        ? new Date(os.dt_abertura).toLocaleTimeString("en-GB", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const newTimePart = e.target.value; // HH:MM
+                      if (!newTimePart) return;
+                      const current = os.dt_abertura
+                        ? new Date(os.dt_abertura)
+                        : new Date();
+
+                      // Use Local Date Part to match display
+                      const datePart = current.toLocaleDateString("en-CA");
+                      const combined = new Date(
+                        `${datePart}T${newTimePart}:00`,
+                      );
+                      setOs({ ...os, dt_abertura: combined.toISOString() });
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="mt-2 flex justify-end">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full text-xs h-7 py-0"
+                  onClick={() => updateOSField("dt_abertura", os.dt_abertura)}
+                >
+                  Salvar Agendamento
+                </Button>
               </div>
             </div>
 
@@ -844,6 +917,21 @@ export const OrdemDeServicoDetalhePage = () => {
               </form>
             </div>
           )}
+
+          {/* Button to Save Scheduling Changes explicitly if user wants */}
+          {(os.status === "ORCAMENTO" || os.status === "AGENDA") && (
+            <div className="flex justify-end mb-4">
+              <Button
+                variant="primary"
+                icon={Save}
+                onClick={handleSaveAndClose}
+                className="shadow-md h-10 px-6 text-xs font-bold uppercase tracking-wide"
+              >
+                Salvar Alterações
+              </Button>
+            </div>
+          )}
+
           {/* List Items */}
           <Card className="p-0 overflow-hidden">
             <table className="tabela-limpa w-full">
