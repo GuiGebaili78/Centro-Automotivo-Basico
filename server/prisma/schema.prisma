@@ -359,6 +359,9 @@ model ContasPagar {
   forma_pagamento String?   @db.VarChar(50)
   num_documento   String?   @db.VarChar(50)
   url_anexo       String?   @db.VarChar(500)
+  id_grupo_recorrencia String?   @db.VarChar(50)
+  numero_parcela       Int?
+  total_parcelas       Int?
 
   @@map("contas_pagar")
 }

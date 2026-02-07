@@ -8,7 +8,7 @@ interface ConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  description: string;
+  description: React.ReactNode; // Changed from string to ReactNode
   variant?: "danger" | "primary";
   confirmText?: string;
   cancelText?: string;
@@ -60,9 +60,9 @@ export const ConfirmModal = ({
             <h3 className="text-lg font-bold text-neutral-900 leading-6">
               {title}
             </h3>
-            <p className="mt-2 text-sm text-neutral-500 leading-relaxed">
+            <div className="mt-2 text-sm text-neutral-500 leading-relaxed">
               {description}
-            </p>
+            </div>
           </div>
         </div>
 

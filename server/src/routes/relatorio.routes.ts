@@ -1,10 +1,13 @@
 import { Router } from "express";
-import { RelatorioFinanceiroController } from "../controllers/RelatorioFinanceiroController.js";
+import { RelatorioController } from "../controllers/RelatorioController.js";
 
 const relatorioRoutes = Router();
-const controller = new RelatorioFinanceiroController();
+const controller = new RelatorioController();
 
-// ATENÇÃO: Verifique se o caminho no frontend bate com este: /relatorios/financeiro/dashboard
-relatorioRoutes.get("/financeiro/dashboard", controller.getDashboard);
+// Rota principal para o relatório completo (KPIs, Gráficos, Rankings)
+relatorioRoutes.get(
+  "/completo",
+  controller.getRelatorioCompleto.bind(controller),
+);
 
 export { relatorioRoutes };

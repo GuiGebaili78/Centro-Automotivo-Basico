@@ -11,7 +11,7 @@ import {
 import { Link, useLocation } from "react-router-dom";
 
 const menuItems = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/", label: "Monitor de Atividades", icon: LayoutDashboard },
   {
     label: "Buscar",
     icon: Search,

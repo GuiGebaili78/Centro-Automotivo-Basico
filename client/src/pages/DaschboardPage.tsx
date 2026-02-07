@@ -138,8 +138,17 @@ export function DaschboardPage() {
     consolidacao: 0,
   });
 
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+
   useEffect(() => {
     fetchData();
+
+    // Atualizar data/hora a cada segundo
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const fetchData = async () => {
@@ -347,115 +356,121 @@ export function DaschboardPage() {
         : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100"
     }`;
 
-  const CustomHeader = () => (
-    <div className="w-full flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
-      {/* Title / Welcome */}
-      <div className="shrink-0">
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-          Visão Geral
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Acompanhamento diário da oficina.
-        </p>
-      </div>
-
-      {/* Stats 2x2 Grid - CENTERED */}
-      <div className="grid grid-cols-2 gap-2 mx-auto shrink-0">
-        <StatCard
-          title="Contas a Pagar"
-          color={{
-            bg: "bg-red-50",
-            text: "text-red-600",
-          }}
-          icon={CreditCard}
-          onClick={() => navigate("/financeiro/contas-pagar")}
-        >
-          <div className="flex justify-between items-center w-full px-1 gap-2">
-            <div className="flex flex-col items-center">
-              <h3 className="text-lg font-black text-blue-600">
-                {stats.contasPagarPending}
-              </h3>
-              <p className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">
-                Pend
-              </p>
-            </div>
-            <div className="h-5 w-px bg-neutral-200"></div>
-            <div className="flex flex-col items-center">
-              <h3 className="text-lg font-black text-red-600">
-                {stats.contasPagarOverdue}
-              </h3>
-              <p className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">
-                Atras
-              </p>
-            </div>
-          </div>
-        </StatCard>
-        <StatCard
-          title="Mov. de Caixa"
-          value={stats.livroCaixaEntries + stats.livroCaixaExits}
-          color={{
-            bg: "bg-neutral-100",
-            text: "text-neutral-600",
-          }}
-          icon={Wallet}
-          onClick={() => navigate("/financeiro/livro-caixa")}
-          subtext={`E:${stats.livroCaixaEntries} | S:${stats.livroCaixaExits}`}
-        />
-        <StatCard
-          title="Auto Peças"
-          value={stats.autoPecasPendentes}
-          color={{
-            bg: "bg-orange-50",
-            text: "text-orange-600",
-          }}
-          icon={Package}
-          onClick={() => navigate("/financeiro/pagamento-pecas")}
-          subtext="Pendentes"
-        />
-        <StatCard
-          title="Consolidação"
-          value={stats.consolidacao}
-          color={{
-            bg: "bg-emerald-50",
-            text: "text-emerald-600",
-          }}
-          icon={CheckCircle}
-          onClick={() => navigate("/fechamento-financeiro")}
-          subtext="Aguardando"
-        />
-      </div>
-
-      {/* Search & Actions */}
-      <div className="flex-1 w-full xl:max-w-xl flex items-center gap-3">
-        <div className="flex-1">
-          <UnifiedSearch
-            onSelect={handleSearchResultSelect}
-            onNewRecord={handleNewRecord}
-          />
-        </div>
-        <Button
-          variant="primary"
-          size="lg"
-          icon={Plus}
-          className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
-          onClick={() => {
-            const input = document.querySelector(
-              "input[placeholder*='Buscar por Placa']",
-            );
-            if (input) (input as HTMLElement).focus();
-          }}
-        >
-          Nova OS
-        </Button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Custom Header Layout replacing PageLayout's standard header for this specific page */}
-        <CustomHeader />
+        <div className="w-full flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
+          {/* Title / Welcome */}
+          <div className="shrink-0">
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+              Monitor de Atividades
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              {currentDateTime.toLocaleDateString("pt-BR", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}{" "}
+              •{" "}
+              {currentDateTime.toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+            </p>
+          </div>
+
+          {/* Stats 2x2 Grid - CENTERED */}
+          <div className="grid grid-cols-2 gap-2 mx-auto shrink-0">
+            <StatCard
+              title="Contas a Pagar"
+              color={{
+                bg: "bg-red-50",
+                text: "text-red-600",
+              }}
+              icon={CreditCard}
+              onClick={() => navigate("/financeiro/contas-pagar")}
+            >
+              <div className="flex justify-between items-center w-full px-1 gap-2">
+                <div className="flex flex-col items-center">
+                  <h3 className="text-lg font-black text-blue-600">
+                    {stats.contasPagarPending}
+                  </h3>
+                  <p className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">
+                    Pend
+                  </p>
+                </div>
+                <div className="h-5 w-px bg-neutral-200"></div>
+                <div className="flex flex-col items-center">
+                  <h3 className="text-lg font-black text-red-600">
+                    {stats.contasPagarOverdue}
+                  </h3>
+                  <p className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">
+                    Atras
+                  </p>
+                </div>
+              </div>
+            </StatCard>
+            <StatCard
+              title="Mov. de Caixa"
+              value={stats.livroCaixaEntries + stats.livroCaixaExits}
+              color={{
+                bg: "bg-neutral-100",
+                text: "text-neutral-600",
+              }}
+              icon={Wallet}
+              onClick={() => navigate("/financeiro/livro-caixa")}
+              subtext={`E:${stats.livroCaixaEntries} | S:${stats.livroCaixaExits}`}
+            />
+            <StatCard
+              title="Auto Peças"
+              value={stats.autoPecasPendentes}
+              color={{
+                bg: "bg-orange-50",
+                text: "text-orange-600",
+              }}
+              icon={Package}
+              onClick={() => navigate("/financeiro/pagamento-pecas")}
+              subtext="Pendentes"
+            />
+            <StatCard
+              title="Consolidação"
+              value={stats.consolidacao}
+              color={{
+                bg: "bg-emerald-50",
+                text: "text-emerald-600",
+              }}
+              icon={CheckCircle}
+              onClick={() => navigate("/fechamento-financeiro")}
+              subtext="Aguardando"
+            />
+          </div>
+
+          {/* Search & Actions */}
+          <div className="flex-1 w-full xl:max-w-xl flex items-center gap-3">
+            <div className="flex-1">
+              <UnifiedSearch
+                onSelect={handleSearchResultSelect}
+                onNewRecord={handleNewRecord}
+              />
+            </div>
+            <Button
+              variant="primary"
+              size="lg"
+              icon={Plus}
+              className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
+              onClick={() => {
+                const input = document.querySelector(
+                  "input[placeholder*='Buscar por Placa']",
+                );
+                if (input) (input as HTMLElement).focus();
+              }}
+            >
+              Nova OS
+            </Button>
+          </div>
+        </div>
 
         <main className="animate-in fade-in duration-500 space-y-4">
           {/* Stats Grid Removed from Body - Moved to Header */}

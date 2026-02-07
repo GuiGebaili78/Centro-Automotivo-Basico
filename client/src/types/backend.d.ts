@@ -287,8 +287,19 @@ export interface IContasPagar {
   forma_pagamento?: string | null;
   url_anexo?: string | null;
 
+  // Recurrence fields
+  id_grupo_recorrencia?: string | null;
+  numero_parcela?: number | null;
+  total_parcelas?: number | null;
+
   obs?: string | null;
   dt_cadastro: string;
+}
+
+export interface IRecurrenceInfo {
+  numero_parcela: number;
+  total_parcelas: number;
+  id_grupo: string | null;
 }
 
 // ---------------------------------------------------------

@@ -23,7 +23,7 @@ import {
   Link,
   Settings,
 } from "lucide-react";
-import type { IContasPagar } from "../types/backend";
+import type { IContasPagar, IRecurrenceInfo } from "../types/backend";
 
 export const ContasAPagarPage = () => {
   const [contas, setContas] = useState<IContasPagar[]>([]);
@@ -74,6 +74,13 @@ export const ContasAPagarPage = () => {
   // Confirm Delete Modal
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
+  // Recurrence Management
+  const [recurrenceInfo, setRecurrenceInfo] = useState<IRecurrenceInfo | null>(
+    null,
+  );
+  const [applyToAllRecurrences, setApplyToAllRecurrences] = useState(false);
+  const [deleteAllRecurrences, setDeleteAllRecurrences] = useState(false);
+
   useEffect(() => {
     loadContas();
     loadAccounts();
@@ -116,6 +123,7 @@ export const ContasAPagarPage = () => {
       const payload = {
         ...formData,
         valor: Number(formData.valor),
+        applyToAllRecurrences, // Add flag for series update
         // Enforce NULL payment date if status is not PAGO
         dt_pagamento:
           formData.status === "PAGO"
@@ -131,7 +139,11 @@ export const ContasAPagarPage = () => {
 
       if (editingId) {
         await api.put(`/contas-pagar/${editingId}`, payload);
-        toast.success("Conta atualizada com sucesso!");
+        toast.success(
+          applyToAllRecurrences
+            ? "Série de contas atualizada com sucesso!"
+            : "Conta atualizada com sucesso!",
+        );
       } else {
         await api.post("/contas-pagar", payload);
         toast.success("Conta lançada com sucesso!");
@@ -148,10 +160,15 @@ export const ContasAPagarPage = () => {
   const handleDelete = async () => {
     if (!confirmDeleteId) return;
     try {
-      await api.delete(`/contas-pagar/${confirmDeleteId}`);
-      toast.success("Conta excluída.");
+      await api.delete(
+        `/contas-pagar/${confirmDeleteId}${deleteAllRecurrences ? "?deleteAllRecurrences=true" : ""}`,
+      );
+      toast.success(
+        deleteAllRecurrences ? "Série de contas excluída." : "Conta excluída.",
+      );
       loadContas();
       setConfirmDeleteId(null);
+      setDeleteAllRecurrences(false);
     } catch (error) {
       toast.error("Erro ao excluir conta.");
     }
@@ -182,8 +199,19 @@ export const ContasAPagarPage = () => {
     }
   };
 
-  const handleEdit = (conta: IContasPagar) => {
+  const handleEdit = async (conta: IContasPagar) => {
     setEditingId(conta.id_conta_pagar);
+
+    // Load recurrence information
+    try {
+      const res = await api.get(
+        `/contas-pagar/${conta.id_conta_pagar}/recurrence-info`,
+      );
+      setRecurrenceInfo(res.data);
+    } catch (error) {
+      setRecurrenceInfo(null);
+    }
+
     setFormData({
       descricao: conta.descricao,
       credor: conta.credor || "",
@@ -203,6 +231,7 @@ export const ContasAPagarPage = () => {
       obs: conta.obs || "",
       repetir_parcelas: 0,
     });
+    setApplyToAllRecurrences(false);
     setModalOpen(true);
   };
 
@@ -279,18 +308,12 @@ export const ContasAPagarPage = () => {
     return true;
   });
 
-  const totalPending = contas
+  const totalPending = filteredContas
     .filter((c) => c.status === "PENDENTE")
     .reduce((acc, c) => acc + Number(c.valor), 0);
-  const totalPaidMonth = contas
-    .filter((c) => {
-      if (c.status !== "PAGO" || !c.dt_pagamento) return false;
-      const d = new Date(c.dt_pagamento);
-      const now = new Date();
-      return (
-        d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-      );
-    })
+
+  const totalPaid = filteredContas
+    .filter((c) => c.status === "PAGO")
     .reduce((acc, c) => acc + Number(c.valor), 0);
 
   return (
@@ -324,7 +347,7 @@ export const ContasAPagarPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <div className="bg-red-50 border border-red-100 p-6 rounded-2xl">
           <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">
-            Total Pendente
+            Total Pendente (Filtro)
           </p>
           <p className="text-3xl font-bold text-red-600">
             {formatCurrency(totalPending)}
@@ -332,10 +355,10 @@ export const ContasAPagarPage = () => {
         </div>
         <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-2xl">
           <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">
-            Pago este Mês
+            Total Pago (Filtro)
           </p>
           <p className="text-3xl font-bold text-emerald-600">
-            {formatCurrency(totalPaidMonth)}
+            {formatCurrency(totalPaid)}
           </p>
         </div>
       </div>
@@ -800,6 +823,50 @@ export const ContasAPagarPage = () => {
               />
             </div>
 
+            {/* Recurrence Info */}
+            {editingId && recurrenceInfo && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <Calendar className="text-blue-600" size={20} />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-blue-900 text-sm mb-1">
+                      Conta Recorrente
+                    </h4>
+                    <p className="text-xs text-blue-700 mb-3">
+                      Esta conta faz parte de uma série de{" "}
+                      {recurrenceInfo.total_parcelas} parcelas (parcela{" "}
+                      {recurrenceInfo.numero_parcela} de{" "}
+                      {recurrenceInfo.total_parcelas})
+                    </p>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={applyToAllRecurrences}
+                        onChange={(e) =>
+                          setApplyToAllRecurrences(e.target.checked)
+                        }
+                        className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-blue-900">
+                        Aplicar alterações a todas as parcelas
+                      </span>
+                    </label>
+
+                    {applyToAllRecurrences && (
+                      <div className="mt-2 text-xs text-blue-600 bg-blue-100 p-2 rounded">
+                        ⚠️ As datas de vencimento serão mantidas conforme a
+                        série original, mas valor, categoria e status serão
+                        atualizados.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Actions Footer */}
             <div className="flex justify-end gap-2 border-t pt-6">
               <Button
@@ -896,10 +963,49 @@ export const ContasAPagarPage = () => {
       {/* Confirm Delete Modal */}
       <ConfirmModal
         isOpen={!!confirmDeleteId}
-        onClose={() => setConfirmDeleteId(null)}
+        onClose={() => {
+          setConfirmDeleteId(null);
+          setDeleteAllRecurrences(false);
+        }}
         onConfirm={handleDelete}
         title="Excluir Conta"
-        description="Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita."
+        description={
+          <div className="space-y-3">
+            <p>
+              Tem certeza que deseja excluir esta conta? Esta ação não pode ser
+              desfeita.
+            </p>
+
+            {/* Check if recurring */}
+            {confirmDeleteId &&
+              contas.find(
+                (c) =>
+                  c.id_conta_pagar === confirmDeleteId &&
+                  (c.id_grupo_recorrencia ||
+                    c.obs?.match(/\(Recorrência \d+\/\d+\)/)),
+              ) && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-yellow-900 mb-2">
+                    Esta conta faz parte de uma série recorrente.
+                  </p>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={deleteAllRecurrences}
+                      onChange={(e) =>
+                        setDeleteAllRecurrences(e.target.checked)
+                      }
+                      className="w-4 h-4 rounded border-yellow-300 text-yellow-600 focus:ring-2 focus:ring-yellow-500"
+                    />
+                    <span className="text-sm text-yellow-900">
+                      Excluir todas as parcelas desta série
+                    </span>
+                  </label>
+                </div>
+              )}
+          </div>
+        }
+        confirmText={deleteAllRecurrences ? "Excluir Série" : "Excluir"}
         variant="danger"
       />
     </PageLayout>
