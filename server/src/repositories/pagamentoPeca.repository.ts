@@ -88,7 +88,7 @@ export class PagamentoPecaRepository {
           valor: pagamento.custo_real,
           tipo_movimentacao: "SAIDA",
           categoria: "Auto Peças",
-          dt_movimentacao: dataPagamento,
+          dt_movimentacao: new Date(),
           origem: "AUTOMATICA",
           id_conta_bancaria: accountId,
         },

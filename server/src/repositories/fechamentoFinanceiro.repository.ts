@@ -118,25 +118,44 @@ export class FechamentoFinanceiroRepository {
           );
         }
 
-        // --- FLUXO 1: DINHEIRO (IMEDIATO) ---
-        // PIX agora entra no fluxo de recebíveis (diferido), assim como Cartão.
-        if (metodo === "DINHEIRO") {
-          // VERIFICA SE JÁ FOI PROCESSADO
-          if ((pagamento as any).id_livro_caixa) {
-            console.log(
-              `      ⚠️ [SKIP] Pagamento ${idPagamentoCliente} já possui Livro Caixa #${(pagamento as any).id_livro_caixa}. Ignorando duplicação.`,
-            );
-            continue;
-          }
-
-          // 1.1 Criar LivroCaixa (Dinheiro entra direto no Caixa mas não vinculamos conta bancária para evitar duplicidade de saldo se houver)
-          // Mas Dinheiro físico não afeta saldo de conta bancária digital, apenas saldo de "Caixa".
-          // Se houver uma conta "Caixa Físico", usamos o ID dela.
-          const targetContaId = idContaBancaria; // Se o usuário selecionou "Caixa", usa ele.
-
+        // --- FLUXO 1: PIX (IMEDIATO NO BANCO) ---
+        if (metodo === "PIX") {
+          // 1.1 Criar LivroCaixa (Vinculado a Conta)
           const livroCaixa = await tx.livroCaixa.create({
             data: {
-              descricao: `Venda ${metodo} - OS #${idOs}`,
+              descricao: `Venda PIX - OS #${idOs}`,
+              valor: valorPagamento,
+              tipo_movimentacao: "ENTRADA",
+              categoria: "VENDA",
+              dt_movimentacao: new Date(),
+              origem: "AUTOMATICA",
+              id_conta_bancaria: idContaBancaria,
+            },
+          });
+
+          // 1.2 Atualizar Saldo Bancário
+          await tx.contaBancaria.update({
+            where: { id_conta: idContaBancaria },
+            data: { saldo_atual: { increment: valorPagamento } },
+          });
+
+          // 1.3 Vincular ao PagamentoCliente
+          await tx.pagamentoCliente.update({
+            where: { id_pagamento_cliente: idPagamentoCliente },
+            data: { id_livro_caixa: livroCaixa.id_livro_caixa } as any,
+          });
+
+          console.log(
+            `      ✅ [PIX] Consolidado: LC #${livroCaixa.id_livro_caixa} | Saldo Atualizado.`,
+          );
+        }
+
+        // --- FLUXO 2: DINHEIRO (CAIXA MAS SEM EXTRATO BANCÁRIO DIGITAL) ---
+        else if (metodo === "DINHEIRO") {
+          // 2.1 Criar LivroCaixa (Dinheiro entra direto no Caixa mas não vinculamos conta bancária para evitar duplicidade de saldo se houver)
+          const livroCaixa = await tx.livroCaixa.create({
+            data: {
+              descricao: `Venda DINHEIRO - OS #${idOs}`,
               valor: valorPagamento,
               tipo_movimentacao: "ENTRADA",
               categoria: "VENDA",
@@ -146,22 +165,18 @@ export class FechamentoFinanceiroRepository {
             },
           });
 
-          // 1.2 Vincular ao PagamentoCliente
+          // 2.2 Vincular ao PagamentoCliente
           await tx.pagamentoCliente.update({
             where: { id_pagamento_cliente: idPagamentoCliente },
             data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any,
           });
-
-          // Dinheiro não atualiza saldo de conta bancária automática por enquanto,
-          // a menos que tivéssemos uma conta "Caixa Físico" explícita no sistema com saldo.
-          // O comportamento anterior para Dinheiro era apenas Log.
 
           console.log(
             `      ✅ [DINHEIRO] Livro Caixa gerado (Sem impacto no Saldo Bancário Digital)`,
           );
         }
 
-        // --- FLUXO 2: CARTÃO (DIFERIDO) ---
+        // --- FLUXO 3: CARTÃO (DIFERIDO) ---
         else if (metodo === "DEBITO" || metodo === "CREDITO") {
           // Prepara nome da operadora para descrição
           let operadoraNome = "";
@@ -172,7 +187,7 @@ export class FechamentoFinanceiroRepository {
             operadoraNome = op?.nome || "";
           }
 
-          // 2.1 Criar LivroCaixa (SEM CONTA BANCÁRIA -> NÃO aparece no Extrato, apenas Faturamento)
+          // 3.1 Criar LivroCaixa (SEM CONTA BANCÁRIA -> NÃO aparece no Extrato, apenas Faturamento)
           const livroCaixa = await tx.livroCaixa.create({
             data: {
               descricao: `Venda Cartão ${metodo} ${operadoraNome ? `(${operadoraNome})` : ""} - OS #${idOs}`,
@@ -185,13 +200,13 @@ export class FechamentoFinanceiroRepository {
             },
           });
 
-          // 2.2 Vincular ao PagamentoCliente
+          // 3.2 Vincular ao PagamentoCliente
           await tx.pagamentoCliente.update({
             where: { id_pagamento_cliente: idPagamentoCliente },
             data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any,
           });
 
-          // 2.3 Criar Recebíveis (Cálculo de Parcelas e Taxas)
+          // 3.3 Criar Recebíveis (Cálculo de Parcelas e Taxas)
           if (idOperadora) {
             const operadora = await tx.operadoraCartao.findUnique({
               where: { id_operadora: idOperadora },
@@ -205,7 +220,6 @@ export class FechamentoFinanceiroRepository {
 
               let taxa = 0;
               let prazo = 0;
-              let taxaAntec = 0;
 
               // 1. Try to find in new granular table
               const modalidade = metodo === "DEBITO" ? "DEBITO" : "CREDITO";
@@ -217,16 +231,13 @@ export class FechamentoFinanceiroRepository {
 
               if (taxEntry) {
                 taxa = Number(taxEntry.taxa_total);
-                // Prazo usually fixed per type in legacy, but could be specific?
-                // Keeping legacy prazo logic for now as user didn't request per-installment timeline, only rate.
+                // Prazo usually fixed per type in legacy
                 prazo =
                   metodo === "DEBITO"
                     ? Number(operadora.prazo_debito)
                     : qtdParcelas === 1
                       ? Number(operadora.prazo_credito_vista)
                       : Number(operadora.prazo_credito_parc);
-
-                taxaAntec = Number(taxEntry.taxa_antecipacao || 0);
               } else {
                 // 2. Fallback to Legacy Flat Fields
                 taxa =
@@ -242,21 +253,14 @@ export class FechamentoFinanceiroRepository {
                     : qtdParcelas === 1
                       ? Number(operadora.prazo_credito_vista)
                       : Number(operadora.prazo_credito_parc);
-
-                taxaAntec = Number(operadora.taxa_antecipacao || 0);
               }
 
               // Adjust logic based on "Tipo Parcelamento"
-              // If CLIENTE pays interest, usually the Store receives the Full Value minus "Intermediation Fee".
-              // But here 'taxa' is the "Total Discounted".
-              // If Parcelado Cliente -> The machine adds interest on top. The store receives Price - Intermediation.
-              // So if CLIENTE, we might want to use the '1x' rate or a specific base rate, NOT the high installment rate.
               if (
                 tipoParcelamento === "CLIENTE" &&
                 metodo === "CREDITO" &&
                 qtdParcelas > 1
               ) {
-                // Fallback to "Vista" rate for Cost Calculation as customer pays the "Overprice"
                 const vistaRate = operadora.taxas_cartao?.find(
                   (t) => t.modalidade === "CREDITO" && t.num_parcelas === 1,
                 );
@@ -265,7 +269,6 @@ export class FechamentoFinanceiroRepository {
                 } else {
                   taxa = Number(operadora.taxa_credito_vista);
                 }
-                // TODO: This assumption is standard for "Parcelado Comprador", but user can verify.
               }
 
               const taxaAplicada = (valorPagamento * taxa) / 100;
@@ -274,12 +277,7 @@ export class FechamentoFinanceiroRepository {
               // Data base para vencimento
               const dataPrevistaBase = new Date();
               if (operadora.antecipacao_auto) {
-                // If auto anticipation is on, typically D+1
                 dataPrevistaBase.setDate(dataPrevistaBase.getDate() + 1);
-
-                // Apply Anticipation Fee if configured
-                // Simplification: if 'taxa_total' already includes anticipation in the user's table (as implied by high rates 22%), we don't double dip.
-                // But if separate, we would deduct here. user said "Sobra pra voce" in the table, so `taxa` likely includes everything.
               } else {
                 dataPrevistaBase.setDate(dataPrevistaBase.getDate() + prazo);
               }
@@ -291,7 +289,6 @@ export class FechamentoFinanceiroRepository {
               for (let i = 1; i <= qtdParcelas; i++) {
                 const dataPrevistaParcela = new Date(dataPrevistaBase);
                 if (!operadora.antecipacao_auto) {
-                  // Standard installment spacing
                   dataPrevistaParcela.setMonth(
                     dataPrevistaParcela.getMonth() + (i - 1),
                   );
@@ -327,6 +324,120 @@ export class FechamentoFinanceiroRepository {
       });
 
       return fechamento;
+    });
+  }
+
+  /**
+   * Reverte uma Consolidação Financeira
+   * - Bloqueia se houver comissões pagas ou recebíveis baixados
+   * - Desfaz lançamentos de LivroCaixa e Saldos
+   * - Remove Recebíveis
+   * - Exclui Fechamento
+   */
+  async reverterConsolidacao(idFechamento: number) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Buscar dados completos
+      const fechamento = await tx.fechamentoFinanceiro.findUnique({
+        where: { id_fechamento_financeiro: idFechamento },
+        include: {
+          ordem_de_servico: {
+            include: {
+              pagamentos_cliente: { where: { deleted_at: null } },
+              servicos_mao_de_obra: { where: { deleted_at: null } },
+              recebiveis_cartao: true, // Needed to check status
+            },
+          },
+        },
+      });
+
+      if (!fechamento) throw new Error("Fechamento não encontrado.");
+
+      const os = fechamento.ordem_de_servico;
+
+      // 2. BLOCKS DE SEGURANÇA
+
+      // 2.1 Verificar Comissões Pagas
+      const comissoesPagas = os.servicos_mao_de_obra.some(
+        (s) => s.status_pagamento === "PAGO",
+      );
+      if (comissoesPagas) {
+        throw new Error(
+          "Não é possível desconsolidar: Existem comissões já pagas aos funcionários nesta OS.",
+        );
+      }
+
+      // 2.2 Verificar Recebíveis Baixados
+      // We need to fetch RecebiveisCartao separately if not in include or if implicit relation
+      const recebiveis = await tx.recebivelCartao.findMany({
+        where: { id_os: os.id_os },
+      });
+      const recebiveisBaixados = recebiveis.some(
+        (r) => r.status === "RECEBIDO",
+      );
+      if (recebiveisBaixados) {
+        throw new Error(
+          "Não é possível desconsolidar: Existem recebíveis de cartão já confirmados/baixados.",
+        );
+      }
+
+      console.log(`↺ [REVERSÃO] Iniciando reversão da OS #${os.id_os}`);
+
+      // 3. EXECUTAR REVERSÃO
+
+      // 3.1 Estornar Pagamentos (Livro Caixa e Saldo)
+      for (const pag of os.pagamentos_cliente) {
+        const p = pag as any;
+
+        if (p.id_livro_caixa) {
+          // Buscar info do LivroCaixa pra saber valor exato lançado (segurança)
+          const lc = await tx.livroCaixa.findUnique({
+            where: { id_livro_caixa: p.id_livro_caixa },
+          });
+
+          if (lc) {
+            // Se PIX e tem conta, estornar saldo
+            if (lc.id_conta_bancaria && p.metodo_pagamento === "PIX") {
+              await tx.contaBancaria.update({
+                where: { id_conta: lc.id_conta_bancaria },
+                data: { saldo_atual: { decrement: Number(lc.valor) } },
+              });
+              console.log(
+                `   - Saldo estornado Conta #${lc.id_conta_bancaria}: -${lc.valor}`,
+              );
+            }
+
+            // Remover LivroCaixa
+            await tx.livroCaixa.delete({
+              where: { id_livro_caixa: p.id_livro_caixa },
+            });
+          }
+
+          // Desvincular do pagamento
+          await tx.pagamentoCliente.update({
+            where: { id_pagamento_cliente: p.id_pagamento_cliente },
+            data: { id_livro_caixa: null } as any,
+          });
+        }
+      }
+
+      // 3.2 Remover Recebíveis de Cartão
+      const deletedRecebiveis = await tx.recebivelCartao.deleteMany({
+        where: { id_os: os.id_os },
+      });
+      console.log(`   - Recebíveis removidos: ${deletedRecebiveis.count}`);
+
+      // 3.3 Remover Fechamento Financeiro
+      await tx.fechamentoFinanceiro.delete({
+        where: { id_fechamento_financeiro: idFechamento },
+      });
+
+      // 3.4 Reverter Status da OS
+      await tx.ordemDeServico.update({
+        where: { id_os: os.id_os },
+        data: { status: "PRONTO PARA FINANCEIRO" },
+      });
+
+      return { success: true, message: "Consolidação revertida com sucesso." };
     });
   }
 }

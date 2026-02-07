@@ -363,7 +363,7 @@ export function DaschboardPage() {
           {/* Title / Welcome */}
           <div className="shrink-0">
             <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-              Monitor de Atividades
+              Monitor
             </h1>
             <p className="text-sm text-slate-500 mt-1">
               {currentDateTime.toLocaleDateString("pt-BR", {
@@ -381,8 +381,32 @@ export function DaschboardPage() {
             </p>
           </div>
 
-          {/* Stats 2x2 Grid - CENTERED */}
-          <div className="grid grid-cols-2 gap-2 mx-auto shrink-0">
+          {/* Search & Actions - MOVED TO MIDDLE */}
+          <div className="flex-1 w-full xl:max-w-xl mx-auto flex items-center gap-3 order-2">
+            <div className="flex-1">
+              <UnifiedSearch
+                onSelect={handleSearchResultSelect}
+                onNewRecord={handleNewRecord}
+              />
+            </div>
+            <Button
+              variant="primary"
+              size="lg"
+              icon={Plus}
+              className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
+              onClick={() => {
+                const input = document.querySelector(
+                  "input[placeholder*='Buscar por Placa']",
+                );
+                if (input) (input as HTMLElement).focus();
+              }}
+            >
+              Nova OS
+            </Button>
+          </div>
+
+          {/* Stats 2x2 Grid - MOVED TO RIGHT */}
+          <div className="grid grid-cols-2 gap-2 shrink-0 order-3">
             <StatCard
               title="Contas a Pagar"
               color={{
@@ -445,30 +469,6 @@ export function DaschboardPage() {
               onClick={() => navigate("/fechamento-financeiro")}
               subtext="Aguardando"
             />
-          </div>
-
-          {/* Search & Actions */}
-          <div className="flex-1 w-full xl:max-w-xl flex items-center gap-3">
-            <div className="flex-1">
-              <UnifiedSearch
-                onSelect={handleSearchResultSelect}
-                onNewRecord={handleNewRecord}
-              />
-            </div>
-            <Button
-              variant="primary"
-              size="lg"
-              icon={Plus}
-              className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
-              onClick={() => {
-                const input = document.querySelector(
-                  "input[placeholder*='Buscar por Placa']",
-                );
-                if (input) (input as HTMLElement).focus();
-              }}
-            >
-              Nova OS
-            </Button>
           </div>
         </div>
 

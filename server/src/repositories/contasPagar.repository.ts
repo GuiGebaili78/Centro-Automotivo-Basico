@@ -41,15 +41,7 @@ export class ContasPagarRepository {
       if (created.status === "PAGO") {
         console.log("[ContasPagarRepo] Auto-launching Livro Caixa for Create");
 
-        let movimentoDate = new Date();
-        if (mainData.dt_pagamento) {
-          const pgDate = new Date(mainData.dt_pagamento);
-          const now = new Date();
-          const isSameDay =
-            pgDate.toISOString().split("T")[0] ===
-            now.toISOString().split("T")[0];
-          if (!isSameDay) movimentoDate = pgDate;
-        }
+        const movimentoDate = new Date();
 
         await tx.livroCaixa.create({
           data: {
@@ -155,24 +147,10 @@ export class ContasPagarRepository {
 
         const id_conta_bancaria = idContaRaw ? Number(idContaRaw) : null;
 
-        // Smart Date Logic for Livro Caixa
-        // Se data.dt_pagamento existe (foi processada para 12h ou veio no payload)
-        // Verificamos se é "HOJE". Se for, usamos AGORA (pra ter hora certa).
-        // Se não, usamos a data processada (12h) para garantir o dia.
-        let movimentoDate = new Date();
-        if (data.dt_pagamento) {
-          const pgDate = new Date(data.dt_pagamento);
-          const now = new Date();
-          // Check if same day (ignoring time)
-          const isSameDay =
-            pgDate.toISOString().split("T")[0] ===
-            now.toISOString().split("T")[0]; // Crude check but works for simplified UTC comparison logic established
-
-          if (!isSameDay) {
-            movimentoDate = pgDate; // Use the 12:00 UTC date
-          }
-          // If it IS same day, we stick with 'movimentoDate = new Date()' to capture exact current time
-        }
+        // LivroCaixa entries should always reflect the exact system time of the operation.
+        // This ensures that the dt_movimentacao accurately represents when the cash movement
+        // was recorded in the system, resolving issues with incorrect timestamps like 9:00 AM.
+        const movimentoDate = new Date();
 
         await tx.livroCaixa.create({
           data: {
@@ -377,7 +355,8 @@ export class ContasPagarRepository {
 
         // Atualizar a observação mantendo o número da parcela
         if (updateData.obs !== undefined) {
-          const baseObs = updateData.obs
+          const obsStr = updateData.obs || "";
+          const baseObs = obsStr
             .replace(/\s*\(Recorrência \d+\/\d+\)/, "")
             .trim();
           updateData.obs =
