@@ -26,6 +26,8 @@ import { LaborManager } from "../components/os/LaborManager";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { toast } from "react-toastify";
+import { DocumentoModal } from "../components/ui/DocumentoModal";
+import { Printer } from "lucide-react";
 
 export const OrdemDeServicoDetalhePage = () => {
   const { id } = useParams();
@@ -47,6 +49,9 @@ export const OrdemDeServicoDetalhePage = () => {
     message: string;
     onConfirm: () => void;
   }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
+
+  // Document Modal
+  const [documentModalOpen, setDocumentModalOpen] = useState(false);
 
   // Items / Parts Management
   const [partSearch, setPartSearch] = useState("");
@@ -479,18 +484,43 @@ export const OrdemDeServicoDetalhePage = () => {
       }
       subtitle="Gerencie os detalhes, peças e serviços desta Ordem de Serviço."
       actions={
-        (os.status === "ORCAMENTO" || os.status === "AGENDA") && (
+        <div className="flex gap-2">
           <Button
-            variant="primary"
-            icon={CheckCircle}
-            onClick={handleOpenOsNow}
-            className="bg-purple-600 hover:bg-purple-700 text-white"
+            variant="secondary"
+            onClick={() => setDocumentModalOpen(true)}
+            title="Imprimir / Enviar Documento"
           >
-            ABRIR OS AGORA
+            <Printer size={18} className="mr-2" />
+            Imprimir/Enviar
           </Button>
-        )
+
+          {(os.status === "ORCAMENTO" || os.status === "AGENDA") && (
+            <Button
+              variant="primary"
+              icon={CheckCircle}
+              onClick={handleOpenOsNow}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              ABRIR OS AGORA
+            </Button>
+          )}
+        </div>
       }
     >
+      {/* Document Modal */}
+      <DocumentoModal
+        isOpen={documentModalOpen}
+        onClose={() => setDocumentModalOpen(false)}
+        osId={os.id_os}
+        status={os.status}
+        clienteEmail={os.cliente?.email || ""}
+        clienteTelefone={os.cliente?.telefone_1}
+        clienteNome={
+          os.cliente?.pessoa_fisica?.pessoa?.nome ||
+          os.cliente?.pessoa_juridica?.nome_fantasia ||
+          "Cliente"
+        }
+      />
       <div className="space-y-8">
         {/* Header Info - Using Card */}
         <Card className="p-6">

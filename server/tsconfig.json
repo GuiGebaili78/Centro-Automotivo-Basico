@@ -8,6 +8,7 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
+    "moduleResolution": "nodenext",
     "target": "esnext",
     "types": [],
     // For nodejs:
@@ -39,6 +40,16 @@
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true,
-  }
+    "skipLibCheck": true
+  },
+  "exclude": [
+    "test_*.ts",
+    "check_*.ts",
+    "check_*.js",
+    "debug_*.ts",
+    "debug_*.js",
+    "fix_*.js",
+    "test_*.js",
+    "node_modules"
+  ]
 }

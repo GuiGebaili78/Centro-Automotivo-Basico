@@ -521,3 +521,18 @@ model RecebivelCartao {
 
   @@map("recebivel_cartao")
 }
+
+model Configuracao {
+  id              String   @id @default(uuid())
+  nomeFantasia    String   @db.VarChar(100)
+  razaoSocial     String?  @db.VarChar(100)
+  cnpj            String?  @db.VarChar(18)
+  endereco        String?  @db.VarChar(255)
+  telefone        String?  @db.VarChar(20)
+  email           String?  @db.VarChar(100)
+  logoUrl         String?  @db.VarChar(500) // URL/Path to the uploaded logo
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("configuracao")
+}

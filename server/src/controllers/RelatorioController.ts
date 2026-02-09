@@ -143,7 +143,7 @@ export class RelatorioController {
 
       const churn = clientesAtivos.filter((cliente) => {
         if (cliente.ordens_de_servico.length === 0) return true;
-        const ultimaOS = cliente.ordens_de_servico[0];
+        const ultimaOS = cliente.ordens_de_servico[0]!;
         return new Date(ultimaOS.dt_abertura) < dataLimiteChurn;
       }).length;
 

@@ -26,13 +26,20 @@ import { contaBancariaRoutes } from "./routes/contaBancaria.routes.js";
 import { operadoraRoutes } from "./routes/operadoraCartao.routes.js";
 import { recebivelCartaoRoutes } from "./routes/recebivelCartao.routes.js";
 import { relatorioRoutes } from "./routes/relatorio.routes.js";
-
+import configuracaoRoutes from "./routes/configuracao.routes.js";
+import { documentoRoutes } from "./routes/documento.routes.js";
+import path from "path";
+import { fileURLToPath } from "url";
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
 const PORT = process.env.PORT || 3000;
 
@@ -41,6 +48,8 @@ app.get("/", (req, res) => {
 });
 
 // Registrar todas as rotas
+app.use("/api/configuracao", configuracaoRoutes);
+app.use("/api/documento", documentoRoutes);
 app.use("/api/pessoa", pessoaRoutes);
 app.use("/api/tipo", tipoRoutes);
 app.use("/api/pessoa-fisica", pessoaFisicaRoutes);

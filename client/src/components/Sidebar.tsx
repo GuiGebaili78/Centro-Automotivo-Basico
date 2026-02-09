@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Search,
+  Settings,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -39,12 +40,18 @@ const menuItems = [
     path: "/financeiro", // Base path for checking active state
     subItems: [
       { path: "/financeiro/livro-caixa", label: "Gestão Financeira" },
-      { path: "/financeiro/equipe", label: "Pagamento de Equipe" },
-      { path: "/financeiro/pagamento-pecas", label: "Pagamento Auto Peças" },
-      { path: "/financeiro/contas-pagar", label: "Contas a Pagar (Geral)" },
+      { path: "/financeiro/equipe", label: "$ Colaboradores" },
+      { path: "/financeiro/pagamento-pecas", label: "$ Auto Peças" },
+      { path: "/financeiro/contas-pagar", label: "Contas a Pagar" },
       { path: "/financeiro/relatorios", label: "Relatórios Inteligentes ✨" },
       { path: "/fechamento-financeiro", label: "Consolidação" },
     ],
+  },
+  {
+    label: "Configurações",
+    icon: Settings,
+    path: "/configuracoes-menu",
+    subItems: [{ path: "/configuracoes", label: "Personalização" }],
   },
 ];
 

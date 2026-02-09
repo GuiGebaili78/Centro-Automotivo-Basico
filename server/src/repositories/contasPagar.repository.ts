@@ -1,4 +1,5 @@
 import { prisma } from "../prisma.js";
+import crypto from "crypto";
 
 export class ContasPagarRepository {
   async create(data: any) {
@@ -265,8 +266,8 @@ export class ContasPagarRepository {
     const match = conta.obs?.match(/\(Recorrência (\d+)\/(\d+)\)/);
     if (match) {
       return {
-        numero_parcela: parseInt(match[1]),
-        total_parcelas: parseInt(match[2]),
+        numero_parcela: parseInt(match[1]!),
+        total_parcelas: parseInt(match[2]!),
         id_grupo: null,
       };
     }

@@ -499,6 +499,44 @@ export const FechamentoFinanceiroDetalhePage = () => {
       </div>
     );
 
+  const handleReopenOS = async () => {
+    if (!osData) return;
+    setConfirmModal({
+      isOpen: true,
+      title: "Reabrir OS",
+      message:
+        "Tem certeza que deseja reabrir esta OS? Isso irá ESTORNAR todos os lançamentos financeiros (Caixa, Recebíveis) e remover o fechamento. O status voltará para ABERTA.",
+      onConfirm: async () => {
+        try {
+          // 1. Se houver Fechamento Financeiro, reverter primeiro
+          if (osData.fechamento_financeiro?.id_fechamento_financeiro) {
+            await api.post("/fechamento-financeiro/reverter", {
+              idFechamento:
+                osData.fechamento_financeiro.id_fechamento_financeiro,
+            });
+            toast.success("Consolidação Financeira revertida!");
+          }
+
+          // 2. Atualizar Status para ABERTA
+          await api.put(`/ordem-de-servico/${osData.id_os}`, {
+            status: "ABERTA",
+          });
+
+          toast.success("OS Reaberta com sucesso! Você será redirecionado.");
+          setTimeout(() => navigate(`/ordem-de-servico/${osData.id_os}`), 1000);
+        } catch (error: any) {
+          console.error(error);
+          const msg =
+            error.response?.data?.details ||
+            error.response?.data?.error ||
+            "Erro ao reabrir OS.";
+          toast.error(`Não foi possível reabrir: ${msg}`);
+        }
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
   return (
     <div className="space-y-6 pb-20">
       {blocker.state === "blocked" && (
@@ -532,33 +570,47 @@ export const FechamentoFinanceiroDetalhePage = () => {
       )}
 
       {/* HEADER */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate("/")}
-          className="p-2 hover:bg-neutral-100 rounded-lg transition-all text-neutral-500 hover:text-neutral-700 active:scale-95"
-          title="Voltar"
-        >
-          <ArrowLeft size={20} />
-        </button>
-
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-neutral-700 leading-none m-0 tracking-tight">
-            Fechamento Financeiro #{osData.id_os}
-          </h1>
-          <span className="h-6 w-px bg-neutral-300 mx-1"></span>
-          <span
-            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(osData.status)}`}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/")}
+            className="p-2 hover:bg-neutral-100 rounded-lg transition-all text-neutral-500 hover:text-neutral-700 active:scale-95"
+            title="Voltar"
           >
-            {osData.status === "PRONTO PARA FINANCEIRO"
-              ? "FINANCEIRO"
-              : osData.status.replace(/_/g, " ")}
-          </span>
-          {isDirty && (
-            <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-              <AlertCircle size={10} /> Alterações Pendentes
+            <ArrowLeft size={20} />
+          </button>
+
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-neutral-700 leading-none m-0 tracking-tight">
+              Fechamento Financeiro #{osData.id_os}
+            </h1>
+            <span className="h-6 w-px bg-neutral-300 mx-1"></span>
+            <span
+              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(osData.status)}`}
+            >
+              {osData.status === "PRONTO PARA FINANCEIRO"
+                ? "FINANCEIRO"
+                : osData.status.replace(/_/g, " ")}
             </span>
-          )}
+            {isDirty && (
+              <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                <AlertCircle size={10} /> Alterações Pendentes
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Reopen Button */}
+        {(osData.status === "FINALIZADA" ||
+          osData.status === "PRONTO PARA FINANCEIRO") && (
+          <Button
+            variant="ghost"
+            className="text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200"
+            onClick={handleReopenOS}
+          >
+            Reabrir OS
+          </Button>
+        )}
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">

@@ -14,14 +14,19 @@ export class ServicoMaoDeObraRepository {
     descricao?: string | null;
     categoria?: string;
   }) {
+    const createData: any = {
+      id_os: data.id_os,
+      id_funcionario: data.id_funcionario,
+      valor: data.valor,
+      descricao: data.descricao ?? null,
+    };
+
+    if (data.categoria !== undefined) {
+      createData.categoria = data.categoria;
+    }
+
     const created = await prisma.servicoMaoDeObra.create({
-      data: {
-        id_os: data.id_os,
-        id_funcionario: data.id_funcionario,
-        valor: data.valor,
-        descricao: data.descricao ?? null,
-        categoria: data.categoria,
-      },
+      data: createData,
       include: {
         funcionario: {
           include: { pessoa_fisica: { include: { pessoa: true } } },

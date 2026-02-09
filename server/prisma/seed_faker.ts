@@ -164,7 +164,7 @@ async function main() {
     // 3.2 Criar Veículo
     const veiculo = await prisma.veiculo.create({
       data: {
-        id_cliente: cliente.id_cliente,
+        id_cliente: cliente!.id_cliente,
         placa: faker.vehicle.vrm(), // Gera placa aleatória
         marca: faker.vehicle.manufacturer(),
         modelo: faker.vehicle.model(),
@@ -206,7 +206,7 @@ async function main() {
     // 3.4 Criar OS
     const os = await prisma.ordemDeServico.create({
       data: {
-        id_cliente: cliente.id_cliente,
+        id_cliente: cliente!.id_cliente,
         id_veiculo: veiculo.id_veiculo,
         id_funcionario: funcionario!.id_funcionario,
         dt_abertura: dataAbertura,
