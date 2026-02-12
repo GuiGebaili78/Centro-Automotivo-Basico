@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
-import { FileText, Mail, Send, Loader, AlertTriangle } from "lucide-react";
+import { FileText, Mail, Send, AlertTriangle } from "lucide-react";
 import { api } from "../../services/api";
 import { toast } from "react-toastify";
 
@@ -24,20 +24,19 @@ export const DocumentoModal = ({
   clienteTelefone,
   clienteNome,
 }: DocumentoModalProps) => {
-  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(clienteEmail || "");
-  const [telefone, setTelefone] = useState(clienteTelefone || "");
-  const [sendOption, setSendOption] = useState<"download" | "email" | "telegram">("download");
+  const [sendOption, setSendOption] = useState<
+    "download" | "email" | "telegram"
+  >("download");
 
   const isOrcamento = status !== "FINALIZADA" && status !== "PAGA_CLIENTE";
 
   useEffect(() => {
     if (isOpen) {
       setEmail(clienteEmail || "");
-      setTelefone(clienteTelefone || "");
       setSendOption("download");
     }
-  }, [isOpen, clienteEmail, clienteTelefone]);
+  }, [isOpen, clienteEmail]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -50,7 +49,9 @@ export const DocumentoModal = ({
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement("a");
         link.href = url;
-        const fileName = isOrcamento ? `orcamento-${osId}.pdf` : `os-${osId}.pdf`;
+        const fileName = isOrcamento
+          ? `orcamento-${osId}.pdf`
+          : `os-${osId}.pdf`;
         link.setAttribute("download", fileName);
         document.body.appendChild(link);
         link.click();
@@ -84,21 +85,27 @@ export const DocumentoModal = ({
   if (!isOpen) return null;
 
   return (
-    <Modal title={isOrcamento ? "Imprimir Orçamento" : "Imprimir OS / Recibo"} onClose={onClose}>
+    <Modal
+      title={isOrcamento ? "Imprimir Orçamento" : "Imprimir OS / Recibo"}
+      onClose={onClose}
+    >
       <div className="space-y-4">
         {isOrcamento && (
           <div className="bg-amber-50 text-amber-800 p-3 rounded-lg flex items-start gap-2 text-sm border border-amber-200">
             <AlertTriangle size={16} className="mt-0.5" />
             <p>
               Esta OS ainda não foi finalizada. O documento gerado será um{" "}
-              <strong>ORÇAMENTO</strong> (sem valor fiscal) e conterá uma marca d'água.
+              <strong>ORÇAMENTO</strong> (sem valor fiscal) e conterá uma marca
+              d'água.
             </p>
           </div>
         )}
 
         <div className="space-y-3">
-          <label className="block text-sm font-bold text-gray-700">Como deseja prosseguir?</label>
-          
+          <label className="block text-sm font-bold text-gray-700">
+            Como deseja prosseguir?
+          </label>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
               type="button"
@@ -143,7 +150,9 @@ export const DocumentoModal = ({
 
         {sendOption === "email" && (
           <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2 animate-fadeIn">
-            <label className="block text-xs font-bold text-gray-500 uppercase">E-mail do Cliente</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase">
+              E-mail do Cliente
+            </label>
             <input
               type="email"
               value={email}
@@ -159,13 +168,14 @@ export const DocumentoModal = ({
 
         {sendOption === "telegram" && (
           <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 animate-fadeIn">
-             <p className="text-xs text-gray-600 mb-2">
-                 O envio pelo Telegram requer que o cliente ({clienteNome}) já tenha iniciado uma conversa com o Bot da oficina.
-             </p>
-             <div className="flex items-center gap-2 text-xs text-blue-600 font-bold bg-blue-100 p-2 rounded">
-                 <AlertTriangle size={14} />
-                 <span>Recurso em desenvolvimento (Simulado)</span>
-             </div>
+            <p className="text-xs text-gray-600 mb-2">
+              O envio pelo Telegram requer que o cliente ({clienteNome}) já
+              tenha iniciado uma conversa com o Bot da oficina.
+            </p>
+            <div className="flex items-center gap-2 text-xs text-blue-600 font-bold bg-blue-100 p-2 rounded">
+              <AlertTriangle size={14} />
+              <span>Recurso em desenvolvimento (Simulado)</span>
+            </div>
           </div>
         )}
 
@@ -173,7 +183,11 @@ export const DocumentoModal = ({
           <Button variant="secondary" onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
-          <Button variant="primary" onClick={handleGenerate} isLoading={loading}>
+          <Button
+            variant="primary"
+            onClick={handleGenerate}
+            isLoading={loading}
+          >
             {sendOption === "download" ? "Gerar PDF" : "Enviar"}
           </Button>
         </div>
