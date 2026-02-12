@@ -21,9 +21,9 @@ export const DocumentoModal = ({
   osId,
   status,
   clienteEmail,
-  clienteTelefone,
   clienteNome,
 }: DocumentoModalProps) => {
+  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(clienteEmail || "");
   const [sendOption, setSendOption] = useState<
     "download" | "email" | "telegram"
