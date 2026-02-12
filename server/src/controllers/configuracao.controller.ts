@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { ConfiguracaoRepository } from "../repositories/configuracao.repository.js";
+import fs from "fs";
+import path from "path";
 
 interface AuthenticatedRequest extends Request {
   file?: Express.Multer.File;
@@ -24,10 +26,35 @@ export const ConfiguracaoController = {
 
       const request = req as AuthenticatedRequest;
 
+      // Get current config to check for existing logo
+      const currentConfig = await ConfiguracaoRepository.get();
+
       if (request.file) {
         // Construct the URL path for the uploaded file
-        // Assumes static file serving is set up for 'uploads'
         logoUrl = `/uploads/${request.file.filename}`;
+
+        // Delete old logo file if it exists
+        if (currentConfig?.logoUrl) {
+          const oldLogoPath = path.join(
+            process.cwd(),
+            "uploads",
+            path.basename(currentConfig.logoUrl),
+          );
+          if (fs.existsSync(oldLogoPath)) {
+            fs.unlinkSync(oldLogoPath);
+          }
+        }
+      } else if (req.body.logoUrl === "" && currentConfig?.logoUrl) {
+        // Logo is being removed, delete the file
+        const oldLogoPath = path.join(
+          process.cwd(),
+          "uploads",
+          path.basename(currentConfig.logoUrl),
+        );
+        if (fs.existsSync(oldLogoPath)) {
+          fs.unlinkSync(oldLogoPath);
+        }
+        logoUrl = "";
       }
 
       const data: any = {
@@ -39,7 +66,7 @@ export const ConfiguracaoController = {
         email,
       };
 
-      if (logoUrl) {
+      if (logoUrl !== undefined) {
         data.logoUrl = logoUrl;
       }
 

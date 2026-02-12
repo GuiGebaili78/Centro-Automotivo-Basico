@@ -583,7 +583,7 @@ export const FechamentoFinanceiroForm = ({
               <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase bg-gray-900 text-white tracking-wide">
-                    OS #{osData.id_os}
+                    OS Nº {osData.id_os}
                   </span>
                   <span
                     className={`px-3 py-1 rounded-md text-[10px] font-black uppercase whitespace-nowrap ${getStatusStyle(osData.status)}`}

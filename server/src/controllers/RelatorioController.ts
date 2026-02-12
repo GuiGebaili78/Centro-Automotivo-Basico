@@ -43,6 +43,7 @@ export class RelatorioController {
         { maoDeObra: number; lucroEstoque: number; lucroPecasExternas: number }
       > = {};
       const porCategoria: Record<string, number> = {};
+      const evolucaoDiaria: Record<string, number> = {};
 
       for (const os of osFinalizadas) {
         const valorOs = Number(os.valor_final || 0);
@@ -100,6 +101,11 @@ export class RelatorioController {
         evolucaoMensal[mesKey].maoDeObra += Number(os.valor_mao_de_obra || 0);
         evolucaoMensal[mesKey].lucroEstoque += lucroEstoqueOs;
         evolucaoMensal[mesKey].lucroPecasExternas += lucroPecasExternasOs;
+
+        // Evolução Diária
+        const diaKey = os.updated_at.toISOString().slice(0, 10);
+        evolucaoDiaria[diaKey] =
+          (evolucaoDiaria[diaKey] || 0) + Number(os.valor_final || 0);
       }
 
       // Taxas de Cartão (Recebiveis)
@@ -369,6 +375,12 @@ export class RelatorioController {
             value,
           })),
           despesasPorCategoria,
+          evolucaoDiaria: Object.entries(evolucaoDiaria)
+            .map(([dia, valor]) => ({
+              dia,
+              valor,
+            }))
+            .sort((a, b) => a.dia.localeCompare(b.dia)),
         },
         ranking: {
           equipe: rankingEquipe,
@@ -380,6 +392,154 @@ export class RelatorioController {
     } catch (error) {
       console.error(error);
       return res.status(500).json({ error: "Erro ao gerar relatório" });
+    }
+  }
+
+  async getDashboardData(req: Request, res: Response) {
+    try {
+      const { startDate, endDate } = req.query;
+      const now = new Date();
+      const start = startDate
+        ? new Date(startDate as string)
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = endDate
+        ? new Date(endDate as string)
+        : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+      // 1. Fetch Finalized OS
+      const osFinalizadas = await prisma.ordemDeServico.findMany({
+        where: {
+          status: "FINALIZADA",
+          updated_at: { gte: start, lte: end },
+        },
+        include: {
+          itens_os: {
+            include: {
+              pecas_estoque: true,
+              pagamentos_peca: true,
+            },
+          },
+          servicos_mao_de_obra: {
+            include: {
+              funcionario: {
+                include: {
+                  pessoa_fisica: {
+                    include: { pessoa: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // 2. Fetch Fixed Expenses (LivroCaixa SAIDA not linked to Parts/Commissions)
+      const despesas = await prisma.livroCaixa.findMany({
+        where: {
+          tipo_movimentacao: "SAIDA",
+          dt_movimentacao: { gte: start, lte: end },
+        },
+      });
+
+      // Calculate Totals
+      let receitaBruta = 0;
+      let receitaMaoDeObra = 0;
+      let receitaPecas = 0;
+      let custoPecas = 0;
+
+      const performanceMecanicos: Record<string, number> = {};
+      const servicosMaisVendidos: Record<string, number> = {};
+      const categoriasDespesa: Record<string, number> = {};
+
+      for (const os of osFinalizadas) {
+        receitaBruta += Number(os.valor_final || 0);
+
+        // Parts Logic
+        for (const item of os.itens_os) {
+          const vlrVenda = Number(item.valor_venda) * item.quantidade;
+          receitaPecas += vlrVenda;
+
+          if (item.pecas_estoque) {
+            custoPecas +=
+              Number(item.pecas_estoque.valor_custo) * item.quantidade;
+          } else if (item.pagamentos_peca?.[0]) {
+            custoPecas += Number(item.pagamentos_peca[0].custo_real);
+          } else {
+            custoPecas += vlrVenda * 0.7; // Fallback
+          }
+        }
+
+        // Labor Logic
+        for (const serv of os.servicos_mao_de_obra) {
+          const vlrServ = Number(serv.valor);
+          receitaMaoDeObra += vlrServ;
+
+          // Mechanic Perf
+          let mecName = "Outros";
+          if (serv.funcionario) {
+            if (serv.funcionario.nome_fantasia)
+              mecName = serv.funcionario.nome_fantasia;
+            else if (serv.funcionario.pessoa_fisica?.pessoa?.nome)
+              mecName = serv.funcionario.pessoa_fisica.pessoa.nome;
+          }
+
+          performanceMecanicos[mecName] =
+            (performanceMecanicos[mecName] || 0) + vlrServ;
+
+          // Top Services
+          const servName = serv.descricao || "Serviço Geral";
+          servicosMaisVendidos[servName] =
+            (servicosMaisVendidos[servName] || 0) + 1;
+        }
+      }
+
+      // Fixed Expenses
+      let totalDespesas = 0;
+      for (const d of despesas) {
+        const val = Number(d.valor);
+        totalDespesas += val;
+        const cat = d.categoria || "Outros";
+        categoriasDespesa[cat] = (categoriasDespesa[cat] || 0) + val;
+      }
+
+      // 3. KPIs
+      const lucroReal = receitaBruta - custoPecas - totalDespesas;
+      const pontoEquilibrio = totalDespesas;
+
+      // 4. Charts Data structure
+      const rankingMecanicos = Object.entries(performanceMecanicos)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+      const rankingServicos = Object.entries(servicosMaisVendidos)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+      const categoriasChart = Object.entries(categoriasDespesa)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
+
+      return res.json({
+        kpis: {
+          faturamentoBruto: receitaBruta,
+          faturamentoMaoDeObra: receitaMaoDeObra,
+          faturamentoPecas: receitaPecas,
+          lucroReal,
+          pontoEquilibrio,
+          totalDespesas,
+          custoPecas,
+        },
+        charts: {
+          performanceMecanicos: rankingMecanicos,
+          servicosMaisVendidos: rankingServicos,
+          categoriasDespesa: categoriasChart,
+        },
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Erro ao carregar dashboard." });
     }
   }
 }

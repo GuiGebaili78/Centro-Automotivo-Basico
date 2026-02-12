@@ -278,6 +278,7 @@ export interface IContasPagar {
   dt_vencimento: string;
   dt_pagamento?: string | null;
   status: string;
+  id_categoria?: number | null;
   categoria?: string | null;
 
   // New
@@ -377,6 +378,7 @@ export interface ILivroCaixa {
   descricao: string;
   valor: number; // Decimal string in UI usually, but number here
   tipo_movimentacao: string; // 'ENTRADA' | 'SAIDA'
+  id_categoria?: number | null;
   categoria: string;
   dt_movimentacao: string;
   obs?: string | null;

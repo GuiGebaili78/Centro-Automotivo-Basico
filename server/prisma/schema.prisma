@@ -363,6 +363,9 @@ model ContasPagar {
   numero_parcela       Int?
   total_parcelas       Int?
 
+  id_categoria        Int?
+  categoria_financeira CategoriaFinanceira? @relation(fields: [id_categoria], references: [id_categoria])
+
   @@map("contas_pagar")
 }
 
@@ -406,15 +409,24 @@ model LivroCaixa {
   pagamento_cliente   PagamentoCliente?
   pagamento_peca      PagamentoPeca?
 
+  id_categoria        Int?
+  categoria_financeira CategoriaFinanceira? @relation(fields: [id_categoria], references: [id_categoria])
+
   @@map("livro_caixa")
 }
 
 model CategoriaFinanceira {
-  id_categoria Int      @id @default(autoincrement())
-  nome         String   @unique @db.VarChar(50)
-  tipo         String   @db.VarChar(10)
-  dt_cadastro  DateTime @default(now()) @db.Timestamp(6)
+  id_categoria Int                   @id @default(autoincrement())
+  nome         String                @db.VarChar(50)
+  tipo         String                @db.VarChar(10) // 'RECEITA' or 'DESPESA'
+  parentId     Int?
+  dt_cadastro  DateTime              @default(now()) @db.Timestamp(6)
+  parent       CategoriaFinanceira?  @relation("CategoriaHierarchy", fields: [parentId], references: [id_categoria])
+  children     CategoriaFinanceira[] @relation("CategoriaHierarchy")
+  movimentacoes LivroCaixa[]
+  contas_pagar  ContasPagar[]
 
+  @@unique([nome, parentId])
   @@map("categoria_financeira")
 }
 

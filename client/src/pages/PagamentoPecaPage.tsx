@@ -102,7 +102,8 @@ export const PagamentoPecaPage = () => {
         api.get("/fornecedor"),
         api.get("/conta-bancaria"),
       ]);
-      setPayments(paymentsRes.data);
+      // BREAKING CHANGE: API now returns { data: [...], pagination: {...} }
+      setPayments(paymentsRes.data?.data || paymentsRes.data || []);
       setFornecedores(fornecedoresRes.data);
       setAccounts(accountsRes.data.filter((a: any) => a.ativo));
     } catch (error) {
@@ -734,7 +735,7 @@ export const PagamentoPecaPage = () => {
                           </p>
 
                           <p className="text-[10px] text-neutral-400 font-bold mt-0.5">
-                            OS #{p.item_os?.id_os}
+                            OS Nº {p.item_os?.id_os}
                           </p>
                           {p.item_os?.ordem_de_servico?.dt_entrega && (
                             <p className="text-[9px] text-green-600 font-bold mt-1">

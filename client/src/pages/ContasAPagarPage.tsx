@@ -6,6 +6,7 @@ import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { CategoryManager } from "../components/financeiro/CategoryManager";
+import { CategorySelector } from "../components/financeiro/CategorySelector";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
@@ -51,12 +52,12 @@ export const ContasAPagarPage = () => {
     descricao: "",
     credor: "",
     categoria: "OUTROS",
+    id_categoria: undefined as number | undefined,
     valor: "",
     dt_emissao: "",
     dt_vencimento: "",
     num_documento: "",
     status: "PENDENTE",
-    forma_pagamento: "",
     dt_pagamento: "",
     url_anexo: "",
     obs: "",
@@ -120,7 +121,7 @@ export const ContasAPagarPage = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
+      const payload: any = {
         ...formData,
         valor: Number(formData.valor),
         applyToAllRecurrences, // Add flag for series update
@@ -216,6 +217,7 @@ export const ContasAPagarPage = () => {
       descricao: conta.descricao,
       credor: conta.credor || "",
       categoria: conta.categoria || "OUTROS",
+      id_categoria: conta.id_categoria || undefined,
       valor: Number(conta.valor).toFixed(2),
       dt_emissao: conta.dt_emissao
         ? new Date(conta.dt_emissao).toISOString().split("T")[0]
@@ -223,7 +225,6 @@ export const ContasAPagarPage = () => {
       dt_vencimento: new Date(conta.dt_vencimento).toISOString().split("T")[0],
       num_documento: conta.num_documento || "",
       status: conta.status,
-      forma_pagamento: conta.forma_pagamento || "",
       dt_pagamento: conta.dt_pagamento
         ? new Date(conta.dt_pagamento).toISOString().split("T")[0]
         : "",
@@ -241,12 +242,12 @@ export const ContasAPagarPage = () => {
       descricao: "",
       credor: "",
       categoria: "OUTROS",
+      id_categoria: undefined,
       valor: "",
       dt_emissao: new Date().toISOString().split("T")[0],
       dt_vencimento: new Date().toISOString().split("T")[0], // Default today
       num_documento: "",
       status: "PENDENTE",
-      forma_pagamento: "",
       dt_pagamento: "",
       url_anexo: "",
       obs: "",
@@ -411,7 +412,7 @@ export const ContasAPagarPage = () => {
             <button
               onClick={() => applyQuickFilter("ALL")}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                activeFilter === ("ALL" as any)
+                activeFilter === "ALL"
                   ? "bg-white text-primary-600 shadow-sm"
                   : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
               }`}
@@ -674,22 +675,32 @@ export const ContasAPagarPage = () => {
             {/* 2. Categoria & Valor & Repetição */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="md:col-span-12 lg:col-span-5">
-                <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-                  Categoria
-                </label>
-                <select
-                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
-                  value={formData.categoria}
-                  onChange={(e) =>
-                    setFormData({ ...formData, categoria: e.target.value })
-                  }
-                >
-                  {categories.map((c) => (
-                    <option key={c.id_categoria} value={c.nome}>
-                      {c.nome}
-                    </option>
-                  ))}
-                </select>
+                <CategorySelector
+                  categories={categories}
+                  value={formData.id_categoria}
+                  onChange={(id, nome) => {
+                    // Find the category object to check for parent
+                    const cat = categories.find((c) => c.id_categoria === id);
+                    let fullCategoryName = nome;
+
+                    if (cat && cat.parentId) {
+                      const parent = categories.find(
+                        (c) => c.id_categoria === cat.parentId,
+                      );
+                      if (parent) {
+                        fullCategoryName = `${parent.nome} - ${nome}`;
+                      }
+                    }
+
+                    setFormData({
+                      ...formData,
+                      id_categoria: id,
+                      categoria: fullCategoryName,
+                    });
+                  }}
+                  type="DESPESA"
+                  required
+                />
               </div>
 
               <div className="md:col-span-6 lg:col-span-3">
@@ -773,30 +784,8 @@ export const ContasAPagarPage = () => {
               </div>
             </div>
 
-            {/* 5. Forma Pagto & Anexos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-                  Forma de Pagamento Prevista
-                </label>
-                <select
-                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
-                  value={formData.forma_pagamento}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      forma_pagamento: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">Selecione...</option>
-                  <option value="BOLETO">Boleto</option>
-                  <option value="PIX">Pix</option>
-                  <option value="DINHEIRO">Dinheiro</option>
-                  <option value="TRANSFERENCIA">Transferência</option>
-                  <option value="CARTAO">Cartão</option>
-                </select>
-              </div>
+            {/* 5. Anexos Only (Removed Forma Pagto) */}
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <Input
                 label="Arquivos / Anexos (URL)"
                 icon={Upload}

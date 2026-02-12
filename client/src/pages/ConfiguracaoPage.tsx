@@ -31,6 +31,10 @@ export const ConfiguracaoPage = () => {
     logoUrl: "",
   });
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoZoom, setLogoZoom] = useState(100);
+  const [logoPosition, setLogoPosition] = useState({ x: 50, y: 50 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isNewUpload, setIsNewUpload] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -45,7 +49,8 @@ export const ConfiguracaoPage = () => {
         if (config.logoUrl) {
           const apiUrl =
             import.meta.env.VITE_API_URL || "http://localhost:3000";
-          setLogoPreview(`${apiUrl}${config.logoUrl}`);
+          setLogoPreview(`${apiUrl}${config.logoUrl}?t=${Date.now()}`);
+          setIsNewUpload(false);
         }
       }
     } catch (error) {
@@ -67,9 +72,67 @@ export const ConfiguracaoPage = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result as string);
+        setIsNewUpload(true);
+        // Reset zoom and position when new image is loaded
+        setLogoZoom(100);
+        setLogoPosition({ x: 50, y: 50 });
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const generateProcessedLogo = (): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      if (!logoPreview) {
+        resolve(null);
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+
+        // Set canvas size to match sidebar dimensions (2:1 ratio)
+        const width = 512;
+        const height = 256;
+        canvas.width = width;
+        canvas.height = height;
+
+        // Calculate scaled dimensions
+        // FIX: Calculate scale to fit canvas first (like object-contain)
+        const scaleX = width / img.width;
+        const scaleY = height / img.height;
+        const baseScale = Math.min(scaleX, scaleY);
+
+        // Apply user zoom on top of base scale
+        const finalScale = baseScale * (logoZoom / 100);
+
+        const scaledWidth = img.width * finalScale;
+        const scaledHeight = img.height * finalScale;
+
+        // Calculate position offsets (center on the position point)
+        // Adjust logic to better match the transform-origin behavior if needed,
+        // but for now standard centering based on position works for the zoom fix.
+        // If position is 50,50 (default), this centers the image.
+        const offsetX = width / 2 - scaledWidth * (logoPosition.x / 100);
+        const offsetY = height / 2 - scaledHeight * (logoPosition.y / 100);
+
+        // Draw image with transformations
+        ctx.fillStyle = "transparent";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+
+        canvas.toBlob((blob) => {
+          resolve(blob);
+        }, "image/png");
+      };
+      img.src = logoPreview;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,8 +148,12 @@ export const ConfiguracaoPage = () => {
       data.append("telefone", formData.telefone || "");
       data.append("email", formData.email || "");
 
-      if (fileInputRef.current?.files?.[0]) {
-        data.append("logo", fileInputRef.current.files[0]);
+      // Generate processed logo if there's a preview
+      if (logoPreview) {
+        const processedBlob = await generateProcessedLogo();
+        if (processedBlob) {
+          data.append("logo", processedBlob, "logo.png");
+        }
       }
 
       const updatedConfig = await ConfiguracaoService.save(data);
@@ -95,10 +162,17 @@ export const ConfiguracaoPage = () => {
       // Update preview with new URL from server
       if (updatedConfig.logoUrl) {
         const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-        setLogoPreview(`${apiUrl}${updatedConfig.logoUrl}`);
+        setLogoPreview(`${apiUrl}${updatedConfig.logoUrl}?t=${Date.now()}`);
+        setIsNewUpload(false);
+        // Reset zoom and position after save
+        setLogoZoom(100);
+        setLogoPosition({ x: 50, y: 50 });
       }
 
       toast.success("Configurações salvas com sucesso!");
+
+      // Notifica outros componentes (como Sidebar) sobre a atualização
+      window.dispatchEvent(new Event("configuracao-updated"));
     } catch (error) {
       console.error("Erro ao salvar:", error);
       toast.error("Erro ao salvar configurações.");
@@ -136,31 +210,118 @@ export const ConfiguracaoPage = () => {
             >
               <div className="flex flex-col items-center gap-4">
                 <div
-                  className="w-48 h-48 border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center bg-slate-50 overflow-hidden cursor-pointer hover:border-primary-500 transition-colors relative group"
-                  onClick={triggerFileInput}
+                  className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 overflow-hidden relative flex items-center justify-center"
+                  onClick={() => {
+                    if (!logoPreview) triggerFileInput();
+                  }}
                 >
                   {logoPreview ? (
-                    <img
-                      src={logoPreview}
-                      alt="Logo Preview"
-                      className="w-full h-full object-contain p-2"
-                    />
+                    <div
+                      className="w-full h-full flex items-center justify-center cursor-move"
+                      style={
+                        isNewUpload
+                          ? {
+                              transform: `scale(${logoZoom / 100})`,
+                              transformOrigin: `${logoPosition.x}% ${logoPosition.y}%`,
+                            }
+                          : undefined
+                      }
+                      onMouseDown={(e) => {
+                        if (isNewUpload) {
+                          setIsDragging(true);
+                          e.preventDefault();
+                        }
+                      }}
+                      onMouseMove={(e) => {
+                        if (isDragging && isNewUpload) {
+                          const rect =
+                            e.currentTarget.parentElement!.getBoundingClientRect();
+                          const x =
+                            ((e.clientX - rect.left) / rect.width) * 100;
+                          const y =
+                            ((e.clientY - rect.top) / rect.height) * 100;
+                          setLogoPosition({
+                            x: Math.max(0, Math.min(100, x)),
+                            y: Math.max(0, Math.min(100, y)),
+                          });
+                        }
+                      }}
+                      onMouseUp={() => setIsDragging(false)}
+                      onMouseLeave={() => setIsDragging(false)}
+                    >
+                      <img
+                        src={logoPreview}
+                        alt="Logo Preview"
+                        className="w-full h-full object-contain pointer-events-none"
+                        draggable={false}
+                      />
+                    </div>
                   ) : (
-                    <div className="text-center p-4">
-                      <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                      <span className="text-sm text-slate-500">
-                        Clique para enviar
-                      </span>
+                    <div className="w-full h-full flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors">
+                      <div className="text-center p-4">
+                        <Upload className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                        <span className="text-sm text-slate-500 font-medium">
+                          Clique para enviar
+                        </span>
+                      </div>
                     </div>
                   )}
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-white text-sm font-medium">
-                      Alterar Logo
-                    </span>
-                  </div>
                 </div>
+
+                {logoPreview && (
+                  <div className="w-full space-y-3">
+                    {isNewUpload && (
+                      <>
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1 block">
+                            Zoom: {logoZoom}%
+                          </label>
+                          <input
+                            type="range"
+                            min="50"
+                            max="200"
+                            value={logoZoom}
+                            onChange={(e) =>
+                              setLogoZoom(Number(e.target.value))
+                            }
+                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                          />
+                        </div>
+                        <p className="text-xs text-slate-500 text-center">
+                          💡 Arraste o logo para reposicionar
+                        </p>
+                      </>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = "";
+                            fileInputRef.current.click();
+                          }
+                        }}
+                        className="py-2 px-3 text-xs font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors border border-primary-200"
+                      >
+                        📷 {isNewUpload ? "Trocar" : "Alterar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLogoPreview(null);
+                          setIsNewUpload(false);
+                          setFormData({ ...formData, logoUrl: "" });
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = "";
+                          }
+                        }}
+                        className="py-2 px-3 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
+                      >
+                        🗑️ Remover
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <input
                   type="file"
@@ -170,9 +331,11 @@ export const ConfiguracaoPage = () => {
                   className="hidden"
                 />
 
-                <p className="text-xs text-slate-500 text-center">
-                  Recomendado: Imagem PNG ou JPG quadrada ou retangular.
-                </p>
+                {!logoPreview && (
+                  <p className="text-xs text-slate-500 text-center">
+                    Recomendado: Imagem PNG ou JPG quadrada ou retangular.
+                  </p>
+                )}
               </div>
             </Card>
           </div>

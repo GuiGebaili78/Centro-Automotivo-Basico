@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { ActionButton } from "../ui/ActionButton";
 import { CategoryManager } from "./CategoryManager";
+import { CategorySelector } from "./CategorySelector";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
@@ -45,6 +46,7 @@ interface Category {
   id_categoria: number;
   nome: string;
   tipo: string;
+  parentId: number | null;
 }
 
 export const MovimentacoesTab = () => {
@@ -83,6 +85,7 @@ export const MovimentacoesTab = () => {
     valor: "",
     tipo_movimentacao: "ENTRADA",
     categoria: "OUTROS",
+    id_categoria: undefined as number | undefined,
     obs: "",
   });
 
@@ -184,7 +187,9 @@ export const MovimentacoesTab = () => {
         });
 
       // 2. Auto Outflows (Payments to Suppliers)
-      const outflows = paymentsRes.data
+      // BREAKING CHANGE: API now returns { data: [...], pagination: {...} }
+      const paymentsData = paymentsRes.data?.data || paymentsRes.data || [];
+      const outflows = paymentsData
         .filter(
           (p: any) =>
             (p.pago_ao_fornecedor && p.data_pagamento_fornecedor) ||
@@ -208,7 +213,7 @@ export const MovimentacoesTab = () => {
             id: `out-${p.id_pagamento_peca}`,
             rawId: p.id_pagamento_peca,
             date: p.data_pagamento_fornecedor || p.data_compra,
-            description: `OS #${p.item_os?.id_os || "?"} - ${veh?.modelo || "V"} ${veh?.cor || ""} (${veh?.placa || "?"}) - ${p.item_os?.descricao || "Peça"}`,
+            description: `OS Nº ${p.item_os?.id_os ?? "?"} - ${veh?.modelo ?? "Veículo"} ${veh?.cor ? veh.cor : ""} (${veh?.placa ?? "SEM-PLACA"}) - ${p.item_os?.descricao ?? "Peça"}`,
             type: "OUT",
             value: Number(p.custo_real),
             category: "Auto Peças",
@@ -281,7 +286,7 @@ export const MovimentacoesTab = () => {
             id: `in-${p.id_pagamento_cliente}`,
             rawId: p.id_pagamento_cliente,
             date: p.data_pagamento,
-            description: `Recebimento: OS #${p.id_os}`,
+            description: `Recebimento: OS Nº {p.id_os}`,
             type: "IN",
             value: Number(p.valor),
             category: "Receita de Serviços",
@@ -386,6 +391,7 @@ export const MovimentacoesTab = () => {
       valor: "",
       tipo_movimentacao: "ENTRADA",
       categoria: "OUTROS",
+      id_categoria: undefined,
       obs: "",
     });
     setIsModalOpen(true);
@@ -399,6 +405,7 @@ export const MovimentacoesTab = () => {
         valor: entry.originalData.valor,
         tipo_movimentacao: entry.originalData.tipo_movimentacao,
         categoria: entry.originalData.categoria,
+        id_categoria: entry.originalData.id_categoria,
         obs: entry.originalData.obs || "",
       });
     } else if (entry.source === "AUTO") {
@@ -407,6 +414,7 @@ export const MovimentacoesTab = () => {
         valor: entry.originalData.custo_real || entry.originalData.valor,
         tipo_movimentacao: entry.type === "IN" ? "ENTRADA" : "SAIDA",
         categoria: entry.category,
+        id_categoria: entry.originalData.id_categoria,
         obs: entry.obs,
       });
     }
@@ -934,27 +942,17 @@ export const MovimentacoesTab = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                Categoria
-              </label>
-              <div className="relative">
-                <select
-                  value={formData.categoria}
-                  onChange={(e) =>
-                    setFormData({ ...formData, categoria: e.target.value })
-                  }
-                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.id_categoria} value={cat.nome}>
-                      {cat.nome}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                  <ArrowDownCircle size={14} />
-                </div>
-              </div>
+              <CategorySelector
+                categories={categories}
+                value={formData.id_categoria}
+                onChange={(id, nome) =>
+                  setFormData({
+                    ...formData,
+                    id_categoria: id,
+                    categoria: nome,
+                  })
+                }
+              />
             </div>
 
             <div>

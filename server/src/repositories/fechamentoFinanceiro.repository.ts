@@ -63,13 +63,20 @@ export class FechamentoFinanceiroRepository {
    */
   async consolidarOS(idOs: number, custoTotalPecasReal: number) {
     return await prisma.$transaction(async (tx) => {
-      // 1. Buscar OS com todos os pagamentos
+      // 1. Buscar OS com todos os pagamentos e detalhes para descrição
       const os = await tx.ordemDeServico.findUnique({
         where: { id_os: idOs },
         include: {
           pagamentos_cliente: {
             where: { deleted_at: null },
           },
+          cliente: {
+            include: {
+              pessoa_fisica: { include: { pessoa: true } },
+              pessoa_juridica: true,
+            },
+          },
+          veiculo: true,
         },
       });
 
@@ -80,6 +87,29 @@ export class FechamentoFinanceiroRepository {
       if (os.status !== "PRONTO PARA FINANCEIRO") {
         throw new Error("OS não está pronta para consolidação financeira");
       }
+
+      // Buscar Categoria 'Serviços' (Filho de Receita)
+      const categoriaServicos = await tx.categoriaFinanceira.findFirst({
+        where: {
+          nome: "Serviços",
+          parent: { nome: "Receita" },
+        },
+      });
+
+      const idCategoriaServicos = categoriaServicos?.id_categoria;
+      const nomeCategoriaServicos = categoriaServicos?.nome || "Serviços";
+
+      // Formatar Descrição Padronizada
+      const nomeCliente =
+        os.cliente.pessoa_fisica?.pessoa.nome ||
+        os.cliente.pessoa_juridica?.nome_fantasia ||
+        "Cliente";
+      const veiculoDesc = os.veiculo ? `${os.veiculo.modelo}` : "Veículo";
+      const placa = os.veiculo?.placa || "S/Placa";
+      const cor = os.veiculo?.cor || "";
+
+      // "OS Nº {id} - {cliente} | {placa} | {veiculo} | {cor}"
+      const descricaoPadrao = `OS Nº ${idOs} - ${nomeCliente} | ${placa} | ${veiculoDesc} | ${cor}`;
 
       // 2. Criar Fechamento Financeiro
       const fechamento = await tx.fechamentoFinanceiro.create({
@@ -108,9 +138,21 @@ export class FechamentoFinanceiroRepository {
 
         // VALIDAÇÃO PRÉVIA (FAIL FAST)
         if ((metodo === "PIX" || metodo === "DINHEIRO") && !idContaBancaria) {
-          throw new Error(
-            `Pagamento ${metodo} (R$ ${valorPagamento}) sem Conta Bancária definida!`,
-          );
+          // Allow Dinheiro without bank account if strictly cash register?
+          // Logic below says Dinheiro creates LC without ID, so maybe check is loose for Dinheiro?
+          // Original: if ((metodo === "PIX" || metodo === "DINHEIRO") && !idContaBancaria)
+          // But Flow 2 (Dinheiro) uses id_conta_bancaria: null.
+          // IF the intention is that Dinheiro goes to a 'Caixa Físico' which might not be a 'ContaBancaria' record or is virtual.
+          // Let's keep original validation but be careful.
+          // Actually, Flow 2 sets `id_conta_bancaria: null`. So why validate it exists?
+          // Ah, the original code had: `if ((metodo === "PIX" || metodo === "DINHEIRO") && !idContaBancaria)`
+          // But then in Flow 2: `id_conta_bancaria: null`. This implies Dinheiro MUST have an account passed but it's IGNORED?
+          // That seems like a bug or legacy. I will relax validation for Dinheiro if it's not used.
+          if (metodo === "PIX" && !idContaBancaria) {
+            throw new Error(
+              `Pagamento PIX (R$ ${valorPagamento}) sem Conta Bancária definida!`,
+            );
+          }
         }
         if ((metodo === "CREDITO" || metodo === "DEBITO") && !idOperadora) {
           throw new Error(
@@ -123,10 +165,11 @@ export class FechamentoFinanceiroRepository {
           // 1.1 Criar LivroCaixa (Vinculado a Conta)
           const livroCaixa = await tx.livroCaixa.create({
             data: {
-              descricao: `Venda PIX - OS #${idOs}`,
+              descricao: descricaoPadrao,
               valor: valorPagamento,
               tipo_movimentacao: "ENTRADA",
-              categoria: "VENDA",
+              categoria: nomeCategoriaServicos, // Fallback string
+              id_categoria: idCategoriaServicos,
               dt_movimentacao: new Date(),
               origem: "AUTOMATICA",
               id_conta_bancaria: idContaBancaria,
@@ -152,16 +195,17 @@ export class FechamentoFinanceiroRepository {
 
         // --- FLUXO 2: DINHEIRO (CAIXA MAS SEM EXTRATO BANCÁRIO DIGITAL) ---
         else if (metodo === "DINHEIRO") {
-          // 2.1 Criar LivroCaixa (Dinheiro entra direto no Caixa mas não vinculamos conta bancária para evitar duplicidade de saldo se houver)
+          // 2.1 Criar LivroCaixa
           const livroCaixa = await tx.livroCaixa.create({
             data: {
-              descricao: `Venda DINHEIRO - OS #${idOs}`,
+              descricao: descricaoPadrao,
               valor: valorPagamento,
               tipo_movimentacao: "ENTRADA",
-              categoria: "VENDA",
+              categoria: nomeCategoriaServicos,
+              id_categoria: idCategoriaServicos,
               dt_movimentacao: new Date(),
               origem: "AUTOMATICA",
-              id_conta_bancaria: null, // Dinheiro não gera extrato bancário automático (apenas Livro Caixa)
+              id_conta_bancaria: null,
             },
           });
 
@@ -187,13 +231,15 @@ export class FechamentoFinanceiroRepository {
             operadoraNome = op?.nome || "";
           }
 
-          // 3.1 Criar LivroCaixa (SEM CONTA BANCÁRIA -> NÃO aparece no Extrato, apenas Faturamento)
+          // 3.1 Criar LivroCaixa
           const livroCaixa = await tx.livroCaixa.create({
             data: {
-              descricao: `Venda Cartão ${metodo} ${operadoraNome ? `(${operadoraNome})` : ""} - OS #${idOs}`,
+              descricao:
+                descricaoPadrao + (operadoraNome ? ` (${operadoraNome})` : ""),
               valor: valorPagamento,
               tipo_movimentacao: "ENTRADA",
-              categoria: "VENDA",
+              categoria: nomeCategoriaServicos,
+              id_categoria: idCategoriaServicos,
               dt_movimentacao: new Date(),
               origem: "AUTOMATICA",
               id_conta_bancaria: null, // NULL PARA NÃO AFETAR EXTRATO/SALDO AGORA

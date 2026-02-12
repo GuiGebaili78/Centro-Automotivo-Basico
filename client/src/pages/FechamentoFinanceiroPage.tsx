@@ -8,8 +8,9 @@ import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { toast } from "react-toastify";
+import { DocumentoModal } from "../components/ui/DocumentoModal";
 
-import { Search, Trash2, Edit, CheckCircle } from "lucide-react";
+import { Search, Trash2, Edit, CheckCircle, Printer } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface IOS {
@@ -21,6 +22,7 @@ interface IOS {
     pessoa_fisica?: { pessoa: { nome: string } };
     pessoa_juridica?: { nome_fantasia: string; razao_social: string };
     telefone_1?: string;
+    email?: string;
   };
   veiculo: {
     placa: string;
@@ -40,6 +42,7 @@ interface IOS {
   }[];
   defeito_relatado?: string;
   diagnostico?: string;
+  obs_final?: string;
 }
 
 interface IFechamentoFinanceiro {
@@ -59,6 +62,15 @@ export const FechamentoFinanceiroPage = () => {
 
   // Confirm Delete Modal
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  // Document Modal (Print)
+  const [printData, setPrintData] = useState<{
+    id_os: number;
+    status: string;
+    clienteNome: string;
+    clienteEmail: string;
+    clienteTelefone: string;
+  } | null>(null);
 
   // Date Filters
   const [activeFilter, setActiveFilter] = useState<
@@ -138,6 +150,16 @@ export const FechamentoFinanceiroPage = () => {
     } catch (error) {
       toast.error("Erro ao deletar fechamento");
     }
+  };
+
+  const handlePrint = (os: IOS) => {
+    setPrintData({
+      id_os: os.id_os,
+      status: os.status,
+      clienteNome: getClientName(os),
+      clienteEmail: os.cliente?.email || "",
+      clienteTelefone: os.cliente?.telefone_1 || "",
+    });
   };
 
   const getClientName = (os: IOS) => {
@@ -550,6 +572,12 @@ export const FechamentoFinanceiroPage = () => {
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <ActionButton
+                          onClick={() => handlePrint(fech.ordem_de_servico)}
+                          icon={Printer}
+                          label="Imprimir"
+                          variant="neutral"
+                        />
+                        <ActionButton
                           onClick={() => handleEditFechamento(fech)}
                           icon={Edit}
                           label="Editar"
@@ -582,6 +610,19 @@ export const FechamentoFinanceiroPage = () => {
         description="Tem certeza que deseja cancelar este fechamento financeiro? Isso não apaga a OS, apenas a consolidação."
         variant="danger"
       />
+
+      {/* Document Print Modal */}
+      {printData && (
+        <DocumentoModal
+          isOpen={true}
+          onClose={() => setPrintData(null)}
+          osId={printData.id_os}
+          status={printData.status}
+          clienteNome={printData.clienteNome}
+          clienteEmail={printData.clienteEmail}
+          clienteTelefone={printData.clienteTelefone}
+        />
+      )}
     </PageLayout>
   );
 };

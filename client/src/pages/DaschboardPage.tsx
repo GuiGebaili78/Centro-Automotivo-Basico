@@ -164,7 +164,8 @@ export function DaschboardPage() {
 
       const oss = osRes.data;
       const contas = contasRes.data;
-      const pagPecas = pagPecaRes.data;
+      // BREAKING CHANGE: API now returns { data: [...], pagination: {...} }
+      const pagPecas = pagPecaRes.data?.data || pagPecaRes.data || [];
       const pagClients = pagCliRes.data;
       const manualEntries = livroRes.data;
 

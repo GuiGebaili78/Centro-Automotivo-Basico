@@ -115,7 +115,7 @@ export const ItensOsPage = () => {
             {itens.map((item) => (
               <tr key={item.id_iten} className="hover:bg-slate-50">
                 <td className="p-4 text-gray-500 font-mono">#{item.id_iten}</td>
-                <td className="p-4 text-slate-600">OS #{item.id_os}</td>
+                <td className="p-4 text-slate-600">OS Nº {item.id_os}</td>
                 <td className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="bg-green-50 p-2 rounded-lg text-green-600">

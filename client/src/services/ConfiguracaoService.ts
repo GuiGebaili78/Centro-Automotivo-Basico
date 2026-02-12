@@ -2,7 +2,7 @@ import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-export interface Configuracao {
+export type Configuracao = {
   id?: string;
   nomeFantasia: string;
   razaoSocial?: string;
@@ -11,7 +11,7 @@ export interface Configuracao {
   telefone?: string;
   email?: string;
   logoUrl?: string; // URL from backend
-}
+};
 
 export const ConfiguracaoService = {
   get: async (): Promise<Configuracao | null> => {

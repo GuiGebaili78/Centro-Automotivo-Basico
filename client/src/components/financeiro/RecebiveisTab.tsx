@@ -553,7 +553,7 @@ export const RecebiveisTab = () => {
                           className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md w-fit mb-1 cursor-help"
                           title={`Data da Venda: ${new Date(r.data_venda).toLocaleDateString("pt-BR")}`}
                         >
-                          OS #{r.id_os}
+                          OS Nº {r.id_os}
                         </span>
                         <span className="text-[10px] font-bold text-neutral-400 uppercase">
                           Parcela {r.num_parcela} de {r.total_parcelas}

@@ -2,539 +2,283 @@ import { useState, useEffect } from "react";
 import {
   Card,
   Grid,
-  Tab,
-  TabGroup,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Text,
   Title,
+  Text,
   Metric,
   Flex,
   BarChart,
   DonutChart,
   BarList,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-  ProgressBar,
+  Badge,
 } from "@tremor/react";
-import { GlobalFilter } from "../components/dashboard/GlobalFilter";
 import { api } from "../services/api";
-import { TrendingUp, DollarSign, Target, AlertTriangle } from "lucide-react";
+import {
+  TrendingUp,
+  DollarSign,
+  Target,
+  AlertTriangle,
+  Calendar,
+} from "lucide-react";
+import { formatCurrency } from "../utils/formatCurrency"; // If available, or use custom or reuse GlobalFilter logic
+// Assuming GlobalFilter or basic date inputs. Let's use simple date inputs for now to be safe,
+// or reuse the logic found in previous file if it was custom.
+// The previous file used "dateRange" state but no visible import for a specific date picker component other than potentially GlobalFilter.
+// I will implement a simple header with date inputs for reliability.
 
-interface RelatorioData {
+interface DashboardData {
   kpis: {
-    receitaBruta: number;
-    receitaLiquida: number;
-    margem: number;
-    ticketMedio: number;
-    taxaConversao: number;
-    churn: number;
-    breakEven: number;
-    countOs: number;
+    faturamentoBruto: number;
+    faturamentoMaoDeObra: number;
+    faturamentoPecas: number;
+    lucroReal: number;
+    pontoEquilibrio: number;
+    totalDespesas: number;
+    custoPecas: number;
   };
   charts: {
-    evolucaoMensal: {
-      mes: string;
-      maoDeObra: number;
-      lucroEstoque: number;
-      lucroPecasExternas: number;
-    }[];
-    porCategoria: { name: string; value: number }[];
-    despesasPorCategoria: {
-      name: string;
-      value: number;
-      percentualFaturamento: number;
-    }[];
+    performanceMecanicos: { name: string; value: number }[];
+    servicosMaisVendidos: { name: string; value: number }[];
+    categoriasDespesa: { name: string; value: number }[];
   };
-  ranking: {
-    equipe: {
-      nome: string;
-      totalMaoDeObra: number;
-      pecasVendidas: number;
-      lucroPecas: number;
-      totalContribuicao: number;
-    }[];
-    fornecedores: {
-      nome: string;
-      totalCompras: number;
-      quantidadeCompras: number;
-    }[];
-  };
-  operadoras: {
-    nome: string;
-    recebido: number;
-    aReceber: number;
-    taxasDescontadas: number;
-  }[];
-  livroCaixa: any[];
 }
 
 export function RelatoriosPage() {
-  const [dateRange, setDateRange] = useState<any>({
-    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    to: new Date(),
-  });
-  const [compareYearOverYear, setCompareYearOverYear] = useState(false);
-  const [data, setData] = useState<RelatorioData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<DashboardData | null>(null);
+
+  // Default to current month
+  const today = new Date();
+  const [startDate, setStartDate] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1)
+      .toISOString()
+      .split("T")[0],
+  );
+  const [endDate, setEndDate] = useState(
+    new Date(today.getFullYear(), today.getMonth() + 1, 0)
+      .toISOString()
+      .split("T")[0],
+  );
 
   useEffect(() => {
-    fetchRelatorio();
-  }, [dateRange]);
+    loadDashboard();
+  }, [startDate, endDate]);
 
-  const fetchRelatorio = async () => {
-    if (!dateRange.from || !dateRange.to) return;
-    setLoading(true);
+  const loadDashboard = async () => {
     try {
-      const response = await api.get("/relatorios/completo", {
-        params: {
-          startDate: dateRange.from.toISOString(),
-          endDate: dateRange.to.toISOString(),
-        },
+      setLoading(true);
+      const res = await api.get("/relatorios/dashboard", {
+        params: { startDate, endDate },
       });
-      setData(response.data);
+      setData(res.data);
     } catch (error) {
-      console.error("Erro ao carregar relatórios", error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-
-  if (loading) {
+  if (loading && !data) {
     return (
-      <div className="p-6 min-h-screen bg-slate-50">
-        <div className="w-full h-64 flex items-center justify-center bg-white rounded-xl">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <Text>Carregando análises inteligentes...</Text>
-          </div>
-        </div>
+      <div className="p-8 flex justify-center items-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  if (!data || !data.kpis) {
-    return (
-      <div className="p-6 min-h-screen bg-slate-50">
-        <div className="w-full h-64 flex items-center justify-center bg-white rounded-xl">
-          <Text>Nenhum dado disponível para o período selecionado.</Text>
-        </div>
-      </div>
-    );
-  }
+  if (!data) return null;
+
+  const { kpis, charts } = data;
+
+  // Helpers for charts
+  const revenueBreakdown = [
+    { name: "Mão de Obra", value: kpis.faturamentoMaoDeObra },
+    { name: "Peças", value: kpis.faturamentoPecas },
+  ];
+
+  const profitMargin =
+    kpis.faturamentoBruto > 0
+      ? ((kpis.lucroReal / kpis.faturamentoBruto) * 100).toFixed(1)
+      : "0.0";
 
   return (
-    <div className="p-6 min-h-screen bg-slate-50 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
+      {/* Header & Filters */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <Title className="text-3xl font-black text-slate-900">
-            Central de Inteligência
-          </Title>
-          <Text className="text-slate-500">
-            Dashboard financeiro e operacional completo
-          </Text>
+          <Title>Dashboard Financeiro & BI</Title>
+          <Text>Visão geral de performance, faturamento e custos.</Text>
+        </div>
+        <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-slate-200">
+          <Calendar size={18} className="text-slate-500 ml-2" />
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="border-none text-sm font-medium text-slate-700 focus:ring-0"
+          />
+          <span className="text-slate-400">-</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="border-none text-sm font-medium text-slate-700 focus:ring-0"
+          />
         </div>
       </div>
 
-      {/* Filtros */}
-      <GlobalFilter
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        compareYearOverYear={compareYearOverYear}
-        onCompareChange={setCompareYearOverYear}
-      />
-
-      {/* Tabs */}
-      <TabGroup className="mt-6">
-        <TabList variant="solid" color="blue">
-          <Tab>📊 Performance Financeira</Tab>
-          <Tab>👥 Gestão de Equipe</Tab>
-          <Tab>💰 Fluxo & Despesas</Tab>
-          <Tab>📋 Conciliação</Tab>
-        </TabList>
-
-        <TabPanels>
-          {/* ABA 1: PERFORMANCE */}
-          <TabPanel>
-            <Grid
-              numItems={1}
-              numItemsSm={2}
-              numItemsLg={4}
-              className="gap-4 mt-6"
-            >
-              <Card decoration="top" decorationColor="blue">
-                <Flex alignItems="start">
-                  <div>
-                    <Text className="text-slate-600">Receita Bruta</Text>
-                    <Metric className="mt-2">
-                      {formatCurrency(data.kpis.receitaBruta)}
-                    </Metric>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-blue-500" />
-                </Flex>
-                <Text className="mt-2 text-xs text-slate-400">
-                  {data.kpis.countOs} OS Finalizadas
-                </Text>
-              </Card>
-
-              <Card decoration="top" decorationColor="emerald">
-                <Flex alignItems="start">
-                  <div>
-                    <Text className="text-slate-600">Receita Líquida</Text>
-                    <Metric className="mt-2">
-                      {formatCurrency(data.kpis.receitaLiquida)}
-                    </Metric>
-                  </div>
-                  <TrendingUp className="w-8 h-8 text-emerald-500" />
-                </Flex>
-                <Text className="mt-2 text-xs text-slate-400">
-                  Margem: {(data.kpis.margem || 0).toFixed(1)}%
-                </Text>
-              </Card>
-
-              <Card decoration="top" decorationColor="violet">
-                <Flex alignItems="start">
-                  <div>
-                    <Text className="text-slate-600">Ticket Médio</Text>
-                    <Metric className="mt-2">
-                      {formatCurrency(data.kpis.ticketMedio)}
-                    </Metric>
-                  </div>
-                  <Target className="w-8 h-8 text-violet-500" />
-                </Flex>
-                <Text className="mt-2 text-xs text-slate-400">
-                  Por ordem de serviço
-                </Text>
-              </Card>
-
-              <Card decoration="top" decorationColor="amber">
-                <Flex alignItems="start">
-                  <div>
-                    <Text className="text-slate-600">Taxa de Conversão</Text>
-                    <Metric className="mt-2">
-                      {(data.kpis.taxaConversao || 0).toFixed(1)}%
-                    </Metric>
-                  </div>
-                  <TrendingUp className="w-8 h-8 text-amber-500" />
-                </Flex>
-                <Text className="mt-2 text-xs text-slate-400">
-                  Orçamentos → Serviços
-                </Text>
-              </Card>
-            </Grid>
-
-            {/* KPIs Secundários */}
-            <Grid numItems={1} numItemsSm={2} className="gap-4 mt-4">
-              <Card>
-                <Flex alignItems="start">
-                  <div className="flex-1">
-                    <Text className="text-slate-600">
-                      Churn (Clientes Inativos)
-                    </Text>
-                    <Metric className="mt-2 text-red-600">
-                      {data.kpis.churn}
-                    </Metric>
-                    <Text className="mt-1 text-xs text-slate-400">
-                      Sem OS há mais de 180 dias
-                    </Text>
-                  </div>
-                  <AlertTriangle className="w-8 h-8 text-red-500" />
-                </Flex>
-              </Card>
-
-              <Card>
-                <Flex alignItems="start">
-                  <div className="flex-1">
-                    <Text className="text-slate-600">Ponto de Equilíbrio</Text>
-                    <Metric className="mt-2">
-                      {formatCurrency(data.kpis.breakEven)}
-                    </Metric>
-                    <Text className="mt-1 text-xs text-slate-400">
-                      Despesas fixas do período
-                    </Text>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-slate-500" />
-                </Flex>
-              </Card>
-            </Grid>
-
-            {/* Gráficos */}
-            <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <Title>Evolução Mensal (Composição de Lucro)</Title>
-                <BarChart
-                  className="mt-4 h-80"
-                  data={data.charts.evolucaoMensal}
-                  index="mes"
-                  categories={[
-                    "maoDeObra",
-                    "lucroEstoque",
-                    "lucroPecasExternas",
-                  ]}
-                  colors={["blue", "emerald", "cyan"]}
-                  valueFormatter={formatCurrency}
-                  stack={true}
-                  yAxisWidth={80}
-                />
-                <div className="mt-4 flex gap-4 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                    <span>Mão de Obra</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-emerald-500 rounded"></div>
-                    <span>Lucro Estoque</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-cyan-500 rounded"></div>
-                    <span>Lucro Peças Externas</span>
-                  </div>
-                </div>
-              </Card>
-
-              <Card>
-                <Title>Receita por Categoria</Title>
-                <DonutChart
-                  className="mt-6 h-80"
-                  data={data.charts.porCategoria}
-                  category="value"
-                  index="name"
-                  valueFormatter={formatCurrency}
-                  colors={["blue", "cyan", "indigo", "violet", "fuchsia"]}
-                />
-              </Card>
+      {/* KPI Grid */}
+      <Grid numItems={1} numItemsSm={2} numItemsLg={4} className="gap-6">
+        {/* Faturamento Bruto */}
+        <Card decoration="top" decorationColor="blue">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="bg-blue-100 p-2 rounded-lg">
+              <DollarSign className="text-blue-600" size={24} />
             </div>
-          </TabPanel>
-
-          {/* ABA 2: EQUIPE */}
-          <TabPanel>
-            <Card className="mt-6">
-              <Title>Ranking de Produtividade da Equipe</Title>
-              <Text className="text-slate-500 mb-4">
-                Análise completa de contribuição por colaborador
-              </Text>
-              <Table className="mt-4">
-                <TableHead>
-                  <TableRow>
-                    <TableHeaderCell>Colaborador</TableHeaderCell>
-                    <TableHeaderCell className="text-right">
-                      Mão de Obra
-                    </TableHeaderCell>
-                    <TableHeaderCell className="text-right">
-                      Peças Vendidas
-                    </TableHeaderCell>
-                    <TableHeaderCell className="text-right">
-                      Lucro em Peças
-                    </TableHeaderCell>
-                    <TableHeaderCell className="text-right">
-                      Total Contribuição
-                    </TableHeaderCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {data.ranking.equipe.map((colaborador, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                            <span className="text-primary-700 font-bold text-sm">
-                              {idx + 1}
-                            </span>
-                          </div>
-                          <span className="font-medium">
-                            {colaborador.nome}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(colaborador.totalMaoDeObra)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {colaborador.pecasVendidas} un.
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-emerald-600">
-                        {formatCurrency(colaborador.lucroPecas)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-primary-700">
-                        {formatCurrency(colaborador.totalContribuicao)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          </TabPanel>
-
-          {/* ABA 3: FLUXO & DESPESAS */}
-          <TabPanel>
-            <div className="mt-6 space-y-6">
-              {/* Despesas */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <Title>Despesas por Categoria</Title>
-                  <DonutChart
-                    className="mt-6 h-64"
-                    data={data.charts.despesasPorCategoria}
-                    category="value"
-                    index="name"
-                    valueFormatter={formatCurrency}
-                    colors={["rose", "orange", "amber", "red", "pink"]}
-                  />
-                </Card>
-
-                <Card>
-                  <Title>Impacto no Faturamento</Title>
-                  <div className="mt-6 space-y-4">
-                    {data.charts.despesasPorCategoria.map((desp, idx) => (
-                      <div key={idx}>
-                        <Flex>
-                          <Text>{desp.name}</Text>
-                          <Text className="font-mono">
-                            {formatCurrency(desp.value)}
-                          </Text>
-                        </Flex>
-                        <ProgressBar
-                          value={desp.percentualFaturamento}
-                          className="mt-2"
-                          color={
-                            desp.percentualFaturamento > 30
-                              ? "red"
-                              : desp.percentualFaturamento > 15
-                                ? "amber"
-                                : "emerald"
-                          }
-                        />
-                        <Text className="text-xs text-slate-400 mt-1">
-                          {desp.percentualFaturamento.toFixed(1)}% do
-                          faturamento
-                        </Text>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </div>
-
-              {/* Fornecedores */}
-              <Card>
-                <Title>Ranking de Fornecedores (Top 10)</Title>
-                <BarList
-                  data={data.ranking.fornecedores.map((f) => ({
-                    name: `${f.nome} (${f.quantidadeCompras} compras)`,
-                    value: f.totalCompras,
-                  }))}
-                  className="mt-4"
-                  valueFormatter={formatCurrency}
-                  color="blue"
-                />
-              </Card>
-
-              {/* Operadoras */}
-              <div>
-                <Title className="mb-4">Análise de Operadoras de Cartão</Title>
-                <Grid
-                  numItems={1}
-                  numItemsSm={2}
-                  numItemsLg={3}
-                  className="gap-4"
-                >
-                  {data.operadoras.map((op, idx) => (
-                    <Card key={idx} decoration="left" decorationColor="blue">
-                      <Text className="font-bold text-slate-900">
-                        {op.nome}
-                      </Text>
-                      <div className="mt-4 space-y-2">
-                        <Flex>
-                          <Text className="text-xs text-slate-500">
-                            Recebido
-                          </Text>
-                          <Text className="text-sm font-mono text-emerald-600">
-                            {formatCurrency(op.recebido)}
-                          </Text>
-                        </Flex>
-                        <Flex>
-                          <Text className="text-xs text-slate-500">
-                            A Receber
-                          </Text>
-                          <Text className="text-sm font-mono text-amber-600">
-                            {formatCurrency(op.aReceber)}
-                          </Text>
-                        </Flex>
-                        <Flex>
-                          <Text className="text-xs text-slate-500">
-                            Taxas Descontadas
-                          </Text>
-                          <Text className="text-sm font-mono text-red-600">
-                            {formatCurrency(op.taxasDescontadas)}
-                          </Text>
-                        </Flex>
-                      </div>
-                    </Card>
-                  ))}
-                </Grid>
-              </div>
+            <div>
+              <Text>Faturamento Bruto</Text>
+              <Metric>{formatCurrency(kpis.faturamentoBruto)}</Metric>
             </div>
-          </TabPanel>
+          </Flex>
+          <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between text-sm">
+            <span className="text-slate-500">Mão de Obra:</span>
+            <span className="font-medium text-slate-700">
+              {formatCurrency(kpis.faturamentoMaoDeObra)}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm mt-1">
+            <span className="text-slate-500">Peças:</span>
+            <span className="font-medium text-slate-700">
+              {formatCurrency(kpis.faturamentoPecas)}
+            </span>
+          </div>
+        </Card>
 
-          {/* ABA 4: CONCILIAÇÃO */}
-          <TabPanel>
-            <Card className="mt-6">
-              <Title>Extrato do Livro Caixa</Title>
-              <Table className="mt-4">
-                <TableHead>
-                  <TableRow>
-                    <TableHeaderCell>Data</TableHeaderCell>
-                    <TableHeaderCell>Descrição</TableHeaderCell>
-                    <TableHeaderCell>Categoria</TableHeaderCell>
-                    <TableHeaderCell>Tipo</TableHeaderCell>
-                    <TableHeaderCell className="text-right">
-                      Valor
-                    </TableHeaderCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {data.livroCaixa.map((item) => (
-                    <TableRow key={item.id_livro_caixa}>
-                      <TableCell>
-                        {new Date(item.dt_movimentacao).toLocaleDateString(
-                          "pt-BR",
-                        )}
-                      </TableCell>
-                      <TableCell>{item.descricao}</TableCell>
-                      <TableCell>{item.categoria}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-bold ${
-                            item.tipo_movimentacao === "ENTRADA"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {item.tipo_movimentacao}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(Number(item.valor))}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          </TabPanel>
-        </TabPanels>
-      </TabGroup>
+        {/* Lucro Real */}
+        <Card decoration="top" decorationColor="emerald">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="bg-emerald-100 p-2 rounded-lg">
+              <TrendingUp className="text-emerald-600" size={24} />
+            </div>
+            <div>
+              <Text>Lucro Real (Estimado)</Text>
+              <Metric>{formatCurrency(kpis.lucroReal)}</Metric>
+            </div>
+          </Flex>
+          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-2">
+            <Badge color="emerald" size="xs">
+              Margem {profitMargin}%
+            </Badge>
+            <Text className="text-xs">(Após custos e despesas)</Text>
+          </div>
+        </Card>
+
+        {/* Custos Totais */}
+        <Card decoration="top" decorationColor="red">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="bg-red-100 p-2 rounded-lg">
+              <AlertTriangle className="text-red-600" size={24} />
+            </div>
+            <div>
+              <Text>Custos & Despesas</Text>
+              <Metric>
+                {formatCurrency(kpis.custoPecas + kpis.totalDespesas)}
+              </Metric>
+            </div>
+          </Flex>
+          <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between text-sm">
+            <span className="text-slate-500">Peças (Custo):</span>
+            <span className="font-medium text-slate-700">
+              {formatCurrency(kpis.custoPecas)}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm mt-1">
+            <span className="text-slate-500">Despesas Fixas:</span>
+            <span className="font-medium text-slate-700">
+              {formatCurrency(kpis.totalDespesas)}
+            </span>
+          </div>
+        </Card>
+
+        {/* Ponto de Equilíbrio */}
+        <Card decoration="top" decorationColor="amber">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="bg-amber-100 p-2 rounded-lg">
+              <Target className="text-amber-600" size={24} />
+            </div>
+            <div>
+              <Text>Despesas Fixas (Mês)</Text>
+              <Metric>{formatCurrency(kpis.pontoEquilibrio)}</Metric>
+            </div>
+          </Flex>
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <Text className="text-xs">
+              Break-even Diário:{" "}
+              <b>{formatCurrency(kpis.pontoEquilibrio / 30)}</b>
+            </Text>
+          </div>
+        </Card>
+      </Grid>
+
+      {/* Main Charts Section */}
+      <Grid numItems={1} numItemsLg={3} className="gap-6">
+        {/* Performance Mecânicos */}
+        <Card className="col-span-1 lg:col-span-2">
+          <Title>Performance de Mecânicos (Faturamento Mão de Obra)</Title>
+          <BarChart
+            className="mt-6"
+            data={charts.performanceMecanicos}
+            index="name"
+            categories={["value"]}
+            colors={["blue"]}
+            valueFormatter={(number) => formatCurrency(number)}
+            yAxisWidth={80}
+            showLegend={false}
+          />
+        </Card>
+
+        {/* Revenue Breakdown Donut */}
+        <Card className="col-span-1">
+          <Title>Composição da Receita</Title>
+          <DonutChart
+            className="mt-6"
+            data={revenueBreakdown}
+            category="value"
+            index="name"
+            valueFormatter={(number) => formatCurrency(number)}
+            colors={["cyan", "indigo"]}
+          />
+        </Card>
+      </Grid>
+
+      {/* Secondary Charts */}
+      <Grid numItems={1} numItemsLg={2} className="gap-6">
+        {/* Top Services */}
+        <Card>
+          <Title>Serviços Mais Realizados</Title>
+          <Flex className="mt-4">
+            <Text>Serviço</Text>
+            <Text>Qtd</Text>
+          </Flex>
+          <BarList
+            data={charts.servicosMaisVendidos}
+            className="mt-2"
+            color="indigo"
+          />
+        </Card>
+
+        {/* Expenses Breakdown */}
+        <Card>
+          <Title>Despesas por Categoria</Title>
+          <DonutChart
+            className="mt-6"
+            data={charts.categoriasDespesa}
+            category="value"
+            index="name"
+            valueFormatter={(number) => formatCurrency(number)}
+            colors={["rose", "orange", "amber", "yellow", "slate"]}
+          />
+        </Card>
+      </Grid>
     </div>
   );
 }

@@ -8,27 +8,73 @@ export class PagamentoPecaRepository {
     });
   }
 
-  async findAll() {
-    return await prisma.pagamentoPeca.findMany({
-      include: {
-        fornecedor: true,
-        item_os: {
-          include: {
-            ordem_de_servico: {
-              include: {
-                veiculo: true,
-                cliente: {
-                  include: {
-                    pessoa_fisica: { include: { pessoa: true } },
-                    pessoa_juridica: { include: { pessoa: true } },
+  async findAll(page: number = 1, limit: number = 50) {
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      prisma.pagamentoPeca.findMany({
+        where: { deleted_at: null },
+        skip,
+        take: limit,
+        orderBy: { data_compra: "desc" },
+        select: {
+          id_pagamento_peca: true,
+          custo_real: true,
+          data_compra: true,
+          data_pagamento_fornecedor: true,
+          pago_ao_fornecedor: true,
+          fornecedor: {
+            select: {
+              id_fornecedor: true,
+              nome: true,
+              nome_fantasia: true,
+            },
+          },
+          item_os: {
+            select: {
+              id_os: true,
+              descricao: true,
+              ordem_de_servico: {
+                select: {
+                  id_os: true,
+                  veiculo: {
+                    select: {
+                      placa: true,
+                      modelo: true,
+                      cor: true,
+                    },
+                  },
+                  cliente: {
+                    select: {
+                      id_cliente: true,
+                      pessoa_fisica: {
+                        select: {
+                          pessoa: { select: { nome: true } },
+                        },
+                      },
+                      pessoa_juridica: {
+                        select: { razao_social: true },
+                      },
+                    },
                   },
                 },
               },
             },
           },
         },
+      }),
+      prisma.pagamentoPeca.count({ where: { deleted_at: null } }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-    });
+    };
   }
 
   async findById(id: number) {
@@ -70,12 +116,28 @@ export class PagamentoPecaRepository {
       });
 
       if (!pagamento) throw new Error("Pagamento não encontrado");
-      // If already paid, do nothing or throw. Let's throw to be safe.
       if (pagamento.pago_ao_fornecedor)
         throw new Error("Pagamento já realizado.");
 
+      // BUSCAR CATEGORIA: Auto Peças > Pg. Fornecedor
+      const categoria = await tx.categoriaFinanceira.findFirst({
+        where: {
+          nome: "Pg. Fornecedor",
+          parent: { nome: "Auto Peças" },
+        },
+      });
+      const idCategoria = categoria?.id_categoria;
+      const nomeCategoria = categoria?.nome || "Auto Peças";
+
+      // FORMATAR DESCRIÇÃO
+      // "Pg. Peças - OS Nº {id} - {fornecedor_fantasia} | {nome_peca}"
+      const idOs = pagamento.item_os.ordem_de_servico.id_os;
+      const fornecedor =
+        pagamento.fornecedor.nome_fantasia || pagamento.fornecedor.nome;
+      const nomePeca = pagamento.item_os.descricao;
+      const descricao = `Pg. Peças - OS Nº ${idOs} - ${fornecedor} | ${nomePeca}`;
+
       // 1. Debit Account
-      // We can skip checking existence if we trust FK, but logic-wise check saldo is good? No, let it be negative.
       await tx.contaBancaria.update({
         where: { id_conta: accountId },
         data: { saldo_atual: { decrement: pagamento.custo_real } },
@@ -84,10 +146,11 @@ export class PagamentoPecaRepository {
       // 2. Create Livro Caixa Entry
       const lc = await tx.livroCaixa.create({
         data: {
-          descricao: `Pag. Peça - OS #${pagamento.item_os.ordem_de_servico.id_os} - ${pagamento.fornecedor.nome}`,
+          descricao: descricao,
           valor: pagamento.custo_real,
           tipo_movimentacao: "SAIDA",
-          categoria: "Auto Peças",
+          categoria: nomeCategoria, // Fallback
+          id_categoria: idCategoria ?? null, // Convert undefined to null
           dt_movimentacao: new Date(),
           origem: "AUTOMATICA",
           id_conta_bancaria: accountId,

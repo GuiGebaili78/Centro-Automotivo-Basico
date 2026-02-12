@@ -11,18 +11,19 @@ export class RelatorioFinanceiroController {
 
       // --- A. KPIS GERAIS ---
 
-      // Receita: Soma de pagamentos de clientes + Entradas avulsas no caixa
+      // Receita: Apenas LivroCaixa (Fonte Única da Verdade)
+      // Excluir transferências internas e conciliações para evitar duplicidade
       const receitasCaixa = await prisma.livroCaixa.aggregate({
         where: {
           tipo_movimentacao: "ENTRADA",
           dt_movimentacao: { gte: startDate, lte: endDate },
-        },
-        _sum: { valor: true },
-      });
-
-      const pagamentosClientes = await prisma.pagamentoCliente.aggregate({
-        where: {
-          data_pagamento: { gte: startDate, lte: endDate },
+          deleted_at: null,
+          // Excluir transferências internas/conciliações
+          NOT: {
+            categoria: {
+              in: ["CONCILIACAO_CARTAO", "TRANSFERENCIA", "AJUSTE_SALDO"],
+            },
+          },
         },
         _sum: { valor: true },
       });
@@ -36,12 +37,8 @@ export class RelatorioFinanceiroController {
         _sum: { valor: true },
       });
 
-      // Consolidação para evitar duplicação (Regra de Negócio Simplificada para MVP)
-      // Idealmente, usaríamos apenas LivroCaixa se ele for a fonte da verdade consolidada.
-      // Aqui somamos tudo para garantir que apareça algo, mas num cenário real refinariamos.
-      const receitaTotal =
-        (Number(receitasCaixa._sum.valor) || 0) +
-        (Number(pagamentosClientes._sum.valor) || 0);
+      // Usar APENAS LivroCaixa como fonte de receita realizada
+      const receitaTotal = Number(receitasCaixa._sum.valor) || 0;
       const despesaTotal = Number(despesasCaixa._sum.valor) || 0;
       const lucroLiquido = receitaTotal - despesaTotal;
       const margemLucro =

@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  ConfiguracaoService,
+  type Configuracao,
+} from "../services/ConfiguracaoService";
 import {
   Wrench,
   Package,
@@ -57,7 +61,29 @@ const menuItems = [
 
 export const Sidebar = () => {
   const location = useLocation();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(["Financeiro"]); // Auto-expand Financeiro for visibility
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(["Financeiro"]);
+  const [config, setConfig] = useState<Configuracao | null>(null);
+  const [logoVersion, setLogoVersion] = useState(Date.now());
+
+  useEffect(() => {
+    const loadConfig = () => {
+      ConfiguracaoService.get()
+        .then((data) => {
+          setConfig(data);
+          setLogoVersion(Date.now());
+        })
+        .catch(console.error);
+    };
+
+    loadConfig();
+
+    // Listener para atualizações de configuração
+    window.addEventListener("configuracao-updated", loadConfig);
+
+    return () => {
+      window.removeEventListener("configuracao-updated", loadConfig);
+    };
+  }, []);
 
   const toggleMenu = (label: string) => {
     setExpandedMenus((prev) =>
@@ -67,15 +93,38 @@ export const Sidebar = () => {
     );
   };
 
+  const getLogoUrl = (url: string) => {
+    if (!url) return "";
+    // Se já for uma URL completa, retorna ela
+    if (url.startsWith("http")) return url;
+    // Se começar com /, é um caminho relativo do backend
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+    return `${apiUrl}${url}`;
+  };
+
   return (
-    <aside className="w-64 bg-slate-900 text-slate-400 flex flex-col h-screen fixed left-0 top-0 overflow-y-auto border-r border-slate-800 shadow-2xl">
-      <div className="p-6 border-b border-slate-800 bg-slate-950">
-        <h1 className="text-2xl font-bold text-white tracking-tight">
-          Auto<span className="text-primary-500">Center</span>
-        </h1>
+    <aside className="w-64 bg-slate-900 text-slate-400 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-800 shadow-2xl z-50">
+      <div className="border-b border-slate-800 bg-slate-950 flex items-center justify-center h-32 overflow-hidden shrink-0">
+        {config?.logoUrl ? (
+          <img
+            src={`${getLogoUrl(config.logoUrl || "")}?t=${logoVersion}`}
+            alt={config.nomeFantasia || "Logo"}
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <h1 className="text-2xl font-bold text-white tracking-tight text-center">
+            {config?.nomeFantasia ? (
+              <span>{config.nomeFantasia}</span>
+            ) : (
+              <>
+                Auto<span className="text-primary-500">Center</span>
+              </>
+            )}
+          </h1>
+        )}
       </div>
 
-      <nav className="flex-1 py-6 px-3 space-y-1">
+      <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto custom-scrollbar">
         {menuItems.map((item) => {
           const isActive =
             location.pathname === item.path ||
@@ -152,7 +201,7 @@ export const Sidebar = () => {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800 bg-slate-950">
+      <div className="p-4 border-t border-slate-800 bg-slate-950 shrink-0">
         <div className="bg-slate-800/50 rounded-lg p-3">
           <p className="text-xs text-center text-slate-500">
             &copy; 2026 Centro Automotivo <br /> Guilherme Gebaili <br />{" "}

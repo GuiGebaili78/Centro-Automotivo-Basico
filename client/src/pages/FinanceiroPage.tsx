@@ -91,7 +91,7 @@ export const FinanceiroPage = () => {
           description: `Pagamento Fornecedor - ${p.item_os?.descricao || "Peça"}`,
           type: "OUT",
           value: Number(p.custo_real),
-          details: `OS #${p.item_os?.id_os} - ${p.fornecedor?.nome}`,
+          details: `OS Nº {p.item_os?.id_os} - {p.fornecedor?.nome}`,
         }));
 
       // Map Inflows (Payments from Clients)
@@ -99,7 +99,7 @@ export const FinanceiroPage = () => {
       const inflows = (inflowsRes.data || []).map((p: any) => ({
         id: `in-${p.id_pagamento_cliente}`,
         date: p.data_pagamento,
-        description: `Recebimento OS #${p.id_os}`,
+        description: `Recebimento OS Nº {p.id_os}`,
         type: "IN",
         value: Number(p.valor),
         details: `Forma: ${p.metodo_pagamento}`,
@@ -530,7 +530,7 @@ export const FinanceiroPage = () => {
                               "N/A"}
                           </p>
                           <p className="text-[10px] text-neutral-400 font-bold mt-1">
-                            OS #{String(p.item_os?.id_os).padStart(4, "0")}
+                            OS Nº {String(p.item_os?.id_os).padStart(4, "0")}
                           </p>
                         </div>
                       </td>

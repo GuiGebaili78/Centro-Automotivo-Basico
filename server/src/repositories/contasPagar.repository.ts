@@ -50,6 +50,7 @@ export class ContasPagarRepository {
             valor: created.valor,
             tipo_movimentacao: "SAIDA",
             categoria: created.categoria || "DESPESAS GERAIS",
+            id_categoria: created.id_categoria, // Link category
             dt_movimentacao: movimentoDate,
             origem: "AUTOMATICA",
             obs: `Referente à conta a pagar #${created.id_conta_pagar}. ${mainData.obs || ""}`,
@@ -66,6 +67,9 @@ export class ContasPagarRepository {
           newDate.setMonth(baseDate.getMonth() + i);
 
           const repData = { ...mainData };
+          if (repData.id_categoria)
+            repData.id_categoria = Number(repData.id_categoria); // Ensure validation
+
           repData.dt_vencimento = newDate;
           repData.status = "PENDENTE"; // Repetições futuras nascem pendentes
           repData.dt_pagamento = null;
@@ -93,12 +97,14 @@ export class ContasPagarRepository {
     return prisma.contasPagar.findMany({
       where: { deleted_at: null },
       orderBy: { dt_vencimento: "asc" },
+      include: { categoria_financeira: true }, // Include category details
     });
   }
 
   async findById(id: number) {
     return prisma.contasPagar.findUnique({
       where: { id_conta_pagar: id },
+      include: { categoria_financeira: true },
     });
   }
 
@@ -121,8 +127,15 @@ export class ContasPagarRepository {
       id_conta_bancaria: idContaRaw,
       repetir_parcelas,
       applyToAllRecurrences,
+      id_categoria, // Extract id_categoria
       ...updateData
     } = data;
+
+    // Add id_categoria to updateData if present
+    if (id_categoria) {
+      // @ts-ignore
+      updateData.id_categoria = Number(id_categoria);
+    }
 
     // ... dentro de update ...
     // Checar estado anterior
@@ -159,6 +172,7 @@ export class ContasPagarRepository {
             valor: updated.valor,
             tipo_movimentacao: "SAIDA",
             categoria: updated.categoria || "DESPESAS GERAIS",
+            id_categoria: updated.id_categoria, // Link category
             dt_movimentacao: movimentoDate,
             origem: "AUTOMATICA",
             obs: `Referente à conta a pagar #${updated.id_conta_pagar}. ${updated.obs || ""}`,

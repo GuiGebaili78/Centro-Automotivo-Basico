@@ -469,7 +469,7 @@ export const OrdemDeServicoDetalhePage = () => {
 
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-neutral-700 leading-none m-0">
-              OS #{os.id_os}
+              OS Nº {os.id_os}
             </h1>
             <span className="h-6 w-px bg-neutral-300 mx-1"></span>
             <span

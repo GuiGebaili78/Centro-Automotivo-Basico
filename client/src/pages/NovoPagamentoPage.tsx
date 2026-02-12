@@ -422,7 +422,7 @@ export const NovoPagamentoPage = () => {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-black bg-neutral-100 px-2 py-0.5 rounded text-neutral-600 uppercase">
-                                  OS #{item.id_os}
+                                  OS Nº {item.id_os}
                                 </span>
                                 <span
                                   className={`text-[10px] font-black px-2 py-0.5 rounded uppercase border ${

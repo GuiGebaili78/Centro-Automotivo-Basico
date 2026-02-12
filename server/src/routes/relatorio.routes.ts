@@ -10,4 +10,6 @@ relatorioRoutes.get(
   controller.getRelatorioCompleto.bind(controller),
 );
 
+relatorioRoutes.get("/dashboard", controller.getDashboardData.bind(controller));
+
 export { relatorioRoutes };

@@ -662,7 +662,7 @@ export const PagamentoEquipePage = () => {
                                 {item.type === "COMISSAO" ? (
                                   <div className="flex flex-col gap-1">
                                     <span className="font-bold text-neutral-600">
-                                      OS #{item.os.id_os}
+                                      OS Nº {item.os.id_os}
                                     </span>
                                     {(item.os.defeito_relatado ||
                                       item.os.diagnostico) && (
