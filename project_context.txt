@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 02/10/2026 19:45:42
+PROJECT DUMP GENERATED ON 02/12/2026 17:22:36
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -2902,9 +2902,17 @@ export const UnifiedSearch = ({
 ================================================================================
 FILE PATH: client\src\components\financeiro\CategoryManager.tsx
 ================================================================================
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { api } from "../../services/api";
-import { Trash2, Plus, X, AlertTriangle, Edit, Save } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  X,
+  AlertTriangle,
+  Edit,
+  Save,
+  ArrowRight,
+} from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -2913,6 +2921,7 @@ interface Category {
   id_categoria: number;
   nome: string;
   tipo: string;
+  parentId: number | null;
 }
 
 interface CategoryManagerProps {
@@ -2929,6 +2938,7 @@ export const CategoryManager = ({
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCatName, setNewCatName] = useState("");
   const [newCatType, setNewCatType] = useState("AMBOS");
+  const [newCatParentId, setNewCatParentId] = useState<number | "">("");
   const [loading, setLoading] = useState(false);
 
   // Conflict Resolution State
@@ -2943,13 +2953,14 @@ export const CategoryManager = ({
   const [editingCatId, setEditingCatId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState("AMBOS");
+  const [editParentId, setEditParentId] = useState<number | "">("");
 
   // UI State
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      loadCategories(); // This will hit the backend which now syncs
+      loadCategories();
       setConflictData(null);
       setReplacementCat("");
     }
@@ -2964,6 +2975,20 @@ export const CategoryManager = ({
     }
   };
 
+  const hierarchy = useMemo(() => {
+    const parents = categories.filter((c) => !c.parentId);
+    return parents.map((parent) => ({
+      ...parent,
+      children: categories.filter((c) => c.parentId === parent.id_categoria),
+    }));
+  }, [categories]);
+
+  const potentialParents = useMemo(() => {
+    // Only show categories that are NOT children themselves (2 levels max for simplicity, or just prevent loops)
+    // For this simple implementation, any category without a parent can be a parent.
+    return categories.filter((c) => !c.parentId);
+  }, [categories]);
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -2971,8 +2996,10 @@ export const CategoryManager = ({
       await api.post("/categoria-financeira", {
         nome: newCatName,
         tipo: newCatType,
+        parentId: newCatParentId === "" ? null : newCatParentId,
       });
       setNewCatName("");
+      setNewCatParentId("");
       loadCategories();
       onUpdate();
     } catch (error) {
@@ -2983,14 +3010,11 @@ export const CategoryManager = ({
   };
 
   const handleDelete = async (id: number, replacement?: string) => {
-    // Direct delete (called from confirm UI)
     try {
-      // Need to pass replacement in body if it exists. Note: axios delete config for body is distinct.
       await api.delete(`/categoria-financeira/${id}`, {
         data: { replacementCategory: replacement },
       });
 
-      // Success
       setConflictData(null);
       setReplacementCat("");
       setDeleteConfirmId(null);
@@ -2998,20 +3022,24 @@ export const CategoryManager = ({
       onUpdate();
     } catch (error: any) {
       if (error.response && error.response.status === 409) {
-        setDeleteConfirmId(null); // Close simple delete confirm
+        setDeleteConfirmId(null);
         setConflictData({
           id,
           message: error.response.data.message,
           count: error.response.data.usageCount,
         });
-        // Set default replacement to first available
-        const firstAvailable = categories.find((c) => c.id_categoria !== id);
+
+        // Find a default replacement (not the one being deleted, and preferably same type)
+        const current = categories.find((c) => c.id_categoria === id);
+        const firstAvailable = categories.find(
+          (c) =>
+            c.id_categoria !== id &&
+            (!current || c.tipo === current.tipo || c.tipo === "AMBOS"),
+        );
         if (firstAvailable) setReplacementCat(firstAvailable.nome);
       } else {
         console.error(error);
       }
-    } finally {
-      // clean up state if needed
     }
   };
 
@@ -3019,60 +3047,59 @@ export const CategoryManager = ({
     setEditingCatId(cat.id_categoria);
     setEditName(cat.nome);
     setEditType(cat.tipo);
+    setEditParentId(cat.parentId || "");
   };
 
   const handleEdit = async (id: number) => {
     try {
-      // Optimistic update for UI responsiveness
-      setCategories(
-        categories.map((c) =>
-          c.id_categoria === id ? { ...c, nome: editName, tipo: editType } : c,
-        ),
-      );
-      setEditingCatId(null);
-
       await api.put(`/categoria-financeira/${id}`, {
         nome: editName,
         tipo: editType,
+        parentId: editParentId === "" ? null : editParentId,
       });
+      setEditingCatId(null);
       loadCategories();
       onUpdate();
     } catch (error) {
       console.error(error);
-      loadCategories(); // Revert on error
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <Modal title="Gerenciar Categorias" onClose={onClose} className="max-w-md">
+    <Modal title="Gerenciar Categorias" onClose={onClose} className="max-w-xl">
       {conflictData ? (
         <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl mb-6">
           <div className="flex items-center gap-3 text-orange-600 mb-2">
             <AlertTriangle size={20} />
-            <h3 className="font-bold">Categoria em uso</h3>
+            <h3 className="font-bold">Ação bloqueada</h3>
           </div>
           <p className="text-sm text-neutral-600 mb-4">
             {conflictData.message}
           </p>
 
-          <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-            Substituir por:
-          </label>
-          <select
-            value={replacementCat}
-            onChange={(e) => setReplacementCat(e.target.value)}
-            className="w-full bg-white border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-orange-300 mb-4"
-          >
-            {categories
-              .filter((c) => c.id_categoria !== conflictData.id)
-              .map((c) => (
-                <option key={c.id_categoria} value={c.nome}>
-                  {c.nome}
-                </option>
-              ))}
-          </select>
+          {!conflictData.message.includes("subcategorias") && (
+            <>
+              <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                Substituir por:
+              </label>
+              <select
+                value={replacementCat}
+                onChange={(e) => setReplacementCat(e.target.value)}
+                className="w-full bg-white border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-orange-300 mb-4"
+              >
+                {categories
+                  .filter((c) => c.id_categoria !== conflictData.id)
+                  .map((c) => (
+                    <option key={c.id_categoria} value={c.nome}>
+                      {c.nome}
+                    </option>
+                  ))}
+              </select>
+            </>
+          )}
+
           <div className="flex gap-2">
             <Button
               variant="ghost"
@@ -3081,12 +3108,14 @@ export const CategoryManager = ({
             >
               Cancelar
             </Button>
-            <Button
-              onClick={() => handleDelete(conflictData.id, replacementCat)}
-              className="flex-1 bg-orange-500 hover:bg-orange-600 text-neutral-25 shadow-orange-200"
-            >
-              Confirmar Troca
-            </Button>
+            {!conflictData.message.includes("subcategorias") && (
+              <Button
+                onClick={() => handleDelete(conflictData.id, replacementCat)}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-neutral-25 shadow-orange-200"
+              >
+                Confirmar Troca
+              </Button>
+            )}
           </div>
         </div>
       ) : deleteConfirmId ? (
@@ -3118,8 +3147,11 @@ export const CategoryManager = ({
         </div>
       ) : (
         <>
-          <form onSubmit={handleAdd} className="flex gap-2 mb-6">
-            <div className="flex-1">
+          <form onSubmit={handleAdd} className="flex gap-2 mb-6 items-end">
+            <div className="flex-1 space-y-1">
+              <label className="text-xs font-medium text-neutral-500 ml-1">
+                Nome
+              </label>
               <Input
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
@@ -3127,18 +3159,40 @@ export const CategoryManager = ({
                 required
               />
             </div>
-            <div className="w-24">
-              <div className="relative">
-                <select
-                  value={newCatType}
-                  onChange={(e) => setNewCatType(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 p-[11px] rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all cursor-pointer"
-                >
-                  <option value="AMBOS">Ambos</option>
-                  <option value="ENTRADA">Entrada</option>
-                  <option value="SAIDA">Saída</option>
-                </select>
-              </div>
+            <div className="w-32 space-y-1">
+              <label className="text-xs font-medium text-neutral-500 ml-1">
+                Tipo
+              </label>
+              <select
+                value={newCatType}
+                onChange={(e) => setNewCatType(e.target.value)}
+                className="w-full bg-neutral-50 border border-neutral-200 p-[11px] rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all cursor-pointer"
+              >
+                <option value="AMBOS">Ambos</option>
+                <option value="ENTRADA">Entrada</option>
+                <option value="SAIDA">Saída</option>
+              </select>
+            </div>
+            <div className="w-40 space-y-1">
+              <label className="text-xs font-medium text-neutral-500 ml-1">
+                Pai (Opcional)
+              </label>
+              <select
+                value={newCatParentId}
+                onChange={(e) =>
+                  setNewCatParentId(
+                    e.target.value ? Number(e.target.value) : "",
+                  )
+                }
+                className="w-full bg-neutral-50 border border-neutral-200 p-[11px] rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all cursor-pointer"
+              >
+                <option value="">Nenhum</option>
+                {potentialParents.map((p) => (
+                  <option key={p.id_categoria} value={p.id_categoria}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
             </div>
             <Button
               type="submit"
@@ -3151,66 +3205,132 @@ export const CategoryManager = ({
             </Button>
           </form>
 
-          <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-            {categories.map((cat) => (
-              <div
-                key={cat.id_categoria}
-                className="flex justify-between items-center p-3 bg-neutral-50 rounded-xl border border-neutral-100 group hover:border-neutral-200 transition-colors"
-              >
-                {editingCatId === cat.id_categoria ? (
-                  <div className="flex gap-2 w-full">
-                    <input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      className="flex-1 bg-white border border-neutral-300 p-2 rounded-lg font-bold text-sm outline-none focus:border-primary-500"
-                      autoFocus
-                    />
-                    <select
-                      value={editType}
-                      onChange={(e) => setEditType(e.target.value)}
-                      className="w-24 bg-white border border-neutral-300 p-2 rounded-lg font-bold text-sm outline-none focus:border-primary-500"
-                    >
-                      <option value="AMBOS">Ambos</option>
-                      <option value="ENTRADA">Entrada</option>
-                      <option value="SAIDA">Saída</option>
-                    </select>
-                    <button
-                      onClick={() => handleEdit(cat.id_categoria)}
-                      className="bg-green-500 text-neutral-25 p-2 rounded-lg hover:bg-green-600 transition-all hover:scale-105 active:scale-95 shadow-sm"
-                    >
-                      <Save size={16} />
-                    </button>
-                    <button
-                      onClick={() => setEditingCatId(null)}
-                      className="bg-neutral-200 text-neutral-600 p-2 rounded-lg hover:bg-neutral-300 transition-all hover:scale-105 active:scale-95"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div>
-                      <p className="font-bold text-neutral-800">{cat.nome}</p>
-                      <p className="text-[10px] uppercase font-bold text-neutral-400">
-                        {cat.tipo}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => startEditing(cat)}
-                        className="text-neutral-300 hover:text-primary-500 transition-colors p-2 hover:bg-primary-50 rounded-lg"
+          <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+            {hierarchy.map((parent) => (
+              <div key={parent.id_categoria} className="space-y-1">
+                {/* Parent Row */}
+                <div className="flex justify-between items-center p-3 bg-neutral-50 rounded-xl border border-neutral-200 group hover:border-primary-200 transition-colors">
+                  {editingCatId === parent.id_categoria ? (
+                    <div className="flex gap-2 w-full items-center">
+                      <input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="flex-1 bg-white border border-neutral-300 p-2 rounded-lg font-bold text-sm outline-none focus:border-primary-500"
+                        autoFocus
+                      />
+                      <select
+                        value={editType}
+                        onChange={(e) => setEditType(e.target.value)}
+                        className="w-24 bg-white border border-neutral-300 p-2 rounded-lg font-bold text-sm outline-none"
                       >
-                        <Edit size={16} />
+                        <option value="AMBOS">Ambos</option>
+                        <option value="ENTRADA">Entrada</option>
+                        <option value="SAIDA">Saída</option>
+                      </select>
+                      <button
+                        onClick={() => handleEdit(parent.id_categoria)}
+                        className="text-green-600 p-2 hover:bg-green-50 rounded"
+                      >
+                        <Save size={16} />
                       </button>
                       <button
-                        onClick={() => setDeleteConfirmId(cat.id_categoria)}
-                        className="text-neutral-300 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-lg"
+                        onClick={() => setEditingCatId(null)}
+                        className="text-neutral-500 p-2 hover:bg-neutral-100 rounded"
                       >
-                        <Trash2 size={16} />
+                        <X size={16} />
                       </button>
                     </div>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-neutral-800">
+                          {parent.nome}
+                        </span>
+                        <span className="text-[10px] bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded font-bold">
+                          {parent.tipo}
+                        </span>
+                      </div>
+                      <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => startEditing(parent)}
+                          className="p-2 hover:bg-blue-50 text-blue-600 rounded"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setDeleteConfirmId(parent.id_categoria)
+                          }
+                          className="p-2 hover:bg-red-50 text-red-600 rounded"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Children Rows */}
+                <div className="ml-6 space-y-1 border-l-2 border-neutral-100 pl-3">
+                  {parent.children.map((child) => (
+                    <div
+                      key={child.id_categoria}
+                      className="flex justify-between items-center p-2 bg-white rounded-lg border border-neutral-100 group/child hover:border-neutral-300 transition-colors text-sm"
+                    >
+                      {editingCatId === child.id_categoria ? (
+                        <div className="flex gap-2 w-full items-center">
+                          <input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="flex-1 bg-white border border-neutral-300 p-1.5 rounded font-medium outline-none focus:border-primary-500"
+                            autoFocus
+                          />
+                          {/* Child cannot change parent in this simple edit mode efficiently, just name/type */}
+                          <button
+                            onClick={() => handleEdit(child.id_categoria)}
+                            className="text-green-600 p-1.5 hover:bg-green-50 rounded"
+                          >
+                            <Save size={14} />
+                          </button>
+                          <button
+                            onClick={() => setEditingCatId(null)}
+                            className="text-neutral-500 p-1.5 hover:bg-neutral-100 rounded"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <ArrowRight
+                              size={12}
+                              className="text-neutral-400"
+                            />
+                            <span className="text-neutral-700 font-medium">
+                              {child.nome}
+                            </span>
+                          </div>
+                          <div className="flex gap-1 opacity-0 group-hover/child:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => startEditing(child)}
+                              className="p-1.5 hover:bg-blue-50 text-blue-600 rounded"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={() =>
+                                setDeleteConfirmId(child.id_categoria)
+                              }
+                              className="p-1.5 hover:bg-red-50 text-red-600 rounded"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
             {categories.length === 0 && (
@@ -3935,7 +4055,9 @@ export const MovimentacoesTab = () => {
         });
 
       // 2. Auto Outflows (Payments to Suppliers)
-      const outflows = paymentsRes.data
+      // BREAKING CHANGE: API now returns { data: [...], pagination: {...} }
+      const paymentsData = paymentsRes.data?.data || paymentsRes.data || [];
+      const outflows = paymentsData
         .filter(
           (p: any) =>
             (p.pago_ao_fornecedor && p.data_pagamento_fornecedor) ||
@@ -3959,7 +4081,7 @@ export const MovimentacoesTab = () => {
             id: `out-${p.id_pagamento_peca}`,
             rawId: p.id_pagamento_peca,
             date: p.data_pagamento_fornecedor || p.data_compra,
-            description: `OS #${p.item_os?.id_os || "?"} - ${veh?.modelo || "V"} ${veh?.cor || ""} (${veh?.placa || "?"}) - ${p.item_os?.descricao || "Peça"}`,
+            description: `OS Nº ${p.item_os?.id_os ?? "?"} - ${veh?.modelo ?? "Veículo"} ${veh?.cor ? veh.cor : ""} (${veh?.placa ?? "SEM-PLACA"}) - ${p.item_os?.descricao ?? "Peça"}`,
             type: "OUT",
             value: Number(p.custo_real),
             category: "Auto Peças",
@@ -3974,8 +4096,9 @@ export const MovimentacoesTab = () => {
         });
 
       // 3. Auto Inflows (Payments from Clients)
+      // ONLY show payments that have been consolidated (have id_livro_caixa)
       const inflows = (inflowsRes.data || [])
-        .filter((p: any) => !p.id_livro_caixa) // Prevent duplicates if already in LC
+        .filter((p: any) => p.id_livro_caixa) // Only show consolidated payments
         .map((p: any) => {
           const os = p.ordem_de_servico;
           const veh = os?.veiculo;
@@ -4032,7 +4155,7 @@ export const MovimentacoesTab = () => {
             id: `in-${p.id_pagamento_cliente}`,
             rawId: p.id_pagamento_cliente,
             date: p.data_pagamento,
-            description: `Recebimento: OS #${p.id_os}`,
+            description: `Recebimento: OS Nº ${os?.id_os ?? "?"} - ${veh?.modelo ?? "Veículo"} ${veh?.placa ? `(${veh.placa})` : ""}`,
             type: "IN",
             value: Number(p.valor),
             category: "Receita de Serviços",
@@ -5904,7 +6027,7 @@ export const RecebiveisTab = () => {
                           className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md w-fit mb-1 cursor-help"
                           title={`Data da Venda: ${new Date(r.data_venda).toLocaleDateString("pt-BR")}`}
                         >
-                          OS #{r.id_os}
+                          OS Nº {r.id_os}
                         </span>
                         <span className="text-[10px] font-bold text-neutral-400 uppercase">
                           Parcela {r.num_parcela} de {r.total_parcelas}
@@ -7209,7 +7332,7 @@ export const FechamentoFinanceiroForm = ({
               <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase bg-gray-900 text-white tracking-wide">
-                    OS #{osData.id_os}
+                    OS Nº {osData.id_os}
                   </span>
                   <span
                     className={`px-3 py-1 rounded-md text-[10px] font-black uppercase whitespace-nowrap ${getStatusStyle(osData.status)}`}
@@ -9222,148 +9345,166 @@ export const FuncionarioForm = ({
 ================================================================================
 FILE PATH: client\src\components\forms\ItensOsForm.tsx
 ================================================================================
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { api } from '../../services/api';
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { api } from "../../services/api";
 
 interface ItensOsFormProps {
-    osId: number;
-    onSuccess: (newItem: any) => void;
-    onCancel: () => void;
+  osId: number;
+  onSuccess: (newItem: any) => void;
+  onCancel: () => void;
 }
 
-export const ItensOsForm = ({ osId, onSuccess, onCancel }: ItensOsFormProps) => {
-    const [loading, setLoading] = useState(false);
-    
-    // Schema: id_os, id_pecas_estoque?, descricao, quantidade, valor_venda, valor_total
-    const [idPecasEstoque, setIdPecasEstoque] = useState('');
-    const [descricao, setDescricao] = useState('');
-    const [quantidade, setQuantidade] = useState('1');
-    const [valorVenda, setValorVenda] = useState('');
-    const [valorTotal, setValorTotal] = useState('');
+export const ItensOsForm = ({
+  osId,
+  onSuccess,
+  onCancel,
+}: ItensOsFormProps) => {
+  const [loading, setLoading] = useState(false);
 
-    // Auto-calculate valor_total when quantidade or valor_venda changes
-    const handleQuantidadeChange = (value: string) => {
-        setQuantidade(value);
-        if (valorVenda) {
-            const total = Number(value) * Number(valorVenda);
-            setValorTotal(total.toFixed(2));
-        }
-    };
+  // Schema: id_os, id_pecas_estoque?, descricao, quantidade, valor_venda, valor_total
+  const [idPecasEstoque, setIdPecasEstoque] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [quantidade, setQuantidade] = useState("1");
+  const [valorVenda, setValorVenda] = useState("");
+  const [valorTotal, setValorTotal] = useState("");
 
-    const handleValorVendaChange = (value: string) => {
-        setValorVenda(value);
-        if (quantidade) {
-            const total = Number(quantidade) * Number(value);
-            setValorTotal(total.toFixed(2));
-        }
-    };
+  // Auto-calculate valor_total when quantidade or valor_venda changes
+  const handleQuantidadeChange = (value: string) => {
+    setQuantidade(value);
+    if (valorVenda) {
+      const total = Number(value) * Number(valorVenda);
+      setValorTotal(total.toFixed(2));
+    }
+  };
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            const payload = {
-                id_os: osId,
-                id_pecas_estoque: idPecasEstoque ? Number(idPecasEstoque) : null,
-                descricao,
-                quantidade: Number(quantidade),
-                valor_venda: Number(valorVenda),
-                valor_total: Number(valorTotal)
-            };
+  const handleValorVendaChange = (value: string) => {
+    setValorVenda(value);
+    if (quantidade) {
+      const total = Number(quantidade) * Number(value);
+      setValorTotal(total.toFixed(2));
+    }
+  };
 
-            const response = await api.post('/itens-os', payload);
-            alert('Item adicionado à OS com sucesso!');
-            onSuccess(response.data);
-        } catch (error) {
-            console.error(error);
-            alert('Erro ao adicionar item à OS.');
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const payload = {
+        id_os: osId,
+        id_pecas_estoque: idPecasEstoque ? Number(idPecasEstoque) : null,
+        descricao,
+        quantidade: Number(quantidade),
+        valor_venda: Number(valorVenda),
+        valor_total: Number(valorTotal),
+      };
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="bg-blue-50 p-3 rounded text-sm text-blue-800 border border-blue-100">
-                <strong>OS #{osId}</strong> - Adicionando item/peça/serviço
-            </div>
+      const response = await api.post("/itens-os", payload);
+      alert("Item adicionado à OS com sucesso!");
+      onSuccess(response.data);
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao adicionar item à OS.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">ID Peça Estoque (Opcional)</label>
-                    <input 
-                        type="number"
-                        value={idPecasEstoque} 
-                        onChange={e => setIdPecasEstoque(e.target.value)} 
-                        className="w-full border p-2 rounded border-gray-300" 
-                        placeholder="Deixe vazio para serviço"
-                    />
-                </div>
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="bg-blue-50 p-3 rounded text-sm text-blue-800 border border-blue-100">
+        <strong>OS Nº {osId}</strong> - Adicionando item/peça/serviço
+      </div>
 
-                <div className="col-span-2">
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Descrição *</label>
-                    <input 
-                        value={descricao} 
-                        onChange={e => setDescricao(e.target.value)} 
-                        className="w-full border p-2 rounded border-gray-300" 
-                        required 
-                        placeholder="Ex: Troca de óleo, Filtro de ar..."
-                    />
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            ID Peça Estoque (Opcional)
+          </label>
+          <input
+            type="number"
+            value={idPecasEstoque}
+            onChange={(e) => setIdPecasEstoque(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+            placeholder="Deixe vazio para serviço"
+          />
+        </div>
 
-                <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Quantidade *</label>
-                    <input 
-                        type="number"
-                        min="1"
-                        value={quantidade} 
-                        onChange={e => handleQuantidadeChange(e.target.value)} 
-                        className="w-full border p-2 rounded border-gray-300" 
-                        required 
-                    />
-                </div>
+        <div className="col-span-2">
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Descrição *
+          </label>
+          <input
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+            required
+            placeholder="Ex: Troca de óleo, Filtro de ar..."
+          />
+        </div>
 
-                <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Valor Unitário (R$) *</label>
-                    <input 
-                        type="number"
-                        step="0.01"
-                        value={valorVenda} 
-                        onChange={e => handleValorVendaChange(e.target.value)} 
-                        className="w-full border p-2 rounded border-gray-300" 
-                        required 
-                    />
-                </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Quantidade *
+          </label>
+          <input
+            type="number"
+            min="1"
+            value={quantidade}
+            onChange={(e) => handleQuantidadeChange(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+            required
+          />
+        </div>
 
-                <div className="col-span-2">
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Valor Total (R$)</label>
-                    <input 
-                        type="number"
-                        step="0.01"
-                        value={valorTotal} 
-                        onChange={e => setValorTotal(e.target.value)} 
-                        className="w-full border p-2 rounded border-gray-300 bg-gray-50 font-bold text-lg" 
-                        required 
-                        readOnly
-                    />
-                </div>
-            </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Valor Unitário (R$) *
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            value={valorVenda}
+            onChange={(e) => handleValorVendaChange(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+            required
+          />
+        </div>
 
-            <div className="flex gap-2 pt-4">
-                <button type="button" onClick={onCancel} className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg">
-                    Cancelar
-                </button>
-                <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="flex-1 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50"
-                >
-                    {loading ? 'Adicionando...' : 'Adicionar Item'}
-                </button>
-            </div>
-        </form>
-    );
+        <div className="col-span-2">
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Valor Total (R$)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            value={valorTotal}
+            onChange={(e) => setValorTotal(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300 bg-gray-50 font-bold text-lg"
+            required
+            readOnly
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex-1 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50"
+        >
+          {loading ? "Adicionando..." : "Adicionar Item"}
+        </button>
+      </div>
+    </form>
+  );
 };
 
 
@@ -12440,7 +12581,7 @@ FILE PATH: client\src\components\ui\DocumentoModal.tsx
 import { useState, useEffect } from "react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
-import { FileText, Mail, Send, Loader, AlertTriangle } from "lucide-react";
+import { FileText, Mail, Send, AlertTriangle } from "lucide-react";
 import { api } from "../../services/api";
 import { toast } from "react-toastify";
 
@@ -12460,23 +12601,22 @@ export const DocumentoModal = ({
   osId,
   status,
   clienteEmail,
-  clienteTelefone,
   clienteNome,
 }: DocumentoModalProps) => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(clienteEmail || "");
-  const [telefone, setTelefone] = useState(clienteTelefone || "");
-  const [sendOption, setSendOption] = useState<"download" | "email" | "telegram">("download");
+  const [sendOption, setSendOption] = useState<
+    "download" | "email" | "telegram"
+  >("download");
 
   const isOrcamento = status !== "FINALIZADA" && status !== "PAGA_CLIENTE";
 
   useEffect(() => {
     if (isOpen) {
       setEmail(clienteEmail || "");
-      setTelefone(clienteTelefone || "");
       setSendOption("download");
     }
-  }, [isOpen, clienteEmail, clienteTelefone]);
+  }, [isOpen, clienteEmail]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -12489,7 +12629,9 @@ export const DocumentoModal = ({
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement("a");
         link.href = url;
-        const fileName = isOrcamento ? `orcamento-${osId}.pdf` : `os-${osId}.pdf`;
+        const fileName = isOrcamento
+          ? `orcamento-${osId}.pdf`
+          : `os-${osId}.pdf`;
         link.setAttribute("download", fileName);
         document.body.appendChild(link);
         link.click();
@@ -12523,21 +12665,27 @@ export const DocumentoModal = ({
   if (!isOpen) return null;
 
   return (
-    <Modal title={isOrcamento ? "Imprimir Orçamento" : "Imprimir OS / Recibo"} onClose={onClose}>
+    <Modal
+      title={isOrcamento ? "Imprimir Orçamento" : "Imprimir OS / Recibo"}
+      onClose={onClose}
+    >
       <div className="space-y-4">
         {isOrcamento && (
           <div className="bg-amber-50 text-amber-800 p-3 rounded-lg flex items-start gap-2 text-sm border border-amber-200">
             <AlertTriangle size={16} className="mt-0.5" />
             <p>
               Esta OS ainda não foi finalizada. O documento gerado será um{" "}
-              <strong>ORÇAMENTO</strong> (sem valor fiscal) e conterá uma marca d'água.
+              <strong>ORÇAMENTO</strong> (sem valor fiscal) e conterá uma marca
+              d'água.
             </p>
           </div>
         )}
 
         <div className="space-y-3">
-          <label className="block text-sm font-bold text-gray-700">Como deseja prosseguir?</label>
-          
+          <label className="block text-sm font-bold text-gray-700">
+            Como deseja prosseguir?
+          </label>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
               type="button"
@@ -12582,7 +12730,9 @@ export const DocumentoModal = ({
 
         {sendOption === "email" && (
           <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2 animate-fadeIn">
-            <label className="block text-xs font-bold text-gray-500 uppercase">E-mail do Cliente</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase">
+              E-mail do Cliente
+            </label>
             <input
               type="email"
               value={email}
@@ -12598,13 +12748,14 @@ export const DocumentoModal = ({
 
         {sendOption === "telegram" && (
           <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 animate-fadeIn">
-             <p className="text-xs text-gray-600 mb-2">
-                 O envio pelo Telegram requer que o cliente ({clienteNome}) já tenha iniciado uma conversa com o Bot da oficina.
-             </p>
-             <div className="flex items-center gap-2 text-xs text-blue-600 font-bold bg-blue-100 p-2 rounded">
-                 <AlertTriangle size={14} />
-                 <span>Recurso em desenvolvimento (Simulado)</span>
-             </div>
+            <p className="text-xs text-gray-600 mb-2">
+              O envio pelo Telegram requer que o cliente ({clienteNome}) já
+              tenha iniciado uma conversa com o Bot da oficina.
+            </p>
+            <div className="flex items-center gap-2 text-xs text-blue-600 font-bold bg-blue-100 p-2 rounded">
+              <AlertTriangle size={14} />
+              <span>Recurso em desenvolvimento (Simulado)</span>
+            </div>
           </div>
         )}
 
@@ -12612,7 +12763,11 @@ export const DocumentoModal = ({
           <Button variant="secondary" onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
-          <Button variant="primary" onClick={handleGenerate} isLoading={loading}>
+          <Button
+            variant="primary"
+            onClick={handleGenerate}
+            isLoading={loading}
+          >
             {sendOption === "download" ? "Gerar PDF" : "Enviar"}
           </Button>
         </div>
@@ -12868,6 +13023,7 @@ export const StatusBanner = ({ msg, onClose }: StatusBannerProps) => {
 
 
 
+================================================================================
 FILE PATH: client\src\pages\CadastroUnificadoPage.tsx
 ================================================================================
 import { useState, useEffect, useRef } from "react";
@@ -14483,7 +14639,6 @@ export const ContasAPagarPage = () => {
     dt_vencimento: "",
     num_documento: "",
     status: "PENDENTE",
-    forma_pagamento: "",
     dt_pagamento: "",
     url_anexo: "",
     obs: "",
@@ -14547,7 +14702,7 @@ export const ContasAPagarPage = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
+      const payload: any = {
         ...formData,
         valor: Number(formData.valor),
         applyToAllRecurrences, // Add flag for series update
@@ -14651,7 +14806,6 @@ export const ContasAPagarPage = () => {
       dt_vencimento: new Date(conta.dt_vencimento).toISOString().split("T")[0],
       num_documento: conta.num_documento || "",
       status: conta.status,
-      forma_pagamento: conta.forma_pagamento || "",
       dt_pagamento: conta.dt_pagamento
         ? new Date(conta.dt_pagamento).toISOString().split("T")[0]
         : "",
@@ -14675,7 +14829,6 @@ export const ContasAPagarPage = () => {
       dt_vencimento: new Date().toISOString().split("T")[0], // Default today
       num_documento: "",
       status: "PENDENTE",
-      forma_pagamento: "",
       dt_pagamento: "",
       url_anexo: "",
       obs: "",
@@ -14840,7 +14993,7 @@ export const ContasAPagarPage = () => {
             <button
               onClick={() => applyQuickFilter("ALL")}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                activeFilter === ("ALL" as any)
+                activeFilter === "ALL"
                   ? "bg-white text-primary-600 shadow-sm"
                   : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
               }`}
@@ -15103,20 +15256,31 @@ export const ContasAPagarPage = () => {
             {/* 2. Categoria & Valor & Repetição */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="md:col-span-12 lg:col-span-5">
-                <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-                  Categoria
-                </label>
                 <CategorySelector
                   categories={categories}
                   value={formData.id_categoria}
-                  onChange={(id, nome) =>
+                  onChange={(id, nome) => {
+                    // Find the category object to check for parent
+                    const cat = categories.find((c) => c.id_categoria === id);
+                    let fullCategoryName = nome;
+
+                    if (cat && cat.parentId) {
+                      const parent = categories.find(
+                        (c) => c.id_categoria === cat.parentId,
+                      );
+                      if (parent) {
+                        fullCategoryName = `${parent.nome} - ${nome}`;
+                      }
+                    }
+
                     setFormData({
                       ...formData,
                       id_categoria: id,
-                      categoria: nome,
-                    })
-                  }
+                      categoria: fullCategoryName,
+                    });
+                  }}
                   type="DESPESA"
+                  required
                 />
               </div>
 
@@ -15201,31 +15365,8 @@ export const ContasAPagarPage = () => {
               </div>
             </div>
 
-            {/* 5. Forma Pagto & Anexos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-                  Forma de Pagamento (Realizada)
-                </label>
-                <select
-                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all disabled:bg-neutral-100 disabled:cursor-not-allowed"
-                  value={formData.forma_pagamento}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      forma_pagamento: e.target.value,
-                    })
-                  }
-                  disabled={formData.status !== "PAGO"} // Disable if not Paid? Or allow just to record it?
-                >
-                  <option value="">Selecione...</option>
-                  <option value="BOLETO">Boleto</option>
-                  <option value="PIX">Pix</option>
-                  <option value="DINHEIRO">Dinheiro</option>
-                  <option value="TRANSFERENCIA">Transferência</option>
-                  <option value="CARTAO">Cartão</option>
-                </select>
-              </div>
+            {/* 5. Anexos Only (Removed Forma Pagto) */}
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <Input
                 label="Arquivos / Anexos (URL)"
                 icon={Upload}
@@ -15612,7 +15753,8 @@ export function DaschboardPage() {
 
       const oss = osRes.data;
       const contas = contasRes.data;
-      const pagPecas = pagPecaRes.data;
+      // BREAKING CHANGE: API now returns { data: [...], pagination: {...} }
+      const pagPecas = pagPecaRes.data?.data || pagPecaRes.data || [];
       const pagClients = pagCliRes.data;
       const manualEntries = livroRes.data;
 
@@ -17107,11 +17249,11 @@ export const ExtratoBancarioPage = () => {
       {/* Header */}
       <div className="mb-8 max-w-7xl mx-auto space-y-6">
         <button
-          onClick={() => navigate("/financeiro/livro-caixa")}
+          onClick={() => navigate("/financeiro?tab=contas")}
           className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors font-bold text-sm"
         >
           <ArrowLeft size={16} />
-          Voltar para Gestão Financeira
+          Voltar para Contas Bancárias
         </button>
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-surface p-8 rounded-2xl border border-neutral-200 shadow-sm relative overflow-hidden">
@@ -19540,7 +19682,7 @@ export const FinanceiroPage = () => {
           description: `Pagamento Fornecedor - ${p.item_os?.descricao || "Peça"}`,
           type: "OUT",
           value: Number(p.custo_real),
-          details: `OS #${p.item_os?.id_os} - ${p.fornecedor?.nome}`,
+          details: `OS Nº {p.item_os?.id_os} - {p.fornecedor?.nome}`,
         }));
 
       // Map Inflows (Payments from Clients)
@@ -19548,7 +19690,7 @@ export const FinanceiroPage = () => {
       const inflows = (inflowsRes.data || []).map((p: any) => ({
         id: `in-${p.id_pagamento_cliente}`,
         date: p.data_pagamento,
-        description: `Recebimento OS #${p.id_os}`,
+        description: `Recebimento OS Nº {p.id_os}`,
         type: "IN",
         value: Number(p.valor),
         details: `Forma: ${p.metodo_pagamento}`,
@@ -19979,7 +20121,7 @@ export const FinanceiroPage = () => {
                               "N/A"}
                           </p>
                           <p className="text-[10px] text-neutral-400 font-bold mt-1">
-                            OS #{String(p.item_os?.id_os).padStart(4, "0")}
+                            OS Nº {String(p.item_os?.id_os).padStart(4, "0")}
                           </p>
                         </div>
                       </td>
@@ -21033,7 +21175,7 @@ export const ItensOsPage = () => {
             {itens.map((item) => (
               <tr key={item.id_iten} className="hover:bg-slate-50">
                 <td className="p-4 text-gray-500 font-mono">#{item.id_iten}</td>
-                <td className="p-4 text-slate-600">OS #{item.id_os}</td>
+                <td className="p-4 text-slate-600">OS Nº {item.id_os}</td>
                 <td className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="bg-green-50 p-2 rounded-lg text-green-600">
@@ -21687,7 +21829,7 @@ export const NovoPagamentoPage = () => {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-black bg-neutral-100 px-2 py-0.5 rounded text-neutral-600 uppercase">
-                                  OS #{item.id_os}
+                                  OS Nº {item.id_os}
                                 </span>
                                 <span
                                   className={`text-[10px] font-black px-2 py-0.5 rounded uppercase border ${
@@ -22508,7 +22650,7 @@ export const OrdemDeServicoDetalhePage = () => {
 
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-neutral-700 leading-none m-0">
-              OS #{os.id_os}
+              OS Nº {os.id_os}
             </h1>
             <span className="h-6 w-px bg-neutral-300 mx-1"></span>
             <span
@@ -24772,7 +24914,7 @@ export const PagamentoEquipePage = () => {
                                 {item.type === "COMISSAO" ? (
                                   <div className="flex flex-col gap-1">
                                     <span className="font-bold text-neutral-600">
-                                      OS #{item.os.id_os}
+                                      OS Nº {item.os.id_os}
                                     </span>
                                     {(item.os.defeito_relatado ||
                                       item.os.diagnostico) && (
@@ -24982,7 +25124,8 @@ export const PagamentoPecaPage = () => {
         api.get("/fornecedor"),
         api.get("/conta-bancaria"),
       ]);
-      setPayments(paymentsRes.data);
+      // BREAKING CHANGE: API now returns { data: [...], pagination: {...} }
+      setPayments(paymentsRes.data?.data || paymentsRes.data || []);
       setFornecedores(fornecedoresRes.data);
       setAccounts(accountsRes.data.filter((a: any) => a.ativo));
     } catch (error) {
@@ -25614,7 +25757,7 @@ export const PagamentoPecaPage = () => {
                           </p>
 
                           <p className="text-[10px] text-neutral-400 font-bold mt-0.5">
-                            OS #{p.item_os?.id_os}
+                            OS Nº {p.item_os?.id_os}
                           </p>
                           {p.item_os?.ordem_de_servico?.dt_entrega && (
                             <p className="text-[9px] text-green-600 font-bold mt-1">
@@ -26931,540 +27074,283 @@ import { useState, useEffect } from "react";
 import {
   Card,
   Grid,
-  Tab,
-  TabGroup,
-  TabList,
-  Text,
   Title,
+  Text,
   Metric,
   Flex,
   BarChart,
   DonutChart,
   BarList,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-  ProgressBar,
-  AreaChart,
-  LineChart,
+  Badge,
 } from "@tremor/react";
-import { GlobalFilter } from "../components/dashboard/GlobalFilter";
 import { api } from "../services/api";
-import { TrendingUp, DollarSign, Target, AlertTriangle } from "lucide-react";
+import {
+  TrendingUp,
+  DollarSign,
+  Target,
+  AlertTriangle,
+  Calendar,
+} from "lucide-react";
+import { formatCurrency } from "../utils/formatCurrency"; // If available, or use custom or reuse GlobalFilter logic
+// Assuming GlobalFilter or basic date inputs. Let's use simple date inputs for now to be safe,
+// or reuse the logic found in previous file if it was custom.
+// The previous file used "dateRange" state but no visible import for a specific date picker component other than potentially GlobalFilter.
+// I will implement a simple header with date inputs for reliability.
 
-interface RelatorioData {
+interface DashboardData {
   kpis: {
-    receitaBruta: number;
-    receitaLiquida: number;
-    margem: number;
-    ticketMedio: number;
-    taxaConversao: number;
-    churn: number;
-    breakEven: number;
-    countOs: number;
+    faturamentoBruto: number;
+    faturamentoMaoDeObra: number;
+    faturamentoPecas: number;
+    lucroReal: number;
+    pontoEquilibrio: number;
+    totalDespesas: number;
+    custoPecas: number;
   };
   charts: {
-    evolucaoMensal: {
-      mes: string;
-      maoDeObra: number;
-      lucroEstoque: number;
-      lucroPecasExternas: number;
-    }[];
-    porCategoria: { name: string; value: number }[];
-    despesasPorCategoria: {
-      name: string;
-      value: number;
-      percentualFaturamento: number;
-    }[];
-    evolucaoDiaria: { dia: string; valor: number }[];
+    performanceMecanicos: { name: string; value: number }[];
+    servicosMaisVendidos: { name: string; value: number }[];
+    categoriasDespesa: { name: string; value: number }[];
   };
-  ranking: {
-    equipe: {
-      nome: string;
-      totalMaoDeObra: number;
-      pecasVendidas: number;
-      lucroPecas: number;
-      totalContribuicao: number;
-    }[];
-    fornecedores: {
-      nome: string;
-      totalCompras: number;
-      quantidadeCompras: number;
-    }[];
-  };
-  operadoras: {
-    nome: string;
-    recebido: number;
-    aReceber: number;
-    taxasDescontadas: number;
-  }[];
-  livroCaixa: any[];
 }
 
 export function RelatoriosPage() {
-  const [dateRange, setDateRange] = useState<any>({
-    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    to: new Date(),
-  });
-  const [compareYearOverYear, setCompareYearOverYear] = useState(false);
-  const [data, setData] = useState<RelatorioData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [data, setData] = useState<DashboardData | null>(null);
+
+  // Default to current month
+  const today = new Date();
+  const [startDate, setStartDate] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1)
+      .toISOString()
+      .split("T")[0],
+  );
+  const [endDate, setEndDate] = useState(
+    new Date(today.getFullYear(), today.getMonth() + 1, 0)
+      .toISOString()
+      .split("T")[0],
+  );
 
   useEffect(() => {
-    fetchRelatorio();
-  }, [dateRange]);
+    loadDashboard();
+  }, [startDate, endDate]);
 
-  const fetchRelatorio = async () => {
-    if (!dateRange.from || !dateRange.to) return;
-    setLoading(true);
+  const loadDashboard = async () => {
     try {
-      const response = await api.get("/relatorios/completo", {
-        params: {
-          startDate: dateRange.from.toISOString(),
-          endDate: dateRange.to.toISOString(),
-        },
+      setLoading(true);
+      const res = await api.get("/relatorios/dashboard", {
+        params: { startDate, endDate },
       });
-      setData(response.data);
+      setData(res.data);
     } catch (error) {
-      console.error("Erro ao carregar relatórios", error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-
-  if (loading) {
+  if (loading && !data) {
     return (
-      <div className="p-6 min-h-screen bg-slate-50">
-        <div className="w-full h-64 flex items-center justify-center bg-white rounded-xl">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <Text>Carregando análises inteligentes...</Text>
-          </div>
-        </div>
+      <div className="p-8 flex justify-center items-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  if (!data || !data.kpis) {
-    return (
-      <div className="p-6 min-h-screen bg-slate-50">
-        <div className="w-full h-64 flex items-center justify-center bg-white rounded-xl">
-          <Text>Nenhum dado disponível para o período selecionado.</Text>
-        </div>
-      </div>
-    );
-  }
+  if (!data) return null;
+
+  const { kpis, charts } = data;
+
+  // Helpers for charts
+  const revenueBreakdown = [
+    { name: "Mão de Obra", value: kpis.faturamentoMaoDeObra },
+    { name: "Peças", value: kpis.faturamentoPecas },
+  ];
+
+  const profitMargin =
+    kpis.faturamentoBruto > 0
+      ? ((kpis.lucroReal / kpis.faturamentoBruto) * 100).toFixed(1)
+      : "0.0";
 
   return (
-    <div className="p-6 min-h-screen bg-slate-50 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
+      {/* Header & Filters */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <Title className="text-3xl font-black text-slate-900">
-            Central de Inteligência
-          </Title>
-          <Text className="text-slate-500">
-            Dashboard financeiro e operacional completo
-          </Text>
+          <Title>Dashboard Financeiro & BI</Title>
+          <Text>Visão geral de performance, faturamento e custos.</Text>
+        </div>
+        <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-slate-200">
+          <Calendar size={18} className="text-slate-500 ml-2" />
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="border-none text-sm font-medium text-slate-700 focus:ring-0"
+          />
+          <span className="text-slate-400">-</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="border-none text-sm font-medium text-slate-700 focus:ring-0"
+          />
         </div>
       </div>
 
-      {/* Filtros */}
-      <GlobalFilter
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        compareYearOverYear={compareYearOverYear}
-        onCompareChange={setCompareYearOverYear}
-      />
-
-      {/* Tabs */}
-      <TabGroup index={selectedIndex} onIndexChange={setSelectedIndex}>
-        <TabList variant="solid" color="blue">
-          <Tab>Performance Financeira</Tab>
-          <Tab>Gestão de Equipe</Tab>
-          <Tab>Fluxo & Despesas</Tab>
-          <Tab>Conciliação</Tab>
-        </TabList>
-
-        <div className={selectedIndex === 0 ? "block" : "hidden"}>
-          <Grid
-            numItems={1}
-            numItemsSm={2}
-            numItemsLg={4}
-            className="gap-4 mt-6"
-          >
-            <Card decoration="top" decorationColor="blue">
-              <Flex alignItems="start">
-                <div>
-                  <Text className="text-slate-600">Receita Bruta</Text>
-                  <Metric className="mt-2">
-                    {formatCurrency(data.kpis.receitaBruta)}
-                  </Metric>
-                </div>
-                <DollarSign className="w-8 h-8 text-blue-500" />
-              </Flex>
-              <Text className="mt-2 text-xs text-slate-400">
-                {data.kpis.countOs} OS Finalizadas
-              </Text>
-            </Card>
-
-            <Card decoration="top" decorationColor="emerald">
-              <Flex alignItems="start">
-                <div>
-                  <Text className="text-slate-600">Receita Líquida</Text>
-                  <Metric className="mt-2">
-                    {formatCurrency(data.kpis.receitaLiquida)}
-                  </Metric>
-                </div>
-                <TrendingUp className="w-8 h-8 text-emerald-500" />
-              </Flex>
-              <Text className="mt-2 text-xs text-slate-400">
-                Margem: {(data.kpis.margem || 0).toFixed(1)}%
-              </Text>
-            </Card>
-
-            <Card decoration="top" decorationColor="violet">
-              <Flex alignItems="start">
-                <div>
-                  <Text className="text-slate-600">Ticket Médio</Text>
-                  <Metric className="mt-2">
-                    {formatCurrency(data.kpis.ticketMedio)}
-                  </Metric>
-                </div>
-                <Target className="w-8 h-8 text-violet-500" />
-              </Flex>
-              <Text className="mt-2 text-xs text-slate-400">
-                Por ordem de serviço
-              </Text>
-            </Card>
-
-            <Card decoration="top" decorationColor="amber">
-              <Flex alignItems="start">
-                <div>
-                  <Text className="text-slate-600">Taxa de Conversão</Text>
-                  <Metric className="mt-2">
-                    {(data.kpis.taxaConversao || 0).toFixed(1)}%
-                  </Metric>
-                </div>
-                <TrendingUp className="w-8 h-8 text-amber-500" />
-              </Flex>
-              <Text className="mt-2 text-xs text-slate-400">
-                Orçamentos → Serviços
-              </Text>
-            </Card>
-          </Grid>
-
-          {/* KPIs Secundários */}
-          <Grid numItems={1} numItemsSm={2} className="gap-4 mt-4">
-            <Card>
-              <Flex alignItems="start">
-                <div className="flex-1">
-                  <Text className="text-slate-600">
-                    Churn (Clientes Inativos)
-                  </Text>
-                  <Metric className="mt-2 text-red-600">
-                    {data.kpis.churn}
-                  </Metric>
-                  <Text className="mt-1 text-xs text-slate-400">
-                    Sem OS há mais de 180 dias
-                  </Text>
-                </div>
-                <AlertTriangle className="w-8 h-8 text-red-500" />
-              </Flex>
-            </Card>
-
-            <Card>
-              <Flex alignItems="start">
-                <div className="flex-1">
-                  <Text className="text-slate-600">Ponto de Equilíbrio</Text>
-                  <Metric className="mt-2">
-                    {formatCurrency(data.kpis.breakEven)}
-                  </Metric>
-                  <Text className="mt-1 text-xs text-slate-400">
-                    Despesas fixas do período
-                  </Text>
-                </div>
-                <DollarSign className="w-8 h-8 text-slate-500" />
-              </Flex>
-            </Card>
-          </Grid>
-
-          {/* Gráficos */}
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <Title>Evolução Mensal (Composição de Lucro)</Title>
-              <BarChart
-                className="mt-4 h-80"
-                data={data.charts.evolucaoMensal}
-                index="mes"
-                categories={["maoDeObra", "lucroEstoque", "lucroPecasExternas"]}
-                colors={["blue", "emerald", "cyan"]}
-                valueFormatter={formatCurrency}
-                stack={true}
-                yAxisWidth={80}
-              />
-              <div className="mt-4 flex gap-4 text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                  <span>Mão de Obra</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-emerald-500 rounded"></div>
-                  <span>Lucro Estoque</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-cyan-500 rounded"></div>
-                  <span>Lucro Peças Externas</span>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="mt-6">
-              <Title>Faturamento Diário (Últimos dias)</Title>
-              <AreaChart
-                className="h-80 mt-4"
-                data={data.charts.evolucaoDiaria}
-                index="dia"
-                categories={["valor"]}
-                colors={["indigo"]}
-                valueFormatter={formatCurrency}
-                yAxisWidth={80}
-              />
-            </Card>
-
-            <Card>
-              <Title>Receita por Categoria</Title>
-              <DonutChart
-                className="mt-6 h-80"
-                data={data.charts.porCategoria}
-                category="value"
-                index="name"
-                valueFormatter={formatCurrency}
-                colors={["blue", "cyan", "indigo", "violet", "fuchsia"]}
-              />
-            </Card>
-          </div>
-        </div>
-
-        {/* ABA 2: EQUIPE */}
-        <div className={selectedIndex === 1 ? "block" : "hidden"}>
-          <Card className="mt-6">
-            <Title>Ranking de Produtividade da Equipe</Title>
-            <Text className="text-slate-500 mb-4">
-              Análise completa de contribuição por colaborador
-            </Text>
-            <Table className="mt-4">
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell>Colaborador</TableHeaderCell>
-                  <TableHeaderCell className="text-right">
-                    Mão de Obra
-                  </TableHeaderCell>
-                  <TableHeaderCell className="text-right">
-                    Peças Vendidas
-                  </TableHeaderCell>
-                  <TableHeaderCell className="text-right">
-                    Lucro em Peças
-                  </TableHeaderCell>
-                  <TableHeaderCell className="text-right">
-                    Total Contribuição
-                  </TableHeaderCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {data.ranking.equipe.map((colaborador, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                          <span className="text-primary-700 font-bold text-sm">
-                            {idx + 1}
-                          </span>
-                        </div>
-                        <span className="font-medium">{colaborador.nome}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatCurrency(colaborador.totalMaoDeObra)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {colaborador.pecasVendidas} un.
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-emerald-600">
-                      {formatCurrency(colaborador.lucroPecas)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-bold text-primary-700">
-                      {formatCurrency(colaborador.totalContribuicao)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        </div>
-
-        {/* ABA 3: FLUXO & DESPESAS */}
-        <div className={selectedIndex === 2 ? "block" : "hidden"}>
-          <div className="mt-6 space-y-6">
-            {/* Despesas */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <Title>Despesas por Categoria</Title>
-                <DonutChart
-                  className="mt-6 h-64"
-                  data={data.charts.despesasPorCategoria}
-                  category="value"
-                  index="name"
-                  valueFormatter={formatCurrency}
-                  colors={["rose", "orange", "amber", "red", "pink"]}
-                />
-              </Card>
-
-              <Card>
-                <Title>Impacto no Faturamento</Title>
-                <div className="mt-6 space-y-4">
-                  {data.charts.despesasPorCategoria.map((desp, idx) => (
-                    <div key={idx}>
-                      <Flex>
-                        <Text>{desp.name}</Text>
-                        <Text className="font-mono">
-                          {formatCurrency(desp.value)}
-                        </Text>
-                      </Flex>
-                      <ProgressBar
-                        value={desp.percentualFaturamento}
-                        className="mt-2"
-                        color={
-                          desp.percentualFaturamento > 30
-                            ? "red"
-                            : desp.percentualFaturamento > 15
-                              ? "amber"
-                              : "emerald"
-                        }
-                      />
-                      <Text className="text-xs text-slate-400 mt-1">
-                        {desp.percentualFaturamento.toFixed(1)}% do faturamento
-                      </Text>
-                    </div>
-                  ))}
-                </div>
-              </Card>
+      {/* KPI Grid */}
+      <Grid numItems={1} numItemsSm={2} numItemsLg={4} className="gap-6">
+        {/* Faturamento Bruto */}
+        <Card decoration="top" decorationColor="blue">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="bg-blue-100 p-2 rounded-lg">
+              <DollarSign className="text-blue-600" size={24} />
             </div>
-
-            {/* Fornecedores */}
-            <Card>
-              <Title>Ranking de Fornecedores (Top 10)</Title>
-              <BarList
-                data={data.ranking.fornecedores.map((f) => ({
-                  name: `${f.nome} (${f.quantidadeCompras} compras)`,
-                  value: f.totalCompras,
-                }))}
-                className="mt-4"
-                valueFormatter={formatCurrency}
-                color="blue"
-              />
-            </Card>
-
-            {/* Operadoras */}
             <div>
-              <Title className="mb-4">Análise de Operadoras de Cartão</Title>
-              <Grid
-                numItems={1}
-                numItemsSm={2}
-                numItemsLg={3}
-                className="gap-4"
-              >
-                {data.operadoras.map((op, idx) => (
-                  <Card key={idx} decoration="left" decorationColor="blue">
-                    <Text className="font-bold text-slate-900">{op.nome}</Text>
-                    <div className="mt-4 space-y-2">
-                      <Flex>
-                        <Text className="text-xs text-slate-500">Recebido</Text>
-                        <Text className="text-sm font-mono text-emerald-600">
-                          {formatCurrency(op.recebido)}
-                        </Text>
-                      </Flex>
-                      <Flex>
-                        <Text className="text-xs text-slate-500">
-                          A Receber
-                        </Text>
-                        <Text className="text-sm font-mono text-amber-600">
-                          {formatCurrency(op.aReceber)}
-                        </Text>
-                      </Flex>
-                      <Flex>
-                        <Text className="text-xs text-slate-500">
-                          Taxas Descontadas
-                        </Text>
-                        <Text className="text-sm font-mono text-red-600">
-                          {formatCurrency(op.taxasDescontadas)}
-                        </Text>
-                      </Flex>
-                    </div>
-                  </Card>
-                ))}
-              </Grid>
+              <Text>Faturamento Bruto</Text>
+              <Metric>{formatCurrency(kpis.faturamentoBruto)}</Metric>
             </div>
+          </Flex>
+          <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between text-sm">
+            <span className="text-slate-500">Mão de Obra:</span>
+            <span className="font-medium text-slate-700">
+              {formatCurrency(kpis.faturamentoMaoDeObra)}
+            </span>
           </div>
-        </div>
+          <div className="flex justify-between text-sm mt-1">
+            <span className="text-slate-500">Peças:</span>
+            <span className="font-medium text-slate-700">
+              {formatCurrency(kpis.faturamentoPecas)}
+            </span>
+          </div>
+        </Card>
 
-        {/* ABA 4: CONCILIAÇÃO */}
-        <div className={selectedIndex === 3 ? "block" : "hidden"}>
-          <Card className="mt-6">
-            <Title>Extrato do Livro Caixa</Title>
-            <Table className="mt-4">
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell>Data</TableHeaderCell>
-                  <TableHeaderCell>Descrição</TableHeaderCell>
-                  <TableHeaderCell>Categoria</TableHeaderCell>
-                  <TableHeaderCell>Tipo</TableHeaderCell>
-                  <TableHeaderCell className="text-right">
-                    Valor
-                  </TableHeaderCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {data.livroCaixa.map((item) => (
-                  <TableRow key={item.id_livro_caixa}>
-                    <TableCell>
-                      {new Date(item.dt_movimentacao).toLocaleDateString(
-                        "pt-BR",
-                      )}
-                    </TableCell>
-                    <TableCell>{item.descricao}</TableCell>
-                    <TableCell>{item.categoria}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-bold ${
-                          item.tipo_movimentacao === "ENTRADA"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {item.tipo_movimentacao}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatCurrency(Number(item.valor))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        </div>
-      </TabGroup>
+        {/* Lucro Real */}
+        <Card decoration="top" decorationColor="emerald">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="bg-emerald-100 p-2 rounded-lg">
+              <TrendingUp className="text-emerald-600" size={24} />
+            </div>
+            <div>
+              <Text>Lucro Real (Estimado)</Text>
+              <Metric>{formatCurrency(kpis.lucroReal)}</Metric>
+            </div>
+          </Flex>
+          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-2">
+            <Badge color="emerald" size="xs">
+              Margem {profitMargin}%
+            </Badge>
+            <Text className="text-xs">(Após custos e despesas)</Text>
+          </div>
+        </Card>
+
+        {/* Custos Totais */}
+        <Card decoration="top" decorationColor="red">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="bg-red-100 p-2 rounded-lg">
+              <AlertTriangle className="text-red-600" size={24} />
+            </div>
+            <div>
+              <Text>Custos & Despesas</Text>
+              <Metric>
+                {formatCurrency(kpis.custoPecas + kpis.totalDespesas)}
+              </Metric>
+            </div>
+          </Flex>
+          <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between text-sm">
+            <span className="text-slate-500">Peças (Custo):</span>
+            <span className="font-medium text-slate-700">
+              {formatCurrency(kpis.custoPecas)}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm mt-1">
+            <span className="text-slate-500">Despesas Fixas:</span>
+            <span className="font-medium text-slate-700">
+              {formatCurrency(kpis.totalDespesas)}
+            </span>
+          </div>
+        </Card>
+
+        {/* Ponto de Equilíbrio */}
+        <Card decoration="top" decorationColor="amber">
+          <Flex justifyContent="start" className="space-x-4">
+            <div className="bg-amber-100 p-2 rounded-lg">
+              <Target className="text-amber-600" size={24} />
+            </div>
+            <div>
+              <Text>Despesas Fixas (Mês)</Text>
+              <Metric>{formatCurrency(kpis.pontoEquilibrio)}</Metric>
+            </div>
+          </Flex>
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <Text className="text-xs">
+              Break-even Diário:{" "}
+              <b>{formatCurrency(kpis.pontoEquilibrio / 30)}</b>
+            </Text>
+          </div>
+        </Card>
+      </Grid>
+
+      {/* Main Charts Section */}
+      <Grid numItems={1} numItemsLg={3} className="gap-6">
+        {/* Performance Mecânicos */}
+        <Card className="col-span-1 lg:col-span-2">
+          <Title>Performance de Mecânicos (Faturamento Mão de Obra)</Title>
+          <BarChart
+            className="mt-6"
+            data={charts.performanceMecanicos}
+            index="name"
+            categories={["value"]}
+            colors={["blue"]}
+            valueFormatter={(number) => formatCurrency(number)}
+            yAxisWidth={80}
+            showLegend={false}
+          />
+        </Card>
+
+        {/* Revenue Breakdown Donut */}
+        <Card className="col-span-1">
+          <Title>Composição da Receita</Title>
+          <DonutChart
+            className="mt-6"
+            data={revenueBreakdown}
+            category="value"
+            index="name"
+            valueFormatter={(number) => formatCurrency(number)}
+            colors={["cyan", "indigo"]}
+          />
+        </Card>
+      </Grid>
+
+      {/* Secondary Charts */}
+      <Grid numItems={1} numItemsLg={2} className="gap-6">
+        {/* Top Services */}
+        <Card>
+          <Title>Serviços Mais Realizados</Title>
+          <Flex className="mt-4">
+            <Text>Serviço</Text>
+            <Text>Qtd</Text>
+          </Flex>
+          <BarList
+            data={charts.servicosMaisVendidos}
+            className="mt-2"
+            color="indigo"
+          />
+        </Card>
+
+        {/* Expenses Breakdown */}
+        <Card>
+          <Title>Despesas por Categoria</Title>
+          <DonutChart
+            className="mt-6"
+            data={charts.categoriasDespesa}
+            category="value"
+            index="name"
+            valueFormatter={(number) => formatCurrency(number)}
+            colors={["rose", "orange", "amber", "yellow", "slate"]}
+          />
+        </Card>
+      </Grid>
     </div>
   );
 }
@@ -28641,6 +28527,26 @@ export function RelatoriosFinanceirosPage() {
 ================================================================================
 FILE PATH: client\src\providers\AppProvider.tsx
 ================================================================================
+import type { ReactNode } from "react";
+import { MessagesContainer } from "../components/MessagesContainer";
+
+interface AppProviderProps {
+  children: ReactNode;
+}
+
+export function AppProvider({ children }: AppProviderProps) {
+  return (
+    <MessagesContainer>
+      {/* Futuros providers (Auth, Theme, Query) serão aninhados aqui */}
+      {children}
+    </MessagesContainer>
+  );
+}
+
+
+
+================================================================================
+FILE PATH: client\src\services\api.ts
 ================================================================================
 import axios from 'axios';
 
@@ -32945,127 +32851,187 @@ export const upload = multer({
 ================================================================================
 FILE PATH: server\src\controllers\categoriaFinanceira.controller.ts
 ================================================================================
-import { Request, Response } from 'express';
-import { prisma } from '../prisma.js';
+import { Request, Response } from "express";
+import { prisma } from "../prisma.js";
 
 export const getAll = async (req: Request, res: Response) => {
-    try {
-        // Sync: Fetch distinct categories from LivroCaixa that are NOT in CategoriaFinanceira
-        const existingCats = await prisma.categoriaFinanceira.findMany({ select: { nome: true } });
-        const existingNames = new Set(existingCats.map(c => c.nome.toUpperCase()));
+  try {
+    // Sync: Fetch distinct categories from LivroCaixa that are NOT in CategoriaFinanceira
+    const existingCats = await prisma.categoriaFinanceira.findMany({
+      select: { nome: true },
+    });
+    const existingNames = new Set(
+      existingCats.map((c) => c.nome.toUpperCase()),
+    );
 
-        // Get distinct categories used in LivroCaixa
-        const usedCategories = await prisma.livroCaixa.groupBy({
-            by: ['categoria'],
-        });
+    // Get distinct categories used in LivroCaixa
+    const usedCategories = await prisma.livroCaixa.groupBy({
+      by: ["categoria"],
+    });
 
-        const newCategories = usedCategories
-            .map(uc => uc.categoria)
-            .filter(name => name && !existingNames.has(name.toUpperCase()));
+    const newCategories = usedCategories
+      .map((uc) => uc.categoria)
+      .filter((name) => name && !existingNames.has(name.toUpperCase()));
 
-        // Create missing categories
-        if (newCategories.length > 0) {
-            await prisma.categoriaFinanceira.createMany({
-                data: newCategories.map(name => ({
-                    nome: name,
-                    tipo: 'AMBOS' // Default to AMBOS as we don't know for sure
-                })),
-                skipDuplicates: true
-            });
-        }
-
-        const categorias = await prisma.categoriaFinanceira.findMany({
-            orderBy: { nome: 'asc' }
-        });
-        res.json(categorias);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Erro ao buscar categorias' });
+    // Create missing categories
+    if (newCategories.length > 0) {
+      await prisma.categoriaFinanceira.createMany({
+        data: newCategories.map((name) => ({
+          nome: name,
+          tipo: "AMBOS", // Default to AMBOS as we don't know for sure
+        })),
+        skipDuplicates: true,
+      });
     }
+
+    const categorias = await prisma.categoriaFinanceira.findMany({
+      orderBy: { nome: "asc" },
+    });
+    res.json(categorias);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar categorias" });
+  }
 };
 
 export const create = async (req: Request, res: Response) => {
-    try {
-        const { nome, tipo } = req.body;
-        const categoria = await prisma.categoriaFinanceira.create({
-            data: { nome, tipo }
-        });
-        res.status(201).json(categoria);
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao criar categoria' });
-    }
+  try {
+    const { nome, tipo, parentId } = req.body;
+    const categoria = await prisma.categoriaFinanceira.create({
+      data: {
+        nome,
+        tipo,
+        parentId: parentId ? Number(parentId) : null,
+      },
+    });
+    res.status(201).json(categoria);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao criar categoria" });
+  }
 };
 
 export const update = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
-        const { nome, tipo } = req.body;
-        
-        // Also update name in LivroCaixa if name changed? 
-        // Sync: If name changed, we should update LivroCaixa to keep consistency?
-        // Or keep old name in history?
-        // User asked for "sync everything". Updating history seems correct if it's a rename.
-        
-        const oldCat = await prisma.categoriaFinanceira.findUnique({ where: { id_categoria: Number(id) }});
+  try {
+    const { id } = req.params;
+    const { nome, tipo, parentId } = req.body;
 
-        if (oldCat && oldCat.nome !== nome) {
-             // Update references first
-             await prisma.livroCaixa.updateMany({
-                 where: { categoria: oldCat.nome },
-                 data: { categoria: nome }
-             });
-        }
+    // Also update name in LivroCaixa if name changed?
+    // Sync: If name changed, we should update LivroCaixa to keep consistency?
+    // Or keep old name in history?
+    // User asked for "sync everything". Updating history seems correct if it's a rename.
 
-        const categoria = await prisma.categoriaFinanceira.update({
-            where: { id_categoria: Number(id) },
-            data: { nome, tipo }
-        });
-        res.json(categoria);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Erro ao atualizar categoria' });
+    const oldCat = await prisma.categoriaFinanceira.findUnique({
+      where: { id_categoria: Number(id) },
+    });
+
+    if (oldCat && oldCat.nome !== nome) {
+      // Update references first
+      await prisma.livroCaixa.updateMany({
+        where: { categoria: oldCat.nome },
+        data: { categoria: nome },
+      });
     }
+
+    const categoria = await prisma.categoriaFinanceira.update({
+      where: { id_categoria: Number(id) },
+      data: {
+        nome,
+        tipo,
+        parentId: parentId ? Number(parentId) : null,
+      },
+    });
+    res.json(categoria);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao atualizar categoria" });
+  }
 };
 
 export const remove = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
-        const { replacementCategory } = req.body;
-        
-        const categoryToDelete = await prisma.categoriaFinanceira.findUnique({
-             where: { id_categoria: Number(id) }
+  try {
+    const { id } = req.params;
+    const { replacementCategory } = req.body;
+
+    const categoryToDelete = await prisma.categoriaFinanceira.findUnique({
+      where: { id_categoria: Number(id) },
+    });
+
+    if (!categoryToDelete)
+      return res.status(404).json({ error: "Cat not found" });
+
+    // Check compatibility if usage exists
+    const usageCount = await prisma.livroCaixa.count({
+      where: { categoria: categoryToDelete.nome },
+    });
+
+    if (usageCount > 0) {
+      if (!replacementCategory) {
+        const subcategoryCount = await prisma.categoriaFinanceira.count({
+          where: { parentId: Number(id) },
         });
 
-        if (!categoryToDelete) return res.status(404).json({error: 'Cat not found'});
-
-        // Check compatibility if usage exists
-        const usageCount = await prisma.livroCaixa.count({
-             where: { categoria: categoryToDelete.nome }
-        });
-
-        if (usageCount > 0) {
-            if (!replacementCategory) {
-                 return res.status(409).json({ 
-                     error: 'Categoria em uso', 
-                     usageCount,
-                     message: `Esta categoria está sendo usada em ${usageCount} registros. Selecione uma categoria substituta.` 
-                 });
-            }
-
-            // Update all records to new category
-            await prisma.livroCaixa.updateMany({
-                where: { categoria: categoryToDelete.nome },
-                data: { categoria: replacementCategory }
-            });
+        if (subcategoryCount > 0) {
+          return res.status(409).json({
+            error: "Categoria possui subcategorias",
+            message: `Esta categoria possui ${subcategoryCount} subcategorias. Exclua ou mova as subcategorias antes de excluir a categoria pai.`,
+            usageCount: usageCount + subcategoryCount, // Just a rough indicator
+          });
         }
 
-        await prisma.categoriaFinanceira.delete({
-            where: { id_categoria: Number(id) }
+        return res.status(409).json({
+          error: "Categoria em uso",
+          message: `Esta categoria possui ${usageCount} lançamentos vinculados. Selecione uma categoria substituta para prosseguir.`,
+          usageCount,
         });
-        res.status(204).send();
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao deletar categoria' });
+      }
+
+      // Migrar lançamentos
+      const newCat = await prisma.categoriaFinanceira.findFirst({
+        where: { nome: replacementCategory },
+      });
+
+      if (!newCat)
+        return res.status(400).json({ error: "Categoria substituta inválida" });
+
+      await prisma.livroCaixa.updateMany({
+        where: { categoria: categoryToDelete.nome },
+        data: {
+          categoria: newCat.nome,
+          id_categoria: newCat.id_categoria,
+        },
+      });
+
+      await prisma.contasPagar.updateMany({
+        where: { categoria: categoryToDelete.nome },
+        data: {
+          categoria: newCat.nome,
+          id_categoria: newCat.id_categoria,
+        },
+      });
     }
+
+    // Also check for subcategories regardless of usage
+    const subcategoryCount = await prisma.categoriaFinanceira.count({
+      where: { parentId: Number(id) },
+    });
+
+    if (subcategoryCount > 0) {
+      return res.status(409).json({
+        error: "Categoria possui subcategorias",
+        message: `Esta categoria possui ${subcategoryCount} subcategorias.`,
+        usageCount: subcategoryCount,
+      });
+    }
+
+    await prisma.categoriaFinanceira.delete({
+      where: { id_categoria: Number(id) },
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao excluir categoria" });
+  }
 };
 
 
@@ -35405,6 +35371,557 @@ FILE PATH: server\src\controllers\RelatorioController.ts
 import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
 
+export class RelatorioController {
+  async getRelatorioCompleto(req: Request, res: Response) {
+    try {
+      const { startDate, endDate } = req.query;
+
+      // Definição de datas (padrão: mês atual se não informado)
+      const now = new Date();
+      const start = startDate
+        ? new Date(startDate as string)
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = endDate
+        ? new Date(endDate as string)
+        : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+      // --- KPIs PRINCIPAIS ---
+      const osFinalizadas = await prisma.ordemDeServico.findMany({
+        where: {
+          status: "FINALIZADA",
+          updated_at: { gte: start, lte: end },
+        },
+        include: {
+          itens_os: {
+            include: {
+              pecas_estoque: true,
+              pagamentos_peca: true,
+            },
+          },
+          servicos_mao_de_obra: true,
+        },
+      });
+
+      let receitaBruta = 0;
+      let custoPecasTotal = 0;
+      let lucroEstoque = 0;
+      let lucroPecasExternas = 0;
+      let maoDeObraTotal = 0;
+
+      const evolucaoMensal: Record<
+        string,
+        { maoDeObra: number; lucroEstoque: number; lucroPecasExternas: number }
+      > = {};
+      const porCategoria: Record<string, number> = {};
+      const evolucaoDiaria: Record<string, number> = {};
+
+      for (const os of osFinalizadas) {
+        const valorOs = Number(os.valor_final || 0);
+        receitaBruta += valorOs;
+
+        let custoPecasOs = 0;
+        let lucroEstoqueOs = 0;
+        let lucroPecasExternasOs = 0;
+
+        // Calcular custos e lucros por item
+        for (const item of os.itens_os) {
+          const valorVenda = Number(item.valor_venda) * item.quantidade;
+
+          if (item.pecas_estoque) {
+            // PEÇA DE ESTOQUE
+            const custo =
+              Number(item.pecas_estoque.valor_custo) * item.quantidade;
+            custoPecasOs += custo;
+            lucroEstoqueOs += valorVenda - custo;
+          } else {
+            // PEÇA EXTERNA
+            const pagPeca = item.pagamentos_peca[0];
+            if (pagPeca) {
+              const custoReal = Number(pagPeca.custo_real);
+              custoPecasOs += custoReal;
+              lucroPecasExternasOs += valorVenda - custoReal;
+            } else {
+              // Se não tem pagamento registrado, assumir margem zero
+              custoPecasOs += valorVenda;
+            }
+          }
+        }
+
+        custoPecasTotal += custoPecasOs;
+        lucroEstoque += lucroEstoqueOs;
+        lucroPecasExternas += lucroPecasExternasOs;
+
+        // Mão de Obra e Categorias
+        for (const servico of os.servicos_mao_de_obra) {
+          const valorServ = Number(servico.valor);
+          maoDeObraTotal += valorServ;
+          const cat = servico.categoria || "OUTROS";
+          porCategoria[cat] = (porCategoria[cat] || 0) + valorServ;
+        }
+
+        // Evolução Mensal
+        const mesKey = os.updated_at.toISOString().slice(0, 7);
+        if (!evolucaoMensal[mesKey]) {
+          evolucaoMensal[mesKey] = {
+            maoDeObra: 0,
+            lucroEstoque: 0,
+            lucroPecasExternas: 0,
+          };
+        }
+        evolucaoMensal[mesKey].maoDeObra += Number(os.valor_mao_de_obra || 0);
+        evolucaoMensal[mesKey].lucroEstoque += lucroEstoqueOs;
+        evolucaoMensal[mesKey].lucroPecasExternas += lucroPecasExternasOs;
+
+        // Evolução Diária
+        const diaKey = os.updated_at.toISOString().slice(0, 10);
+        evolucaoDiaria[diaKey] =
+          (evolucaoDiaria[diaKey] || 0) + Number(os.valor_final || 0);
+      }
+
+      // Taxas de Cartão (Recebiveis)
+      const idsOs = osFinalizadas.map((o) => o.id_os);
+      const recebiveis = await prisma.recebivelCartao.findMany({
+        where: { id_os: { in: idsOs } },
+      });
+      const taxasCartaoTotal = recebiveis.reduce(
+        (acc, curr) => acc + Number(curr.taxa_aplicada || 0),
+        0,
+      );
+
+      const receitaLiquida = receitaBruta - custoPecasTotal - taxasCartaoTotal;
+      const margem =
+        receitaBruta > 0 ? (receitaLiquida / receitaBruta) * 100 : 0;
+      const ticketMedio =
+        osFinalizadas.length > 0 ? receitaBruta / osFinalizadas.length : 0;
+
+      // --- TAXA DE CONVERSÃO ---
+      const osOrcamentos = await prisma.ordemDeServico.count({
+        where: {
+          status: "ORCAMENTO",
+          dt_abertura: { gte: start, lte: end },
+        },
+      });
+      const taxaConversao =
+        osOrcamentos > 0 ? (osFinalizadas.length / osOrcamentos) * 100 : 0;
+
+      // --- CHURN (Clientes sem OS há 180+ dias) ---
+      const dataLimiteChurn = new Date();
+      dataLimiteChurn.setDate(dataLimiteChurn.getDate() - 180);
+
+      const clientesAtivos = await prisma.cliente.findMany({
+        include: {
+          ordens_de_servico: {
+            orderBy: { dt_abertura: "desc" },
+            take: 1,
+          },
+        },
+      });
+
+      const churn = clientesAtivos.filter((cliente) => {
+        if (cliente.ordens_de_servico.length === 0) return true;
+        const ultimaOS = cliente.ordens_de_servico[0]!;
+        return new Date(ultimaOS.dt_abertura) < dataLimiteChurn;
+      }).length;
+
+      // --- BREAK-EVEN (Despesas Fixas do Período) ---
+      const despesasFixas = await prisma.contasPagar.aggregate({
+        where: {
+          dt_vencimento: { gte: start, lte: end },
+          categoria: {
+            in: ["Ocupação", "Água", "Luz", "Internet", "Telefone"],
+          },
+        },
+        _sum: { valor: true },
+      });
+      const breakEven = Number(despesasFixas._sum.valor || 0);
+
+      // --- RANKING DE EQUIPE (COMPLETO) ---
+      const servicosPorFuncionario = await prisma.servicoMaoDeObra.groupBy({
+        by: ["id_funcionario"],
+        where: {
+          ordem_de_servico: {
+            status: "FINALIZADA",
+            updated_at: { gte: start, lte: end },
+          },
+        },
+        _sum: { valor: true },
+      });
+
+      const funcionarios = await prisma.funcionario.findMany({
+        where: {
+          id_funcionario: {
+            in: servicosPorFuncionario.map((s) => s.id_funcionario),
+          },
+        },
+        include: { pessoa_fisica: { include: { pessoa: true } } },
+      });
+
+      // Calcular peças vendidas e lucro por funcionário
+      const rankingEquipe = await Promise.all(
+        servicosPorFuncionario.map(async (servico) => {
+          const func = funcionarios.find(
+            (f) => f.id_funcionario === servico.id_funcionario,
+          );
+
+          // Buscar OS deste funcionário no período
+          const osDoFuncionario = await prisma.ordemDeServico.findMany({
+            where: {
+              id_funcionario: servico.id_funcionario,
+              status: "FINALIZADA",
+              updated_at: { gte: start, lte: end },
+            },
+            include: {
+              itens_os: {
+                include: {
+                  pecas_estoque: true,
+                  pagamentos_peca: true,
+                },
+              },
+            },
+          });
+
+          let pecasVendidas = 0;
+          let lucroPecas = 0;
+
+          for (const os of osDoFuncionario) {
+            for (const item of os.itens_os) {
+              pecasVendidas += item.quantidade;
+              const valorVenda = Number(item.valor_venda) * item.quantidade;
+
+              if (item.pecas_estoque) {
+                const custo =
+                  Number(item.pecas_estoque.valor_custo) * item.quantidade;
+                lucroPecas += valorVenda - custo;
+              } else {
+                const pagPeca = item.pagamentos_peca[0];
+                if (pagPeca) {
+                  lucroPecas += valorVenda - Number(pagPeca.custo_real);
+                }
+              }
+            }
+          }
+
+          return {
+            nome: func?.pessoa_fisica?.pessoa.nome || "Desconhecido",
+            totalMaoDeObra: Number(servico._sum.valor || 0),
+            pecasVendidas,
+            lucroPecas,
+            totalContribuicao: Number(servico._sum.valor || 0) + lucroPecas,
+          };
+        }),
+      );
+
+      rankingEquipe.sort((a, b) => b.totalContribuicao - a.totalContribuicao);
+
+      // --- RANKING DE FORNECEDORES ---
+      const entradasPorFornecedor = await prisma.entradaEstoque.groupBy({
+        by: ["id_fornecedor"],
+        where: {
+          data_compra: { gte: start, lte: end },
+        },
+        _sum: { valor_total: true },
+        _count: { id_entrada: true },
+      });
+
+      const fornecedores = await prisma.fornecedor.findMany({
+        where: {
+          id_fornecedor: {
+            in: entradasPorFornecedor.map((e) => e.id_fornecedor),
+          },
+        },
+      });
+
+      const rankingFornecedores = entradasPorFornecedor
+        .map((entrada) => {
+          const forn = fornecedores.find(
+            (f) => f.id_fornecedor === entrada.id_fornecedor,
+          );
+          return {
+            nome: forn?.nome || "Desconhecido",
+            totalCompras: Number(entrada._sum.valor_total || 0),
+            quantidadeCompras: entrada._count.id_entrada,
+          };
+        })
+        .sort((a, b) => b.totalCompras - a.totalCompras)
+        .slice(0, 10);
+
+      // --- ANÁLISE DE OPERADORAS ---
+      const recebiveisPorOperadora = await prisma.recebivelCartao.groupBy({
+        by: ["id_operadora", "status"],
+        where: {
+          data_venda: { gte: start, lte: end },
+        },
+        _sum: {
+          valor_liquido: true,
+          taxa_aplicada: true,
+        },
+      });
+
+      const operadoras = await prisma.operadoraCartao.findMany({
+        where: {
+          id_operadora: {
+            in: recebiveisPorOperadora.map((r) => r.id_operadora),
+          },
+        },
+      });
+
+      const analiseOperadoras = operadoras.map((op) => {
+        const recebido = recebiveisPorOperadora
+          .filter(
+            (r) =>
+              r.id_operadora === op.id_operadora && r.status === "RECEBIDO",
+          )
+          .reduce((acc, curr) => acc + Number(curr._sum.valor_liquido || 0), 0);
+
+        const aReceber = recebiveisPorOperadora
+          .filter(
+            (r) =>
+              r.id_operadora === op.id_operadora && r.status === "PENDENTE",
+          )
+          .reduce((acc, curr) => acc + Number(curr._sum.valor_liquido || 0), 0);
+
+        const taxasDescontadas = recebiveisPorOperadora
+          .filter(
+            (r) =>
+              r.id_operadora === op.id_operadora && r.status === "RECEBIDO",
+          )
+          .reduce((acc, curr) => acc + Number(curr._sum.taxa_aplicada || 0), 0);
+
+        return {
+          nome: op.nome,
+          recebido,
+          aReceber,
+          taxasDescontadas,
+        };
+      });
+
+      // --- DESPESAS POR CATEGORIA ---
+      const despesasPorCategoriaRaw = await prisma.contasPagar.groupBy({
+        by: ["categoria"],
+        where: {
+          status: "PAGO",
+          dt_pagamento: { gte: start, lte: end },
+        },
+        _sum: { valor: true },
+      });
+
+      const despesasPorCategoria = despesasPorCategoriaRaw.map((d) => ({
+        name: d.categoria || "Sem Categoria",
+        value: Number(d._sum.valor || 0),
+        percentualFaturamento:
+          receitaBruta > 0
+            ? (Number(d._sum.valor || 0) / receitaBruta) * 100
+            : 0,
+      }));
+
+      // --- LIVRO CAIXA ---
+      const livroCaixa = await prisma.livroCaixa.findMany({
+        where: {
+          dt_movimentacao: { gte: start, lte: end },
+          deleted_at: null,
+        },
+        orderBy: { dt_movimentacao: "desc" },
+        take: 100,
+      });
+
+      return res.json({
+        kpis: {
+          receitaBruta,
+          receitaLiquida,
+          margem,
+          ticketMedio,
+          taxaConversao,
+          churn,
+          breakEven,
+          countOs: osFinalizadas.length,
+        },
+        charts: {
+          evolucaoMensal: Object.entries(evolucaoMensal).map(([mes, vals]) => ({
+            mes,
+            ...vals,
+          })),
+          porCategoria: Object.entries(porCategoria).map(([name, value]) => ({
+            name,
+            value,
+          })),
+          despesasPorCategoria,
+          evolucaoDiaria: Object.entries(evolucaoDiaria)
+            .map(([dia, valor]) => ({
+              dia,
+              valor,
+            }))
+            .sort((a, b) => a.dia.localeCompare(b.dia)),
+        },
+        ranking: {
+          equipe: rankingEquipe,
+          fornecedores: rankingFornecedores,
+        },
+        operadoras: analiseOperadoras,
+        livroCaixa,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Erro ao gerar relatório" });
+    }
+  }
+
+  async getDashboardData(req: Request, res: Response) {
+    try {
+      const { startDate, endDate } = req.query;
+      const now = new Date();
+      const start = startDate
+        ? new Date(startDate as string)
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = endDate
+        ? new Date(endDate as string)
+        : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+      // 1. Fetch Finalized OS
+      const osFinalizadas = await prisma.ordemDeServico.findMany({
+        where: {
+          status: "FINALIZADA",
+          updated_at: { gte: start, lte: end },
+        },
+        include: {
+          itens_os: {
+            include: {
+              pecas_estoque: true,
+              pagamentos_peca: true,
+            },
+          },
+          servicos_mao_de_obra: {
+            include: {
+              funcionario: {
+                include: {
+                  pessoa_fisica: {
+                    include: { pessoa: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // 2. Fetch Fixed Expenses (LivroCaixa SAIDA not linked to Parts/Commissions)
+      const despesas = await prisma.livroCaixa.findMany({
+        where: {
+          tipo_movimentacao: "SAIDA",
+          dt_movimentacao: { gte: start, lte: end },
+        },
+      });
+
+      // Calculate Totals
+      let receitaBruta = 0;
+      let receitaMaoDeObra = 0;
+      let receitaPecas = 0;
+      let custoPecas = 0;
+
+      const performanceMecanicos: Record<string, number> = {};
+      const servicosMaisVendidos: Record<string, number> = {};
+      const categoriasDespesa: Record<string, number> = {};
+
+      for (const os of osFinalizadas) {
+        receitaBruta += Number(os.valor_final || 0);
+
+        // Parts Logic
+        for (const item of os.itens_os) {
+          const vlrVenda = Number(item.valor_venda) * item.quantidade;
+          receitaPecas += vlrVenda;
+
+          if (item.pecas_estoque) {
+            custoPecas +=
+              Number(item.pecas_estoque.valor_custo) * item.quantidade;
+          } else if (item.pagamentos_peca?.[0]) {
+            custoPecas += Number(item.pagamentos_peca[0].custo_real);
+          } else {
+            custoPecas += vlrVenda * 0.7; // Fallback
+          }
+        }
+
+        // Labor Logic
+        for (const serv of os.servicos_mao_de_obra) {
+          const vlrServ = Number(serv.valor);
+          receitaMaoDeObra += vlrServ;
+
+          // Mechanic Perf
+          let mecName = "Outros";
+          if (serv.funcionario) {
+            if (serv.funcionario.nome_fantasia)
+              mecName = serv.funcionario.nome_fantasia;
+            else if (serv.funcionario.pessoa_fisica?.pessoa?.nome)
+              mecName = serv.funcionario.pessoa_fisica.pessoa.nome;
+          }
+
+          performanceMecanicos[mecName] =
+            (performanceMecanicos[mecName] || 0) + vlrServ;
+
+          // Top Services
+          const servName = serv.descricao || "Serviço Geral";
+          servicosMaisVendidos[servName] =
+            (servicosMaisVendidos[servName] || 0) + 1;
+        }
+      }
+
+      // Fixed Expenses
+      let totalDespesas = 0;
+      for (const d of despesas) {
+        const val = Number(d.valor);
+        totalDespesas += val;
+        const cat = d.categoria || "Outros";
+        categoriasDespesa[cat] = (categoriasDespesa[cat] || 0) + val;
+      }
+
+      // 3. KPIs
+      const lucroReal = receitaBruta - custoPecas - totalDespesas;
+      const pontoEquilibrio = totalDespesas;
+
+      // 4. Charts Data structure
+      const rankingMecanicos = Object.entries(performanceMecanicos)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+      const rankingServicos = Object.entries(servicosMaisVendidos)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+      const categoriasChart = Object.entries(categoriasDespesa)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
+
+      return res.json({
+        kpis: {
+          faturamentoBruto: receitaBruta,
+          faturamentoMaoDeObra: receitaMaoDeObra,
+          faturamentoPecas: receitaPecas,
+          lucroReal,
+          pontoEquilibrio,
+          totalDespesas,
+          custoPecas,
+        },
+        charts: {
+          performanceMecanicos: rankingMecanicos,
+          servicosMaisVendidos: rankingServicos,
+          categoriasDespesa: categoriasChart,
+        },
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Erro ao carregar dashboard." });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\RelatorioFinanceiroController.ts
+================================================================================
+import { Request, Response } from "express";
+import { prisma } from "../prisma.js";
+
 export class RelatorioFinanceiroController {
   async getDashboard(req: Request, res: Response) {
     try {
@@ -35415,18 +35932,19 @@ export class RelatorioFinanceiroController {
 
       // --- A. KPIS GERAIS ---
 
-      // Receita: Soma de pagamentos de clientes + Entradas avulsas no caixa
+      // Receita: Apenas LivroCaixa (Fonte Única da Verdade)
+      // Excluir transferências internas e conciliações para evitar duplicidade
       const receitasCaixa = await prisma.livroCaixa.aggregate({
         where: {
           tipo_movimentacao: "ENTRADA",
           dt_movimentacao: { gte: startDate, lte: endDate },
-        },
-        _sum: { valor: true },
-      });
-
-      const pagamentosClientes = await prisma.pagamentoCliente.aggregate({
-        where: {
-          data_pagamento: { gte: startDate, lte: endDate },
+          deleted_at: null,
+          // Excluir transferências internas/conciliações
+          NOT: {
+            categoria: {
+              in: ["CONCILIACAO_CARTAO", "TRANSFERENCIA", "AJUSTE_SALDO"],
+            },
+          },
         },
         _sum: { valor: true },
       });
@@ -35440,12 +35958,8 @@ export class RelatorioFinanceiroController {
         _sum: { valor: true },
       });
 
-      // Consolidação para evitar duplicação (Regra de Negócio Simplificada para MVP)
-      // Idealmente, usaríamos apenas LivroCaixa se ele for a fonte da verdade consolidada.
-      // Aqui somamos tudo para garantir que apareça algo, mas num cenário real refinariamos.
-      const receitaTotal =
-        (Number(receitasCaixa._sum.valor) || 0) +
-        (Number(pagamentosClientes._sum.valor) || 0);
+      // Usar APENAS LivroCaixa como fonte de receita realizada
+      const receitaTotal = Number(receitasCaixa._sum.valor) || 0;
       const despesaTotal = Number(despesasCaixa._sum.valor) || 0;
       const lucroLiquido = receitaTotal - despesaTotal;
       const margemLucro =
@@ -35607,6 +36121,175 @@ export const servicoMaoDeObraController = new ServicoMaoDeObraController();
 ================================================================================
 FILE PATH: server\src\controllers\tipo.controller.ts
 ================================================================================
+import { Request, Response } from 'express';
+import { TipoRepository } from '../repositories/tipo.repository.js';
+
+const repository = new TipoRepository();
+
+export class TipoController {
+  async create(req: Request, res: Response) {
+    try {
+      const tipo = await repository.create(req.body);
+      res.status(201).json(tipo);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create Tipo', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const tipos = await repository.findAll();
+      res.json(tipos);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Tipos' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const tipo = await repository.findById(id);
+      if (!tipo) {
+        return res.status(404).json({ error: 'Tipo not found' });
+      }
+      res.json(tipo);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Tipo' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const tipo = await repository.update(id, req.body);
+      res.json(tipo);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Tipo' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Tipo' });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\veiculo.controller.ts
+================================================================================
+import { Request, Response } from "express";
+import { VeiculoRepository } from "../repositories/veiculo.repository.js";
+
+const repository = new VeiculoRepository();
+
+export class VeiculoController {
+  async create(req: Request, res: Response) {
+    try {
+      const veiculo = await repository.create(req.body);
+      res.status(201).json(veiculo);
+    } catch (error) {
+      res
+        .status(400)
+        .json({ error: "Failed to create Veiculo", details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const veiculos = await repository.findAll();
+      res.json(veiculos);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Veiculos" });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const veiculo = await repository.findById(id);
+      if (!veiculo) {
+        return res.status(404).json({ error: "Veiculo not found" });
+      }
+      res.json(veiculo);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Veiculo" });
+    }
+  }
+
+  async findByPlaca(req: Request, res: Response) {
+    try {
+      const placa = req.params.placa as string;
+      if (!placa) {
+        return res.status(400).json({ error: "Placa required" });
+      }
+      const veiculo = await repository.findByPlaca(placa);
+      // NOTE: We return 404 explicitly if not found to trigger the frontend "Not Found" logic
+      if (!veiculo) {
+        return res.status(404).json({ error: "Veiculo not found" });
+      }
+      res.json(veiculo);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Veiculo by placa" });
+    }
+  }
+
+  async search(req: Request, res: Response) {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return res.json([]);
+      }
+      const veiculos = await repository.search(query);
+      res.json(veiculos);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to search Veiculos" });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const veiculo = await repository.update(id, req.body);
+      res.json(veiculo);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update Veiculo" });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+
+      // Check if vehicle has service orders
+      const veiculoWithOS = await repository.findById(id);
+      if (
+        veiculoWithOS &&
+        veiculoWithOS.ordens_de_servico &&
+        veiculoWithOS.ordens_de_servico.length > 0
+      ) {
+        return res.status(400).json({
+          error:
+            "Não é possível excluir veículo com ordens de serviço cadastradas.",
+          message:
+            "Este veículo possui ordens de serviço associadas. Não é possível excluí-lo.",
+        });
+      }
+
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: "Failed to delete Veiculo" });
+    }
+  }
+}
+
 
 
 ================================================================================
@@ -36770,6 +37453,45 @@ FILE PATH: server\src\repositories\fornecedor.repository.ts
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 
+export class FornecedorRepository {
+  async create(data: Prisma.FornecedorCreateInput) {
+    return await prisma.fornecedor.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.fornecedor.findMany();
+  }
+
+  async findById(id: number) {
+    return await prisma.fornecedor.findUnique({
+      where: { id_fornecedor: id },
+    });
+  }
+
+  async update(id: number, data: Prisma.FornecedorUpdateInput) {
+    return await prisma.fornecedor.update({
+      where: { id_fornecedor: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.fornecedor.delete({
+      where: { id_fornecedor: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\funcionario.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
 export class FuncionarioRepository {
   async create(data: Prisma.FuncionarioCreateInput) {
     return await prisma.funcionario.create({
@@ -37357,27 +38079,73 @@ export class PagamentoPecaRepository {
     });
   }
 
-  async findAll() {
-    return await prisma.pagamentoPeca.findMany({
-      include: {
-        fornecedor: true,
-        item_os: {
-          include: {
-            ordem_de_servico: {
-              include: {
-                veiculo: true,
-                cliente: {
-                  include: {
-                    pessoa_fisica: { include: { pessoa: true } },
-                    pessoa_juridica: { include: { pessoa: true } },
+  async findAll(page: number = 1, limit: number = 50) {
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      prisma.pagamentoPeca.findMany({
+        where: { deleted_at: null },
+        skip,
+        take: limit,
+        orderBy: { data_compra: "desc" },
+        select: {
+          id_pagamento_peca: true,
+          custo_real: true,
+          data_compra: true,
+          data_pagamento_fornecedor: true,
+          pago_ao_fornecedor: true,
+          fornecedor: {
+            select: {
+              id_fornecedor: true,
+              nome: true,
+              nome_fantasia: true,
+            },
+          },
+          item_os: {
+            select: {
+              id_os: true,
+              descricao: true,
+              ordem_de_servico: {
+                select: {
+                  id_os: true,
+                  veiculo: {
+                    select: {
+                      placa: true,
+                      modelo: true,
+                      cor: true,
+                    },
+                  },
+                  cliente: {
+                    select: {
+                      id_cliente: true,
+                      pessoa_fisica: {
+                        select: {
+                          pessoa: { select: { nome: true } },
+                        },
+                      },
+                      pessoa_juridica: {
+                        select: { razao_social: true },
+                      },
+                    },
                   },
                 },
               },
             },
           },
         },
+      }),
+      prisma.pagamentoPeca.count({ where: { deleted_at: null } }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-    });
+    };
   }
 
   async findById(id: number) {
@@ -37453,7 +38221,7 @@ export class PagamentoPecaRepository {
           valor: pagamento.custo_real,
           tipo_movimentacao: "SAIDA",
           categoria: nomeCategoria, // Fallback
-          id_categoria: idCategoria,
+          id_categoria: idCategoria ?? null, // Convert undefined to null
           dt_movimentacao: new Date(),
           origem: "AUTOMATICA",
           id_conta_bancaria: accountId,
@@ -39178,6 +39946,8 @@ relatorioRoutes.get(
   controller.getRelatorioCompleto.bind(controller),
 );
 
+relatorioRoutes.get("/dashboard", controller.getDashboardData.bind(controller));
+
 export { relatorioRoutes };
 
 
@@ -39294,7 +40064,36 @@ const formatDoc = (doc: string) => {
   return doc;
 };
 
+// Masking Helpers
+const maskPhone = (phone: string) => {
+  if (!phone) return "";
+  const cleaned = phone.replace(/\D/g, "");
+  // (11) 98888-1234 -> (11) 9****-1234
+  if (cleaned.length === 11) {
+    return cleaned.replace(/(\d{2})(\d{1})(\d{4})(\d{4})/, "($1) $2****-$4");
+  }
+  // (11) 8888-1234 -> (11) ****-1234
+  if (cleaned.length === 10) {
+    return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, "($1) ****-$3");
+  }
+  return phone;
+};
+
+const maskEmail = (email: string) => {
+  if (!email) return "";
+  const [user, domain] = email.split("@");
+  if (!user || !domain) return email;
+  const maskedUser =
+    user.length > 3 ? user.substring(0, 3) + "***" : user + "***";
+  return `${maskedUser}@${domain}`;
+};
+
 const formatPhone = (phone: string) => {
+  // Keep original formatter for internal use if needed,
+  // but we will use maskPhone for the PDF output where requested.
+  // Or just replace this function?
+  // The requirement is "Implement data masking".
+  // I'll use `maskPhone` in the PDF generation logic.
   if (!phone) return "";
   const cleaned = phone.replace(/\D/g, "");
   if (cleaned.length === 11) {
@@ -39309,7 +40108,7 @@ const formatPhone = (phone: string) => {
 export class DocumentoService {
   async generatePdf(osId: number): Promise<Buffer> {
     try {
-      console.log(`[PDF] Iniciando geração de PDF para OS #${osId}`);
+      console.log(`[PDF] Iniciando geração de PDF para OS Nº ${osId}`);
 
       const os = await prisma.ordemDeServico.findUnique({
         where: { id_os: osId },
@@ -39383,13 +40182,23 @@ export class DocumentoService {
         console.log("[PDF] Nenhum logo configurado");
       }
 
-      const clienteTelefone = formatPhone(os.cliente.telefone_1 || "");
-      const clienteEmail = os.cliente.email || "";
+      // Applied Masking
+      const clienteTelefone = maskPhone(os.cliente.telefone_1 || "");
+      const clienteEmail = maskEmail(os.cliente.email || "");
 
       const docDefinition: any = {
         defaultStyle: {
           font: "Roboto",
           fontSize: 10,
+        },
+        footer: function (currentPage: number, pageCount: number) {
+          return {
+            text: `Página ${currentPage} de ${pageCount} | Documento gerado automaticamente pelo Sistema. Este documento não possui valor fiscal.`,
+            alignment: "center",
+            fontSize: 8,
+            color: "gray",
+            margin: [0, 10, 0, 0],
+          };
         },
         content: [
           // HEADER
@@ -39424,7 +40233,7 @@ export class DocumentoService {
                     color: isOrcamento ? "red" : "black",
                   },
                   {
-                    text: `#${os.id_os.toString().padStart(6, "0")}`,
+                    text: `Nº ${os.id_os.toString().padStart(6, "0")}`,
                     fontSize: 12,
                     bold: true,
                     alignment: "right",
@@ -39592,7 +40401,7 @@ export class DocumentoService {
             ],
           },
 
-          // FOOTER NOTES
+          // FOOTER NOTES (Body notes, separate from page footer)
           { text: "Observações:", bold: true, margin: [0, 20, 0, 2] },
           {
             text:
@@ -39643,7 +40452,7 @@ export class DocumentoService {
         },
         watermark: isOrcamento
           ? {
-              text: "ORÇAMENTO NÃO FINALIZADO",
+              text: "ORÇAMENTO",
               color: "red",
               opacity: 0.1,
               bold: true,

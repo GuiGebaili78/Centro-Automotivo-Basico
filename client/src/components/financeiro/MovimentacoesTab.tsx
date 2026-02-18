@@ -228,8 +228,10 @@ export const MovimentacoesTab = () => {
         });
 
       // 3. Auto Inflows (Payments from Clients)
+      // ONLY show payments that have been consolidated (have livro_caixa relation)
+      // NOTE: Prisma includes livro_caixa OBJECT, not id_livro_caixa scalar
       const inflows = (inflowsRes.data || [])
-        .filter((p: any) => !p.id_livro_caixa) // Prevent duplicates if already in LC
+        .filter((p: any) => p.livro_caixa) // Check if relation exists (object, not FK)
         .map((p: any) => {
           const os = p.ordem_de_servico;
           const veh = os?.veiculo;
@@ -286,7 +288,7 @@ export const MovimentacoesTab = () => {
             id: `in-${p.id_pagamento_cliente}`,
             rawId: p.id_pagamento_cliente,
             date: p.data_pagamento,
-            description: `Recebimento: OS Nº {p.id_os}`,
+            description: `Recebimento: OS Nº ${os?.id_os ?? "?"} - ${veh?.modelo ?? "Veículo"} ${veh?.placa ? `(${veh.placa})` : ""}`,
             type: "IN",
             value: Number(p.valor),
             category: "Receita de Serviços",

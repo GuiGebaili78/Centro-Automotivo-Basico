@@ -201,11 +201,11 @@ export const ExtratoBancarioPage = () => {
       {/* Header */}
       <div className="mb-8 max-w-7xl mx-auto space-y-6">
         <button
-          onClick={() => navigate("/financeiro/livro-caixa")}
+          onClick={() => navigate("/financeiro?tab=contas")}
           className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors font-bold text-sm"
         >
           <ArrowLeft size={16} />
-          Voltar para Gestão Financeira
+          Voltar para Contas Bancárias
         </button>
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-surface p-8 rounded-2xl border border-neutral-200 shadow-sm relative overflow-hidden">
