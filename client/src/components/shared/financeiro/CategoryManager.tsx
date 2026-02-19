@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { api } from "../../services/api";
+import { api } from "../../../services/api";
 import {
   Trash2,
   Plus,
@@ -9,9 +9,9 @@ import {
   Save,
   ArrowRight,
 } from "lucide-react";
-import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
+import { Modal } from "../../ui/Modal";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
 
 interface Category {
   id_categoria: number;

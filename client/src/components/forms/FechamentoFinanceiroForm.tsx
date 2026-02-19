@@ -1,7 +1,12 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
+import { getStatusStyle } from "../../utils/osUtils";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api";
+import type {
+  IOrdemDeServicoDetalhada,
+  IItemOsDetalhado,
+} from "../../types/os.types";
 import {
   Calculator,
   Save,
@@ -17,7 +22,7 @@ import {
 } from "lucide-react";
 import { PagamentoClienteForm } from "./PagamentoClienteForm";
 import { FornecedorForm } from "./FornecedorForm";
-import { LaborManager } from "../os/LaborManager";
+import { LaborManager } from "../shared/os/LaborManager";
 import { Modal } from "../ui/Modal";
 import { StatusBanner } from "../ui/StatusBanner";
 import { Button } from "../ui/Button";
@@ -27,25 +32,6 @@ interface FechamentoFinanceiroFormProps {
   preSelectedOsId?: number | null;
   onSuccess: (newItem: any) => void;
   onCancel: () => void;
-}
-
-interface ItemOS {
-  id_iten: number;
-  id_pecas_estoque?: number;
-  valor_total: number;
-  descricao: string;
-  quantidade: number;
-  codigo_referencia?: string;
-  pecas_estoque?: {
-    valor_custo: number;
-    nome: string;
-  };
-  pagamentos_peca?: {
-    id_pagamento_peca: number;
-    id_fornecedor: number;
-    custo_real: number;
-    pago_ao_fornecedor: boolean;
-  }[];
 }
 
 interface IFornecedor {
@@ -58,53 +44,6 @@ interface ItemFinanceiroState {
   id_fornecedor: string;
   custo_real: string;
   pago_fornecedor: boolean;
-}
-
-interface OSData {
-  id_os: number;
-  dt_abertura: string;
-  status: string;
-  valor_total_cliente: number;
-  valor_mao_de_obra: number;
-  valor_pecas: number;
-  itens_os: ItemOS[];
-  defeito_relatado?: string;
-  diagnostico?: string;
-  cliente: {
-    pessoa_fisica?: { pessoa: { nome: string } };
-    pessoa_juridica?: { nome_fantasia: string };
-    telefone_1?: string;
-  };
-  veiculo: {
-    placa: string;
-    modelo: string;
-    cor: string;
-  };
-  pagamentos_cliente?: {
-    id_pagamento_cliente: number;
-    metodo_pagamento: string;
-    valor: number;
-    data_pagamento: string;
-    bandeira_cartao?: string;
-    codigo_transacao?: string;
-    qtd_parcelas?: number;
-    deleted_at?: string;
-  }[];
-  fechamento_financeiro?: {
-    id_fechamento_financeiro: number;
-  };
-  servicos_mao_de_obra?: {
-    id_servico_mao_de_obra: number;
-    valor: number;
-    funcionario?: {
-      pessoa_fisica?: {
-        pessoa: {
-          nome: string;
-        };
-      };
-      cargo?: string;
-    };
-  }[];
 }
 
 export const FechamentoFinanceiroForm = ({
@@ -123,14 +62,14 @@ export const FechamentoFinanceiroForm = ({
   const [idOs, setIdOs] = useState(
     preSelectedOsId ? String(preSelectedOsId) : "",
   );
-  const [osData, setOsData] = useState<OSData | null>(null);
+  const [osData, setOsData] = useState<IOrdemDeServicoDetalhada | null>(null);
   const [fornecedores, setFornecedores] = useState<IFornecedor[]>([]);
 
   const [itemsState, setItemsState] = useState<
     Record<number, ItemFinanceiroState>
   >({});
   const [showFornecedorModal, setShowFornecedorModal] = useState(false);
-  const [editItem, setEditItem] = useState<ItemOS | null>(null);
+  const [editItem, setEditItem] = useState<IItemOsDetalhado | null>(null);
   const [paymentModal, setPaymentModal] = useState<{
     isOpen: boolean;
     data: any;
@@ -197,11 +136,11 @@ export const FechamentoFinanceiroForm = ({
     setStatusMsg({ type: null, text: "" });
     try {
       const response = await api.get(`/ordem-de-servico/${id}`);
-      const os: OSData = response.data;
+      const os: IOrdemDeServicoDetalhada = response.data;
       setOsData(os);
 
       const initialItemsState: Record<number, ItemFinanceiroState> = {};
-      os.itens_os.forEach((item) => {
+      os.itens_os.forEach((item: IItemOsDetalhado) => {
         const existingPayment =
           item.pagamentos_peca && item.pagamentos_peca.length > 0
             ? item.pagamentos_peca[0]
@@ -307,7 +246,7 @@ export const FechamentoFinanceiroForm = ({
       if (state.custo_real && !isNaN(Number(state.custo_real))) {
         const formatted = Number(state.custo_real).toFixed(2);
         if (formatted !== state.custo_real) {
-          setItemsState((prev) => ({
+          setItemsState((prev: Record<number, ItemFinanceiroState>) => ({
             ...prev,
             [id_iten]: { ...prev[id_iten], custo_real: formatted },
           }));
@@ -369,7 +308,7 @@ export const FechamentoFinanceiroForm = ({
 
     // Recalculate total revenue based on items + labor (since items might have changed)
     const totalItemsRevenue = osData.itens_os.reduce(
-      (acc, item) => acc + Number(item.valor_total),
+      (acc: number, item: IItemOsDetalhado) => acc + Number(item.valor_total),
       0,
     );
     const totalReceita =
@@ -398,7 +337,7 @@ export const FechamentoFinanceiroForm = ({
       // Validação: Verificar se há pagamentos registrados (Receita)
       const totalPago =
         osData.pagamentos_cliente?.reduce(
-          (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
+          (acc: number, p: any) => (p.deleted_at ? acc : acc + Number(p.valor)),
           0,
         ) || 0;
 
@@ -412,45 +351,50 @@ export const FechamentoFinanceiroForm = ({
       }
 
       // 1. Processar Pagamentos (Upsert)
-      const pagamentoPromises = osData.itens_os.map(async (item) => {
-        const st = itemsState[item.id_iten];
+      const pagamentoPromises = osData.itens_os.map(
+        async (item: IItemOsDetalhado) => {
+          const st = itemsState[item.id_iten];
 
-        // Validação de preenchimento dos custos (Ignorar se for peça de estoque)
-        if (
-          (!st ||
-            !st.id_fornecedor ||
-            !st.custo_real ||
-            Number(st.custo_real) <= 0) &&
-          !item.pecas_estoque
-        ) {
-          throw new Error(
-            `Item "${item.descricao}" está sem Fornecedor ou Custo Real definido.`,
-          );
-        }
-
-        // Salvar apenas se NÃO for peca de estoque
-        if (
-          st &&
-          st.id_fornecedor &&
-          Number(st.custo_real) > 0 &&
-          !item.pecas_estoque
-        ) {
-          const payload = {
-            id_item_os: item.id_iten,
-            id_fornecedor: Number(st.id_fornecedor),
-            custo_real: Number(st.custo_real),
-            data_compra: new Date().toISOString(),
-            pago_ao_fornecedor: st.pago_fornecedor,
-          };
-
-          if (st.id_pagamento_peca) {
-            return api.put(`/pagamento-peca/${st.id_pagamento_peca}`, payload);
-          } else {
-            return api.post("/pagamento-peca", payload);
+          // Validação de preenchimento dos custos (Ignorar se for peça de estoque)
+          if (
+            (!st ||
+              !st.id_fornecedor ||
+              !st.custo_real ||
+              Number(st.custo_real) <= 0) &&
+            !item.pecas_estoque
+          ) {
+            throw new Error(
+              `Item "${item.descricao}" está sem Fornecedor ou Custo Real definido.`,
+            );
           }
-        }
-        return null;
-      });
+
+          // Salvar apenas se NÃO for peca de estoque
+          if (
+            st &&
+            st.id_fornecedor &&
+            Number(st.custo_real) > 0 &&
+            !item.pecas_estoque
+          ) {
+            const payload = {
+              id_item_os: item.id_iten,
+              id_fornecedor: Number(st.id_fornecedor),
+              custo_real: Number(st.custo_real),
+              data_compra: new Date().toISOString(),
+              pago_ao_fornecedor: st.pago_fornecedor,
+            };
+
+            if (st.id_pagamento_peca) {
+              return api.put(
+                `/pagamento-peca/${st.id_pagamento_peca}`,
+                payload,
+              );
+            } else {
+              return api.post("/pagamento-peca", payload);
+            }
+          }
+          return null;
+        },
+      );
 
       await Promise.all(pagamentoPromises);
 
@@ -511,23 +455,6 @@ export const FechamentoFinanceiroForm = ({
     osData?.cliente?.pessoa_fisica?.pessoa?.nome ||
     osData?.cliente?.pessoa_juridica?.nome_fantasia ||
     "Cliente";
-
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "FINALIZADA":
-        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-      case "PAGA_CLIENTE":
-        return "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200";
-      case "PRONTO PARA FINANCEIRO":
-        return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
-      case "ABERTA":
-        return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
-      case "EM_ANDAMENTO":
-        return "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200";
-      default:
-        return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
-    }
-  };
 
   return (
     <>
@@ -621,7 +548,7 @@ export const FechamentoFinanceiroForm = ({
                         {getClientName()}
                       </h3>
                       <p className="text-sm font-medium text-gray-500 mt-1">
-                        {osData.cliente.telefone_1 || "Sem telefone"}
+                        {osData.cliente?.telefone_1 || "Sem telefone"}
                       </p>
                     </div>
                   </div>
@@ -636,17 +563,17 @@ export const FechamentoFinanceiroForm = ({
                       </p>
                       <div className="flex items-baseline gap-2">
                         <span className="font-black text-xl text-gray-800 uppercase">
-                          {osData.veiculo.placa}
+                          {osData.veiculo?.placa}
                         </span>
                         <span className="text-sm font-bold text-gray-500 uppercase">
-                          {osData.veiculo.modelo}
+                          {osData.veiculo?.modelo}
                         </span>
                       </div>
-                      {osData.veiculo.cor && (
+                      {osData.veiculo?.cor && (
                         <div className="flex items-center gap-1 mt-1">
                           <div className="w-2 h-2 rounded-full bg-gray-400" />
                           <span className="text-xs font-bold text-gray-500 uppercase">
-                            {osData.veiculo.cor}
+                            {osData.veiculo?.cor}
                           </span>
                         </div>
                       )}
@@ -755,7 +682,7 @@ export const FechamentoFinanceiroForm = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {osData.itens_os.map((item) => (
+                  {osData.itens_os.map((item: IItemOsDetalhado) => (
                     <tr
                       key={item.id_iten}
                       className="hover:bg-gray-50/50 transition-colors group"
@@ -803,7 +730,7 @@ export const FechamentoFinanceiroForm = ({
                             onBlur={() => handleItemBlur(item.id_iten)}
                           >
                             <option value="">-- Selecione --</option>
-                            {fornecedores.map((f) => (
+                            {fornecedores.map((f: IFornecedor) => (
                               <option
                                 key={f.id_fornecedor}
                                 value={f.id_fornecedor}

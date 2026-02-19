@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { api } from "../../services/api";
-import type { IItensOs } from "../../types/backend"; // Assuming this type exists or will be used
+import { OsItemsService } from "../../services/osItems.service";
 import { toast } from "react-toastify";
 
 export interface NewItemState {
@@ -24,8 +23,8 @@ export const useOsItems = (osId: string | undefined) => {
     if (!osId) return;
     setLoading(true);
     try {
-      const response = await api.get(`/itens-os/os/${osId}`);
-      setItems(response.data);
+      const data = await OsItemsService.getByOsId(Number(osId));
+      setItems(data);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar itens.");
@@ -46,11 +45,11 @@ export const useOsItems = (osId: string | undefined) => {
     setIsSearching(true);
     try {
       const [stockRes, historyRes] = await Promise.all([
-        api.get(`/pecas-estoque/search?q=${query}`),
-        api.get(`/itens-os/search/desc?q=${query}`),
+        OsItemsService.searchStock(query),
+        OsItemsService.search(query),
       ]);
 
-      const historyFormatted = historyRes.data.map((h: any) => ({
+      const historyFormatted = historyRes.map((h: any) => ({
         id_pecas_estoque: null,
         nome: h.descricao,
         valor_venda: h.valor_venda,
@@ -58,7 +57,7 @@ export const useOsItems = (osId: string | undefined) => {
         isHistory: true,
       }));
 
-      const combined = [...stockRes.data, ...historyFormatted];
+      const combined = [...stockRes, ...historyFormatted];
       // Dedup
       const unique = combined.filter(
         (v, i, a) => a.findIndex((t) => t.nome === v.nome) === i,
@@ -90,7 +89,7 @@ export const useOsItems = (osId: string | undefined) => {
           : null,
       };
 
-      await api.post("/itens-os", payload);
+      await OsItemsService.create(payload);
       toast.success("Item adicionado!");
       loadItems();
       return true;
@@ -102,7 +101,7 @@ export const useOsItems = (osId: string | undefined) => {
 
   const updateItem = async (itemId: number, itemData: any) => {
     try {
-      await api.put(`/itens-os/${itemId}`, {
+      await OsItemsService.update(itemId, {
         descricao: itemData.descricao,
         quantidade: Number(itemData.quantidade),
         valor_venda: Number(itemData.valor_venda),
@@ -126,7 +125,7 @@ export const useOsItems = (osId: string | undefined) => {
 
   const deleteItem = async (itemId: number) => {
     try {
-      await api.delete(`/itens-os/${itemId}`);
+      await OsItemsService.delete(itemId);
       loadItems();
       toast.success("Item removido.");
       return true;
@@ -138,10 +137,10 @@ export const useOsItems = (osId: string | undefined) => {
 
   const checkStockAvailability = async (id_pecas_estoque: string | number) => {
     try {
-      const res = await api.get(
-        `/pecas-estoque/${id_pecas_estoque}/availability`,
+      const data = await OsItemsService.checkAvailability(
+        Number(id_pecas_estoque),
       );
-      return res.data;
+      return data;
     } catch (e) {
       console.error(e);
       return null;
@@ -159,5 +158,6 @@ export const useOsItems = (osId: string | undefined) => {
     deleteItem,
     checkStockAvailability,
     refetch: loadItems,
+    isSearching,
   };
 };

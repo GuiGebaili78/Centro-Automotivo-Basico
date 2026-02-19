@@ -1,6 +1,6 @@
 import { DollarSign, CheckCircle, BadgeCheck } from "lucide-react";
-import { Button } from "../ui/Button";
-import { formatCurrency } from "../../utils/formatCurrency"; // Adjust path if needed
+import { Button } from "../../ui/Button";
+import { formatCurrency } from "../../../utils/formatCurrency"; // Adjust path if needed
 
 interface OsTotalsSectionProps {
   totalParts: number;

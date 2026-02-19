@@ -1,5 +1,5 @@
 import { Edit } from "lucide-react";
-import type { ICliente } from "../../types/backend";
+import type { ICliente } from "../../../types/backend";
 import { useNavigate } from "react-router-dom";
 
 interface OsClientInfoProps {

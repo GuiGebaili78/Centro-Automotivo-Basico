@@ -1,8 +1,8 @@
-import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
+import { Modal } from "../../ui/Modal";
+import { Button } from "../../ui/Button";
 import { Calendar, Wrench, FileText } from "lucide-react";
 
-import { OsStatus } from "../../types/os.types";
+import { OsStatus } from "../../../types/os.types";
 
 interface OsCreationModalProps {
   isOpen: boolean;

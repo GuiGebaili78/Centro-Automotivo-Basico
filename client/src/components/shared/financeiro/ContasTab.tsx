@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
-import { formatCurrency } from "../../utils/formatCurrency";
+import { formatCurrency } from "../../../utils/formatCurrency";
 import { useNavigate } from "react-router-dom";
-import { api } from "../../services/api";
+import { api } from "../../../services/api";
 import { Plus, Landmark, Eye, EyeOff, FileText, Edit } from "lucide-react";
-import type { IContaBancaria } from "../../types/backend";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
-import { Modal } from "../ui/Modal";
-import { ActionButton } from "../ui/ActionButton";
-import { ConfirmModal } from "../ui/ConfirmModal";
+import type { IContaBancaria } from "../../../types/backend";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
+import { Modal } from "../../ui/Modal";
+import { ActionButton } from "../../ui/ActionButton";
+import { ConfirmModal } from "../../ui/ConfirmModal";
 import { toast } from "react-toastify";
 
 export const ContasTab = () => {

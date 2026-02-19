@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   ConfiguracaoService,
   type Configuracao,
-} from "../services/ConfiguracaoService";
+} from "../../services/ConfiguracaoService";
 import {
   Wrench,
   Package,

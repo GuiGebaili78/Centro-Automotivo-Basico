@@ -13,17 +13,17 @@ import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
-import { LaborManager } from "../components/os/LaborManager";
-import { DocumentoModal } from "../components/ui/DocumentoModal";
+import { LaborManager } from "../components/shared/os/LaborManager";
+import { DocumentoModal } from "../components/shared/DocumentoModal";
 import { PagamentoClienteForm } from "../components/forms/PagamentoClienteForm";
 
 // Subcomponents
-import { OsHeader } from "../components/os/OsHeader";
-import { OsVehicleInfo } from "../components/os/OsVehicleInfo";
-import { OsClientInfo } from "../components/os/OsClientInfo";
-import { OsDiagnosis } from "../components/os/OsDiagnosis";
-import { OsItemsSection } from "../components/os/OsItemsSection";
-import { OsTotalsSection } from "../components/os/OsTotalsSection";
+import { OsHeader } from "../components/shared/os/OsHeader";
+import { OsVehicleInfo } from "../components/shared/os/OsVehicleInfo";
+import { OsClientInfo } from "../components/shared/os/OsClientInfo";
+import { OsDiagnosis } from "../components/shared/os/OsDiagnosis";
+import { OsItemsSection } from "../components/shared/os/OsItemsSection";
+import { OsTotalsSection } from "../components/shared/os/OsTotalsSection";
 
 // Icons
 import { Wrench, Edit } from "lucide-react";
@@ -172,26 +172,6 @@ export const OrdemDeServicoDetalhePage = () => {
     }
   };
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case OsStatus.FINALIZADA:
-        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-      case "PAGA_CLIENTE":
-        return "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200";
-      case OsStatus.FINANCEIRO:
-      case "PRONTO PARA FINANCEIRO":
-        return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
-      case OsStatus.ABERTA:
-        return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
-      case OsStatus.AGENDAMENTO:
-        return "bg-purple-100 text-purple-700 ring-1 ring-purple-200";
-      case OsStatus.ORCAMENTO:
-        return "bg-orange-100 text-orange-700 ring-1 ring-orange-200";
-      default:
-        return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
-    }
-  };
-
   if (loadingOs || !os) {
     return (
       <div className="p-8 text-center text-neutral-500">
@@ -208,7 +188,6 @@ export const OrdemDeServicoDetalhePage = () => {
           onBack={handleBack}
           onPrint={() => setDocumentModalOpen(true)}
           onOpenOsNow={openOsNow}
-          getStatusStyle={getStatusStyle}
         />
       }
       subtitle="Gerencie os detalhes, peças e serviços desta Ordem de Serviço."

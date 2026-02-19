@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { formatCurrency } from "../../utils/formatCurrency";
-import { api } from "../../services/api";
+import { formatCurrency } from "../../../utils/formatCurrency";
+import { api } from "../../../services/api";
 import {
   Calendar,
   CheckCircle,
@@ -9,10 +9,10 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import type { IRecebivelCartao } from "../../types/backend";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
-import { Modal } from "../ui/Modal";
+import type { IRecebivelCartao } from "../../../types/backend";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
+import { Modal } from "../../ui/Modal";
 import { toast } from "react-toastify";
 
 export const RecebiveisTab = () => {
@@ -230,14 +230,6 @@ export const RecebiveisTab = () => {
     (acc, r) => acc + Number(r.valor_liquido),
     0,
   );
-
-  const countPendente = originalData.filter(
-    (r) => r.status === "PENDENTE",
-  ).length;
-  const countRecebido = originalData.filter(
-    (r) => r.status === "RECEBIDO",
-  ).length;
-  const countTotal = originalData.length;
 
   // Filter Logic (Applied inside component for now, or use Memo if heavy)
   const filteredData = useMemo(() => {

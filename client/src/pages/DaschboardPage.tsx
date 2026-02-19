@@ -72,9 +72,10 @@ const StatCard = ({
 );
 
 import { OsStatus } from "../types/os.types";
-import { UnifiedSearch } from "../components/dashboard/UnifiedSearch";
-import { OsCreationModal } from "../components/os/OsCreationModal";
-import { DashboardCalendar } from "../components/dashboard/DashboardCalendar";
+import { getStatusStyle } from "../utils/osUtils";
+import { UnifiedSearch } from "../components/shared/dashboard/UnifiedSearch";
+import { OsCreationModal } from "../components/shared/os/OsCreationModal";
+import { DashboardCalendar } from "../components/shared/dashboard/DashboardCalendar";
 
 // ... existing imports ...
 
@@ -318,24 +319,6 @@ export function DaschboardPage() {
         : new Date(b.dt_abertura).getTime();
       return dateB - dateA;
     });
-  };
-
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case OsStatus.FINALIZADA:
-        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-      case OsStatus.FINANCEIRO:
-      case "PRONTO PARA FINANCEIRO":
-        return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
-      case OsStatus.ABERTA:
-        return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
-      case OsStatus.AGENDAMENTO:
-        return "bg-purple-100 text-purple-700 ring-1 ring-purple-200";
-      case OsStatus.ORCAMENTO:
-        return "bg-orange-100 text-orange-700 ring-1 ring-orange-200";
-      default:
-        return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
-    }
   };
 
   const filteredServices = getFilteredRecentServices();

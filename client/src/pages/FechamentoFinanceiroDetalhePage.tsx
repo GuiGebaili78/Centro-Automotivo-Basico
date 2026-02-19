@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, useBlocker } from "react-router-dom";
 import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
+import { getStatusStyle } from "../utils/osUtils";
 import {
   Save,
   Plus,
@@ -15,7 +16,7 @@ import {
 } from "lucide-react";
 import { PagamentoClienteForm } from "../components/forms/PagamentoClienteForm";
 import { FornecedorForm } from "../components/forms/FornecedorForm";
-import { LaborManager } from "../components/os/LaborManager";
+import { LaborManager } from "../components/shared/os/LaborManager";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
 import { ActionButton } from "../components/ui/ActionButton";
@@ -472,23 +473,6 @@ export const FechamentoFinanceiroDetalhePage = () => {
     osData?.cliente?.pessoa_fisica?.pessoa?.nome ||
     osData?.cliente?.pessoa_juridica?.nome_fantasia ||
     "Cliente";
-
-  const getStatusStyle = (st: string) => {
-    switch (st) {
-      case "FINALIZADA":
-        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-      case "PAGA_CLIENTE":
-        return "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200";
-      case "PRONTO PARA FINANCEIRO":
-        return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
-      case "ABERTA":
-        return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
-      case "EM_ANDAMENTO":
-        return "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200";
-      default:
-        return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
-    }
-  };
 
   // --- RENDER ---
   if (fetchingOs)

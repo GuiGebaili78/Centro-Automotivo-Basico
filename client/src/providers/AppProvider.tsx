@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { MessagesContainer } from "../components/MessagesContainer";
+import { MessagesContainer } from "../components/ui/MessagesContainer";
 
 interface AppProviderProps {
   children: ReactNode;

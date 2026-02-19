@@ -1,7 +1,7 @@
 import { ArrowLeft, CheckCircle, Printer, Save } from "lucide-react";
-import { Button } from "../ui/Button";
-import type { IOrdemDeServico } from "../../types/backend";
-// Actually I should remove it.
+import { Button } from "../../ui/Button";
+import type { IOrdemDeServico } from "../../../types/backend";
+import { getStatusStyle } from "../../../utils/osUtils";
 
 interface OsHeaderProps {
   os: IOrdemDeServico;
@@ -9,7 +9,6 @@ interface OsHeaderProps {
   onPrint: () => void;
   onOpenOsNow: () => void;
   onSave?: () => void; // Optional save shortcut
-  getStatusStyle: (status: string) => string;
 }
 
 export const OsHeader = ({
@@ -18,7 +17,6 @@ export const OsHeader = ({
   onPrint,
   onOpenOsNow,
   onSave,
-  getStatusStyle,
 }: OsHeaderProps) => {
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">

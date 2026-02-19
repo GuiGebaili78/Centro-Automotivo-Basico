@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, User, Car, Plus, Loader2 } from "lucide-react";
-import { api } from "../../services/api";
-import { Button } from "../ui/Button";
+import { api } from "../../../services/api";
+import { Button } from "../../ui/Button";
 
 interface SearchResult {
   type: "cliente_veiculo";

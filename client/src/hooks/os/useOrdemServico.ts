@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { api } from "../../services/api";
+import { OsService } from "../../services/os.service";
 import type { IOrdemDeServico } from "../../types/backend";
 import { toast } from "react-toastify";
 
@@ -12,8 +12,8 @@ export const useOrdemServico = (id: string | undefined) => {
     if (!id) return;
     setLoading(true);
     try {
-      const response = await api.get(`/ordem-de-servico/${id}`);
-      setOs(response.data);
+      const data = await OsService.getById(Number(id));
+      setOs(data);
       setError(null);
     } catch (err) {
       console.error(err);
@@ -35,7 +35,7 @@ export const useOrdemServico = (id: string | undefined) => {
     setOs((prev) => (prev ? { ...prev, [field]: value } : null));
 
     try {
-      await api.put(`/ordem-de-servico/${os.id_os}`, { [field]: value });
+      await OsService.update(os.id_os, { [field]: value });
     } catch (error) {
       console.error(error);
       toast.error("Erro ao salvar alteração.");

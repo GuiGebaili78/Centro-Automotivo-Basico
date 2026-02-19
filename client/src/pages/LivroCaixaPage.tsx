@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { MovimentacoesTab } from "../components/financeiro/MovimentacoesTab";
-import { ContasTab } from "../components/financeiro/ContasTab";
-import { OperadorasTab } from "../components/financeiro/OperadorasTab";
-import { RecebiveisTab } from "../components/financeiro/RecebiveisTab";
+import { MovimentacoesTab } from "../components/shared/financeiro/MovimentacoesTab";
+import { ContasTab } from "../components/shared/financeiro/ContasTab";
+import { OperadorasTab } from "../components/shared/financeiro/OperadorasTab";
+import { RecebiveisTab } from "../components/shared/financeiro/RecebiveisTab";
 import { PageLayout } from "../components/ui/PageLayout";
 
 export const LivroCaixaPage = () => {

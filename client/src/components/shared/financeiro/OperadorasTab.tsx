@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
-import { api } from "../../services/api";
+import { api } from "../../../services/api";
 import { Plus, CreditCard, Trash2, Edit } from "lucide-react";
-import type { IOperadoraCartao, IContaBancaria } from "../../types/backend";
+import type {
+  IOperadoraCartao,
+  IContaBancaria,
+  ITaxaCartao,
+} from "../../../types/backend";
 
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
-import { Modal } from "../ui/Modal";
-import { ActionButton } from "../ui/ActionButton";
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
+import { Modal } from "../../ui/Modal";
+import { ActionButton } from "../../ui/ActionButton";
+import { ConfirmModal } from "../../ui/ConfirmModal";
 import { toast } from "react-toastify";
 
 export const OperadorasTab = () => {
@@ -384,7 +388,8 @@ export const OperadorasTab = () => {
               {/* Dynamic 2x to 18x */}
               {Array.from({ length: 17 }, (_, i) => i + 2).map((num) => {
                 const existingTaxa = formData.taxas_cartao?.find(
-                  (t) => t.num_parcelas === num && t.modalidade === "CREDITO",
+                  (t: ITaxaCartao) =>
+                    t.num_parcelas === num && t.modalidade === "CREDITO",
                 );
 
                 return (

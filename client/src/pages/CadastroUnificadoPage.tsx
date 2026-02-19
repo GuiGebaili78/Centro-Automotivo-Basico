@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api } from "../services/api";
-import { formatNameTitleCase, normalizePlate } from "../utils/normalize";
+import { normalizePlate } from "../utils/normalize";
 import { toast } from "react-toastify";
 import {
-  User,
   Car,
   CheckCircle,
   Save,
@@ -12,12 +10,7 @@ import {
   Plus,
   Trash2,
   Edit,
-  Search,
-  Mail,
-  Phone,
   Hash,
-  MapPin,
-  Building2,
   Calendar,
   Palette,
 } from "lucide-react";
@@ -29,17 +22,12 @@ import type { FormEvent } from "react";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
-import { OsCreationModal } from "../components/os/OsCreationModal";
+import { OsCreationModal } from "../components/shared/os/OsCreationModal";
+import { ClienteDataForm } from "../components/forms/ClienteDataForm";
 
-interface IVeiculo {
-  id_veiculo: number;
-  placa: string;
-  marca: string;
-  modelo: string;
-  cor: string;
-  ano_modelo: string;
-  id_cliente: number;
-}
+import { ClienteService } from "../services/cliente.service";
+import { VeiculoService } from "../services/veiculo.service";
+import type { IVeiculo } from "../types/backend";
 
 export const CadastroUnificadoPage = () => {
   const navigate = useNavigate();
@@ -48,9 +36,7 @@ export const CadastroUnificadoPage = () => {
 
   const [loading, setLoading] = useState(false);
 
-  // Vehicle Automation States
-  // Removed vehicle automation states and logic
-
+  // --- Client State ---
   const [tipoPessoa, setTipoPessoa] = useState<"PF" | "PJ">("PF");
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
@@ -68,13 +54,18 @@ export const CadastroUnificadoPage = () => {
   const [cidade, setCidade] = useState("São Paulo");
   const [estado, setEstado] = useState("SP");
   const [cep, setCep] = useState("");
+
+  // --- Vehicle State ---
   const [placa, setPlaca] = useState("");
   const [marca, setMarca] = useState("");
   const [modelo, setModelo] = useState("");
   const [cor, setCor] = useState("");
   const [anoModelo, setAnoModelo] = useState("");
   const [combustivel, setCombustivel] = useState("Flex");
+  const [chassi, setChassi] = useState("");
   const [veiculos, setVeiculos] = useState<IVeiculo[]>([]);
+
+  // Modals
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<IVeiculo | null>(null);
   const [confirmDeleteVehicle, setConfirmDeleteVehicle] = useState<
@@ -91,6 +82,7 @@ export const CadastroUnificadoPage = () => {
   } | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
+  const vehicleInputRef = useRef<HTMLInputElement>(null);
 
   // Initial Load (Edit Mode)
   useEffect(() => {
@@ -104,8 +96,7 @@ export const CadastroUnificadoPage = () => {
   const loadClienteData = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/cliente/${clienteId}`);
-      const data = response.data;
+      const data = await ClienteService.getById(Number(clienteId));
 
       // Fill Client Data
       setTelefone(data.telefone_1 || "");
@@ -117,7 +108,7 @@ export const CadastroUnificadoPage = () => {
       setBairro(data.bairro || "");
       setCidade(data.cidade || "");
       setEstado(data.estado || "");
-      setCep(data.cep || "");
+      setCep(data.cep || ""); // Not in response sometimes? backend fields check required
 
       if (data.pessoa_fisica) {
         setTipoPessoa("PF");
@@ -171,12 +162,11 @@ export const CadastroUnificadoPage = () => {
     setLoading(true);
 
     try {
-      // 1. Save/Update Client
       let finalClientId = clienteId ? Number(clienteId) : null;
 
       if (isEditMode && finalClientId) {
         // UPDATE CLIENT
-        const clientePayload = {
+        await ClienteService.update(finalClientId, {
           telefone_1: telefone,
           telefone_2: telefone2,
           email,
@@ -187,49 +177,19 @@ export const CadastroUnificadoPage = () => {
           cidade,
           estado,
           cep,
-          tipo_pessoa: tipoPessoa === "PF" ? 1 : 2, // Garantir envio correto
-        };
-        await api.put(`/cliente/${finalClientId}`, clientePayload);
+          tipo_pessoa: tipoPessoa === "PF" ? 1 : 2,
+        });
         toast.success("Dados atualizados com sucesso!");
       } else {
-        // CREATE CLIENT
-        const pessoaPayload = {
-          nome: formatNameTitleCase(tipoPessoa === "PF" ? nome : razaoSocial),
-          genero: null,
-          dt_nascimento: null,
-          obs: "",
-        };
-        const pessoaRes = await api.post("/pessoa", pessoaPayload);
-        const idPessoa = pessoaRes.data.id_pessoa;
-
-        let fkId = null;
-        let fkField = "";
-        if (tipoPessoa === "PF") {
-          const pfPayload = {
-            id_pessoa: idPessoa,
-            cpf: cpf ? cpf.replace(/\D/g, "") : null,
-          };
-          const pfRes = await api.post("/pessoa-fisica", pfPayload);
-          fkId = pfRes.data.id_pessoa_fisica;
-          fkField = "id_pessoa_fisica";
-        } else {
-          const pjPayload = {
-            id_pessoa: idPessoa,
-            razao_social: formatNameTitleCase(razaoSocial),
-            nome_fantasia: nomeFantasia
-              ? formatNameTitleCase(nomeFantasia)
-              : null,
-            cnpj: cnpj ? cnpj.replace(/\D/g, "") : null,
-            inscricao_estadual: ie,
-          };
-          const pjRes = await api.post("/pessoa-juridica", pjPayload);
-          fkId = pjRes.data.id_pessoa_juridica;
-          fkField = "id_pessoa_juridica";
-        }
-
-        const clientePayload = {
-          [fkField]: fkId,
+        // CREATE CLIENT FULL
+        const newClient = await ClienteService.createFull({
           tipo_pessoa: tipoPessoa === "PF" ? 1 : 2,
+          nome,
+          razao_social: razaoSocial,
+          nome_fantasia: nomeFantasia,
+          cpf,
+          cnpj,
+          inscricao_estadual: ie,
           telefone_1: telefone,
           telefone_2: telefone2,
           email,
@@ -240,12 +200,11 @@ export const CadastroUnificadoPage = () => {
           cidade,
           estado,
           cep,
-        };
-        const clienteRes = await api.post("/cliente", clientePayload);
-        finalClientId = clienteRes.data.id_cliente;
+        });
+        finalClientId = newClient.id_cliente;
       }
 
-      // 2. Create Vehicle
+      // 2. Create Vehicle if provided
       let finalVehicleId = null;
       if (!isEditMode && finalClientId && (placa || modelo)) {
         const vehiclePayload = {
@@ -256,14 +215,13 @@ export const CadastroUnificadoPage = () => {
           cor,
           ano_modelo: anoModelo,
           combustivel,
-          chassi: "",
+          chassi,
         };
-        const vehicleRes = await api.post("/veiculo", vehiclePayload);
-        finalVehicleId = vehicleRes.data.id_veiculo;
+        const newVehicle = await VeiculoService.create(vehiclePayload);
+        finalVehicleId = newVehicle.id_veiculo;
       }
 
       // 3. Redirect Logic
-      // 3. Redirect Logic (Intercepted by Decision Modal)
       if (!isEditMode && finalClientId) {
         toast.success("Cadastro realizado! O que deseja fazer?");
 
@@ -289,7 +247,7 @@ export const CadastroUnificadoPage = () => {
   const handleDeleteVehicle = async () => {
     if (!confirmDeleteVehicle) return;
     try {
-      await api.delete(`/veiculo/${confirmDeleteVehicle}`);
+      await VeiculoService.delete(confirmDeleteVehicle);
       setVeiculos((prev) =>
         prev.filter((v) => v.id_veiculo !== confirmDeleteVehicle),
       );
@@ -328,171 +286,45 @@ export const CadastroUnificadoPage = () => {
         onSubmit={handleSave}
         className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start"
       >
-        {/* --- COLUNA ESQUERDA: CLIENTE --- */}
+        {/* --- COLUNA ESQUERDA: CLIENTE FORM COMPONENT --- */}
         <div className="space-y-6">
-          <div className="bg-neutral-25 p-6 rounded-2xl border border-neutral-200 shadow-sm space-y-6">
-            <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
-              <div className="bg-primary-100 p-2 rounded-lg text-primary-600">
-                <User size={20} />
-              </div>
-              <h2 className="font-bold text-lg text-neutral-800">
-                Dados do Cliente
-              </h2>
-            </div>
-
-            {/* Tipo Pessoa Switch */}
-            <div className="flex bg-neutral-100 p-1 rounded-lg w-fit">
-              <button
-                type="button"
-                onClick={() => !isEditMode && setTipoPessoa("PF")}
-                disabled={isEditMode}
-                className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${tipoPessoa === "PF" ? "bg-neutral-25 shadow text-primary-600" : "text-neutral-500"} ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                Pessoa Física
-              </button>
-              <button
-                type="button"
-                onClick={() => !isEditMode && setTipoPessoa("PJ")}
-                disabled={isEditMode}
-                className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${tipoPessoa === "PJ" ? "bg-neutral-25 shadow text-primary-600" : "text-neutral-500"} ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                Pessoa Jurídica
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {tipoPessoa === "PF" ? (
-                <>
-                  <Input
-                    label="Nome Completo *"
-                    icon={User}
-                    ref={nameRef}
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                    placeholder="Nome do cliente"
-                    required
-                    disabled={isEditMode}
-                  />
-                  <Input
-                    label="CPF"
-                    icon={Hash}
-                    value={cpf}
-                    onChange={(e) => setCpf(e.target.value)}
-                    placeholder="000.000.000-00"
-                    disabled={isEditMode}
-                  />
-                </>
-              ) : (
-                <>
-                  <Input
-                    label="Razão Social *"
-                    icon={Building2}
-                    ref={nameRef}
-                    value={razaoSocial}
-                    onChange={(e) => setRazaoSocial(e.target.value)}
-                    placeholder="Nome da Empresa"
-                    required
-                    disabled={isEditMode}
-                  />
-                  <Input
-                    label="Nome Fantasia"
-                    value={nomeFantasia}
-                    onChange={(e) => setNomeFantasia(e.target.value)}
-                    placeholder="Nome Comercial"
-                    disabled={isEditMode}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="CNPJ"
-                      value={cnpj}
-                      onChange={(e) => setCnpj(e.target.value)}
-                      placeholder="00.000.000/0000-00"
-                    />
-                    <Input
-                      label="IE"
-                      value={ie}
-                      onChange={(e) => setIe(e.target.value)}
-                      placeholder="Inscrição Estadual"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-100">
-              <Input
-                label="Telefone Principal *"
-                icon={Phone}
-                value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
-                placeholder="(00) 00000-0000"
-                required
-              />
-              <Input
-                label="Telefone 2"
-                icon={Phone}
-                value={telefone2}
-                onChange={(e) => setTelefone2(e.target.value)}
-                placeholder="(00) 00000-0000"
-              />
-              <div className="sm:col-span-2">
-                <Input
-                  label="Email"
-                  icon={Mail}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="cliente@email.com"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t border-neutral-100">
-              <div className="grid grid-cols-3 gap-4">
-                <Input
-                  label="CEP"
-                  icon={Search}
-                  value={cep}
-                  onChange={(e) => setCep(e.target.value)}
-                  onBlur={handleCepBlur}
-                  placeholder="00000-000"
-                />
-                <div className="col-span-2">
-                  <Input
-                    label="Logradouro"
-                    icon={MapPin}
-                    value={logradouro}
-                    onChange={(e) => setLogradouro(e.target.value)}
-                  />
-                </div>
-                <Input
-                  id="nr_logradouro"
-                  label="Número"
-                  value={numero}
-                  onChange={(e) => setNumero(e.target.value)}
-                />
-                <div className="col-span-2">
-                  <Input
-                    label="Complemento"
-                    value={complLogradouro}
-                    onChange={(e) => setComplLogradouro(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Bairro"
-                  value={bairro}
-                  onChange={(e) => setBairro(e.target.value)}
-                />
-                <Input
-                  label="Cidade"
-                  value={cidade}
-                  onChange={(e) => setCidade(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
+          <ClienteDataForm
+            tipoPessoa={tipoPessoa}
+            setTipoPessoa={setTipoPessoa}
+            isEditMode={isEditMode}
+            nome={nome}
+            setNome={setNome}
+            cpf={cpf}
+            setCpf={setCpf}
+            razaoSocial={razaoSocial}
+            setRazaoSocial={setRazaoSocial}
+            nomeFantasia={nomeFantasia}
+            setNomeFantasia={setNomeFantasia}
+            cnpj={cnpj}
+            setCnpj={setCnpj}
+            ie={ie}
+            setIe={setIe}
+            telefone={telefone}
+            setTelefone={setTelefone}
+            telefone2={telefone2}
+            setTelefone2={setTelefone2}
+            email={email}
+            setEmail={setEmail}
+            cep={cep}
+            setCep={setCep}
+            logradouro={logradouro}
+            setLogradouro={setLogradouro}
+            numero={numero}
+            setNumero={setNumero}
+            complLogradouro={complLogradouro}
+            setComplLogradouro={setComplLogradouro}
+            bairro={bairro}
+            setBairro={setBairro}
+            cidade={cidade}
+            setCidade={setCidade}
+            handleCepBlur={handleCepBlur}
+            nameRef={nameRef}
+          />
         </div>
 
         {/* --- COLUNA DIREITA: VEÍCULO --- */}
@@ -512,6 +344,7 @@ export const CadastroUnificadoPage = () => {
                   variant="primary"
                   size="sm"
                   icon={Plus}
+                  type="button"
                   onClick={() => {
                     setEditingVehicle(null);
                     setShowVehicleModal(true);
@@ -577,6 +410,7 @@ export const CadastroUnificadoPage = () => {
                     <Input
                       label="Placa *"
                       icon={Hash}
+                      ref={vehicleInputRef}
                       value={placa}
                       onChange={(e) => {
                         const val = e.target.value.toUpperCase();
@@ -590,14 +424,20 @@ export const CadastroUnificadoPage = () => {
                   </div>
 
                   <Input
-                    id="input-marca-veiculo"
                     label="Marca *"
-                    icon={Car}
                     value={marca}
                     onChange={(e) => setMarca(e.target.value)}
                     required={!isEditMode && !!placa}
                     className="bg-neutral-25"
                   />
+                  <div className="col-span-2">
+                    <Input
+                      label="Chassi"
+                      value={chassi}
+                      onChange={(e) => setChassi(e.target.value)}
+                      className="bg-neutral-25"
+                    />
+                  </div>
                   <div className="col-span-2">
                     <Input
                       label="Modelo *"
@@ -682,7 +522,7 @@ export const CadastroUnificadoPage = () => {
             initialData={editingVehicle}
             onSuccess={() => {
               setShowVehicleModal(false);
-              loadClienteData(); // Reload to update list
+              loadClienteData();
               toast.success("Veículo salvo com sucesso!");
             }}
             onCancel={() => setShowVehicleModal(false)}

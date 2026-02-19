@@ -13,7 +13,7 @@ import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { toast } from "react-toastify";
-import { OsCreationModal } from "../components/os/OsCreationModal";
+import { OsCreationModal } from "../components/shared/os/OsCreationModal";
 
 export const VeiculoPage = () => {
   const navigate = useNavigate();

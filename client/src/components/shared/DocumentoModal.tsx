@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Modal } from "./Modal";
-import { Button } from "./Button";
+import { Modal } from "../ui/Modal";
+import { Button } from "../ui/Button";
 import { FileText, Mail, Send, AlertTriangle } from "lucide-react";
 import { api } from "../../services/api";
 import { toast } from "react-toastify";

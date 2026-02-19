@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { formatCurrency } from "../../utils/formatCurrency";
-import { api } from "../../services/api";
+import { formatCurrency } from "../../../utils/formatCurrency";
+import { api } from "../../../services/api";
 import {
   Plus,
   Search,
@@ -14,12 +14,12 @@ import {
   AlertTriangle,
   FilterX,
 } from "lucide-react";
-import { ActionButton } from "../ui/ActionButton";
+import { ActionButton } from "../../ui/ActionButton";
 import { CategoryManager } from "./CategoryManager";
 import { CategorySelector } from "./CategorySelector";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
-import { Modal } from "../ui/Modal";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
+import { Modal } from "../../ui/Modal";
 import { toast } from "react-toastify";
 
 interface CashBookEntry {

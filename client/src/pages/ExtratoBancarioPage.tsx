@@ -3,7 +3,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { api } from "../services/api";
-import { CategoryManager } from "../components/financeiro/CategoryManager";
+import { CategoryManager } from "../components/shared/financeiro/CategoryManager";
 import {
   ArrowLeft,
   ArrowUpCircle,

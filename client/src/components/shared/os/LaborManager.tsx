@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { formatCurrency } from "../../utils/formatCurrency";
+import { formatCurrency } from "../../../utils/formatCurrency";
 import { Plus, Check, X, Trash2, Edit } from "lucide-react";
-import { api } from "../../services/api";
+import { OsService } from "../../../services/os.service";
 import type { FormEvent } from "react";
-import { Button } from "../ui/Button";
-import { ActionButton } from "../ui/ActionButton";
-import { Card } from "../ui/Card";
+import { Button } from "../../ui/Button";
+import { ActionButton } from "../../ui/ActionButton";
+import { Card } from "../../ui/Card";
 
 // Tipagem básica para garantir o funcionamento
 interface LaborService {
@@ -143,7 +143,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             descricao: newItem.descricao,
             categoria: newItem.categoria,
           };
-          await api.put(`/servico-mao-de-obra/${editingLaborId}`, payload);
+          await OsService.updateLabor(editingLaborId, payload);
           setStatusMsg({ type: "success", text: "Mão de obra atualizada!" });
         } else {
           const payload = {
@@ -153,7 +153,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             descricao: newItem.descricao,
             categoria: newItem.categoria,
           };
-          await api.post("/servico-mao-de-obra", payload);
+          await OsService.addLabor(payload);
           setStatusMsg({ type: "success", text: "Mão de obra adicionada!" });
         }
 
@@ -218,7 +218,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
       // In API mode, we expect a real numeric ID
       if (!id || typeof id !== "number") return;
       try {
-        await api.delete(`/servico-mao-de-obra/${id}`);
+        await OsService.deleteLabor(id);
         setStatusMsg({ type: "success", text: "Removido!" });
         if (onChange) onChange([]); // Trigger parent reload
         setTimeout(() => setStatusMsg({ type: null, text: "" }), 1500);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { api } from "../services/api";
+
 import type { IOrdemDeServico } from "../types/backend";
 import { Search, Plus, Phone, CheckCircle, Wrench } from "lucide-react";
 
@@ -11,8 +11,12 @@ import { Modal } from "../components/ui/Modal";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { toast } from "react-toastify";
-import { OsCreationModal } from "../components/os/OsCreationModal";
+import { OsCreationModal } from "../components/shared/os/OsCreationModal";
 import { OsStatus } from "../types/os.types";
+import { getStatusStyle } from "../utils/osUtils";
+import { OsService } from "../services/os.service";
+import { ClienteService } from "../services/cliente.service";
+import { VeiculoService } from "../services/veiculo.service";
 
 export const OrdemDeServicoPage = () => {
   const navigate = useNavigate();
@@ -33,8 +37,8 @@ export const OrdemDeServicoPage = () => {
   // --- DATA LOADING ---
   const loadOss = useCallback(async () => {
     try {
-      const response = await api.get("/ordem-de-servico");
-      setOss(response.data);
+      const data = await OsService.getAll();
+      setOss(data);
     } catch (error) {
       toast.error("Erro ao carregar Ordens de Serviço.");
     }
@@ -66,10 +70,9 @@ export const OrdemDeServicoPage = () => {
     const delayDebounceFn = setTimeout(async () => {
       if (clientSearchTerm.length >= 2 && newOsWizardStep === "SEARCH_CLIENT") {
         try {
-          const response = await api.get("/cliente"); // TODO: Optimize backend to accept search param or filter locally if list is small. Assuming small for now or using existing list.
+          const allClients = await ClienteService.getAll(); // TODO: Optimize backend to accept search param or filter locally if list is small. Assuming small for now or using existing list.
           // Actually, we should probably use a specific search endpoint or filter the full list if already loaded?
           // Let's filter locally from a fresh fetch to ensure latest data.
-          const allClients = response.data;
           const filtered = allClients.filter((c: any) => {
             const name = (
               c.pessoa_fisica?.pessoa?.nome ||
@@ -115,12 +118,12 @@ export const OrdemDeServicoPage = () => {
     } else if (paramClientId && paramVehicleId) {
       const loadForDirectOpen = async () => {
         try {
-          const [cRes, vRes] = await Promise.all([
-            api.get(`/cliente/${paramClientId}`),
-            api.get(`/veiculo/${paramVehicleId}`),
+          const [c, v] = await Promise.all([
+            ClienteService.getById(Number(paramClientId)),
+            VeiculoService.getById(Number(paramVehicleId)),
           ]);
-          setWizardClient(cRes.data);
-          setWizardVehicle(vRes.data);
+          setWizardClient(c);
+          setWizardVehicle(v);
 
           // Validate and set status
           const validStatus = Object.values(OsStatus).includes(
@@ -162,7 +165,7 @@ export const OrdemDeServicoPage = () => {
       const payload = {
         id_cliente: client.id_cliente,
         id_veiculo: vehicle.id_veiculo,
-        id_funcionario: mechanicId || null,
+        id_funcionario: mechanicId || undefined,
         km_entrada: km,
         defeito_relatado: defect,
         status: wizardInitialStatus,
@@ -170,11 +173,11 @@ export const OrdemDeServicoPage = () => {
         valor_mao_de_obra: 0,
         parcelas: 1,
       };
-      const res = await api.post("/ordem-de-servico", payload);
+      const newOs = await OsService.create(payload);
       setNewOsWizardStep("NONE");
       setWizardClient(null);
       setWizardVehicle(null);
-      handleNewOsSuccess(res.data.id_os);
+      handleNewOsSuccess(newOs.id_os);
       toast.success("OS Criada com Sucesso!");
     } catch (e) {
       toast.error("Erro ao criar OS.");
@@ -259,22 +262,6 @@ export const OrdemDeServicoPage = () => {
   });
 
   // --- RENDER ---
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "FINALIZADA":
-        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-      case "PAGA_CLIENTE":
-        return "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200";
-      case "PRONTO PARA FINANCEIRO":
-        return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
-      case "ABERTA":
-        return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
-      case "EM_ANDAMENTO":
-        return "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200";
-      default:
-        return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
-    }
-  };
 
   return (
     <>

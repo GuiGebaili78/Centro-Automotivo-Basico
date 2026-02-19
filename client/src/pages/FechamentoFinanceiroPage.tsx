@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
+import { getStatusStyle } from "../utils/osUtils";
 import { api } from "../services/api";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
@@ -8,7 +9,7 @@ import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { toast } from "react-toastify";
-import { DocumentoModal } from "../components/ui/DocumentoModal";
+import { DocumentoModal } from "../components/shared/DocumentoModal";
 
 import { Search, Trash2, Edit, CheckCircle, Printer } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -220,23 +221,6 @@ export const FechamentoFinanceiroPage = () => {
         .includes(q);
     })
     .sort((a, b) => b.id_fechamento_financeiro - a.id_fechamento_financeiro);
-
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "FINALIZADA":
-        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-      case "PAGA_CLIENTE":
-        return "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200";
-      case "PRONTO PARA FINANCEIRO":
-        return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
-      case "ABERTA":
-        return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
-      case "EM_ANDAMENTO":
-        return "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200";
-      default:
-        return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
-    }
-  };
 
   return (
     <PageLayout

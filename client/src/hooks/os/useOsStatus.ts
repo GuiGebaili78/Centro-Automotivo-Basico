@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { api } from "../../services/api";
+import { OsService } from "../../services/os.service";
 import { toast } from "react-toastify";
 import { OsStatus } from "../../types/os.types";
 
@@ -16,7 +16,7 @@ export const useOsStatus = (
     }) => {
       if (!osId) return;
       try {
-        await api.put(`/ordem-de-servico/${osId}`, {
+        await OsService.update(Number(osId), {
           ...data,
           status: OsStatus.FINANCEIRO,
         });
@@ -34,7 +34,7 @@ export const useOsStatus = (
   const openOsNow = useCallback(async () => {
     if (!osId) return;
     try {
-      await api.put(`/ordem-de-servico/${osId}`, { status: OsStatus.ABERTA });
+      await OsService.updateStatus(Number(osId), OsStatus.ABERTA);
       toast.success("OS Aberta com sucesso!");
       if (onSuccess) onSuccess();
       return true;
@@ -49,9 +49,9 @@ export const useOsStatus = (
       if (!osId) return;
       try {
         if (fechamentoId) {
-          await api.delete(`/fechamento-financeiro/${fechamentoId}`);
+          await OsService.deleteFinancialClosure(fechamentoId);
         }
-        await api.put(`/ordem-de-servico/${osId}`, { status: OsStatus.ABERTA });
+        await OsService.updateStatus(Number(osId), OsStatus.ABERTA);
         toast.success("OS Reaberta com sucesso!");
         if (onSuccess) onSuccess();
         return true;
@@ -66,9 +66,7 @@ export const useOsStatus = (
   const cancelOS = useCallback(async () => {
     if (!osId) return;
     try {
-      await api.put(`/ordem-de-servico/${osId}`, {
-        status: OsStatus.CANCELADA,
-      });
+      await OsService.updateStatus(Number(osId), OsStatus.CANCELADA);
       toast.success("OS Cancelada e Estoque Estornado.");
       if (onSuccess) onSuccess();
       return true;

@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
 import type { FormEvent } from "react";
 import { Plus, Package } from "lucide-react";
-import { Button } from "../ui/Button";
-import { formatCurrency } from "../../utils/formatCurrency";
+import { Button } from "../../ui/Button";
+import { formatCurrency } from "../../../utils/formatCurrency";
 import { toast } from "react-toastify";
-import { api } from "../../services/api"; // For direct availability check if needed, or pass via props
+import { api } from "../../../services/api"; // For direct availability check if needed, or pass via props
 
 interface OsItemFormProps {
   onAdd: (item: any) => Promise<boolean>;

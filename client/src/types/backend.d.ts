@@ -45,6 +45,7 @@ export interface ICliente {
   bairro: string;
   cidade: string;
   estado: string;
+  cep?: string | null;
   dt_cadastro: string;
 
   // Optional Joins
@@ -209,12 +210,16 @@ export interface IItensOs {
   id_iten: number;
   id_os: number;
   id_pecas_estoque?: number | null;
+  id_fornecedor?: number | null;
   descricao: string;
   codigo_referencia?: string | null;
   quantidade: number;
   valor_venda: number;
   valor_total: number;
   dt_cadastro: string;
+
+  // Optional Joins
+  ordem_de_servico?: IOrdemDeServico;
 }
 
 export interface IFechamentoFinanceiro {
@@ -269,6 +274,10 @@ export interface IPagamentoPeca {
   data_compra: string;
   data_pagamento_fornecedor?: string | null;
   pago_ao_fornecedor: boolean;
+
+  // Optional Joins
+  item_os?: IItensOs;
+  fornecedor?: IFornecedor;
 }
 
 export interface IContasPagar {

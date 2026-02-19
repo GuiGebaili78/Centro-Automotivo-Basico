@@ -1,7 +1,7 @@
 import { Trash2, Edit, DollarSign } from "lucide-react";
-import { ActionButton } from "../ui/ActionButton";
-import { formatCurrency } from "../../utils/formatCurrency";
-import { Card } from "../ui/Card";
+import { ActionButton } from "../../ui/ActionButton";
+import { formatCurrency } from "../../../utils/formatCurrency";
+import { Card } from "../../ui/Card";
 
 interface OsItemsTableProps {
   items: any[];
