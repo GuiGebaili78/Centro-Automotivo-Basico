@@ -4,6 +4,7 @@ import type {
   PerformanceFuncionario,
   OperadoraStats,
   EvolucaoMensal,
+  EvolucaoDespesa,
 } from "../types/relatorios.types";
 
 export const RelatoriosService = {
@@ -37,8 +38,22 @@ export const RelatoriosService = {
     return response.data;
   },
 
-  getEvolucaoMensal: async (): Promise<EvolucaoMensal[]> => {
-    const response = await api.get("/relatorios/evolucao");
+  getEvolucaoMensal: async (
+    groupBy: "month" | "quarter" = "month",
+  ): Promise<EvolucaoMensal[]> => {
+    const response = await api.get("/relatorios/evolucao", {
+      params: { groupBy },
+    });
+    return response.data;
+  },
+
+  getEvolucaoDespesas: async (
+    startDate: string,
+    endDate: string,
+  ): Promise<EvolucaoDespesa[]> => {
+    const response = await api.get("/relatorios/despesas-evolucao", {
+      params: { startDate, endDate },
+    });
     return response.data;
   },
 };

@@ -30,15 +30,30 @@ export interface ResumoFinanceiro {
     total: number;
   };
   despesasPorCategoria: { categoria: string; valor: number }[];
+  evolucaoDespesasTemporal: {
+    mes: string;
+    realizado: number;
+    previsto: number;
+  }[];
   indicadores: IndicadoresFinanceiros;
 }
 
 export interface PerformanceFuncionario {
   id: number;
   nome: string;
-  totalProduzido: number;
-  custoPeriodo: number;
-  roi: number;
+  maoDeObraBruta: number;
+  comissaoPaga: number;
+  lucroMaoDeObra: number;
+  lucroPecasEstoque: number;
+  lucroPecasFora: number;
+  lucroTotal: number;
+}
+
+export interface EvolucaoDespesa {
+  categoria: string;
+  valorAtual: number;
+  valorAnterior: number;
+  variacaoPercentual: number;
 }
 
 export interface OperadoraStats {

@@ -539,6 +539,7 @@ model Configuracao {
   nomeFantasia    String   @db.VarChar(100)
   razaoSocial     String?  @db.VarChar(100)
   cnpj            String?  @db.VarChar(18)
+  inscricaoEstadual String? @db.VarChar(20)
   endereco        String?  @db.VarChar(255)
   telefone        String?  @db.VarChar(20)
   email           String?  @db.VarChar(100)

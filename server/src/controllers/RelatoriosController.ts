@@ -77,6 +77,26 @@ export class RelatoriosController {
       return res.status(500).json({ error: "Internal Server Error" });
     }
   }
+
+  async getEvolucaoDespesas(req: Request, res: Response) {
+    try {
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res
+          .status(400)
+          .json({ error: "startDate and endDate are required" });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+
+      const data = await relatoriosService.getEvolucaoDespesas(start, end);
+      return res.json(data);
+    } catch (error) {
+      console.error("Error in getEvolucaoDespesas:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
 }
 
 export const relatoriosController = new RelatoriosController();

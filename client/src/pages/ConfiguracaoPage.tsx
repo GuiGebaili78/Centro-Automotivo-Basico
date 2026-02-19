@@ -144,6 +144,7 @@ export const ConfiguracaoPage = () => {
       data.append("nomeFantasia", formData.nomeFantasia);
       data.append("razaoSocial", formData.razaoSocial || "");
       data.append("cnpj", formData.cnpj || "");
+      data.append("inscricaoEstadual", formData.inscricaoEstadual || "");
       data.append("endereco", formData.endereco || "");
       data.append("telefone", formData.telefone || "");
       data.append("email", formData.email || "");
@@ -374,6 +375,17 @@ export const ConfiguracaoPage = () => {
                     value={formData.cnpj || ""}
                     onChange={handleChange}
                     placeholder="00.000.000/0001-00"
+                    icon={FileText}
+                  />
+                </div>
+
+                <div className="md:col-span-1">
+                  <Input
+                    label="Inscrição Estadual"
+                    name="inscricaoEstadual"
+                    value={formData.inscricaoEstadual || ""}
+                    onChange={handleChange}
+                    placeholder="IE Isento ou Número"
                     icon={FileText}
                   />
                 </div>

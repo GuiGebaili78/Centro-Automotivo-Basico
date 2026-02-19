@@ -7,6 +7,7 @@ export type Configuracao = {
   nomeFantasia: string;
   razaoSocial?: string;
   cnpj?: string;
+  inscricaoEstadual?: string;
   endereco?: string;
   telefone?: string;
   email?: string;

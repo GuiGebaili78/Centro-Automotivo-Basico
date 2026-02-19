@@ -8,6 +8,9 @@ import {
   endOfQuarter,
   subQuarters,
   getQuarter,
+  addMonths,
+  startOfMonth,
+  endOfMonth,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -93,8 +96,10 @@ export class RelatoriosService {
           // É peça de estoque
           receitaPecasEstoque += valorVendaItem;
           // Custo de estoque (Unitário * Qtd)
+          // CORREÇÃO: Fallback para 0 se não tiver custo
           const custoUnit = Number(item.pecas_estoque?.valor_custo || 0);
-          custoPecasEstoque += custoUnit * item.quantidade;
+          const quantidade = Number(item.quantidade || 0);
+          custoPecasEstoque += custoUnit * quantidade;
         }
       }
     }
@@ -113,7 +118,7 @@ export class RelatoriosService {
     let totalContasPagar = 0;
 
     despesasContas.forEach((c) => {
-      const val = Number(c.valor);
+      const val = Number(c.valor || 0);
       totalContasPagar += val;
       const catName = fixEncoding(
         c.categoria || c.categoria_financeira?.nome || "Outros",
@@ -145,6 +150,83 @@ export class RelatoriosService {
     const lucroLiquidoTotal =
       receitaTotal - (custoPecasEstoque + custoPecasFora) - totalDespesas;
 
+    // --- EVOLUÇÃO E PROJEÇÃO DE DESPESAS (Novo) ---
+    const today = new Date();
+    // Janela: 3 meses para trás + 3 meses para frente
+    const startWindow = startOfMonth(subMonths(today, 3));
+    const endWindow = endOfMonth(addMonths(today, 3));
+
+    // Buscar Contas Pagar (PAGO e PENDENTE) na janela
+    const contasJanela = await prisma.contasPagar.findMany({
+      where: {
+        OR: [
+          { dt_pagamento: { gte: startWindow, lte: endWindow } },
+          { dt_vencimento: { gte: startWindow, lte: endWindow } },
+        ],
+      },
+    });
+
+    // Buscar Pagamentos Equipe (PAGO) na janela (só passado)
+    const equipeJanela = await prisma.pagamentoEquipe.findMany({
+      where: { dt_pagamento: { gte: startWindow, lte: endWindow } },
+    });
+
+    const projectionMap = new Map<
+      string,
+      { realizado: number; previsto: number; dateObj: Date }
+    >();
+
+    // Inicializar meses da janela
+    for (let i = -3; i <= 3; i++) {
+      const d = addMonths(startOfMonth(today), i);
+      const key = format(d, "MMM/yy", { locale: ptBR });
+      projectionMap.set(key, { realizado: 0, previsto: 0, dateObj: d });
+    }
+
+    // Popular Realizado (Contas Pagas + Equipe)
+    const populateRealizado = (date: Date | null, val: number) => {
+      if (!date) return;
+      const key = format(date, "MMM/yy", { locale: ptBR });
+      if (projectionMap.has(key)) {
+        projectionMap.get(key)!.realizado += val;
+      }
+    };
+
+    // Popular Previsto (Contas Pendentes)
+    const populatePrevisto = (date: Date | null, val: number) => {
+      if (!date) return;
+      const key = format(date, "MMM/yy", { locale: ptBR });
+      if (projectionMap.has(key)) {
+        projectionMap.get(key)!.previsto += val;
+      }
+    };
+
+    contasJanela.forEach((c) => {
+      const val = Number(c.valor || 0);
+      if (c.status === "PAGO" && c.dt_pagamento) {
+        populateRealizado(c.dt_pagamento, val);
+      } else if (c.status === "PENDENTE" && c.dt_vencimento) {
+        populatePrevisto(c.dt_vencimento, val);
+      }
+    });
+
+    equipeJanela.forEach((e) => {
+      const val = Number(e.valor_total || 0);
+      if (e.dt_pagamento) {
+        populateRealizado(e.dt_pagamento, val);
+      }
+    });
+
+    const evolucaoDespesasTemporal = Array.from(projectionMap.entries())
+      .map(([mes, data]) => ({
+        mes: mes.charAt(0).toUpperCase() + mes.slice(1), // Capitalize
+        realizado: data.realizado,
+        previsto: data.previsto,
+        sortKey: data.dateObj.getTime(),
+      }))
+      .sort((a, b) => a.sortKey - b.sortKey)
+      .map(({ mes, realizado, previsto }) => ({ mes, realizado, previsto }));
+
     return {
       periodo: { start, end },
       bruta: {
@@ -154,10 +236,10 @@ export class RelatoriosService {
         total: receitaTotal,
       },
       liquida: {
-        maoDeObra: lucroMaoDeObra, // Receita MO - Custo Equipe Total
-        pecasFora: lucroPecasFora,
-        pecasEstoque: lucroPecasEstoque,
-        total: lucroLiquidoTotal,
+        maoDeObra: Number(lucroMaoDeObra || 0),
+        pecasFora: Number(lucroPecasFora || 0),
+        pecasEstoque: Number(lucroPecasEstoque || 0),
+        total: Number(lucroLiquidoTotal || 0),
       },
       custos: {
         pecasEstoque: custoPecasEstoque,
@@ -169,11 +251,12 @@ export class RelatoriosService {
       despesasPorCategoria: Array.from(despesasMap.entries())
         .map(([categoria, valor]) => ({ categoria, valor }))
         .sort((a, b) => b.valor - a.valor),
+      evolucaoDespesasTemporal,
       indicadores: {
-        lucroLiquido: lucroLiquidoTotal,
+        lucroLiquido: Number(lucroLiquidoTotal || 0),
         margemLiquida:
           receitaTotal > 0 ? (lucroLiquidoTotal / receitaTotal) * 100 : 0,
-        pontoEquilibrio: totalDespesas, // Quanto precisa faturar pra cobrir custos fixos/operacionais (aprox)
+        pontoEquilibrio: totalDespesas,
       },
     };
   }
@@ -186,7 +269,9 @@ export class RelatoriosService {
     const end = endOfDay(endDate);
 
     const funcionarios = await prisma.funcionario.findMany({
-      where: { ativo: "S" },
+      where: {
+        ativo: "S",
+      },
       include: {
         pessoa_fisica: { include: { pessoa: true } },
         servicos_mao_de_obra: {
@@ -218,48 +303,123 @@ export class RelatoriosService {
 
     const report = funcionarios.map((f: any) => {
       // 1. Produção de Mão de Obra
-      const totalProduzidoMO = f.servicos_mao_de_obra.reduce(
+      const maoDeObraBruta = f.servicos_mao_de_obra.reduce(
         (acc: number, svc: any) => acc + Number(svc.valor || 0),
         0,
       );
 
-      // 2. Lucro gerado com Peças (nas OSs que ele liderou)
-      let lucroPecas = 0;
+      // 2. Lucro gerado com Peças
+      let lucroPecasEstoque = 0;
+      let lucroPecasFora = 0;
+
       f.ordens_de_servico.forEach((os: any) => {
         os.itens_os.forEach((item: any) => {
           const venda = Number(item.valor_total || 0);
-          let custo = 0;
           if (item.pagamentos_peca && item.pagamentos_peca.length > 0) {
-            custo = item.pagamentos_peca.reduce(
+            const custo = item.pagamentos_peca.reduce(
               (c: number, pp: any) => c + Number(pp.custo_real || 0),
               0,
             );
+            lucroPecasFora += venda - custo;
           } else {
-            custo =
+            const custo =
               Number(item.pecas_estoque?.valor_custo || 0) * item.quantidade;
+            lucroPecasEstoque += venda - custo;
           }
-          lucroPecas += venda - custo;
         });
       });
 
-      // 3. Custo do Colaborador (Comissões + Salário pagos no período)
-      const custoColaborador = f.pagamentos.reduce(
+      // 3. Comissão Paga (Custo Empresa com o funcionário)
+      const comissaoPaga = f.pagamentos.reduce(
         (acc: number, pg: any) => acc + Number(pg.valor_total || 0),
         0,
       );
 
+      // 4. Lucro M.O. (Bruta - Comissão)
+      const lucroMaoDeObra = maoDeObraBruta - comissaoPaga;
+
+      // 5. Lucro Total
+      const lucroTotal = lucroMaoDeObra + lucroPecasEstoque + lucroPecasFora;
+
       return {
         id: f.id_funcionario,
         nome: fixEncoding(f.pessoa_fisica?.pessoa?.nome),
-        maoDeObraTotal: totalProduzidoMO,
-        lucroPecas: lucroPecas,
-        totalGerado: totalProduzidoMO + lucroPecas,
-        custoColaborador: custoColaborador,
-        roi: totalProduzidoMO + lucroPecas - custoColaborador,
+        maoDeObraBruta,
+        comissaoPaga,
+        lucroMaoDeObra,
+        lucroPecasFora,
+        lucroPecasEstoque,
+        lucroTotal,
       };
     });
 
-    return report.sort((a, b) => b.roi - a.roi); // Rank by ROI
+    return report.sort((a, b) => b.lucroTotal - a.lucroTotal);
+  }
+
+  /**
+   * Evolução das Despesas por Subcategoria
+   */
+  async getEvolucaoDespesas(startDate: Date, endDate: Date) {
+    const currentStart = startOfDay(startDate);
+    const currentEnd = endOfDay(endDate);
+
+    // Calcular período anterior de mesma duração
+    const duration = currentEnd.getTime() - currentStart.getTime();
+    const prevEnd = new Date(currentStart.getTime() - 1);
+    const prevStart = new Date(prevEnd.getTime() - duration);
+
+    // Helper para buscar despesas agrupadas
+    const fetchExpenses = async (start: Date, end: Date) => {
+      const despesas = await prisma.contasPagar.findMany({
+        where: {
+          status: "PAGO",
+          dt_pagamento: { gte: start, lte: end },
+        },
+        include: { categoria_financeira: true },
+      });
+
+      const map = new Map<string, number>();
+      despesas.forEach((d) => {
+        const cat = fixEncoding(
+          d.categoria || d.categoria_financeira?.nome || "Outros",
+        );
+        map.set(cat, (map.get(cat) || 0) + Number(d.valor));
+      });
+      return map;
+    };
+
+    const [currentExpenses, prevExpenses] = await Promise.all([
+      fetchExpenses(currentStart, currentEnd),
+      fetchExpenses(prevStart, prevEnd),
+    ]);
+
+    // Combinar categorias
+    const allCategories = new Set([
+      ...Array.from(currentExpenses.keys()),
+      ...Array.from(prevExpenses.keys()),
+    ]);
+
+    const comparativo = Array.from(allCategories).map((categoria) => {
+      const valorAtual = currentExpenses.get(categoria) || 0;
+      const valorAnterior = prevExpenses.get(categoria) || 0;
+
+      let variacaoPercentual = 0;
+      if (valorAnterior > 0) {
+        variacaoPercentual =
+          ((valorAtual - valorAnterior) / valorAnterior) * 100;
+      } else if (valorAtual > 0) {
+        variacaoPercentual = 100; // Novo gasto
+      }
+
+      return {
+        categoria,
+        valorAtual,
+        valorAnterior,
+        variacaoPercentual,
+      };
+    });
+
+    return comparativo.sort((a, b) => b.valorAtual - a.valorAtual);
   }
 
   /**
@@ -414,12 +574,6 @@ export class RelatoriosService {
       if (key && map.has(key)) {
         const entry = map.get(key)!;
         entry[type] += Number(item[valField] || 0);
-      } else if (key) {
-        // If outside the initialized range (shouldn't happen with filter), ignore for now or add?
-        // Prompt says "last 12 months" or "4 quarters", so we stick to initialized keys or filter handles it.
-        // If the filter date logic is perfect, we can add if missing.
-        // Let's safe init if missing?
-        // No, better strict to period.
       }
     };
 
@@ -432,9 +586,9 @@ export class RelatoriosService {
     );
 
     // Calc Lucro
-    for (const val of map.values()) {
+    Array.from(map.values()).forEach((val) => {
       val.lucro = val.receita - val.despesa;
-    }
+    });
 
     return Array.from(map.values()).sort((a, b) =>
       a.sortKey.localeCompare(b.sortKey),

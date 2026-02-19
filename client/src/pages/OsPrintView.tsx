@@ -3,28 +3,38 @@ import { useParams } from "react-router-dom";
 import { api } from "../services/api"; // Or useOrdemServico hook if available globally without layout
 import { format } from "date-fns";
 import { formatCurrency } from "../utils/formatCurrency";
+import {
+  ConfiguracaoService,
+  type Configuracao,
+} from "../services/ConfiguracaoService";
 
 export const OsPrintView = () => {
   const { id } = useParams();
   const [os, setOs] = useState<any>(null);
+  const [config, setConfig] = useState<Configuracao | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
-    api
-      .get(`/ordem-de-servico/${id}`)
-      .then((res) => setOs(res.data))
+    Promise.all([
+      api.get(`/ordem-de-servico/${id}`).then((res) => res.data),
+      ConfiguracaoService.get(),
+    ])
+      .then(([osData, configData]) => {
+        setOs(osData);
+        setConfig(configData);
+      })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, [id]);
 
   useEffect(() => {
-    if (os && !loading) {
+    if (os && config && !loading) {
       setTimeout(() => {
         window.print();
       }, 500);
     }
-  }, [os, loading]);
+  }, [os, config, loading]);
 
   if (loading) return <div className="p-8 text-center">Carregando...</div>;
   if (!os) return <div className="p-8 text-center">OS não encontrada.</div>;
@@ -47,13 +57,34 @@ export const OsPrintView = () => {
   const totalGeral = totalPecas + totalServicos;
 
   return (
-    <div className="max-w-[210mm] mx-auto bg-white p-8 min-h-screen text-black print:p-0 print:max-w-none">
-      {/* Header */}
-      <div className="flex justify-between items-center border-b-2 border-black pb-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-black uppercase">Centro Automotivo</h1>
-          <p className="text-sm">Seu Slogan ou Endereço Aqui</p>
-          <p className="text-sm">Tel: (00) 0000-0000</p>
+    <div className="min-h-screen bg-white p-8 print:p-0 print:m-0 print:w-full print:absolute print:top-0 print:left-0">
+      {/* Print Controls - Hidden when printing */}
+      <div className="mb-8 flex gap-4 print:hidden"></div>
+      {/* Header with Config Data */}
+      <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+        <div className="flex items-center gap-4">
+          {config?.logoUrl && (
+            <img
+              src={`${import.meta.env.VITE_API_URL}${config.logoUrl}`}
+              alt="Logo"
+              className="h-20 w-auto object-contain"
+            />
+          )}
+          <div>
+            <h1 className="text-xl font-black uppercase">
+              {config?.nomeFantasia || "Centro Automotivo"}
+            </h1>
+            <p className="text-sm font-bold">{config?.razaoSocial}</p>
+            <p className="text-xs">
+              CNPJ: {config?.cnpj || "-"}
+              {config?.inscricaoEstadual &&
+                ` • IE: ${config.inscricaoEstadual}`}
+            </p>
+            <p className="text-xs">
+              {config?.endereco || "Endereço não configurado"}
+            </p>
+            <p className="text-xs">Tel: {config?.telefone || "-"}</p>
+          </div>
         </div>
         <div className="text-right">
           <h2 className="text-3xl font-black text-neutral-800">
