@@ -14,7 +14,7 @@ import { Card } from "../components/ui/Card";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
 import { LaborManager } from "../components/shared/os/LaborManager";
-import { DocumentoModal } from "../components/shared/DocumentoModal";
+import { OsShareModal } from "../components/shared/os/OsShareModal";
 import { PagamentoClienteForm } from "../components/forms/PagamentoClienteForm";
 
 // Subcomponents
@@ -194,18 +194,12 @@ export const OrdemDeServicoDetalhePage = () => {
       subtitle="Gerencie os detalhes, peças e serviços desta Ordem de Serviço."
       actions={<></>} // Actions moved to Header or Totals
     >
-      <DocumentoModal
+      <OsShareModal
         isOpen={documentModalOpen}
         onClose={() => setDocumentModalOpen(false)}
         osId={os.id_os}
-        status={os.status}
-        clienteEmail={os.cliente?.email || ""}
-        clienteTelefone={os.cliente?.telefone_1}
-        clienteNome={
-          os.cliente?.pessoa_fisica?.pessoa?.nome ||
-          os.cliente?.pessoa_juridica?.nome_fantasia ||
-          "Cliente"
-        }
+        clientEmail={os.cliente?.email || undefined}
+        clientPhone={os.cliente?.telefone_1}
       />
 
       <div className="space-y-8">

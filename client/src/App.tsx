@@ -13,6 +13,8 @@ import { VeiculoPage } from "./pages/VeiculoPage";
 import { OrdemDeServicoPage } from "./pages/OrdemDeServicoPage";
 import { OrdemDeServicoDetalhePage } from "./pages/OrdemDeServicoDetalhePage";
 import { CadastroUnificadoPage } from "./pages/CadastroUnificadoPage";
+import { OsPrintView } from "./pages/OsPrintView";
+import { RelatoriosPage } from "./pages/RelatoriosPage";
 
 import { PecasEstoquePage } from "./pages/PecasEstoquePage";
 import { EntradaEstoquePage } from "./pages/EntradaEstoquePage";
@@ -32,7 +34,6 @@ import { NovoPagamentoPage } from "./pages/NovoPagamentoPage";
 import { PagamentoEquipePage } from "./pages/PagamentoEquipePage";
 import { ExtratoBancarioPage } from "./pages/ExtratoBancarioPage";
 import { DaschboardPage } from "./pages/DaschboardPage";
-import { RelatoriosPage } from "./pages/RelatoriosPage";
 import { ConfiguracaoPage } from "./pages/ConfiguracaoPage";
 
 const router = createBrowserRouter(
@@ -41,6 +42,7 @@ const router = createBrowserRouter(
       <Route path="/" element={<DaschboardPage />} />
       {/* Páginas Modernizadas */}
       <Route path="/cliente" element={<ClientePage />} />
+      <Route path="/print/os/:id" element={<OsPrintView />} />
       {/* Páginas Legadas (Ainda funcionam dentro do layout novo!) */}
       <Route path="/veiculo" element={<VeiculoPage />} />
       <Route path="/ordem-de-servico" element={<OrdemDeServicoPage />} />
@@ -71,6 +73,7 @@ const router = createBrowserRouter(
         path="/financeiro/pagamento-pecas"
         element={<PagamentoPecaPage />}
       />
+      <Route path="/relatorios" element={<RelatoriosPage />} />
       <Route path="/financeiro/contas-pagar" element={<ContasAPagarPage />} />
       <Route path="/financeiro/relatorios" element={<RelatoriosPage />} />
       <Route

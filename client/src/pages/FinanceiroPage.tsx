@@ -27,7 +27,7 @@ export const FinanceiroPage = () => {
     type: null,
     text: "",
   });
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   // --- DATA STATES (Lifted for some, local for others?) ---
   // PagamentoPecasTab needs props

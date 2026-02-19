@@ -25,7 +25,7 @@ import { categoriaFinanceiraRoutes } from "./routes/categoriaFinanceira.routes.j
 import { contaBancariaRoutes } from "./routes/contaBancaria.routes.js";
 import { operadoraRoutes } from "./routes/operadoraCartao.routes.js";
 import { recebivelCartaoRoutes } from "./routes/recebivelCartao.routes.js";
-import { relatorioRoutes } from "./routes/relatorio.routes.js";
+import { relatoriosRoutes } from "./routes/relatorio.routes.js";
 import configuracaoRoutes from "./routes/configuracao.routes.js";
 import { documentoRoutes } from "./routes/documento.routes.js";
 import path from "path";
@@ -77,7 +77,7 @@ app.use("/api/categoria-financeira", categoriaFinanceiraRoutes);
 app.use("/api/conta-bancaria", contaBancariaRoutes);
 app.use("/api/operadora-cartao", operadoraRoutes);
 app.use("/api/recebivel-cartao", recebivelCartaoRoutes);
-app.use("/api/relatorios", relatorioRoutes);
+app.use("/api/relatorios", relatoriosRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

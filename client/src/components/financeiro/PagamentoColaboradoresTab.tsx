@@ -13,7 +13,6 @@ import {
   Search,
   AlertCircle,
   Calculator,
-  DollarSign,
   CheckCircle2,
   Circle,
   User,
@@ -76,7 +75,7 @@ export const PagamentoColaboradoresTab = ({
     new Date().toISOString().split("T")[0],
   );
   // Date Filters for Commission Selection inside Modal
-  const [payMsg, setPayMsg] = useState("");
+  // const [payMsg, setPayMsg] = useState("");
 
   // --- EFFECTS ---
   useEffect(() => {

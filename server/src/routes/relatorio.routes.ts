@@ -1,15 +1,11 @@
 import { Router } from "express";
-import { RelatorioController } from "../controllers/RelatorioController.js";
+import { relatoriosController } from "../controllers/RelatoriosController.js";
 
-const relatorioRoutes = Router();
-const controller = new RelatorioController();
+const relatoriosRoutes = Router();
 
-// Rota principal para o relatório completo (KPIs, Gráficos, Rankings)
-relatorioRoutes.get(
-  "/completo",
-  controller.getRelatorioCompleto.bind(controller),
-);
+relatoriosRoutes.get("/resumo", relatoriosController.getResumoFinanceiro);
+relatoriosRoutes.get("/equipe", relatoriosController.getPerformanceEquipe);
+relatoriosRoutes.get("/operadoras", relatoriosController.getOperadorasCartao);
+relatoriosRoutes.get("/evolucao", relatoriosController.getEvolucaoMensal);
 
-relatorioRoutes.get("/dashboard", controller.getDashboardData.bind(controller));
-
-export { relatorioRoutes };
+export { relatoriosRoutes };
