@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { api } from "../../services/api";
+import { FornecedorService } from "../../services/fornecedor.service";
 import {
   Phone,
   FileText,
@@ -133,15 +133,18 @@ export const FornecedorForm = ({
     setLoading(true);
     try {
       let res;
+      // Map formData to IFornecedorPayload
+      const payload: any = { ...formData }; // Simple casting as fields match
+
       if (initialData?.id_fornecedor) {
-        res = await api.put(
-          `/fornecedor/${initialData.id_fornecedor}`,
-          formData,
+        res = await FornecedorService.update(
+          initialData.id_fornecedor,
+          payload,
         );
       } else {
-        res = await api.post("/fornecedor", formData);
+        res = await FornecedorService.create(payload);
       }
-      onSuccess(res.data);
+      onSuccess(res);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao salvar fornecedor.");

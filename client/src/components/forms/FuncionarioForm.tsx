@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { api } from "../../services/api";
+import { ColaboradorService } from "../../services/colaborador.service";
 import { toast } from "react-toastify";
 import {
   User,
@@ -192,10 +192,7 @@ export const FuncionarioForm = ({
     setLoading(true);
     try {
       // Payload helper
-      const getFuncionarioPayload = (_pId?: number, pfId?: number) => ({
-        // Relations if new
-        ...(pfId ? { id_pessoa_fisica: pfId } : {}),
-
+      const getFuncionarioPayload = (): any => ({
         // Fields
         ativo: formData.ativo,
         cargo: formData.cargo,
@@ -249,43 +246,29 @@ export const FuncionarioForm = ({
         equipamentos_epis: formData.equipamentos_epis || null,
       });
 
+      const pessoaCreateData = {
+        nome: formData.nome,
+        genero: formData.genero || null,
+        dt_nascimento: formData.dt_nascimento
+          ? new Date(formData.dt_nascimento).toISOString()
+          : null,
+      };
+
       if (initialData) {
         // UPDATE
-        await api.put(
-          `/funcionario/${initialData.id_funcionario}`,
+        await ColaboradorService.update(
+          initialData.id_funcionario,
           getFuncionarioPayload(),
+          pessoaCreateData,
+          initialData.pessoa_fisica?.pessoa?.id_pessoa,
         );
-
-        const pId = initialData.pessoa_fisica?.pessoa?.id_pessoa;
-        if (pId) {
-          await api
-            .put(`/pessoa/${pId}`, {
-              nome: formData.nome,
-              genero: formData.genero || null,
-              dt_nascimento: formData.dt_nascimento
-                ? new Date(formData.dt_nascimento).toISOString()
-                : null,
-            })
-            .catch((err) => console.warn("Erro ao atualizar Pessoa Base", err));
-        }
       } else {
         // CREATE
-        const pessoaRes = await api.post("/pessoa", {
-          nome: formData.nome,
-          genero: formData.genero || null,
-          dt_nascimento: formData.dt_nascimento
-            ? new Date(formData.dt_nascimento).toISOString()
-            : null,
-        });
-        const idPessoa = pessoaRes.data.id_pessoa;
-
-        const pfRes = await api.post("/pessoa-fisica", {
-          id_pessoa: idPessoa,
-          cpf: formData.cpf.replace(/\D/g, "") || null,
-        });
-        const idPf = pfRes.data.id_pessoa_fisica;
-
-        await api.post("/funcionario", getFuncionarioPayload(idPessoa, idPf));
+        await ColaboradorService.create(
+          getFuncionarioPayload(),
+          pessoaCreateData,
+          formData.cpf,
+        );
       }
 
       onSuccess();

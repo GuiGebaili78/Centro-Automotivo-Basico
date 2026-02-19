@@ -1,16 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import { api } from "../services/api";
+import { ColaboradorService } from "../services/colaborador.service";
 import { Button } from "../components/ui/Button";
 import { FuncionarioForm } from "../components/forms/FuncionarioForm";
-import { ActionButton } from "../components/ui/ActionButton";
+import { ColaboradoresTable } from "../components/colaboradores/ColaboradoresTable";
 import { Input } from "../components/ui/Input";
-import { Plus, Search, Trash2, Edit, Users, User, Phone } from "lucide-react";
-import type { IFuncionario } from "../types/backend";
+import { Plus, Search, Users } from "lucide-react";
+import type { IFuncionario } from "../types/colaborador.types";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { toast } from "react-toastify";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
-import { Badge } from "../components/ui/Badge";
 
 export const FuncionarioPage = () => {
   const [view, setView] = useState<"list" | "form">("list");
@@ -37,8 +36,8 @@ export const FuncionarioPage = () => {
 
   const loadFuncionarios = async () => {
     try {
-      const response = await api.get("/funcionario");
-      setFuncionarios(response.data);
+      const data = await ColaboradorService.getAll();
+      setFuncionarios(data);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar colaboradores.");
@@ -52,7 +51,7 @@ export const FuncionarioPage = () => {
   const confirmDelete = async () => {
     if (!deleteModal.id) return;
     try {
-      await api.delete(`/funcionario/${deleteModal.id}`);
+      await ColaboradorService.delete(deleteModal.id);
       toast.success("Colaborador removido.");
       loadFuncionarios();
       setDeleteModal({ open: false, id: null });
@@ -141,78 +140,11 @@ export const FuncionarioPage = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="tabela-limpa w-full">
-              <thead>
-                <tr>
-                  <th>Colaborador</th>
-                  <th>Cargo / Função</th>
-                  <th>Contato</th>
-                  <th>Status</th>
-                  <th className="text-center">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {filteredFuncionarios.map((f) => (
-                  <tr
-                    key={f.id_funcionario}
-                    className="transition-colors hover:bg-neutral-50 group"
-                  >
-                    <td className="py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-primary-50 text-primary-600 rounded-full flex items-center justify-center">
-                          <User size={18} />
-                        </div>
-                        <div>
-                          <p className="font-bold text-neutral-900 block">
-                            {f.pessoa_fisica?.pessoa?.nome}
-                          </p>
-                          <p className="text-[10px] font-bold text-neutral-400 uppercase">
-                            CPF: {f.pessoa_fisica?.cpf || "N/A"}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex flex-col items-start gap-1">
-                        <Badge variant="neutral">{f.cargo}</Badge>
-                        {f.especialidade && (
-                          <span className="text-[10px] text-neutral-500 font-medium ml-1">
-                            Spec: {f.especialidade}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2 text-neutral-600 text-sm font-medium">
-                        <Phone size={14} className="text-neutral-400" />
-                        {f.telefone_pessoal || "-"}
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <Badge variant={f.ativo === "S" ? "success" : "danger"}>
-                        {f.ativo === "S" ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </td>
-                    <td className="py-4 pr-6">
-                      <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ActionButton
-                          icon={Edit}
-                          label="Editar"
-                          variant="neutral"
-                          onClick={() => handleEdit(f)}
-                        />
-                        <ActionButton
-                          icon={Trash2}
-                          label="Excluir"
-                          variant="danger"
-                          onClick={() => handleRequestDelete(f.id_funcionario)}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <ColaboradoresTable
+              funcionarios={filteredFuncionarios}
+              onEdit={handleEdit}
+              onDelete={handleRequestDelete}
+            />
           </div>
         )}
       </Card>

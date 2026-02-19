@@ -1,31 +1,26 @@
 import { api } from "./api";
-import type { IFornecedor } from "../types/backend";
+import type {
+  IFornecedor,
+  IFornecedorPayload,
+} from "../types/fornecedor.types";
 
-export class FornecedorService {
-  static async getAll(): Promise<IFornecedor[]> {
-    const response = await api.get("/fornecedor");
+export const FornecedorService = {
+  getAll: async () => {
+    const response = await api.get<IFornecedor[]>("/fornecedor");
     return response.data;
-  }
+  },
 
-  static async getById(id: number | string): Promise<IFornecedor> {
-    const response = await api.get(`/fornecedor/${id}`);
+  create: async (data: IFornecedorPayload) => {
+    const response = await api.post<IFornecedor>("/fornecedor", data);
     return response.data;
-  }
+  },
 
-  static async create(data: Partial<IFornecedor>): Promise<IFornecedor> {
-    const response = await api.post("/fornecedor", data);
+  update: async (id: number, data: IFornecedorPayload) => {
+    const response = await api.put<IFornecedor>(`/fornecedor/${id}`, data);
     return response.data;
-  }
+  },
 
-  static async update(
-    id: number | string,
-    data: Partial<IFornecedor>,
-  ): Promise<IFornecedor> {
-    const response = await api.put(`/fornecedor/${id}`, data);
-    return response.data;
-  }
-
-  static async delete(id: number | string): Promise<void> {
+  delete: async (id: number) => {
     await api.delete(`/fornecedor/${id}`);
-  }
-}
+  },
+};

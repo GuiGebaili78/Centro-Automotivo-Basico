@@ -1,21 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { api } from "../services/api";
-import type { IFornecedor } from "../types/backend";
+import { FornecedorService } from "../services/fornecedor.service";
+import type { IFornecedor } from "../types/fornecedor.types";
 import { FornecedorForm } from "../components/forms/FornecedorForm";
+import { FornecedoresTable } from "../components/fornecedores/FornecedoresTable";
 import { Button } from "../components/ui/Button";
-import {
-  Plus,
-  Search,
-  Trash2,
-  Edit,
-  Truck,
-  MapPin,
-  Phone,
-  User,
-  Building2,
-} from "lucide-react";
+import { Plus, Search, Truck } from "lucide-react";
 import { Input } from "../components/ui/Input";
-import { ActionButton } from "../components/ui/ActionButton";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { toast } from "react-toastify";
 import { PageLayout } from "../components/ui/PageLayout";
@@ -47,8 +37,8 @@ export const FornecedorPage = () => {
 
   const loadFornecedores = async () => {
     try {
-      const response = await api.get("/fornecedor");
-      setFornecedores(response.data);
+      const data = await FornecedorService.getAll();
+      setFornecedores(data);
     } catch (error) {
       toast.error("Erro ao carregar lista de fornecedores.");
     }
@@ -61,7 +51,7 @@ export const FornecedorPage = () => {
   const confirmDelete = async () => {
     if (!deleteModal.id) return;
     try {
-      await api.delete(`/fornecedor/${deleteModal.id}`);
+      await FornecedorService.delete(deleteModal.id);
       toast.success("Fornecedor removido com sucesso!");
       loadFornecedores();
       setDeleteModal({ open: false, id: null });
@@ -158,114 +148,11 @@ export const FornecedorPage = () => {
               </div>
             </div>
           ) : (
-            <table className="tabela-limpa w-full">
-              <thead>
-                <tr>
-                  <th>Fornecedor</th>
-                  <th>Localização</th>
-                  <th>Contato</th>
-                  <th className="text-center">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {filteredFornecedores.map((f) => (
-                  <tr
-                    key={f.id_fornecedor}
-                    className="hover:bg-neutral-50 transition-colors group"
-                  >
-                    <td className="py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-primary-50 rounded-full flex items-center justify-center text-primary-600">
-                          {f.tipo_pessoa === "FISICA" ? (
-                            <User size={18} />
-                          ) : (
-                            <Building2 size={18} />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-bold text-neutral-900">
-                            {f.nome_fantasia || f.nome}
-                          </p>
-                          {f.nome_fantasia && f.nome_fantasia !== f.nome && (
-                            <p className="text-xs text-neutral-500 font-medium">
-                              {f.nome}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2 text-neutral-600 text-sm font-medium">
-                        <MapPin size={14} className="text-neutral-400" />
-                        <span className="uppercase">
-                          {f.logradouro ? (
-                            <>
-                              {f.logradouro}, {f.numero} - {f.bairro}
-                            </>
-                          ) : (
-                            <span className="text-neutral-400">
-                              Endereço não cadastrado
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      {f.cidade && (
-                        <div className="pl-6 text-xs text-neutral-400 font-medium uppercase">
-                          {f.cidade}/{f.uf}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-4">
-                      <div className="flex flex-col gap-1 items-start">
-                        {f.contato && (
-                          <div className="font-bold text-neutral-700 text-sm flex items-center gap-2 mb-1">
-                            <User size={14} className="text-neutral-400" />
-                            {f.contato}
-                          </div>
-                        )}
-
-                        <div className="flex flex-wrap gap-2">
-                          {f.whatsapp && (
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-md">
-                              <Phone size={12} />
-                              {f.whatsapp}
-                            </div>
-                          )}
-                          {f.telefone && f.telefone !== f.whatsapp && (
-                            <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
-                              <Phone size={12} />
-                              {f.telefone}
-                            </div>
-                          )}
-                        </div>
-
-                        {f.email && (
-                          <span className="text-xs text-neutral-500 mt-1">
-                            {f.email}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 pr-6">
-                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ActionButton
-                          icon={Edit}
-                          label="Editar"
-                          variant="neutral"
-                          onClick={() => handleEdit(f)}
-                        />
-                        <ActionButton
-                          icon={Trash2}
-                          label="Excluir"
-                          variant="danger"
-                          onClick={() => handleRequestDelete(f.id_fornecedor)}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <FornecedoresTable
+              fornecedores={filteredFornecedores}
+              onEdit={handleEdit}
+              onDelete={handleRequestDelete}
+            />
           )}
         </div>
       </Card>
