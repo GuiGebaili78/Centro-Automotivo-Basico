@@ -6,29 +6,13 @@ import type { FormEvent } from "react";
 import { Button } from "../../ui/Button";
 import { ActionButton } from "../../ui/ActionButton";
 import { Card } from "../../ui/Card";
-
-// Tipagem básica para garantir o funcionamento
-interface LaborService {
-  id_servico_mao_de_obra?: number;
-  id_temporary?: string; // Para modo draft
-  id_funcionario: number | string;
-  valor: number | string;
-  descricao?: string | null;
-  categoria?: string; // 'MECANICA' | 'ELETRICA'
-  funcionario?: {
-    pessoa_fisica?: {
-      pessoa?: {
-        nome: string;
-      };
-    };
-  };
-}
+import type { ILaborService } from "../../../types/os.types";
 
 interface LaborManagerProps {
   osId?: number;
   mode: "api" | "draft";
-  initialData?: LaborService[]; // Para carregar dados ou estado inicial
-  onChange?: (services: LaborService[]) => void; // Para retornar dados no modo draft
+  initialData?: ILaborService[]; // Para carregar dados ou estado inicial
+  onChange?: (services: ILaborService[]) => void; // Para retornar dados no modo draft
   employees: any[];
   readOnly?: boolean;
   onTotalChange?: (total: number) => void;
@@ -44,7 +28,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
   onTotalChange,
 }) => {
   const [laborServices, setLaborServices] =
-    useState<LaborService[]>(initialData);
+    useState<ILaborService[]>(initialData);
   const [newLaborService, setNewLaborService] = useState({
     id_funcionario: "",
     valor: "",
@@ -125,7 +109,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
         String(emp.id_funcionario) === String(newLaborService.id_funcionario),
     );
 
-    const newItem: LaborService = {
+    const newItem: ILaborService = {
       id_funcionario: newLaborService.id_funcionario,
       valor: val,
       descricao: newLaborService.descricao,
@@ -201,7 +185,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
     }
   };
 
-  const handleEditLabor = (service: LaborService) => {
+  const handleEditLabor = (service: ILaborService) => {
     setNewLaborService({
       id_funcionario: String(service.id_funcionario),
       valor: String(service.valor),

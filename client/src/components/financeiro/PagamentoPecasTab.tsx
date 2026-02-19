@@ -19,7 +19,7 @@ import type {
 } from "../../types/financeiro.types";
 import { Modal } from "../ui/Modal";
 
-interface ContasPagarTabProps {
+interface PagamentoPecasTabProps {
   payments: IPagamentoPeca[];
   fornecedores: IFornecedor[];
   onUpdate: () => void;
@@ -27,13 +27,13 @@ interface ContasPagarTabProps {
   setLoading: (loading: boolean) => void;
 }
 
-export const ContasPagarTab = ({
+export const PagamentoPecasTab = ({
   payments,
   fornecedores,
   onUpdate,
   setStatusMsg,
   setLoading,
-}: ContasPagarTabProps) => {
+}: PagamentoPecasTabProps) => {
   // State
   const [filters, setFilters] = useState<IPaymentFilters>({
     status: "PENDING",

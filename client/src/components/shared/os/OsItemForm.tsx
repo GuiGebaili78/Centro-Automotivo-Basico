@@ -4,13 +4,13 @@ import { Plus, Package } from "lucide-react";
 import { Button } from "../../ui/Button";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { toast } from "react-toastify";
-import { api } from "../../../services/api"; // For direct availability check if needed, or pass via props
 
 interface OsItemFormProps {
   onAdd: (item: any) => Promise<boolean>;
   onSearch: (query: string) => void;
   searchResults: any[];
   setSearchResults: (results: any[]) => void;
+  checkAvailability: (stockId: string | number) => Promise<any>;
 }
 
 export const OsItemForm = ({
@@ -18,6 +18,7 @@ export const OsItemForm = ({
   onSearch,
   searchResults,
   setSearchResults,
+  checkAvailability,
 }: OsItemFormProps) => {
   const [newItem, setNewItem] = useState({
     id_pecas_estoque: "",
@@ -54,33 +55,32 @@ export const OsItemForm = ({
     // If it's a stock item, fetch latest availability
     if (p.id_pecas_estoque) {
       try {
-        const res = await api.get(
-          `/pecas-estoque/${p.id_pecas_estoque}/availability`,
-        );
-        const partDetails = res.data;
+        const partDetails = await checkAvailability(p.id_pecas_estoque);
 
-        setNewItem((prev) => ({
-          ...prev,
-          id_pecas_estoque: String(partDetails.id_pecas_estoque),
-          valor_venda: Number(partDetails.valor_venda).toFixed(2),
-          descricao: partDetails.nome,
-        }));
+        if (partDetails) {
+          setNewItem((prev) => ({
+            ...prev,
+            id_pecas_estoque: String(partDetails.id_pecas_estoque),
+            valor_venda: Number(partDetails.valor_venda).toFixed(2),
+            descricao: partDetails.nome,
+          }));
 
-        const freeStock =
-          (partDetails.estoque_atual || 0) - (partDetails.reserved || 0);
-        setSelectedStockInfo({
-          qtd: freeStock,
-          reserved: partDetails.reserved,
-        });
+          const freeStock =
+            (partDetails.estoque_atual || 0) - (partDetails.reserved || 0);
+          setSelectedStockInfo({
+            qtd: freeStock,
+            reserved: partDetails.reserved,
+          });
 
-        if (freeStock <= 0) {
-          toast.error(
-            `⚠️ Sem Estoque! (Reservado: ${partDetails.reserved || 0})`,
-          );
-        } else if (freeStock < 2) {
-          toast.warn(`⚠️ Estoque Baixo! Disp: ${freeStock}`);
-        } else {
-          toast.success(`Item selecionado. Disp: ${freeStock}`);
+          if (freeStock <= 0) {
+            toast.error(
+              `⚠️ Sem Estoque! (Reservado: ${partDetails.reserved || 0})`,
+            );
+          } else if (freeStock < 2) {
+            toast.warn(`⚠️ Estoque Baixo! Disp: ${freeStock}`);
+          } else {
+            toast.success(`Item selecionado. Disp: ${freeStock}`);
+          }
         }
       } catch (e) {
         console.error("Erro ao checar disponibilidade", e);

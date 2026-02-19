@@ -49,6 +49,7 @@ export const OrdemDeServicoDetalhePage = () => {
     searchParts,
     partSearchResults,
     setPartSearchResults,
+    checkStockAvailability,
   } = useOsItems(id);
 
   const { confirmState, requestConfirm, closeConfirm } = useConfirm();
@@ -355,6 +356,7 @@ export const OrdemDeServicoDetalhePage = () => {
           onSearch={searchParts}
           searchResults={partSearchResults}
           setSearchResults={setPartSearchResults}
+          checkAvailability={checkStockAvailability}
         />
 
         {/* Totals & Actions */}

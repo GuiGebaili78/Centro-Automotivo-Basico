@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getStatusStyle } from "../utils/osUtils";
-import { api } from "../services/api";
+import { FinanceiroService } from "../services/financeiro.service";
+import { OsService } from "../services/os.service";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -13,52 +14,21 @@ import { DocumentoModal } from "../components/shared/DocumentoModal";
 
 import { Search, Trash2, Edit, CheckCircle, Printer } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import type { IOrdemDeServico, IFechamentoFinanceiro } from "../types/backend";
 
-interface IOS {
-  id_os: number;
-  status: string;
-  dt_abertura: string; // Ensure this exists in backend type, otherwise maybe use created_at or verify
-  valor_total_cliente: number;
-  cliente: {
-    pessoa_fisica?: { pessoa: { nome: string } };
-    pessoa_juridica?: { nome_fantasia: string; razao_social: string };
-    telefone_1?: string;
-    email?: string;
-  };
-  veiculo: {
-    placa: string;
-    marca?: string;
-    modelo: string;
-    cor: string;
-  };
-  fechamento_financeiro?: IFechamentoFinanceiro;
-  servicos_mao_de_obra?: {
-    funcionario: {
-      pessoa_fisica: {
-        pessoa: {
-          nome: string;
-        };
-      };
-    };
-  }[];
-  defeito_relatado?: string;
-  diagnostico?: string;
-  obs_final?: string;
-}
-
-interface IFechamentoFinanceiro {
-  id_fechamento_financeiro: number;
-  id_os: number;
-  custo_total_pecas_real: number;
-  data_fechamento_financeiro: string;
-  ordem_de_servico: IOS;
+// Extended interface if IFechamentoFinanceiro in backend.d.ts doesn't have the relation yet
+// or we leverage the one from backend.d.ts if it's sufficient.
+// Based on previous analysis, IFechamentoFinanceiro in backend.d.ts lacks 'ordem_de_servico'.
+// We will augment it locally for now or rely on the fact that the API returns it.
+interface IFechamentoWithOS extends IFechamentoFinanceiro {
+  ordem_de_servico: IOrdemDeServico;
 }
 
 export const FechamentoFinanceiroPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [fechamentos, setFechamentos] = useState<IFechamentoFinanceiro[]>([]);
-  const [pendingOss, setPendingOss] = useState<IOS[]>([]);
+  const [fechamentos, setFechamentos] = useState<IFechamentoWithOS[]>([]);
+  const [pendingOss, setPendingOss] = useState<IOrdemDeServico[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Confirm Delete Modal
@@ -103,26 +73,23 @@ export const FechamentoFinanceiroPage = () => {
 
   const loadData = async () => {
     try {
-      const [fechamentosRes, osRes] = await Promise.all([
-        api.get("/fechamento-financeiro"),
-        api.get("/ordem-de-servico"),
+      const [fechamentosData, allOss] = await Promise.all([
+        FinanceiroService.getFechamentos(),
+        OsService.getAll(),
       ]);
 
-      setFechamentos(fechamentosRes.data);
+      setFechamentos(fechamentosData);
 
-      const allOss = osRes.data;
-      // Filter OSs: Em Andamento, Aberta, Pronto Para Financeiro (and Finalizada if pending logic applies, usually Finalizada has fechamento)
-      // But if Finalizada DOES NOT have Fechamento, we show it too.
+      // Filter OSs pending closure
       const pending = allOss.filter(
-        (os: IOS) =>
+        (os) =>
           [
             "ABERTA",
             "EM_ANDAMENTO",
             "PRONTO PARA FINANCEIRO",
             "FINALIZADA",
           ].includes(os.status) &&
-          !os.fechamento_financeiro &&
-          !fechamentosRes.data.some(
+          !fechamentosData.some(
             (f: IFechamentoFinanceiro) => f.id_os === os.id_os,
           ),
       );
@@ -144,7 +111,7 @@ export const FechamentoFinanceiroPage = () => {
   const handleDelete = async () => {
     if (!confirmDeleteId) return;
     try {
-      await api.delete(`/fechamento-financeiro/${confirmDeleteId}`);
+      await FinanceiroService.deleteFechamento(confirmDeleteId);
       toast.success("Fechamento cancelado com sucesso!");
       loadData();
       setConfirmDeleteId(null);
@@ -153,7 +120,7 @@ export const FechamentoFinanceiroPage = () => {
     }
   };
 
-  const handlePrint = (os: IOS) => {
+  const handlePrint = (os: IOrdemDeServico) => {
     setPrintData({
       id_os: os.id_os,
       status: os.status,
@@ -163,7 +130,8 @@ export const FechamentoFinanceiroPage = () => {
     });
   };
 
-  const getClientName = (os: IOS) => {
+  const getClientName = (os: IOrdemDeServico | undefined) => {
+    if (!os) return "Cliente N/I";
     return (
       os.cliente?.pessoa_fisica?.pessoa?.nome ||
       os.cliente?.pessoa_juridica?.nome_fantasia ||
@@ -304,7 +272,7 @@ export const FechamentoFinanceiroPage = () => {
                           </span>
                           <span
                             className="text-xs text-primary-500 font-medium line-clamp-2"
-                            title={os.defeito_relatado}
+                            title={os.defeito_relatado || ""}
                           >
                             {os.defeito_relatado || "-"}
                           </span>
@@ -315,7 +283,7 @@ export const FechamentoFinanceiroPage = () => {
                           </span>
                           <span
                             className="text-xs text-primary-500 font-medium line-clamp-2"
-                            title={os.diagnostico}
+                            title={os.diagnostico || ""}
                           >
                             {os.diagnostico || "-"}
                           </span>
@@ -324,7 +292,9 @@ export const FechamentoFinanceiroPage = () => {
                     </td>
                     <td className="p-4 text-center">
                       <span
-                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
+                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(
+                          os.status,
+                        )}`}
                       >
                         {os.status === "PRONTO PARA FINANCEIRO"
                           ? "FINANCEIRO"

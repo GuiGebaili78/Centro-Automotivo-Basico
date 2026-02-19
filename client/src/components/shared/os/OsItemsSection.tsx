@@ -11,6 +11,7 @@ interface OsItemsSectionProps {
   onSearch: (query: string) => void;
   searchResults: any[];
   setSearchResults: (results: any[]) => void;
+  checkAvailability: (stockId: string | number) => Promise<any>;
 }
 
 export const OsItemsSection = ({
@@ -22,6 +23,7 @@ export const OsItemsSection = ({
   onSearch,
   searchResults,
   setSearchResults,
+  checkAvailability,
 }: OsItemsSectionProps) => {
   return (
     <div className="space-y-4 pt-4 border-t border-dashed border-neutral-200">
@@ -38,6 +40,7 @@ export const OsItemsSection = ({
           onSearch={onSearch}
           searchResults={searchResults}
           setSearchResults={setSearchResults}
+          checkAvailability={checkAvailability}
         />
       )}
 
