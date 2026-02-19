@@ -22,6 +22,7 @@ import { ActionButton } from "../components/ui/ActionButton";
 import { VeiculoForm } from "../components/forms/VeiculoForm";
 import { Badge } from "../components/ui/Badge";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { OsCreationModal } from "../components/os/OsCreationModal";
 
 export const ClientePage = () => {
   const navigate = useNavigate();
@@ -30,6 +31,12 @@ export const ClientePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [showOsModeModal, setShowOsModeModal] = useState(false);
+  const [pendingOsData, setPendingOsData] = useState<{
+    clientId: number;
+    vehicleId: number;
+  } | null>(null);
+
   const [selectedClientIdForVehicle, setSelectedClientIdForVehicle] = useState<
     number | null
   >(null);
@@ -322,11 +329,13 @@ export const ClientePage = () => {
                                       variant="primary"
                                       label="Abrir OS"
                                       className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                                      onClick={() =>
-                                        navigate(
-                                          `/ordem-de-servico?clientId=${c.id_cliente}&vehicleId=${v.id_veiculo}`,
-                                        )
-                                      }
+                                      onClick={() => {
+                                        setPendingOsData({
+                                          clientId: c.id_cliente,
+                                          vehicleId: v.id_veiculo,
+                                        });
+                                        setShowOsModeModal(true);
+                                      }}
                                     />
                                   </div>
                                 ))}
@@ -366,6 +375,20 @@ export const ClientePage = () => {
         title="Excluir Cliente"
         description="Tem certeza que deseja excluir este cliente? Essa ação removerá também os veículos associados e pode impedir o acesso a históricos antigos."
         variant="danger"
+      />
+      {/* Modal de Criação de OS */}
+      <OsCreationModal
+        isOpen={showOsModeModal}
+        onClose={() => setShowOsModeModal(false)}
+        onSelect={(type) => {
+          setShowOsModeModal(false);
+          if (pendingOsData) {
+            navigate(
+              `/ordem-de-servico?clientId=${pendingOsData.clientId}&vehicleId=${pendingOsData.vehicleId}&initialStatus=${type}`,
+            );
+            setPendingOsData(null);
+          }
+        }}
       />
     </PageLayout>
   );

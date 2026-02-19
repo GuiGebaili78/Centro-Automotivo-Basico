@@ -201,6 +201,7 @@ export const EntradaEstoquePage = () => {
 
   // --- FINANCIAL MODAL STATE ---
   const [showFinancialModal, setShowFinancialModal] = useState(false);
+  const [enableFinancial, setEnableFinancial] = useState(true); // Default TRUE
   const [finDesc, setFinDesc] = useState("");
   const [finValue, setFinValue] = useState("");
   const [finDueDate, setFinDueDate] = useState("");
@@ -232,6 +233,7 @@ export const EntradaEstoquePage = () => {
     setFinDueDate(date); // Default due date = purchase date
     setFinPayDate(new Date().toISOString().split("T")[0]); // Default pay date = today
     setFinPaid(false); // Default to Unpaid as per user request
+    setEnableFinancial(true); // Reset to true default
 
     setShowFinancialModal(true);
   };
@@ -244,13 +246,15 @@ export const EntradaEstoquePage = () => {
         data_compra: new Date(date),
         obs: obs,
         itens: items,
-        financeiro: {
-          descricao: finDesc,
-          valor: Number(finValue),
-          dt_vencimento: finDueDate,
-          dt_pagamento: finPaid ? finPayDate : null,
-          status: finPaid ? "PAGO" : "PENDENTE",
-        },
+        financeiro: enableFinancial
+          ? {
+              descricao: finDesc,
+              valor: Number(finValue),
+              dt_vencimento: finDueDate,
+              dt_pagamento: finPaid ? finPayDate : null,
+              status: finPaid ? "PAGO" : "PENDENTE",
+            }
+          : undefined, // Send undefined to skip creation
       };
 
       await api.post("/pecas-estoque/entry", payload);
@@ -638,64 +642,84 @@ export const EntradaEstoquePage = () => {
                 </div>
               </div>
 
-              <Input
-                label="Descrição do Lançamento"
-                value={finDesc}
-                onChange={(e) => setFinDesc(e.target.value)}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Valor Total (R$)"
-                  type="number"
-                  value={finValue}
-                  readOnly
-                  className="bg-neutral-100 font-bold text-neutral-600"
+              <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl border border-neutral-100">
+                <input
+                  type="checkbox"
+                  id="chkEnableFin"
+                  checked={enableFinancial}
+                  onChange={(e) => setEnableFinancial(e.target.checked)}
+                  className="w-5 h-5 accent-primary-600 rounded cursor-pointer"
                 />
-                <div>
-                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                    Vencimento
-                  </label>
-                  <input
-                    type="date"
-                    value={finDueDate}
-                    onChange={(e) => setFinDueDate(e.target.value)}
-                    className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-blue-500 font-medium h-[42px]"
-                  />
-                </div>
+                <label
+                  htmlFor="chkEnableFin"
+                  className="font-bold text-neutral-700 cursor-pointer select-none text-sm"
+                >
+                  Lançar valor no Financeiro (Contas a Pagar)?
+                </label>
               </div>
 
-              <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200">
-                <div className="flex items-center gap-3 mb-4">
-                  <input
-                    type="checkbox"
-                    id="chkPaid"
-                    checked={finPaid}
-                    onChange={(e) => setFinPaid(e.target.checked)}
-                    className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
+              {enableFinancial && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
+                  <Input
+                    label="Descrição do Lançamento"
+                    value={finDesc}
+                    onChange={(e) => setFinDesc(e.target.value)}
                   />
-                  <label
-                    htmlFor="chkPaid"
-                    className="font-bold text-neutral-700 cursor-pointer select-none text-sm"
-                  >
-                    Compra à vista / Já foi paga?
-                  </label>
-                </div>
 
-                {finPaid && (
-                  <div className="animate-in fade-in slide-in-from-top-2">
-                    <label className="block text-xs font-bold text-emerald-600 uppercase mb-1">
-                      Data do Pagamento
-                    </label>
-                    <input
-                      type="date"
-                      value={finPayDate}
-                      onChange={(e) => setFinPayDate(e.target.value)}
-                      className="w-full border p-2.5 rounded-xl outline-none focus:border-emerald-500 font-bold text-emerald-800 border-emerald-200 bg-emerald-50 h-[42px]"
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Valor Total (R$)"
+                      type="number"
+                      value={finValue}
+                      readOnly
+                      className="bg-neutral-100 font-bold text-neutral-600"
                     />
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
+                        Vencimento
+                      </label>
+                      <input
+                        type="date"
+                        value={finDueDate}
+                        onChange={(e) => setFinDueDate(e.target.value)}
+                        className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-blue-500 font-medium h-[42px]"
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200">
+                    <div className="flex items-center gap-3 mb-4">
+                      <input
+                        type="checkbox"
+                        id="chkPaid"
+                        checked={finPaid}
+                        onChange={(e) => setFinPaid(e.target.checked)}
+                        className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
+                      />
+                      <label
+                        htmlFor="chkPaid"
+                        className="font-bold text-neutral-700 cursor-pointer select-none text-sm"
+                      >
+                        Compra à vista / Já foi paga?
+                      </label>
+                    </div>
+
+                    {finPaid && (
+                      <div className="animate-in fade-in slide-in-from-top-2">
+                        <label className="block text-xs font-bold text-emerald-600 uppercase mb-1">
+                          Data do Pagamento
+                        </label>
+                        <input
+                          type="date"
+                          value={finPayDate}
+                          onChange={(e) => setFinPayDate(e.target.value)}
+                          className="w-full border p-2.5 rounded-xl outline-none focus:border-emerald-500 font-bold text-emerald-800 border-emerald-200 bg-emerald-50 h-[42px]"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end pt-4 gap-3 border-t border-neutral-100 mt-4">
                 <Button

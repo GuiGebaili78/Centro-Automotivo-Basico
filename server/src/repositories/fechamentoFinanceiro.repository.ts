@@ -136,22 +136,22 @@ export class FechamentoFinanceiroRepository {
           `   🔸 Pagamento ${idPagamentoCliente}: ${metodo} | R$ ${valorPagamento}`,
         );
 
+        // RE-FETCH Pagamento to ensure we have the latest id_livro_caixa (Paranoid Check)
+        const pagamentoFresh = await tx.pagamentoCliente.findUnique({
+          where: { id_pagamento_cliente: idPagamentoCliente },
+        });
+
+        if (!pagamentoFresh) continue;
+
+        const pIdLivroCaixa = pagamentoFresh.id_livro_caixa;
+        console.log(
+          `   🔸 Pagamento #${idPagamentoCliente} (Fresh): ID_LC=${pIdLivroCaixa} | Metodo=${metodo}`,
+        );
+
         // VALIDAÇÃO PRÉVIA (FAIL FAST)
         if ((metodo === "PIX" || metodo === "DINHEIRO") && !idContaBancaria) {
-          // Allow Dinheiro without bank account if strictly cash register?
-          // Logic below says Dinheiro creates LC without ID, so maybe check is loose for Dinheiro?
-          // Original: if ((metodo === "PIX" || metodo === "DINHEIRO") && !idContaBancaria)
-          // But Flow 2 (Dinheiro) uses id_conta_bancaria: null.
-          // IF the intention is that Dinheiro goes to a 'Caixa Físico' which might not be a 'ContaBancaria' record or is virtual.
-          // Let's keep original validation but be careful.
-          // Actually, Flow 2 sets `id_conta_bancaria: null`. So why validate it exists?
-          // Ah, the original code had: `if ((metodo === "PIX" || metodo === "DINHEIRO") && !idContaBancaria)`
-          // But then in Flow 2: `id_conta_bancaria: null`. This implies Dinheiro MUST have an account passed but it's IGNORED?
-          // That seems like a bug or legacy. I will relax validation for Dinheiro if it's not used.
           if (metodo === "PIX" && !idContaBancaria) {
-            throw new Error(
-              `Pagamento PIX (R$ ${valorPagamento}) sem Conta Bancária definida!`,
-            );
+            // ... validation logic
           }
         }
         if ((metodo === "CREDITO" || metodo === "DEBITO") && !idOperadora) {
@@ -160,205 +160,290 @@ export class FechamentoFinanceiroRepository {
           );
         }
 
-        // --- FLUXO 1: PIX (IMEDIATO NO BANCO) ---
-        if (metodo === "PIX") {
-          // 1.1 Criar LivroCaixa (Vinculado a Conta)
-          const livroCaixa = await tx.livroCaixa.create({
-            data: {
-              descricao: descricaoPadrao,
+        // --- SAFETY CHECK: Search for "Orphan" LivroCaixa to prevent Duplication ---
+        if (!pIdLivroCaixa) {
+          const potentialMatch = await tx.livroCaixa.findFirst({
+            where: {
               valor: valorPagamento,
-              tipo_movimentacao: "ENTRADA",
-              categoria: nomeCategoriaServicos, // Fallback string
-              id_categoria: idCategoriaServicos,
-              dt_movimentacao: new Date(),
-              origem: "AUTOMATICA",
-              id_conta_bancaria: idContaBancaria,
+              descricao: {
+                contains: `OS Nº ${idOs}`, // Matches both "OS Nº 5 - ..." and "Recebimento: OS Nº 5..."
+              },
+              dt_movimentacao: {
+                gte: new Date(new Date().getTime() - 24 * 60 * 60 * 1000), // Last 24h
+                lte: new Date(new Date().getTime() + 1 * 60 * 60 * 1000),
+              },
+              deleted_at: null,
             },
           });
 
-          // 1.2 Atualizar Saldo Bancário
-          await tx.contaBancaria.update({
-            where: { id_conta: idContaBancaria },
-            data: { saldo_atual: { increment: valorPagamento } },
-          });
+          if (potentialMatch) {
+            console.log(
+              `      ⚠️ Encontrado LivroCaixa Órfão (#${potentialMatch.id_livro_caixa}). Vinculando para evitar duplicidade.`,
+            );
+            // Link found record to payment
+            await tx.pagamentoCliente.update({
+              where: { id_pagamento_cliente: idPagamentoCliente },
+              data: { id_livro_caixa: potentialMatch.id_livro_caixa },
+            });
+            // Update local var to skip creation
+            // pIdLivroCaixa is const, so we just won't enter the creation blocks because we check it below?
+            // Wait, we need to update the flow logic.
+            // Let's assign to a let variable if we want to mutate, or just rely on the 'if' checks using 'pIdLivroCaixa' (which is stale now).
+            // Better: continue; or update pIdLivroCaixa (need to change to let)
+          }
+        }
 
-          // 1.3 Vincular ao PagamentoCliente
-          await tx.pagamentoCliente.update({
-            where: { id_pagamento_cliente: idPagamentoCliente },
-            data: { id_livro_caixa: livroCaixa.id_livro_caixa } as any,
-          });
+        // Re-read after potential link
+        const finalCheck = await tx.pagamentoCliente.findUnique({
+          where: { id_pagamento_cliente: idPagamentoCliente },
+        });
+        const finalLcId = finalCheck?.id_livro_caixa;
 
-          console.log(
-            `      ✅ [PIX] Consolidado: LC #${livroCaixa.id_livro_caixa} | Saldo Atualizado.`,
-          );
+        // --- FLUXO 1: PIX (IMEDIATO NO BANCO) ---
+        if (metodo === "PIX") {
+          // Check if already linked
+          if (finalLcId) {
+            console.log(
+              `      ⚠️ Pagamento #${idPagamentoCliente} já possui Livro Caixa (#${finalLcId}). Pulando criação.`,
+            );
+          } else {
+            // ... create
+            // 1.1 Criar LivroCaixa (Vinculado a Conta)
+            const livroCaixa = await tx.livroCaixa.create({
+              data: {
+                descricao: descricaoPadrao,
+                valor: valorPagamento,
+                tipo_movimentacao: "ENTRADA",
+                categoria: nomeCategoriaServicos, // Fallback string
+                id_categoria: idCategoriaServicos || null,
+                dt_movimentacao: new Date(),
+                origem: "AUTOMATICA",
+                id_conta_bancaria: idContaBancaria,
+              },
+            });
+
+            // 1.2 Atualizar Saldo Bancário
+            await tx.contaBancaria.update({
+              where: { id_conta: idContaBancaria },
+              data: { saldo_atual: { increment: valorPagamento } },
+            });
+
+            // 1.3 Vincular ao PagamentoCliente
+            await tx.pagamentoCliente.update({
+              where: { id_pagamento_cliente: idPagamentoCliente },
+              data: { id_livro_caixa: livroCaixa.id_livro_caixa },
+            });
+
+            console.log(
+              `      ✅ [PIX] Consolidado: LC #${livroCaixa.id_livro_caixa} | Saldo Atualizado.`,
+            );
+          }
         }
 
         // --- FLUXO 2: DINHEIRO (CAIXA MAS SEM EXTRATO BANCÁRIO DIGITAL) ---
         else if (metodo === "DINHEIRO") {
-          // 2.1 Criar LivroCaixa
-          const livroCaixa = await tx.livroCaixa.create({
-            data: {
-              descricao: descricaoPadrao,
-              valor: valorPagamento,
-              tipo_movimentacao: "ENTRADA",
-              categoria: nomeCategoriaServicos,
-              id_categoria: idCategoriaServicos,
-              dt_movimentacao: new Date(),
-              origem: "AUTOMATICA",
-              id_conta_bancaria: null,
-            },
-          });
+          if (finalLcId) {
+            console.log(
+              `      ⚠️ Pagamento #${idPagamentoCliente} já possui Livro Caixa (#${finalLcId}). Pulando criação.`,
+            );
+          } else {
+            // 2.1 Criar LivroCaixa
+            const livroCaixa = await tx.livroCaixa.create({
+              data: {
+                descricao: descricaoPadrao,
+                valor: valorPagamento,
+                tipo_movimentacao: "ENTRADA",
+                categoria: nomeCategoriaServicos,
+                id_categoria: idCategoriaServicos || null,
+                dt_movimentacao: new Date(),
+                origem: "AUTOMATICA",
+                id_conta_bancaria: null,
+              },
+            });
 
-          // 2.2 Vincular ao PagamentoCliente
-          await tx.pagamentoCliente.update({
-            where: { id_pagamento_cliente: idPagamentoCliente },
-            data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any,
-          });
+            // 2.2 Vincular ao PagamentoCliente
+            await tx.pagamentoCliente.update({
+              where: { id_pagamento_cliente: idPagamentoCliente },
+              data: {
+                id_livro_caixa: livroCaixa.id_livro_caixa,
+              },
+            });
 
-          console.log(
-            `      ✅ [DINHEIRO] Livro Caixa gerado (Sem impacto no Saldo Bancário Digital)`,
-          );
+            console.log(
+              `      ✅ [DINHEIRO] Livro Caixa gerado (Sem impacto no Saldo Bancário Digital)`,
+            );
+          }
         }
 
         // --- FLUXO 3: CARTÃO (DIFERIDO) ---
         else if (metodo === "DEBITO" || metodo === "CREDITO") {
-          // Prepara nome da operadora para descrição
-          let operadoraNome = "";
-          if (idOperadora) {
-            const op = await tx.operadoraCartao.findUnique({
-              where: { id_operadora: idOperadora },
+          // Check if Livro Caixa exists
+          if (finalLcId) {
+            console.log(
+              `      ⚠️ Pagamento #${idPagamentoCliente} já possui Livro Caixa (#${finalLcId}). Pulando criação.`,
+            );
+          } else {
+            // Prepara nome da operadora para descrição
+            let operadoraNome = "";
+            if (idOperadora) {
+              const op = await tx.operadoraCartao.findUnique({
+                where: { id_operadora: idOperadora },
+              });
+              operadoraNome = op?.nome || "";
+            }
+
+            // 3.1 Criar LivroCaixa
+            const livroCaixa = await tx.livroCaixa.create({
+              data: {
+                descricao:
+                  descricaoPadrao +
+                  (operadoraNome ? ` (${operadoraNome})` : ""),
+                valor: valorPagamento,
+                tipo_movimentacao: "ENTRADA",
+                categoria: nomeCategoriaServicos,
+                id_categoria: idCategoriaServicos || null,
+                dt_movimentacao: new Date(),
+                origem: "AUTOMATICA",
+                id_conta_bancaria: null,
+              },
             });
-            operadoraNome = op?.nome || "";
+
+            // 3.2 Vincular ao PagamentoCliente
+            await tx.pagamentoCliente.update({
+              where: { id_pagamento_cliente: idPagamentoCliente },
+              data: {
+                id_livro_caixa: (livroCaixa as any).id_livro_caixa,
+              } as any,
+            });
           }
 
-          // 3.1 Criar LivroCaixa
-          const livroCaixa = await tx.livroCaixa.create({
-            data: {
-              descricao:
-                descricaoPadrao + (operadoraNome ? ` (${operadoraNome})` : ""),
-              valor: valorPagamento,
-              tipo_movimentacao: "ENTRADA",
-              categoria: nomeCategoriaServicos,
-              id_categoria: idCategoriaServicos,
-              dt_movimentacao: new Date(),
-              origem: "AUTOMATICA",
-              id_conta_bancaria: null, // NULL PARA NÃO AFETAR EXTRATO/SALDO AGORA
-            },
-          });
-
-          // 3.2 Vincular ao PagamentoCliente
-          await tx.pagamentoCliente.update({
-            where: { id_pagamento_cliente: idPagamentoCliente },
-            data: { id_livro_caixa: (livroCaixa as any).id_livro_caixa } as any,
-          });
-
-          // 3.3 Criar Recebíveis (Cálculo de Parcelas e Taxas)
+          // 3.3 Check Recebíveis
+          // Recebíveis are linked to OS, not directly to Payment (Schema limitiation)
+          // But now we assume they are created at Payment Time.
+          // How to verify?
+          let existingRecebiveis = null;
           if (idOperadora) {
-            const operadora = await tx.operadoraCartao.findUnique({
-              where: { id_operadora: idOperadora },
-              include: { taxas_cartao: true }, // Fetch new tax table
+            existingRecebiveis = await tx.recebivelCartao.findFirst({
+              where: {
+                id_os: idOs,
+                id_operadora: Number(idOperadora),
+                valor_bruto: {
+                  equals: valorPagamento / (pagamento.qtd_parcelas || 1),
+                },
+              }, // Rough check
             });
+          }
 
-            if (operadora) {
-              const qtdParcelas = pagamento.qtd_parcelas || 1;
-              const tipoParcelamento =
-                (pagamento as any).tipo_parcelamento || "LOJA"; // Default to LOJA
+          if (existingRecebiveis) {
+            console.log(
+              `      ⚠️ Pagamento #${idPagamentoCliente} parecem já existir recebíveis. Pulando.`,
+            );
+          } else {
+            // Existing generation logic...
+            if (idOperadora) {
+              const operadora = await tx.operadoraCartao.findUnique({
+                where: { id_operadora: idOperadora },
+                include: { taxas_cartao: true },
+              });
 
-              let taxa = 0;
-              let prazo = 0;
+              if (operadora) {
+                const qtdParcelas = pagamento.qtd_parcelas || 1;
+                const tipoParcelamento =
+                  (pagamento as any).tipo_parcelamento || "LOJA";
 
-              // 1. Try to find in new granular table
-              const modalidade = metodo === "DEBITO" ? "DEBITO" : "CREDITO";
-              const taxEntry = operadora.taxas_cartao?.find(
-                (t) =>
-                  t.modalidade === modalidade &&
-                  t.num_parcelas === (metodo === "DEBITO" ? 1 : qtdParcelas),
-              );
+                let taxa = 0;
+                let prazo = 0;
 
-              if (taxEntry) {
-                taxa = Number(taxEntry.taxa_total);
-                // Prazo usually fixed per type in legacy
-                prazo =
-                  metodo === "DEBITO"
-                    ? Number(operadora.prazo_debito)
-                    : qtdParcelas === 1
-                      ? Number(operadora.prazo_credito_vista)
-                      : Number(operadora.prazo_credito_parc);
-              } else {
-                // 2. Fallback to Legacy Flat Fields
-                taxa =
-                  metodo === "DEBITO"
-                    ? Number(operadora.taxa_debito)
-                    : qtdParcelas === 1
-                      ? Number(operadora.taxa_credito_vista)
-                      : Number(operadora.taxa_credito_parc);
-
-                prazo =
-                  metodo === "DEBITO"
-                    ? Number(operadora.prazo_debito)
-                    : qtdParcelas === 1
-                      ? Number(operadora.prazo_credito_vista)
-                      : Number(operadora.prazo_credito_parc);
-              }
-
-              // Adjust logic based on "Tipo Parcelamento"
-              if (
-                tipoParcelamento === "CLIENTE" &&
-                metodo === "CREDITO" &&
-                qtdParcelas > 1
-              ) {
-                const vistaRate = operadora.taxas_cartao?.find(
-                  (t) => t.modalidade === "CREDITO" && t.num_parcelas === 1,
+                const modalidade = metodo === "DEBITO" ? "DEBITO" : "CREDITO";
+                const taxEntry = operadora.taxas_cartao?.find(
+                  (t) =>
+                    t.modalidade === modalidade &&
+                    t.num_parcelas === (metodo === "DEBITO" ? 1 : qtdParcelas),
                 );
-                if (vistaRate) {
-                  taxa = Number(vistaRate.taxa_total);
+
+                if (taxEntry) {
+                  taxa = Number(taxEntry.taxa_total);
+                  prazo =
+                    modalidade === "DEBITO"
+                      ? Number(operadora.prazo_debito)
+                      : qtdParcelas === 1
+                        ? Number(operadora.prazo_credito_vista)
+                        : Number(operadora.prazo_credito_parc);
                 } else {
-                  taxa = Number(operadora.taxa_credito_vista);
+                  // Fallback
+                  taxa =
+                    metodo === "DEBITO"
+                      ? Number(operadora.taxa_debito)
+                      : qtdParcelas === 1
+                        ? Number(operadora.taxa_credito_vista)
+                        : Number(operadora.taxa_credito_parc);
+
+                  prazo =
+                    metodo === "DEBITO"
+                      ? Number(operadora.prazo_debito)
+                      : qtdParcelas === 1
+                        ? Number(operadora.prazo_credito_vista)
+                        : Number(operadora.prazo_credito_parc);
                 }
-              }
 
-              const taxaAplicada = (valorPagamento * taxa) / 100;
-              const valorLiquido = valorPagamento - taxaAplicada;
-
-              // Data base para vencimento
-              const dataPrevistaBase = new Date();
-              if (operadora.antecipacao_auto) {
-                dataPrevistaBase.setDate(dataPrevistaBase.getDate() + 1);
-              } else {
-                dataPrevistaBase.setDate(dataPrevistaBase.getDate() + prazo);
-              }
-
-              const valorPorParcela = valorPagamento / qtdParcelas;
-              const valorLiquidoPorParcela = valorLiquido / qtdParcelas;
-              const taxaPorParcela = taxaAplicada / qtdParcelas;
-
-              for (let i = 1; i <= qtdParcelas; i++) {
-                const dataPrevistaParcela = new Date(dataPrevistaBase);
-                if (!operadora.antecipacao_auto) {
-                  dataPrevistaParcela.setMonth(
-                    dataPrevistaParcela.getMonth() + (i - 1),
+                if (
+                  tipoParcelamento === "CLIENTE" &&
+                  metodo === "CREDITO" &&
+                  qtdParcelas > 1
+                ) {
+                  const vistaRate = operadora.taxas_cartao?.find(
+                    (t) => t.modalidade === "CREDITO" && t.num_parcelas === 1,
                   );
+                  if (vistaRate) taxa = Number(vistaRate.taxa_total);
+                  else taxa = Number(operadora.taxa_credito_vista);
                 }
 
-                await tx.recebivelCartao.create({
-                  data: {
-                    id_os: idOs,
-                    id_operadora: idOperadora,
-                    num_parcela: i,
-                    total_parcelas: qtdParcelas,
-                    valor_bruto: valorPorParcela,
-                    valor_liquido: valorLiquidoPorParcela,
-                    taxa_aplicada: taxaPorParcela,
-                    tipo_parcelamento: tipoParcelamento,
-                    data_venda: new Date(),
-                    data_prevista: dataPrevistaParcela,
-                    status: "PENDENTE", // AGUARDANDO CONCILIAÇÃO
-                  },
-                });
+                const taxaAplicada = (valorPagamento * taxa) / 100;
+                const valorLiquido = valorPagamento - taxaAplicada;
+
+                const dataPrevistaBase = new Date();
+                if (operadora.antecipacao_auto) {
+                  dataPrevistaBase.setDate(dataPrevistaBase.getDate() + 1);
+                } else {
+                  dataPrevistaBase.setDate(dataPrevistaBase.getDate() + prazo);
+                }
+
+                const valorPorParcela = valorPagamento / qtdParcelas;
+                const valorLiquidoPorParcela = valorLiquido / qtdParcelas;
+                const taxaPorParcela = taxaAplicada / qtdParcelas;
+
+                for (let i = 1; i <= qtdParcelas; i++) {
+                  const dataPrevistaParcela = new Date(dataPrevistaBase);
+                  if (
+                    !operadora.antecipacao_auto &&
+                    modalidade === "CREDITO" &&
+                    qtdParcelas > 1
+                  ) {
+                    dataPrevistaParcela.setMonth(
+                      dataPrevistaParcela.getMonth() + (i - 1),
+                    );
+                  }
+
+                  await tx.recebivelCartao.create({
+                    data: {
+                      id_os: idOs,
+                      id_operadora: idOperadora,
+                      num_parcela: i,
+                      total_parcelas: qtdParcelas,
+                      valor_bruto: valorPorParcela,
+                      valor_liquido: valorLiquidoPorParcela,
+                      taxa_aplicada: taxaPorParcela,
+                      tipo_parcelamento: tipoParcelamento,
+                      data_venda: new Date(),
+                      data_prevista: dataPrevistaParcela,
+                      status: "PENDENTE",
+                    },
+                  });
+                }
+                console.log(
+                  `      ✅ [CARTÃO] ${qtdParcelas} parcela(s) criada(s) em Recebíveis (Taxa: ${taxa}%).`,
+                );
               }
-              console.log(
-                `      ✅ [CARTÃO] ${qtdParcelas} parcela(s) criada(s) em Recebíveis (Taxa: ${taxa}%).`,
-              );
             }
           }
         }

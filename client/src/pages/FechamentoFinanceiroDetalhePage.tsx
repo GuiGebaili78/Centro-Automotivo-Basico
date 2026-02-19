@@ -84,7 +84,10 @@ interface OSData {
     bandeira_cartao?: string;
     codigo_transacao?: string;
     qtd_parcelas?: number;
+    tipo_parcelamento?: string;
     deleted_at?: string;
+    conta_bancaria?: { nome_banco: string; nome_conta: string };
+    operadora?: { nome: string };
   }[];
   fechamento_financeiro?: {
     id_fechamento_financeiro: number;
@@ -102,6 +105,8 @@ interface OSData {
     };
   }[];
 }
+
+// ... existing code ...
 
 export const FechamentoFinanceiroDetalhePage = () => {
   const { id } = useParams(); // Get ID from URL
@@ -914,32 +919,79 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 .map((pag) => (
                   <div
                     key={pag.id_pagamento_cliente}
-                    className="flex justify-between items-center bg-green-50/50 p-2 rounded-lg text-sm border border-green-100 group"
+                    className="flex flex-col gap-1 bg-green-50/50 p-3 rounded-lg text-sm border border-green-100 group transition-all hover:bg-green-50 hover:shadow-sm"
                   >
-                    <span className="font-bold text-green-800">
-                      {formatCurrency(Number(pag.valor))}
-                    </span>
-                    <span className="text-gray-500">
-                      {pag.metodo_pagamento} -{" "}
-                      {new Date(pag.data_pagamento).toLocaleDateString()}
-                    </span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() =>
-                          setPaymentModal({ isOpen: true, data: pag })
-                        }
-                        className="text-neutral-400 hover:text-blue-600"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleDeletePayment(pag.id_pagamento_cliente)
-                        }
-                        className="text-neutral-400 hover:text-red-600"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-green-800 text-base">
+                          {formatCurrency(Number(pag.valor))}
+                        </span>
+                        <div className="flex items-center gap-2 text-xs text-green-700 font-medium">
+                          <span className="uppercase tracking-wider px-1.5 py-0.5 bg-green-200 rounded text-[10px] font-bold">
+                            {pag.metodo_pagamento}
+                          </span>
+
+                          {pag.metodo_pagamento === "PIX" &&
+                            pag.conta_bancaria && (
+                              <span className="flex items-center gap-1">
+                                • {pag.conta_bancaria.nome_banco}
+                              </span>
+                            )}
+
+                          {(pag.metodo_pagamento === "CREDITO" ||
+                            pag.metodo_pagamento === "DEBITO") && (
+                            <span className="flex items-center gap-1">
+                              • {pag.operadora?.nome || "Operadora N/I"}
+                              {pag.qtd_parcelas &&
+                                pag.qtd_parcelas > 1 &&
+                                ` (${pag.qtd_parcelas}x)`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() =>
+                            setPaymentModal({ isOpen: true, data: pag })
+                          }
+                          className="text-neutral-400 hover:text-blue-600 p-1 hover:bg-blue-50 rounded"
+                          title="Editar"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleDeletePayment(pag.id_pagamento_cliente)
+                          }
+                          className="text-neutral-400 hover:text-red-600 p-1 hover:bg-red-50 rounded"
+                          title="Excluir"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 mt-2 text-[10px] text-gray-500 border-t border-green-100/50 pt-2">
+                      <span>
+                        📅 {new Date(pag.data_pagamento).toLocaleDateString()}
+                      </span>
+                      <span>
+                        🕒{" "}
+                        {new Date(pag.data_pagamento).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+
+                      {(pag.codigo_transacao || pag.bandeira_cartao) && (
+                        <span className="font-mono bg-white px-1 rounded border border-gray-100 text-gray-400">
+                          {pag.bandeira_cartao}{" "}
+                          {pag.codigo_transacao
+                            ? `| NSU: ${pag.codigo_transacao}`
+                            : ""}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}

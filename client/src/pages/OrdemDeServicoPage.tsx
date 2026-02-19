@@ -11,11 +11,14 @@ import { Modal } from "../components/ui/Modal";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { toast } from "react-toastify";
+import { OsCreationModal } from "../components/os/OsCreationModal";
+import { OsStatus } from "../types/os.types";
 
 export const OrdemDeServicoPage = () => {
   const navigate = useNavigate();
 
   // --- STATE ---
+  const [osCreationModalOpen, setOsCreationModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(""); // NEW: Localizar Search
   const [dateFilter, setDateFilter] = useState<
     "ALL" | "HOJE" | "SEMANA" | "MES"
@@ -38,19 +41,65 @@ export const OrdemDeServicoPage = () => {
   }, []);
 
   // Wizard State for New OS
-  const [newOsWizardStep, setNewOsWizardStep] = useState<"NONE" | "OS">("NONE");
+  const [newOsWizardStep, setNewOsWizardStep] = useState<
+    "NONE" | "SEARCH_CLIENT" | "SELECT_VEHICLE" | "CONFIRM"
+  >("NONE");
   const [wizardClient, setWizardClient] = useState<any>(null);
   const [wizardVehicle, setWizardVehicle] = useState<any>(null);
-  const [wizardInitialStatus, setWizardInitialStatus] =
-    useState<string>("ABERTA");
+  const [wizardInitialStatus, setWizardInitialStatus] = useState<OsStatus>(
+    OsStatus.ABERTA,
+  );
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
+  const [clientSearchResults, setClientSearchResults] = useState<any[]>([]);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const clientSearchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, []);
+
+  // Client Search Effect
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (clientSearchTerm.length >= 2 && newOsWizardStep === "SEARCH_CLIENT") {
+        try {
+          const response = await api.get("/cliente"); // TODO: Optimize backend to accept search param or filter locally if list is small. Assuming small for now or using existing list.
+          // Actually, we should probably use a specific search endpoint or filter the full list if already loaded?
+          // Let's filter locally from a fresh fetch to ensure latest data.
+          const allClients = response.data;
+          const filtered = allClients.filter((c: any) => {
+            const name = (
+              c.pessoa_fisica?.pessoa?.nome ||
+              c.pessoa_juridica?.nome_fantasia ||
+              c.pessoa_juridica?.razao_social ||
+              ""
+            ).toLowerCase();
+            const document = (
+              c.pessoa_fisica?.cpf ||
+              c.pessoa_juridica?.cnpj ||
+              ""
+            ).replace(/\D/g, "");
+            const term = clientSearchTerm.toLowerCase();
+            const termClean = term.replace(/\D/g, "");
+
+            return (
+              name.includes(term) || (termClean && document.includes(termClean))
+            );
+          });
+          setClientSearchResults(filtered.slice(0, 5)); // Limit to 5 results
+        } catch (e) {
+          console.error("Error searching clients", e);
+        }
+      } else {
+        setClientSearchResults([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [clientSearchTerm, newOsWizardStep]);
 
   useEffect(() => {
     loadOss();
@@ -72,8 +121,16 @@ export const OrdemDeServicoPage = () => {
           ]);
           setWizardClient(cRes.data);
           setWizardVehicle(vRes.data);
-          setWizardInitialStatus(paramStatus || "ABERTA");
-          setNewOsWizardStep("OS");
+
+          // Validate and set status
+          const validStatus = Object.values(OsStatus).includes(
+            paramStatus as OsStatus,
+          )
+            ? (paramStatus as OsStatus)
+            : OsStatus.ABERTA;
+
+          setWizardInitialStatus(validStatus);
+          setNewOsWizardStep("CONFIRM");
         } catch (e) {
           console.error("Error loading for direct open", e);
         }
@@ -86,7 +143,7 @@ export const OrdemDeServicoPage = () => {
     if (!vehicle || !client) return;
     setWizardClient(client);
     setWizardVehicle(vehicle);
-    setNewOsWizardStep("OS");
+    setNewOsWizardStep("CONFIRM");
   };
 
   const handleCreateOsFinal = async (
@@ -129,6 +186,11 @@ export const OrdemDeServicoPage = () => {
   /* Updated Logic */
   const handleCancelWizard = () => {
     setNewOsWizardStep("NONE");
+    setClientSearchTerm("");
+    setClientSearchResults([]);
+    setWizardClient(null);
+    setWizardVehicle(null);
+
     // Check params directly to safely navigate back if opened via deep link
     const params = new URLSearchParams(location.search);
     if (params.get("clientId") && params.get("vehicleId")) {
@@ -223,7 +285,7 @@ export const OrdemDeServicoPage = () => {
           <Button
             variant="primary"
             icon={Plus}
-            onClick={() => navigate("/novo-cadastro")}
+            onClick={() => setOsCreationModalOpen(true)}
           >
             Novo Cadastro
           </Button>
@@ -406,7 +468,7 @@ export const OrdemDeServicoPage = () => {
                           Deseja iniciar um novo atendimento?
                         </p>
                         <Button
-                          onClick={() => navigate("/novo-cadastro")}
+                          onClick={() => setOsCreationModalOpen(true)}
                           variant="primary"
                           icon={Plus}
                         >
@@ -422,11 +484,160 @@ export const OrdemDeServicoPage = () => {
         </Card>
       </PageLayout>
 
-      {newOsWizardStep === "OS" && wizardClient && wizardVehicle && (
+      {/* 1. SELECT CLIENT STEP */}
+      {newOsWizardStep === "SEARCH_CLIENT" && (
+        <Modal
+          title="Selecionar Cliente"
+          onClose={handleCancelWizard}
+          className="max-w-lg"
+        >
+          <div className="space-y-4">
+            <Input
+              // @ts-ignore
+              ref={clientSearchInputRef}
+              label="Buscar Cliente"
+              placeholder="Digite nome ou documento..."
+              value={clientSearchTerm}
+              onChange={(e) => setClientSearchTerm(e.target.value)}
+              icon={Search}
+              autoFocus
+            />
+
+            <div className="max-h-60 overflow-y-auto space-y-2">
+              {clientSearchResults.length > 0
+                ? clientSearchResults.map((c) => (
+                    <div
+                      key={c.id_cliente}
+                      onClick={() => {
+                        setWizardClient(c);
+                        setClientSearchTerm("");
+                        setNewOsWizardStep("SELECT_VEHICLE");
+                      }}
+                      className="p-3 border rounded-lg hover:bg-neutral-50 cursor-pointer transition-colors"
+                    >
+                      <p className="font-bold text-neutral-800">
+                        {c.pessoa_fisica?.pessoa?.nome ||
+                          c.pessoa_juridica?.nome_fantasia ||
+                          c.pessoa_juridica?.razao_social}
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        {c.telefone_1 || "Sem telefone"}{" "}
+                        {c.pessoa_fisica?.cpf
+                          ? `• PDF: ${c.pessoa_fisica.cpf}`
+                          : ""}
+                      </p>
+                    </div>
+                  ))
+                : clientSearchTerm.length > 2 && (
+                    <div className="text-center text-sm text-neutral-500 py-4">
+                      Nenhum cliente encontrado.
+                      <Button
+                        variant="ghost"
+                        className="mt-2 text-primary-600"
+                        onClick={() => navigate("/novo-cadastro")}
+                      >
+                        Cadastrar Novo?
+                      </Button>
+                    </div>
+                  )}
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button variant="ghost" onClick={handleCancelWizard}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* 2. SELECT VEHICLE STEP */}
+      {newOsWizardStep === "SELECT_VEHICLE" && wizardClient && (
+        <Modal
+          title="Selecionar Veículo"
+          onClose={handleCancelWizard}
+          className="max-w-lg"
+        >
+          <div className="space-y-4">
+            <div className="bg-primary-50 p-3 rounded-lg flex items-center gap-3">
+              <div className="bg-white p-2 rounded-full text-primary-600">
+                <Phone size={16} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-primary-400 uppercase">
+                  Cliente Selecionado
+                </p>
+                <p className="font-bold text-primary-900 text-sm">
+                  {wizardClient.pessoa_fisica?.pessoa?.nome ||
+                    wizardClient.pessoa_juridica?.nome_fantasia}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="ml-auto"
+                onClick={() => setNewOsWizardStep("SEARCH_CLIENT")}
+              >
+                Alterar
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+              {wizardClient.veiculos && wizardClient.veiculos.length > 0 ? (
+                wizardClient.veiculos.map((v: any) => (
+                  <div
+                    key={v.id_veiculo}
+                    onClick={() => {
+                      setWizardVehicle(v);
+                      setNewOsWizardStep("CONFIRM");
+                    }}
+                    className="p-3 border rounded-lg hover:bg-neutral-50 cursor-pointer transition-colors flex justify-between items-center"
+                  >
+                    <div>
+                      <p className="font-bold text-neutral-800">{v.placa}</p>
+                      <p className="text-xs text-neutral-500 uppercase">
+                        {v.modelo} • {v.cor}
+                      </p>
+                    </div>
+                    <div className="text-neutral-400">
+                      <CheckCircle size={16} />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-neutral-500">
+                  Este cliente não possui veículos cadastrados.
+                  <div className="mt-2">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() =>
+                        navigate(`/cadastro/${wizardClient.id_cliente}`)
+                      }
+                    >
+                      Cadastrar Veículo
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-start pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setNewOsWizardStep("SEARCH_CLIENT")}
+              >
+                Voltar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {newOsWizardStep === "CONFIRM" && wizardClient && wizardVehicle && (
         <Modal
           title={
             <span className="text-neutral-600">
-              {wizardInitialStatus === "ORCAMENTO"
+              {wizardInitialStatus === OsStatus.ORCAMENTO ||
+              wizardInitialStatus === OsStatus.AGENDAMENTO
                 ? "Confirmar Agendamento / Orçamento"
                 : "Passo 3: Confirmar Abertura"}
             </span>
@@ -502,15 +713,26 @@ export const OrdemDeServicoPage = () => {
                   size="lg"
                   icon={CheckCircle}
                 >
-                  {wizardInitialStatus === "ORCAMENTO"
+                  {wizardInitialStatus === OsStatus.ORCAMENTO
                     ? "CRIAR ORÇAMENTO"
-                    : "ABRIR ORDEM DE SERVIÇO"}
+                    : wizardInitialStatus === OsStatus.AGENDAMENTO
+                      ? "CONFIRMAR AGENDAMENTO"
+                      : "ABRIR ORDEM DE SERVIÇO"}
                 </Button>
               </div>
             </form>
           </div>
         </Modal>
       )}
+      <OsCreationModal
+        isOpen={osCreationModalOpen}
+        onClose={() => setOsCreationModalOpen(false)}
+        onSelect={(status) => {
+          setOsCreationModalOpen(false);
+          setWizardInitialStatus(status);
+          setNewOsWizardStep("SEARCH_CLIENT");
+        }}
+      />
     </>
   );
 };

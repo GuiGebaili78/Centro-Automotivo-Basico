@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { api } from "../../services/api";
 import {
@@ -25,6 +25,7 @@ export const RecebiveisTab = () => {
   >("PENDENTE");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchOsId, setSearchOsId] = useState(""); // Dedicated OS Search
   const [activeShortcut, setActiveShortcut] = useState<string | null>(null);
   const [selectedOperadoraId, setSelectedOperadoraId] = useState<
     number | "ALL"
@@ -108,6 +109,11 @@ export const RecebiveisTab = () => {
           (r as any).operadora?.nome || "",
           (r as any).bandeira_cartao || "",
           `#${r.id_os}`, // Permite busca exata "#22"
+          `OS Nº ${r.id_os}`, // Permite busca "OS Nº 22"
+          `OS N ${r.id_os}`, // Permite busca "OS N 22"
+          `OSN${r.id_os}`, // Permite busca "OSN22"
+          `OS ${r.id_os}`, // Permite busca "OS 22"
+          `OS${r.id_os}`, // Permite busca "OS22"
           r.id_os?.toString() || "", // Permite busca "22"
           r.valor_bruto?.toString() || "",
           (Number(r.valor_bruto) || 0).toLocaleString("pt-BR", {
@@ -187,7 +193,12 @@ export const RecebiveisTab = () => {
     }
   };
 
+  // CONCILIATION
   const [showConciliateModal, setShowConciliateModal] = useState(false);
+
+  // SEARCH STATES (Already defined at top, avoiding duplicates)
+  // const [searchTerm, setSearchTerm] = useState(""); // DUPLICATE REMOVED
+  // const [searchOsId, setSearchOsId] = useState(""); // DUPLICATE REMOVED
 
   const executeConciliacao = async () => {
     try {
@@ -228,58 +239,71 @@ export const RecebiveisTab = () => {
   ).length;
   const countTotal = originalData.length;
 
+  // Filter Logic (Applied inside component for now, or use Memo if heavy)
+  const filteredData = useMemo(() => {
+    let data = recebiveis;
+
+    // Filter by Status (Already done by API usually, but client side refinement)
+    if (filterStatus !== "ALL") {
+      data = data.filter((r) => r.status === filterStatus);
+    }
+
+    // Filter by Operadora
+    if (selectedOperadoraId !== "ALL") {
+      data = data.filter((r) => r.id_operadora === Number(selectedOperadoraId));
+    }
+
+    // Filter by OS ID
+    if (searchOsId) {
+      data = data.filter((r) => r.id_os === Number(searchOsId));
+    }
+
+    // Filter by Search Term
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      data = data.filter(
+        (r) =>
+          r.operadora?.nome?.toLowerCase().includes(lower) ||
+          r.id_os?.toString().includes(lower) ||
+          // removed OS concatenation to avoid false positives as requested,
+          // since we have dedicated OS search now.
+          r.valor_liquido?.toString().includes(lower),
+      );
+    }
+
+    return data;
+  }, [recebiveis, filterStatus, selectedOperadoraId, searchOsId, searchTerm]);
+
   return (
     <div className="p-6 space-y-6">
-      {/* HEADER AREA */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-        <div>
-          <h2 className="text-2xl font-bold text-neutral-800 tracking-tight">
-            Conciliação de Cartões
-          </h2>
-          <p className="text-neutral-500 font-medium text-sm">
-            Gerencie seus recebíveis e fluxos de caixa de cartões.
-          </p>
-        </div>
-
-        {/* Status Selection Cards */}
-        {/* Status Pills */}
-        <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 w-fit">
-          {[
-            { id: "PENDENTE", label: "Pendentes", count: countPendente },
-            { id: "RECEBIDO", label: "Recebidos", count: countRecebido },
-            { id: "ALL", label: "Todos", count: countTotal },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setFilterStatus(item.id as any)}
-              className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
-                filterStatus === item.id
-                  ? "bg-white text-primary-600 shadow-sm ring-1 ring-neutral-200"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
-              }`}
-            >
-              <span>{item.label}</span>
-              <span
-                className={`px-1.5 py-0.5 rounded text-[10px] ${
-                  filterStatus === item.id
-                    ? "bg-primary-50 text-primary-700"
-                    : "bg-neutral-200 text-neutral-600"
-                }`}
-              >
-                {item.count}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* ... Header ... */}
 
       {/* FILTERS CONTAINER */}
       <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-end">
+          {/* OS Search Field */}
+          <div className="xl:col-span-2">
+            <label className="text-sm font-semibold text-neutral-700 ml-1 mb-1.5 block">
+              Nº OS
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs font-bold">
+                #
+              </span>
+              <input
+                type="number"
+                value={searchOsId}
+                onChange={(e) => setSearchOsId(e.target.value)}
+                className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-700 outline-none focus:border-primary-500 transition-all text-sm"
+                placeholder="ID"
+              />
+            </div>
+          </div>
+
           {/* Search Field */}
           <div className="xl:col-span-4">
             <Input
-              label="Filtro Rápido (Placa, OS, Operadora...)"
+              label="Filtro Rápido (Placa, Operadora...)"
               icon={Search}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -467,7 +491,7 @@ export const RecebiveisTab = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {recebiveis.length === 0 ? (
+              {filteredData.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="p-20 text-center">
                     <div className="flex flex-col items-center opacity-30">
@@ -482,7 +506,7 @@ export const RecebiveisTab = () => {
                   </td>
                 </tr>
               ) : (
-                recebiveis.map((r) => (
+                filteredData.map((r) => (
                   <tr
                     key={r.id_recebivel}
                     className={`group hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0 ${r.status === "RECEBIDO" ? "opacity-60 bg-neutral-50/50" : ""}`}

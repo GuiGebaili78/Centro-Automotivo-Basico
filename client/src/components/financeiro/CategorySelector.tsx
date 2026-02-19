@@ -75,24 +75,18 @@ export const CategorySelector = ({
     setSelectedParentId(pId);
     setSelectedChildId(""); // Reset child
 
-    // If parent has no children, maybe we can select the parent itself?
-    // But usually we want to force leaf selection if children exist.
-    // Let's defer onChange until user selects child OR if parent has no children.
-    // Actually, for better UX, let's treat the Parent selection as a "Category Group"
-    // and if valid, fire onChange.
-
-    // Check if this parent has children in the FULL list (not just filtered)
+    // Check if this parent has children in the FULL list
     const hasChildren = categories.some((c) => c.parentId === pId);
 
     if (!hasChildren) {
+      // If no children, select the parent itself
       const cat = categories.find((c) => c.id_categoria === pId);
       if (cat) onChange(cat.id_categoria, cat.nome);
     } else {
-      // If it has children, don't fire onChange yet? Or fire with parent ID?
-      // Creating logic: If we pick "Receita" (parent), is that valid?
-      // Usually we want "Receita > Serviços".
-      // Let's assume we want specific subcategories if available.
-      // But we might want to allow clearing.
+      // If it has children, we MUST clear the current selection until a child is picked
+      // This prevents the parent ID from being sent as the "final" category
+      // Pass 0 or check how parent handles "invalid"
+      onChange(0, ""); // Clear selection
     }
   };
 

@@ -29,7 +29,7 @@ import type { FormEvent } from "react";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
-import { ServiceDecisionModal } from "../components/modals/ServiceDecisionModal";
+import { OsCreationModal } from "../components/os/OsCreationModal";
 
 interface IVeiculo {
   id_veiculo: number;
@@ -700,20 +700,21 @@ export const CadastroUnificadoPage = () => {
         variant="danger"
       />
 
-      <ServiceDecisionModal
+      <OsCreationModal
         isOpen={decisionModalOpen}
         onClose={() => setDecisionModalOpen(false)}
-        onOpenOS={() => {
+        onSelect={(type) => {
           if (!savedData) return;
-          let url = `/ordem-de-servico?clientId=${savedData.clientId}`;
-          if (savedData.vehicleId) url += `&vehicleId=${savedData.vehicleId}`;
-          navigate(url);
-        }}
-        onSchedule={() => {
-          if (!savedData) return;
-          let url = `/ordem-de-servico?clientId=${savedData.clientId}&initialStatus=ORCAMENTO`;
-          if (savedData.vehicleId) url += `&vehicleId=${savedData.vehicleId}`;
-          navigate(url);
+          const initialStatus = type === "ORCAMENTO" ? "ORCAMENTO" : "ABERTA";
+
+          const params = new URLSearchParams();
+          params.append("clientId", savedData.clientId.toString());
+          if (savedData.vehicleId) {
+            params.append("vehicleId", savedData.vehicleId.toString());
+          }
+          params.append("initialStatus", initialStatus);
+
+          navigate(`/ordem-de-servico?${params.toString()}`);
         }}
         clientName={savedData?.clientName}
         vehicleName={savedData?.vehicleName}

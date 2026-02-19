@@ -13,7 +13,7 @@ interface LaborService {
   id_temporary?: string; // Para modo draft
   id_funcionario: number | string;
   valor: number | string;
-  descricao?: string;
+  descricao?: string | null;
   categoria?: string; // 'MECANICA' | 'ELETRICA'
   funcionario?: {
     pessoa_fisica?: {

@@ -13,6 +13,7 @@ import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { toast } from "react-toastify";
+import { OsCreationModal } from "../components/os/OsCreationModal";
 
 export const VeiculoPage = () => {
   const navigate = useNavigate();
@@ -24,6 +25,12 @@ export const VeiculoPage = () => {
     undefined,
   );
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+
+  const [showOsModeModal, setShowOsModeModal] = useState(false);
+  const [pendingOsData, setPendingOsData] = useState<{
+    clientId: number;
+    vehicleId: number;
+  } | null>(null);
 
   // Confirmation Modal State
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -235,11 +242,17 @@ export const VeiculoPage = () => {
                           icon={Wrench}
                           label="Abrir OS"
                           variant="accent"
-                          onClick={() =>
-                            navigate(
-                              `/ordem-de-servico?clientId=${v.id_cliente}&vehicleId=${v.id_veiculo}`,
-                            )
-                          }
+                          onClick={() => {
+                            if (v.id_cliente) {
+                              setPendingOsData({
+                                clientId: v.id_cliente,
+                                vehicleId: v.id_veiculo,
+                              });
+                              setShowOsModeModal(true);
+                            } else {
+                              toast.warn("Veículo sem cliente vinculado.");
+                            }
+                          }}
                         />
                         <ActionButton
                           icon={Trash2}
@@ -310,6 +323,20 @@ export const VeiculoPage = () => {
           variant="danger"
         />
       </div>
+
+      <OsCreationModal
+        isOpen={showOsModeModal}
+        onClose={() => setShowOsModeModal(false)}
+        onSelect={(type) => {
+          setShowOsModeModal(false);
+          if (pendingOsData) {
+            navigate(
+              `/ordem-de-servico?clientId=${pendingOsData.clientId}&vehicleId=${pendingOsData.vehicleId}&initialStatus=${type}`,
+            );
+            setPendingOsData(null);
+          }
+        }}
+      />
     </PageLayout>
   );
 };

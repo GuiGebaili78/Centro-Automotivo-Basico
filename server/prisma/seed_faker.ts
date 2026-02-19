@@ -195,12 +195,12 @@ async function main() {
     let dataEntrega = null;
 
     if (isPast) {
-      statusOs = "FINALIZADO";
+      statusOs = "FINALIZADA";
       dataEntrega = dataPrevisao;
     } else if (dataAbertura < new Date() && dataPrevisao > new Date()) {
-      statusOs = "EM_ANDAMENTO";
+      statusOs = "ABERTA";
     } else {
-      statusOs = "AGENDADO";
+      statusOs = "AGENDAMENTO";
     }
 
     // 3.4 Criar OS

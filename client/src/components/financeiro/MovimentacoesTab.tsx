@@ -192,8 +192,11 @@ export const MovimentacoesTab = () => {
       const outflows = paymentsData
         .filter(
           (p: any) =>
-            (p.pago_ao_fornecedor && p.data_pagamento_fornecedor) ||
-            p.deleted_at,
+            // Only show if NOT linked to LivroCaixa (prevent duplication)
+            !p.id_livro_caixa &&
+            !p.livro_caixa &&
+            ((p.pago_ao_fornecedor && p.data_pagamento_fornecedor) ||
+              p.deleted_at),
         )
         .map((p: any) => {
           const os = p.item_os?.ordem_de_servico;
@@ -228,10 +231,10 @@ export const MovimentacoesTab = () => {
         });
 
       // 3. Auto Inflows (Payments from Clients)
-      // ONLY show payments that have been consolidated (have livro_caixa relation)
-      // NOTE: Prisma includes livro_caixa OBJECT, not id_livro_caixa scalar
+      // ONLY show payments that have are NOT consolidated/linked to prevent duplication
+      // (The consolidated entry comes from manualRes/LivroCaixa)
       const inflows = (inflowsRes.data || [])
-        .filter((p: any) => p.livro_caixa) // Check if relation exists (object, not FK)
+        .filter((p: any) => !p.livro_caixa && !p.id_livro_caixa) // Check if relation exists
         .map((p: any) => {
           const os = p.ordem_de_servico;
           const veh = os?.veiculo;

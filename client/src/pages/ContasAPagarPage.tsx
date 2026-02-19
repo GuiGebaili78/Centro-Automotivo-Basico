@@ -698,7 +698,7 @@ export const ContasAPagarPage = () => {
                       categoria: fullCategoryName,
                     });
                   }}
-                  type="DESPESA"
+                  type="AMBOS"
                   required
                 />
               </div>

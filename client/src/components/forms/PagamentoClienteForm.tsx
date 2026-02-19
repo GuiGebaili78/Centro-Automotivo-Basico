@@ -131,8 +131,13 @@ export const PagamentoClienteForm = ({
         codigo_transacao: codigoTransacao || null,
         qtd_parcelas: metodo === "CREDITO" ? Number(parcelas) : 1,
         id_operadora:
-          metodo === "CREDITO" || metodo === "DEBITO" ? idOperadora : undefined,
-        id_conta_bancaria: metodo === "PIX" ? idContaBancaria : undefined,
+          (metodo === "CREDITO" || metodo === "DEBITO") && idOperadora > 0
+            ? Number(idOperadora)
+            : null,
+        id_conta_bancaria:
+          metodo === "PIX" && idContaBancaria > 0
+            ? Number(idContaBancaria)
+            : null,
         tipo_parcelamento: metodo === "CREDITO" ? tipoParcelamento : "LOJA",
       };
 

@@ -71,8 +71,9 @@ const StatCard = ({
   </div>
 );
 
+import { OsStatus } from "../types/os.types";
 import { UnifiedSearch } from "../components/dashboard/UnifiedSearch";
-import { ServiceDecisionModal } from "../components/modals/ServiceDecisionModal";
+import { OsCreationModal } from "../components/os/OsCreationModal";
 import { DashboardCalendar } from "../components/dashboard/DashboardCalendar";
 
 // ... existing imports ...
@@ -95,31 +96,18 @@ export function DaschboardPage() {
     navigate("/novo-cadastro");
   };
 
-  const handleDecisionOpenOS = async () => {
-    // Create OS with status ABERTA
-    // Actually we just navigate to OS creation page with pre-filled items or POST directly?
-    // Since we don't have a direct "create blank OS" endpoint that returns ID without form usually,
-    // check if we can navigate to URL that auto-creates or pre-fills.
-    // Based on CadastroUnificado, we navigate to: /ordem-de-servico?clientId=...&vehicleId=...
-
+  const handleOsSelect = (status: OsStatus) => {
     if (!selectedSearch) return;
 
-    const url = `/ordem-de-servico?clientId=${selectedSearch.id_cliente}${selectedSearch.id_veiculo ? `&vehicleId=${selectedSearch.id_veiculo}` : ""}`;
-    // Note: If OrdemDeServicoPage handles this query params to open a "New OS" modal or form, we use it.
-    // Assuming it does based on previous context.
-    navigate(url);
-    setDecisionModalOpen(false);
-  };
+    // Construct URL with all necessary params
+    const params = new URLSearchParams();
+    params.append("clientId", selectedSearch.id_cliente);
+    if (selectedSearch.id_veiculo) {
+      params.append("vehicleId", selectedSearch.id_veiculo);
+    }
+    params.append("initialStatus", status);
 
-  const handleDecisionSchedule = async () => {
-    // "Agendamento / Orçamento"
-    // We need to create an OS with status 'ORCAMENTO' (or 'AGENDA' if preferred, plan said ORCAMENTO is status).
-    // If the current OS creation flow defaults to ABERTA, we might need a specific param like `&status=ORCAMENTO`.
-
-    if (!selectedSearch) return;
-
-    const url = `/ordem-de-servico?clientId=${selectedSearch.id_cliente}${selectedSearch.id_veiculo ? `&vehicleId=${selectedSearch.id_veiculo}` : ""}&initialStatus=ORCAMENTO`;
-    navigate(url);
+    navigate(`/ordem-de-servico?${params.toString()}`);
     setDecisionModalOpen(false);
   };
 
@@ -256,7 +244,9 @@ export function DaschboardPage() {
 
       const consolidacao = oss.filter(
         (o: any) =>
-          o.status === "PRONTO PARA FINANCEIRO" && !o.fechamento_financeiro,
+          (o.status === OsStatus.FINANCEIRO ||
+            o.status === "PRONTO PARA FINANCEIRO") &&
+          !o.fechamento_financeiro,
       ).length;
 
       setStats({
@@ -310,12 +300,11 @@ export function DaschboardPage() {
     return filtered.sort((a, b) => {
       if (filterPeriod === "STATUS") {
         const priority: Record<string, number> = {
-          ABERTA: 1,
-          EM_ANDAMENTO: 1,
-          "PRONTO PARA FINANCEIRO": 2,
-          finalizada: 3,
-          FINALIZADA: 3,
-          PAGA_CLIENTE: 4,
+          [OsStatus.ABERTA]: 1,
+          EM_ANDAMENTO: 1, // Legacy check
+          [OsStatus.FINANCEIRO]: 2,
+          "PRONTO PARA FINANCEIRO": 2, // Legacy check
+          [OsStatus.FINALIZADA]: 3,
         };
         const pA = priority[a.status] || 99;
         const pB = priority[b.status] || 99;
@@ -333,16 +322,17 @@ export function DaschboardPage() {
 
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case "FINALIZADA":
+      case OsStatus.FINALIZADA:
         return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-      case "PAGA_CLIENTE":
-        return "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200";
+      case OsStatus.FINANCEIRO:
       case "PRONTO PARA FINANCEIRO":
         return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
-      case "ABERTA":
+      case OsStatus.ABERTA:
         return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
-      case "EM_ANDAMENTO":
-        return "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200";
+      case OsStatus.AGENDAMENTO:
+        return "bg-purple-100 text-purple-700 ring-1 ring-purple-200";
+      case OsStatus.ORCAMENTO:
+        return "bg-orange-100 text-orange-700 ring-1 ring-orange-200";
       default:
         return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
     }
@@ -687,11 +677,10 @@ export function DaschboardPage() {
         </main>
       </div>
 
-      <ServiceDecisionModal
+      <OsCreationModal
         isOpen={decisionModalOpen}
         onClose={() => setDecisionModalOpen(false)}
-        onOpenOS={handleDecisionOpenOS}
-        onSchedule={handleDecisionSchedule}
+        onSelect={handleOsSelect}
         clientName={selectedSearch?.display}
         vehicleName={selectedSearch?.subtext}
       />
