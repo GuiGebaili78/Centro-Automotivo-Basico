@@ -35,6 +35,7 @@ import { PagamentoEquipePage } from "./pages/PagamentoEquipePage";
 import { ExtratoBancarioPage } from "./pages/ExtratoBancarioPage";
 import { DaschboardPage } from "./pages/DaschboardPage";
 import { ConfiguracaoPage } from "./pages/ConfiguracaoPage";
+import { CategoriasPage } from "./pages/CategoriasPage";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -86,8 +87,9 @@ const router = createBrowserRouter(
       <Route path="/pagamento-equipe/novo" element={<NovoPagamentoPage />} />
       <Route path="/fornecedor" element={<FornecedorPage />} />
       <Route path="/pagamento-peca" element={<PagamentoPecaPage />} />
-      {/* Configuracoes */}
+      {/* Configurações */}
       <Route path="/configuracoes" element={<ConfiguracaoPage />} />
+      <Route path="/configuracoes/categorias" element={<CategoriasPage />} />
       {/* Search Pages */}
       <Route path="/search-cliente" element={<SearchClientePage />} />
       <Route path="/search-veiculo" element={<SearchVeiculoPage />} />

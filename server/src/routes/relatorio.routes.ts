@@ -14,10 +14,15 @@ relatoriosRoutes.get("/evolucao", relatoriosController.getEvolucaoMensal);
 relatoriosRoutes.get("/completo", legacyController.getRelatorioCompleto);
 relatoriosRoutes.get("/dashboard", legacyController.getDashboardData);
 
-// Endpoint faltando (Now in Plural Controller)
 relatoriosRoutes.get(
   "/despesas-evolucao",
   relatoriosController.getEvolucaoDespesas,
+);
+
+// Timeline de 10 meses (6 passados + 4 futuros) com filtro opcional de categoria
+relatoriosRoutes.get(
+  "/despesas-temporal",
+  relatoriosController.getEvolucaoDespesasTemporal,
 );
 
 export { relatoriosRoutes };

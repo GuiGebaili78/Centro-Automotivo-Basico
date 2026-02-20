@@ -11,8 +11,23 @@ import {
   addMonths,
   startOfMonth,
   endOfMonth,
+  differenceInMonths,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+// Categorias do sistema que não devem ser editadas pelo usuário
+export const CATEGORIAS_SISTEMA = [
+  "Fornecedor / Pg. Fornecedor",
+  "Fornecedor / Estoque",
+  "Receita / Serviços",
+  "Colaboradores / (Adiantamento, Comissão, Prêmio e Contrato)",
+];
+
+// Categorias consideradas "fornecedor" para separação de despesas
+const CATEGORIAS_FORNECEDOR = [
+  "Fornecedor / Pg. Fornecedor",
+  "Fornecedor / Estoque",
+];
 
 const fixEncoding = (str: string | null | undefined): string => {
   if (!str) return "";
@@ -46,6 +61,9 @@ export class RelatoriosService {
     const start = startOfDay(startDate);
     const end = endOfDay(endDate);
 
+    // Calcular diferença em meses para médias (mínimo 1)
+    const diffMeses = Math.max(1, differenceInMonths(endDate, startDate));
+
     // 1. Fetch OS Finalizadas
     const osList = await prisma.ordemDeServico.findMany({
       where: {
@@ -66,37 +84,31 @@ export class RelatoriosService {
 
     let receitaTotal = 0;
     let receitaMaoDeObra = 0;
-    let receitaPecas = 0;
     let receitaPecasEstoque = 0;
-    let receitaPecasFora = 0;
+    let receitaPecasTerceiros = 0;
 
     let custoPecasEstoque = 0;
-    let custoPecasFora = 0;
+    let custoPecasTerceiros = 0;
 
     // Cálculo detalhado OS a OS
     for (const os of osList) {
       receitaTotal += Number(os.valor_total_cliente || 0);
-      receitaMaoDeObra += Number(os.valor_mao_de_obra || 0); // Soma dos serviços
-      receitaPecas += Number(os.valor_pecas || 0);
+      receitaMaoDeObra += Number(os.valor_mao_de_obra || 0);
 
       for (const item of os.itens_os) {
         const valorVendaItem = Number(item.valor_total || 0);
 
-        // Verifica se é peça de fora (tem pagamento_peca vinculado)
+        // Peças de terceiros = tem pagamento_peca vinculado (comprado fora)
         if (item.pagamentos_peca && item.pagamentos_peca.length > 0) {
-          // É peça externa
-          receitaPecasFora += valorVendaItem;
-          // Custo real do pagamento ao fornecedor
+          receitaPecasTerceiros += valorVendaItem;
           const custoReal = item.pagamentos_peca.reduce(
             (c, pp) => c + Number(pp.custo_real || 0),
             0,
           );
-          custoPecasFora += custoReal;
+          custoPecasTerceiros += custoReal;
         } else {
-          // É peça de estoque
+          // Peças de estoque
           receitaPecasEstoque += valorVendaItem;
-          // Custo de estoque (Unitário * Qtd)
-          // CORREÇÃO: Fallback para 0 se não tiver custo
           const custoUnit = Number(item.pecas_estoque?.valor_custo || 0);
           const quantidade = Number(item.quantidade || 0);
           custoPecasEstoque += custoUnit * quantidade;
@@ -113,9 +125,11 @@ export class RelatoriosService {
       include: { categoria_financeira: true },
     });
 
-    // Agrupar despesas por categoria corrigida
+    // Agrupar despesas por categoria e separar fornecedor vs operacional
     const despesasMap = new Map<string, number>();
     let totalContasPagar = 0;
+    let despesasFornecedor = 0;
+    let despesasOperacional = 0;
 
     despesasContas.forEach((c) => {
       const val = Number(c.valor || 0);
@@ -124,9 +138,16 @@ export class RelatoriosService {
         c.categoria || c.categoria_financeira?.nome || "Outros",
       );
       despesasMap.set(catName, (despesasMap.get(catName) || 0) + val);
+
+      // Separar fornecedor de operacional
+      if (CATEGORIAS_FORNECEDOR.includes(catName)) {
+        despesasFornecedor += val;
+      } else {
+        despesasOperacional += val;
+      }
     });
 
-    // Despesas com Equipe (Comissões + Salários Pagos no período)
+    // Despesas com Equipe (entram como operacional)
     const pagamentosEquipe = await prisma.pagamentoEquipe.findMany({
       where: { dt_pagamento: { gte: start, lte: end } },
     });
@@ -135,123 +156,66 @@ export class RelatoriosService {
       (acc, pg) => acc + Number(pg.valor_total || 0),
       0,
     );
+
+    // Equipe é custo operacional
+    despesasOperacional += totalEquipe;
+
     const totalDespesas = totalContasPagar + totalEquipe;
 
-    // 3. Resultado Líquido
-    // Lucro Bruto = Receita - CMV (Peças)
-    // Lucro Líquido = Lucro Bruto - Despesas Operacionais (Equipe + Contas)
-    // *Nota: Comissões são tecnicamente Custo Variável, mas no modelo simplificado solicitado entram como "Despesa Equipe".
+    // 3. Comissões pagas (para cálculo do lucro líquido de MO)
+    const comissoesPagas = pagamentosEquipe.reduce(
+      (acc, pg) => acc + Number(pg.valor_total || 0),
+      0,
+    );
 
-    // Lucro Líquido por segmento
-    const lucroMaoDeObra = receitaMaoDeObra - totalEquipe; // Simplificação: Custo toda equipe abatido da MO
+    // 4. Resultado Líquido por segmento
+    // MO Líquida = MO Bruta - Comissões pagas
+    const lucroMaoDeObra = receitaMaoDeObra - comissoesPagas;
+    // Estoque = Valor cobrado na OS - Custo de Compra (fallback 0)
     const lucroPecasEstoque = receitaPecasEstoque - custoPecasEstoque;
-    const lucroPecasFora = receitaPecasFora - custoPecasFora;
+    // Terceiros = Valor cobrado na OS - Custo pago ao fornecedor
+    const lucroPecasTerceiros = receitaPecasTerceiros - custoPecasTerceiros;
 
     const lucroLiquidoTotal =
-      receitaTotal - (custoPecasEstoque + custoPecasFora) - totalDespesas;
+      receitaTotal - (custoPecasEstoque + custoPecasTerceiros) - totalDespesas;
 
-    // --- EVOLUÇÃO E PROJEÇÃO DE DESPESAS (Novo) ---
-    const today = new Date();
-    // Janela: 3 meses para trás + 3 meses para frente
-    const startWindow = startOfMonth(subMonths(today, 3));
-    const endWindow = endOfMonth(addMonths(today, 3));
-
-    // Buscar Contas Pagar (PAGO e PENDENTE) na janela
-    const contasJanela = await prisma.contasPagar.findMany({
-      where: {
-        OR: [
-          { dt_pagamento: { gte: startWindow, lte: endWindow } },
-          { dt_vencimento: { gte: startWindow, lte: endWindow } },
-        ],
-      },
-    });
-
-    // Buscar Pagamentos Equipe (PAGO) na janela (só passado)
-    const equipeJanela = await prisma.pagamentoEquipe.findMany({
-      where: { dt_pagamento: { gte: startWindow, lte: endWindow } },
-    });
-
-    const projectionMap = new Map<
-      string,
-      { realizado: number; previsto: number; dateObj: Date }
-    >();
-
-    // Inicializar meses da janela
-    for (let i = -3; i <= 3; i++) {
-      const d = addMonths(startOfMonth(today), i);
-      const key = format(d, "MMM/yy", { locale: ptBR });
-      projectionMap.set(key, { realizado: 0, previsto: 0, dateObj: d });
-    }
-
-    // Popular Realizado (Contas Pagas + Equipe)
-    const populateRealizado = (date: Date | null, val: number) => {
-      if (!date) return;
-      const key = format(date, "MMM/yy", { locale: ptBR });
-      if (projectionMap.has(key)) {
-        projectionMap.get(key)!.realizado += val;
-      }
+    // 5. Médias mensais
+    const medias = {
+      receitaBruta: receitaTotal / diffMeses,
+      lucroLiquido: lucroLiquidoTotal / diffMeses,
+      despesasTotais: totalDespesas / diffMeses,
     };
-
-    // Popular Previsto (Contas Pendentes)
-    const populatePrevisto = (date: Date | null, val: number) => {
-      if (!date) return;
-      const key = format(date, "MMM/yy", { locale: ptBR });
-      if (projectionMap.has(key)) {
-        projectionMap.get(key)!.previsto += val;
-      }
-    };
-
-    contasJanela.forEach((c) => {
-      const val = Number(c.valor || 0);
-      if (c.status === "PAGO" && c.dt_pagamento) {
-        populateRealizado(c.dt_pagamento, val);
-      } else if (c.status === "PENDENTE" && c.dt_vencimento) {
-        populatePrevisto(c.dt_vencimento, val);
-      }
-    });
-
-    equipeJanela.forEach((e) => {
-      const val = Number(e.valor_total || 0);
-      if (e.dt_pagamento) {
-        populateRealizado(e.dt_pagamento, val);
-      }
-    });
-
-    const evolucaoDespesasTemporal = Array.from(projectionMap.entries())
-      .map(([mes, data]) => ({
-        mes: mes.charAt(0).toUpperCase() + mes.slice(1), // Capitalize
-        realizado: data.realizado,
-        previsto: data.previsto,
-        sortKey: data.dateObj.getTime(),
-      }))
-      .sort((a, b) => a.sortKey - b.sortKey)
-      .map(({ mes, realizado, previsto }) => ({ mes, realizado, previsto }));
 
     return {
       periodo: { start, end },
       bruta: {
         maoDeObra: receitaMaoDeObra,
-        pecasFora: receitaPecasFora,
+        pecasTerceiros: receitaPecasTerceiros,
         pecasEstoque: receitaPecasEstoque,
         total: receitaTotal,
       },
       liquida: {
         maoDeObra: Number(lucroMaoDeObra || 0),
-        pecasFora: Number(lucroPecasFora || 0),
+        pecasTerceiros: Number(lucroPecasTerceiros || 0),
         pecasEstoque: Number(lucroPecasEstoque || 0),
         total: Number(lucroLiquidoTotal || 0),
       },
       custos: {
         pecasEstoque: custoPecasEstoque,
-        pecasFora: custoPecasFora,
+        pecasTerceiros: custoPecasTerceiros,
         equipe: totalEquipe,
         contas: totalContasPagar,
-        total: custoPecasEstoque + custoPecasFora + totalDespesas,
+        total: custoPecasEstoque + custoPecasTerceiros + totalDespesas,
       },
+      despesas: {
+        operacional: despesasOperacional,
+        fornecedor: despesasFornecedor,
+        total: totalDespesas,
+      },
+      medias,
       despesasPorCategoria: Array.from(despesasMap.entries())
         .map(([categoria, valor]) => ({ categoria, valor }))
         .sort((a, b) => b.valor - a.valor),
-      evolucaoDespesasTemporal,
       indicadores: {
         lucroLiquido: Number(lucroLiquidoTotal || 0),
         margemLiquida:
@@ -262,16 +226,168 @@ export class RelatoriosService {
   }
 
   /**
-   * Performance da Equipe (Com Lucro de Peças)
+   * Evolução de Despesas Temporal (10 meses: 6 passados + 4 futuros)
+   * Aceita filtro opcional por categoria
+   */
+  async getEvolucaoDespesasTemporal(categoriaFiltro?: string) {
+    const today = new Date();
+
+    // Janela: 6 meses passados + 4 meses futuros = 10 meses totais
+    const startWindow = startOfMonth(subMonths(today, 6));
+    const endWindow = endOfMonth(addMonths(today, 3));
+
+    // Buscar Contas Pagar na janela
+    const contasJanela = await prisma.contasPagar.findMany({
+      where: {
+        OR: [
+          {
+            status: "PAGO",
+            dt_pagamento: { gte: startWindow, lte: endWindow },
+          },
+          {
+            status: "PENDENTE",
+            dt_vencimento: { gte: startWindow, lte: endWindow },
+          },
+        ],
+      },
+      include: { categoria_financeira: true },
+    });
+
+    // Buscar Pagamentos Equipe (realizados) na janela passada
+    const equipeJanela = await prisma.pagamentoEquipe.findMany({
+      where: {
+        dt_pagamento: { gte: startWindow, lte: today },
+      },
+    });
+
+    const projectionMap = new Map<
+      string,
+      { realizado: number; previsto: number; dateObj: Date }
+    >();
+
+    // Inicializar todos os 10 meses: -6 a +3
+    for (let i = -6; i <= 3; i++) {
+      const d = addMonths(startOfMonth(today), i);
+      const key = format(d, "MMM/yy", { locale: ptBR });
+      projectionMap.set(key, { realizado: 0, previsto: 0, dateObj: d });
+    }
+
+    const populateRealizado = (date: Date | null, val: number) => {
+      if (!date) return;
+      const key = format(date, "MMM/yy", { locale: ptBR });
+      if (projectionMap.has(key)) {
+        projectionMap.get(key)!.realizado += val;
+      }
+    };
+
+    const populatePrevisto = (date: Date | null, val: number) => {
+      if (!date) return;
+      const key = format(date, "MMM/yy", { locale: ptBR });
+      if (projectionMap.has(key)) {
+        projectionMap.get(key)!.previsto += val;
+      }
+    };
+
+    contasJanela.forEach((c) => {
+      const val = Number(c.valor || 0);
+
+      // Aplicar filtro de categoria se fornecido
+      if (categoriaFiltro) {
+        const catName = fixEncoding(
+          c.categoria || c.categoria_financeira?.nome || "Outros",
+        );
+        if (catName !== categoriaFiltro) return;
+      }
+
+      if (c.status === "PAGO" && c.dt_pagamento) {
+        populateRealizado(c.dt_pagamento, val);
+      } else if (c.status === "PENDENTE" && c.dt_vencimento) {
+        populatePrevisto(c.dt_vencimento, val);
+      }
+    });
+
+    // Equipe somente no realizado (sem filtro de categoria pois são pagamentos diretos)
+    if (!categoriaFiltro) {
+      equipeJanela.forEach((e) => {
+        const val = Number(e.valor_total || 0);
+        if (e.dt_pagamento) {
+          populateRealizado(e.dt_pagamento, val);
+        }
+      });
+    }
+
+    return Array.from(projectionMap.entries())
+      .map(([mes, data]) => ({
+        mes: mes.charAt(0).toUpperCase() + mes.slice(1),
+        realizado: data.realizado,
+        previsto: data.previsto,
+        sortKey: data.dateObj.getTime(),
+      }))
+      .sort((a, b) => a.sortKey - b.sortKey)
+      .map(({ mes, realizado, previsto }) => ({ mes, realizado, previsto }));
+  }
+
+  /**
+   * Performance da Equipe — KPI de MO + Vendas de Estoque
+   * Lógica invertida: OS → Colaborador (evita duplicação relacional)
    */
   async getPerformanceEquipe(startDate: Date, endDate: Date) {
     const start = startOfDay(startDate);
     const end = endOfDay(endDate);
 
-    const funcionarios = await prisma.funcionario.findMany({
+    // ── 1. Busca todas as OSs finalizadas no período ────────────────────────
+    const ordens = await prisma.ordemDeServico.findMany({
       where: {
-        ativo: "S",
+        status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
+        updated_at: { gte: start, lte: end },
       },
+      include: {
+        itens_os: {
+          include: {
+            pagamentos_peca: true,
+            pecas_estoque: true,
+          },
+        },
+        servicos_mao_de_obra: true, // para saber quais mecânicos trabalharam nessa OS
+      },
+    });
+
+    // ── 2. Constrói o Map: id_funcionario → totalVendasEstoque ──────────────
+    // Para cada OS, calcula o total de peças de estoque (sem pagamentos_peca)
+    // e distribui esse total para todos os mecânicos que trabalharam nela.
+    const vendasEstoquePorMecanico = new Map<number, number>();
+
+    for (const os of ordens) {
+      // Total de peças de estoque interno nesta OS
+      const totalEstoqueOS = os.itens_os.reduce((acc: number, item: any) => {
+        const ehEstoqueInterno =
+          !item.pagamentos_peca || item.pagamentos_peca.length === 0;
+        if (ehEstoqueInterno && item.pecas_estoque) {
+          return acc + Number(item.valor_total || 0);
+        }
+        return acc;
+      }, 0);
+
+      if (totalEstoqueOS <= 0) continue;
+
+      // Distribui o valor para cada mecânico que fez serviço nesta OS
+      const mecanicos = new Set<number>(
+        os.servicos_mao_de_obra
+          .map((svc: any) => svc.id_funcionario)
+          .filter(Boolean),
+      );
+
+      for (const idFunc of mecanicos) {
+        vendasEstoquePorMecanico.set(
+          idFunc,
+          (vendasEstoquePorMecanico.get(idFunc) || 0) + totalEstoqueOS,
+        );
+      }
+    }
+
+    // ── 3. Busca funcionários ativos com seus serviços e comissões ──────────
+    const funcionarios = await prisma.funcionario.findMany({
+      where: { ativo: "S" },
       include: {
         pessoa_fisica: { include: { pessoa: true } },
         servicos_mao_de_obra: {
@@ -283,63 +399,26 @@ export class RelatoriosService {
           },
         },
         pagamentos: {
-          // Pagamentos FEITOS ao funcionário no período (Custo Empresa)
           where: { dt_pagamento: { gte: start, lte: end } },
-        },
-        // Buscar OSs onde ele é o responsável principal para atribuir lucro de peças
-        ordens_de_servico: {
-          where: {
-            status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
-            updated_at: { gte: start, lte: end },
-          },
-          include: {
-            itens_os: {
-              include: { pecas_estoque: true, pagamentos_peca: true },
-            },
-          },
         },
       },
     });
 
+    // ── 4. Monta o array de relatório ────────────────────────────────────────
     const report = funcionarios.map((f: any) => {
-      // 1. Produção de Mão de Obra
       const maoDeObraBruta = f.servicos_mao_de_obra.reduce(
         (acc: number, svc: any) => acc + Number(svc.valor || 0),
         0,
       );
 
-      // 2. Lucro gerado com Peças
-      let lucroPecasEstoque = 0;
-      let lucroPecasFora = 0;
-
-      f.ordens_de_servico.forEach((os: any) => {
-        os.itens_os.forEach((item: any) => {
-          const venda = Number(item.valor_total || 0);
-          if (item.pagamentos_peca && item.pagamentos_peca.length > 0) {
-            const custo = item.pagamentos_peca.reduce(
-              (c: number, pp: any) => c + Number(pp.custo_real || 0),
-              0,
-            );
-            lucroPecasFora += venda - custo;
-          } else {
-            const custo =
-              Number(item.pecas_estoque?.valor_custo || 0) * item.quantidade;
-            lucroPecasEstoque += venda - custo;
-          }
-        });
-      });
-
-      // 3. Comissão Paga (Custo Empresa com o funcionário)
       const comissaoPaga = f.pagamentos.reduce(
         (acc: number, pg: any) => acc + Number(pg.valor_total || 0),
         0,
       );
 
-      // 4. Lucro M.O. (Bruta - Comissão)
       const lucroMaoDeObra = maoDeObraBruta - comissaoPaga;
 
-      // 5. Lucro Total
-      const lucroTotal = lucroMaoDeObra + lucroPecasEstoque + lucroPecasFora;
+      const vendasEstoque = vendasEstoquePorMecanico.get(f.id_funcionario) || 0;
 
       return {
         id: f.id_funcionario,
@@ -347,28 +426,24 @@ export class RelatoriosService {
         maoDeObraBruta,
         comissaoPaga,
         lucroMaoDeObra,
-        lucroPecasFora,
-        lucroPecasEstoque,
-        lucroTotal,
+        vendasEstoque,
       };
     });
 
-    return report.sort((a, b) => b.lucroTotal - a.lucroTotal);
+    return report.sort((a, b) => b.maoDeObraBruta - a.maoDeObraBruta);
   }
 
   /**
-   * Evolução das Despesas por Subcategoria
+   * Evolução das Despesas por Subcategoria (comparativo período atual vs anterior)
    */
   async getEvolucaoDespesas(startDate: Date, endDate: Date) {
     const currentStart = startOfDay(startDate);
     const currentEnd = endOfDay(endDate);
 
-    // Calcular período anterior de mesma duração
     const duration = currentEnd.getTime() - currentStart.getTime();
     const prevEnd = new Date(currentStart.getTime() - 1);
     const prevStart = new Date(prevEnd.getTime() - duration);
 
-    // Helper para buscar despesas agrupadas
     const fetchExpenses = async (start: Date, end: Date) => {
       const despesas = await prisma.contasPagar.findMany({
         where: {
@@ -393,7 +468,6 @@ export class RelatoriosService {
       fetchExpenses(prevStart, prevEnd),
     ]);
 
-    // Combinar categorias
     const allCategories = new Set([
       ...Array.from(currentExpenses.keys()),
       ...Array.from(prevExpenses.keys()),
@@ -408,7 +482,7 @@ export class RelatoriosService {
         variacaoPercentual =
           ((valorAtual - valorAnterior) / valorAnterior) * 100;
       } else if (valorAtual > 0) {
-        variacaoPercentual = 100; // Novo gasto
+        variacaoPercentual = 100;
       }
 
       return {
@@ -423,7 +497,7 @@ export class RelatoriosService {
   }
 
   /**
-   * Operadoras de Cartão (Mantido, apenas fix typing/encoding se precisar)
+   * Operadoras de Cartão
    */
   async getOperadorasCartao(startDate: Date, endDate: Date) {
     const start = startOfDay(startDate);
@@ -482,15 +556,12 @@ export class RelatoriosService {
    */
   async getEvolucaoMensal(groupBy: "month" | "quarter" = "month") {
     const today = new Date();
-    // Se for mensal, ultimos 12 meses. Se for trimestral, 4 trimestres (1 ano).
     const start =
       groupBy === "month"
         ? subMonths(startOfDay(today), 11)
         : subQuarters(startOfDay(today), 3);
     const end = endOfDay(today);
 
-    // Fetch All Data needed
-    // Receitas
     const allOs = await prisma.ordemDeServico.findMany({
       where: {
         status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
@@ -499,7 +570,6 @@ export class RelatoriosService {
       select: { updated_at: true, valor_total_cliente: true },
     });
 
-    // Despesas Contas
     const despesas = await prisma.contasPagar.findMany({
       where: {
         status: "PAGO",
@@ -508,13 +578,11 @@ export class RelatoriosService {
       select: { dt_pagamento: true, valor: true },
     });
 
-    // Despesas Equipe
     const equipe = await prisma.pagamentoEquipe.findMany({
       where: { dt_pagamento: { gte: start, lte: end } },
       select: { dt_pagamento: true, valor_total: true },
     });
 
-    // Strategy: Create a map with keys based on groupBy
     const map = new Map<
       string,
       {
@@ -526,7 +594,6 @@ export class RelatoriosService {
       }
     >();
 
-    // Initial Population
     if (groupBy === "month") {
       for (let i = 0; i < 12; i++) {
         const d = subMonths(today, i);
@@ -540,10 +607,9 @@ export class RelatoriosService {
         });
       }
     } else {
-      // Quarters
       for (let i = 0; i < 4; i++) {
         const d = subQuarters(today, i);
-        const q = getQuarter(d); // 1, 2, 3, 4
+        const q = getQuarter(d);
         const y = d.getFullYear();
         const key = `${y}-Q${q}`;
         map.set(key, {
@@ -585,7 +651,6 @@ export class RelatoriosService {
       processItem(i, "dt_pagamento", "despesa", "valor_total"),
     );
 
-    // Calc Lucro
     Array.from(map.values()).forEach((val) => {
       val.lucro = val.receita - val.despesa;
     });

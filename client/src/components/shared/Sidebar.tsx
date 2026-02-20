@@ -44,8 +44,8 @@ const menuItems = [
     path: "/financeiro", // Base path for checking active state
     subItems: [
       { path: "/financeiro/livro-caixa", label: "Gestão Financeira" },
-      { path: "/financeiro/equipe", label: "$ Colaboradores" },
-      { path: "/financeiro/pagamento-pecas", label: "$ Auto Peças" },
+      { path: "/financeiro/equipe", label: "Pgto. Colaboradores" },
+      { path: "/financeiro/pagamento-pecas", label: "Pgto. Auto Peças" },
       { path: "/financeiro/contas-pagar", label: "Contas a Pagar" },
       { path: "/financeiro/relatorios", label: "Relatórios Inteligentes ✨" },
       { path: "/fechamento-financeiro", label: "Consolidação" },
@@ -55,7 +55,10 @@ const menuItems = [
     label: "Configurações",
     icon: Settings,
     path: "/configuracoes-menu",
-    subItems: [{ path: "/configuracoes", label: "Personalização" }],
+    subItems: [
+      { path: "/configuracoes", label: "Personalização" },
+      { path: "/configuracoes/categorias", label: "Categorias Financeiras" },
+    ],
   },
 ];
 

@@ -5,6 +5,7 @@ export interface Periodo {
 
 export interface IndicadoresFinanceiros {
   lucroLiquido: number;
+  margemLiquida: number;
   pontoEquilibrio: number;
 }
 
@@ -12,29 +13,34 @@ export interface ResumoFinanceiro {
   periodo: Periodo;
   bruta: {
     maoDeObra: number;
-    pecasFora: number;
+    pecasTerceiros: number;
     pecasEstoque: number;
     total: number;
   };
   liquida: {
     maoDeObra: number;
-    pecasFora: number;
+    pecasTerceiros: number;
     pecasEstoque: number;
     total: number;
   };
   custos: {
     pecasEstoque: number;
-    pecasFora: number;
+    pecasTerceiros: number;
     equipe: number;
     contas: number;
     total: number;
   };
+  despesas: {
+    operacional: number;
+    fornecedor: number;
+    total: number;
+  };
+  medias: {
+    receitaBruta: number;
+    lucroLiquido: number;
+    despesasTotais: number;
+  };
   despesasPorCategoria: { categoria: string; valor: number }[];
-  evolucaoDespesasTemporal: {
-    mes: string;
-    realizado: number;
-    previsto: number;
-  }[];
   indicadores: IndicadoresFinanceiros;
 }
 
@@ -44,9 +50,13 @@ export interface PerformanceFuncionario {
   maoDeObraBruta: number;
   comissaoPaga: number;
   lucroMaoDeObra: number;
-  lucroPecasEstoque: number;
-  lucroPecasFora: number;
-  lucroTotal: number;
+  vendasEstoque: number;
+}
+
+export interface EvolucaoDespesaTemporal {
+  mes: string;
+  realizado: number;
+  previsto: number;
 }
 
 export interface EvolucaoDespesa {

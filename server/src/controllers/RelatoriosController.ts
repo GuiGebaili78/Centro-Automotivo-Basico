@@ -97,6 +97,19 @@ export class RelatoriosController {
       return res.status(500).json({ error: "Internal Server Error" });
     }
   }
+
+  async getEvolucaoDespesasTemporal(req: Request, res: Response) {
+    try {
+      const { categoriaFiltro } = req.query;
+      const data = await relatoriosService.getEvolucaoDespesasTemporal(
+        categoriaFiltro as string | undefined,
+      );
+      return res.json(data);
+    } catch (error) {
+      console.error("Error in getEvolucaoDespesasTemporal:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
 }
 
 export const relatoriosController = new RelatoriosController();

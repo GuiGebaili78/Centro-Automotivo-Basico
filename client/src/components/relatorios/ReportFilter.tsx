@@ -22,7 +22,6 @@ export const ReportFilter = ({ onFilterChange }: ReportFilterProps) => {
   const [activePreset, setActivePreset] = useState<string>("thisMonth");
 
   useEffect(() => {
-    // Initial load
     onFilterChange(startDate, endDate);
   }, []);
 
@@ -41,13 +40,13 @@ export const ReportFilter = ({ onFilterChange }: ReportFilterProps) => {
         start = startOfMonth(today);
         end = endOfMonth(today);
         break;
-      case "lastMonth":
-        start = startOfMonth(subMonths(today, 1));
-        end = endOfMonth(subMonths(today, 1));
-        break;
       case "last3Months":
-        start = subMonths(today, 3);
-        end = today;
+        start = startOfMonth(subMonths(today, 3));
+        end = endOfMonth(today);
+        break;
+      case "last6Months":
+        start = startOfMonth(subMonths(today, 6));
+        end = endOfMonth(today);
         break;
       case "thisYear":
         start = startOfYear(today);
@@ -64,49 +63,29 @@ export const ReportFilter = ({ onFilterChange }: ReportFilterProps) => {
     onFilterChange(s, e);
   };
 
+  const presets = [
+    { key: "thisMonth", label: "Este Mês" },
+    { key: "last3Months", label: "Últimos 3 Meses" },
+    { key: "last6Months", label: "Últimos 6 Meses" },
+    { key: "thisYear", label: "Este Ano" },
+  ];
+
   return (
     <div className="bg-white p-4 rounded-xl shadow-sm border border-neutral-100 flex flex-wrap gap-4 items-center justify-between">
       <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-        <button
-          onClick={() => handlePreset("thisMonth")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-            activePreset === "thisMonth"
-              ? "bg-primary-50 text-primary-600 ring-1 ring-primary-200"
-              : "text-neutral-600 hover:bg-neutral-50"
-          }`}
-        >
-          Este Mês
-        </button>
-        <button
-          onClick={() => handlePreset("lastMonth")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-            activePreset === "lastMonth"
-              ? "bg-primary-50 text-primary-600 ring-1 ring-primary-200"
-              : "text-neutral-600 hover:bg-neutral-50"
-          }`}
-        >
-          Mês Passado
-        </button>
-        <button
-          onClick={() => handlePreset("last3Months")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-            activePreset === "last3Months"
-              ? "bg-primary-50 text-primary-600 ring-1 ring-primary-200"
-              : "text-neutral-600 hover:bg-neutral-50"
-          }`}
-        >
-          Últimos 3 Meses
-        </button>
-        <button
-          onClick={() => handlePreset("thisYear")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-            activePreset === "thisYear"
-              ? "bg-primary-50 text-primary-600 ring-1 ring-primary-200"
-              : "text-neutral-600 hover:bg-neutral-50"
-          }`}
-        >
-          Este Ano
-        </button>
+        {presets.map((p) => (
+          <button
+            key={p.key}
+            onClick={() => handlePreset(p.key)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              activePreset === p.key
+                ? "bg-primary-50 text-primary-600 ring-1 ring-primary-200"
+                : "text-neutral-600 hover:bg-neutral-50"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
 
       <div className="flex items-center gap-2 border-l pl-4 border-neutral-200">

@@ -5,6 +5,7 @@ import type {
   OperadoraStats,
   EvolucaoMensal,
   EvolucaoDespesa,
+  EvolucaoDespesaTemporal,
 } from "../types/relatorios.types";
 
 export const RelatoriosService = {
@@ -53,6 +54,15 @@ export const RelatoriosService = {
   ): Promise<EvolucaoDespesa[]> => {
     const response = await api.get("/relatorios/despesas-evolucao", {
       params: { startDate, endDate },
+    });
+    return response.data;
+  },
+
+  getEvolucaoDespesasTemporal: async (
+    categoriaFiltro?: string,
+  ): Promise<EvolucaoDespesaTemporal[]> => {
+    const response = await api.get("/relatorios/despesas-temporal", {
+      params: categoriaFiltro ? { categoriaFiltro } : {},
     });
     return response.data;
   },
