@@ -5,7 +5,7 @@ export function MainLayout() {
   return (
     <div className="flex bg-background min-h-screen w-full">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
+      <main className="flex-1 ml-64 p-8 overflow-y-auto print:m-0 print:w-full print:p-0 print:ml-0">
         <div className="w-full">
           {/* Breadcrumbs ou Header Global poderiam entrar aqui */}
           <Outlet />

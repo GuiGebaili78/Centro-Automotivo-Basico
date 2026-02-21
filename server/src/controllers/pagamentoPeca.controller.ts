@@ -96,6 +96,37 @@ export class PagamentoPecaController {
     }
   }
 
+  async baixa(req: Request, res: Response) {
+    try {
+      const {
+        ids,
+        desconto_total_aplicado,
+        id_conta_bancaria,
+        data_pagamento,
+      } = req.body;
+
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "IDs das peças são obrigatórios" });
+      }
+
+      const result = await repository.baixaPecas(
+        ids,
+        Number(desconto_total_aplicado || 0),
+        Number(id_conta_bancaria),
+        data_pagamento ? new Date(data_pagamento + "T12:00:00") : new Date(),
+      );
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Baixa failed", error);
+      res
+        .status(400)
+        .json({ error: error.message || "Failed to process part payments" });
+    }
+  }
+
   async delete(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);

@@ -10,6 +10,7 @@ import { CategorySelector } from "../components/shared/financeiro/CategorySelect
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { ModalPagamentoUnificado } from "../components/shared/financeiro/ModalPagamentoUnificado";
 import { toast } from "react-toastify";
 import {
   Plus,
@@ -67,10 +68,7 @@ export const ContasAPagarPage = () => {
   // Payment Confirmation Modal
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [selectedConta, setSelectedConta] = useState<any>(null);
-  const [paymentDate, setPaymentDate] = useState("");
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
-  const [selectedBank, setSelectedBank] = useState("");
-  const [paymentValue, setPaymentValue] = useState("");
 
   // Confirm Delete Modal
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -177,20 +175,24 @@ export const ContasAPagarPage = () => {
 
   const handleQuickPay = (conta: any) => {
     setSelectedConta(conta);
-    setPaymentDate(new Date().toISOString().split("T")[0]); // Default to today
-    setPaymentValue(Number(conta.valor).toFixed(2));
-    setSelectedBank(""); // Reset bank selection
     setPayModalOpen(true);
   };
 
-  const executePay = async () => {
+  const executePay = async (data: {
+    accountId: number;
+    date: string;
+    discountValue: number;
+  }) => {
     if (!selectedConta) return;
     try {
+      // O valor final pago é o valor da conta menos o desconto
+      const valorFinal = Number(selectedConta.valor) - data.discountValue;
+
       await api.put(`/contas-pagar/${selectedConta.id_conta_pagar}`, {
         status: "PAGO",
-        valor: Number(paymentValue),
-        dt_pagamento: new Date(paymentDate).toISOString(),
-        id_conta_bancaria: selectedBank || null,
+        valor: valorFinal,
+        dt_pagamento: new Date(data.date).toISOString(),
+        id_conta_bancaria: data.accountId || null,
       });
       toast.success("Conta marcada como PAGA.");
       loadContas();
@@ -873,81 +875,17 @@ export const ContasAPagarPage = () => {
         </Modal>
       )}
 
-      {/* MODAL PAGAMENTO */}
-      {payModalOpen && (
-        <Modal
-          title="Baixa de Pagamento"
-          onClose={() => setPayModalOpen(false)}
-          className="max-w-md"
-        >
-          <div className="space-y-6 pt-2">
-            <div>
-              <p className="text-sm font-medium text-neutral-500 mb-1">
-                Referência
-              </p>
-              <p className="text-lg font-bold text-neutral-700">
-                {selectedConta?.descricao}
-              </p>
-              <p className="text-sm text-neutral-500">
-                {selectedConta?.credor}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest block mb-1">
-                Valor do Pagamento
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 font-bold text-xl">
-                  R$
-                </span>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-full bg-emerald-50/50 border border-emerald-100 rounded-xl py-4 pl-12 pr-4 text-2xl font-bold text-emerald-700 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all placeholder:text-emerald-300/50"
-                  value={paymentValue}
-                  onChange={(e) => setPaymentValue(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <Input
-              label="Data do Pagamento"
-              type="date"
-              value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
-            />
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-                Conta Bancária de Saída
-              </label>
-              <select
-                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
-                value={selectedBank}
-                onChange={(e) => setSelectedBank(e.target.value)}
-              >
-                <option value="">Selecione a conta...</option>
-                {bankAccounts.map((b) => (
-                  <option key={b.id_conta} value={b.id_conta}>
-                    {b.nome} ({b.banco}) - Saldo:{" "}
-                    {formatCurrency(Number(b.saldo_atual))}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button variant="ghost" onClick={() => setPayModalOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={executePay} variant="primary">
-                Confirmar Pagamento
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Modal de Pagamento Unificado */}
+      <ModalPagamentoUnificado
+        isOpen={payModalOpen}
+        onClose={() => setPayModalOpen(false)}
+        onConfirm={executePay}
+        totalAmount={Number(selectedConta?.valor || 0)}
+        bankAccounts={bankAccounts}
+        title="Baixa de Conta a Pagar"
+        showDiscount={true}
+        isLoading={loading}
+      />
 
       {/* Confirm Delete Modal */}
       <ConfirmModal

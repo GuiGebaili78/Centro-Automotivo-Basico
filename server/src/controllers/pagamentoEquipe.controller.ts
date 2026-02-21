@@ -94,6 +94,7 @@ export const createPagamento = async (req: Request, res: Response) => {
       tipo_lancamento,
       referencia_inicio,
       referencia_fim,
+      id_conta_bancaria,
     } = req.body;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -161,8 +162,23 @@ export const createPagamento = async (req: Request, res: Response) => {
           tipo_movimentacao: "SAIDA",
           categoria: "EQUIPE",
           id_pagamento_equipe: pagamento.id_pagamento_equipe,
+          id_conta_bancaria: id_conta_bancaria
+            ? Number(id_conta_bancaria)
+            : null,
         },
       });
+
+      // 5. Atualizar Saldo da Conta Bancária (se fornecida)
+      if (id_conta_bancaria) {
+        await tx.contaBancaria.update({
+          where: { id_conta: Number(id_conta_bancaria) },
+          data: {
+            saldo_atual: {
+              decrement: Number(valor_total),
+            },
+          },
+        });
+      }
 
       return pagamento;
     });

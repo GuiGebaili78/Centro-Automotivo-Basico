@@ -22,9 +22,10 @@ import {
   Plus,
 } from "lucide-react";
 import { Modal } from "../components/ui/Modal";
+import { ModalPagamentoUnificado } from "../components/shared/financeiro/ModalPagamentoUnificado";
 
 export const PagamentoPecaPage = () => {
-  const [, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // --- STATES FOR ACCOUNTS PAYABLE (PEÇAS) ---
   const [payments, setPayments] = useState<any[]>([]);
@@ -182,37 +183,34 @@ export const PagamentoPecaPage = () => {
     setPaymentModal((prev) => ({ ...prev, isOpen: true }));
   };
 
-  const processBatchPayment = async () => {
-    if (!paymentModal.accountId) {
-      toast.warning("Selecione uma conta bancária de origem.");
-      return;
-    }
-
+  const processBatchPayment = async (data: {
+    accountId: number;
+    date: string;
+    discountValue: number;
+  }) => {
     try {
       setLoading(true);
 
-      // Process updates in parallel
-      await Promise.all(
-        selectedIds.map((id) => {
-          return api.put(`/pagamento-peca/${id}`, {
-            pago_ao_fornecedor: true,
-            id_conta_bancaria: Number(paymentModal.accountId),
-            data_pagamento_fornecedor: paymentModal.date,
-          });
-        }),
-      );
+      await api.post("/pagamento-peca/baixa", {
+        ids: selectedIds,
+        desconto_total_aplicado: data.discountValue,
+        id_conta_bancaria: data.accountId,
+        data_pagamento: data.date,
+      });
 
       toast.success(
-        `${selectedIds.length} pagamentos confirmados e debitados!`,
+        `${selectedIds.length} pagamentos processados com sucesso!`,
       );
 
       // Clear selection and reload
       setSelectedIds([]);
       setPaymentModal((prev) => ({ ...prev, isOpen: false }));
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Erro ao processar pagamentos.");
+      toast.error(
+        error.response?.data?.error || "Erro ao processar pagamentos.",
+      );
     } finally {
       setLoading(false);
     }
@@ -919,71 +917,17 @@ export const PagamentoPecaPage = () => {
         </Modal>
       )}
 
-      {/* Batch Payment Modal */}
-      {paymentModal.isOpen && (
-        <Modal
-          title={`Confirmar ${selectedIds.length} Pagamento(s)`}
-          onClose={() =>
-            setPaymentModal((prev) => ({ ...prev, isOpen: false }))
-          }
-        >
-          <div className="space-y-4">
-            <p className="text-neutral-600">
-              Selecione a conta de onde sairá o dinheiro e a data do pagamento.
-            </p>
-            <div>
-              <label className="text-sm font-medium text-neutral-700 block mb-1">
-                Conta Bancária
-              </label>
-              <select
-                value={paymentModal.accountId}
-                onChange={(e) =>
-                  setPaymentModal((prev) => ({
-                    ...prev,
-                    accountId: e.target.value,
-                  }))
-                }
-                className="w-full h-10 px-3 bg-white border border-neutral-300 rounded-lg"
-              >
-                <option value="">Selecione...</option>
-                {accounts.map((acc: any) => (
-                  <option key={acc.id_conta} value={acc.id_conta}>
-                    {acc.banco} - {acc.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-neutral-700 block mb-1">
-                Data do Pagamento
-              </label>
-              <Input
-                type="date"
-                value={paymentModal.date}
-                onChange={(e) =>
-                  setPaymentModal((prev) => ({ ...prev, date: e.target.value }))
-                }
-              />
-            </div>
-            <div className="bg-yellow-50 p-3 rounded-lg text-xs text-yellow-800">
-              Isso criará lançamentos de saída no Livro Caixa automaticamente.
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-neutral-100">
-            <Button
-              variant="ghost"
-              onClick={() =>
-                setPaymentModal((prev) => ({ ...prev, isOpen: false }))
-              }
-            >
-              Cancelar
-            </Button>
-            <Button variant="success" onClick={processBatchPayment}>
-              Confirmar Pagamentos
-            </Button>
-          </div>
-        </Modal>
-      )}
+      {/* Modal de Pagamento Unificado */}
+      <ModalPagamentoUnificado
+        isOpen={paymentModal.isOpen}
+        onClose={() => setPaymentModal((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={processBatchPayment}
+        totalAmount={totalSelected}
+        bankAccounts={accounts}
+        title={`Pagar ${selectedIds.length} Peça(s)`}
+        showDiscount={true}
+        isLoading={loading}
+      />
 
       {/* CONFIRM DELETE MODAL */}
       <ConfirmModal

@@ -106,7 +106,7 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-400 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-800 shadow-2xl z-50">
+    <aside className="w-64 bg-slate-900 text-slate-400 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-800 shadow-2xl z-50 print:hidden">
       <div className="border-b border-slate-800 bg-slate-950 flex items-center justify-center h-32 overflow-hidden shrink-0">
         {config?.logoUrl ? (
           <img

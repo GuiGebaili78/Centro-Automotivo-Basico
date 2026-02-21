@@ -134,7 +134,11 @@ export class OrdemDeServicoController {
       const pdfBuffer = await mensageria.gerarPdfOs(os);
 
       if (method === "EMAIL") {
-        await mensageria.enviarEmail(target, os, pdfBuffer);
+        try {
+          await mensageria.enviarEmail(target, os, pdfBuffer);
+        } catch (e: any) {
+          return res.status(500).json({ error: e.message || e });
+        }
       } else if (method === "TELEGRAM") {
         await mensageria.enviarTelegram(target, os, pdfBuffer);
       } else {
@@ -142,9 +146,11 @@ export class OrdemDeServicoController {
       }
 
       res.json({ success: true, message: `Sent via ${method}` });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Send Error:", error);
-      res.status(500).json({ error: "Failed to send document" });
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to send document" });
     }
   }
 }

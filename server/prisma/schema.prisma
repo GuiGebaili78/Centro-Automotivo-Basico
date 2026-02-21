@@ -265,6 +265,7 @@ model PagamentoPeca {
   id_item_os                Int
   id_fornecedor             Int
   custo_real                Decimal     @db.Decimal(10, 2)
+  valor_desconto_rateado    Decimal?    @db.Decimal(10, 2)
   data_compra               DateTime    @db.Timestamp(6)
   data_pagamento_fornecedor DateTime?   @db.Timestamp(6)
   pago_ao_fornecedor        Boolean     @default(false)

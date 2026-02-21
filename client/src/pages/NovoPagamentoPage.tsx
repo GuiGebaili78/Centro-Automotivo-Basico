@@ -17,6 +17,7 @@ import { Button } from "../components/ui/Button";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { toast } from "react-toastify";
+import { ModalPagamentoUnificado } from "../components/shared/financeiro/ModalPagamentoUnificado";
 
 export const NovoPagamentoPage = () => {
   const navigate = useNavigate();
@@ -57,10 +58,13 @@ export const NovoPagamentoPage = () => {
   const [filterEnd, setFilterEnd] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
 
   // --- EFFECTS ---
   useEffect(() => {
     loadFuncionarios();
+    loadAccounts();
   }, []);
 
   // Auto-select from navigation state
@@ -101,6 +105,15 @@ export const NovoPagamentoPage = () => {
     } catch (e) {
       console.error(e);
       toast.error("Erro ao carregar colaboradores.");
+    }
+  };
+
+  const loadAccounts = async () => {
+    try {
+      const res = await api.get("/conta-bancaria");
+      setBankAccounts(res.data);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -203,12 +216,19 @@ export const NovoPagamentoPage = () => {
     else setSelectedVales(valesPendentes.map((v) => v.id_pagamento_equipe));
   };
 
-  const handlePay = async () => {
+  const handlePayClick = () => {
     if (!selectedFuncionarioId) {
       toast.warning("Selecione um colaborador.");
       return;
     }
+    setIsPayModalOpen(true);
+  };
 
+  const handlePay = async (data: {
+    accountId: number;
+    date: string;
+    discountValue: number;
+  }) => {
     try {
       setIsLoading(true);
       if (mode === "ADIANTAMENTO") {
@@ -221,9 +241,8 @@ export const NovoPagamentoPage = () => {
           forma_pagamento: paymentMethod,
           premio_valor: null,
           tipo_lancamento: "VALE",
-          referencia_inicio: dataAdiantamento
-            ? new Date(dataAdiantamento)
-            : null,
+          referencia_inicio: data.date ? new Date(data.date) : null,
+          id_conta_bancaria: data.accountId,
         });
       } else {
         await api.post("/pagamento-equipe", {
@@ -238,10 +257,13 @@ export const NovoPagamentoPage = () => {
           tipo_lancamento: "COMISSAO",
           referencia_inicio: null,
           include_salary: includeSalary,
+          id_conta_bancaria: data.accountId,
+          data_pagamento: data.date,
         });
       }
 
       toast.success("Lançamento realizado com sucesso!");
+      setIsPayModalOpen(false);
       setTimeout(() => navigate("/pagamento-equipe"), 1500);
     } catch (error) {
       console.error(error);
@@ -752,7 +774,7 @@ export const NovoPagamentoPage = () => {
                 <Button
                   variant="primary"
                   className="flex-1"
-                  onClick={handlePay}
+                  onClick={handlePayClick}
                   disabled={isLoading}
                   icon={Save}
                 >
@@ -763,6 +785,26 @@ export const NovoPagamentoPage = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Pagamento Unificado */}
+      <ModalPagamentoUnificado
+        isOpen={isPayModalOpen}
+        onClose={() => setIsPayModalOpen(false)}
+        onConfirm={handlePay}
+        totalAmount={
+          mode === "ADIANTAMENTO"
+            ? Number(valorAdiantamento)
+            : finalTotalPagamento
+        }
+        bankAccounts={bankAccounts}
+        title={
+          mode === "ADIANTAMENTO"
+            ? "Confirmar Novo Vale"
+            : "Confirmar Pagamento"
+        }
+        showDiscount={false} // Para funcionários, o desconto já é calculado no form principal (vales)
+        isLoading={isLoading}
+      />
     </PageLayout>
   );
 };

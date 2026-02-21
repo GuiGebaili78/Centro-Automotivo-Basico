@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 02/20/2026 20:20:19
+PROJECT DUMP GENERATED ON 02/21/2026 11:46:30
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -1146,10 +1146,11 @@ FILE PATH: package.json
   "version": "1.0.0",
   "description": "Root scripts for managing Docker and overarching project tasks",
   "scripts": {
-    "docker:reset": "docker compose up -d && docker compose restart api",
+    "docker:reset": "docker compose restart api &&docker compose up -d",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "db:migrate": "docker compose exec api npx prisma migrate dev",
+    "db:push": "docker compose exec api npx prisma db push",
     "db:studio": "docker compose exec api npx prisma studio",
     "generate:context": "powershell -ExecutionPolicy Bypass -File ./generate_context.ps1"
   },
@@ -1438,7 +1439,6 @@ FILE PATH: client\index.html
 </html>
 
 
-================================================================================
 FILE PATH: client\package.json
 ================================================================================
 {
@@ -1700,6 +1700,14 @@ FILE PATH: client\tsconfig.app.json
 ================================================================================
 FILE PATH: client\tsconfig.json
 ================================================================================
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
+
 
 
 ================================================================================
@@ -19977,20 +19985,14 @@ FILE PATH: client\src\pages\CategoriasPage.tsx
 ================================================================================
 import { useState, useEffect, useCallback } from "react";
 import { PageLayout } from "../components/ui/PageLayout";
+import { CategoryManager } from "../components/shared/financeiro/CategoryManager";
+import { Button } from "../components/ui/Button";
 import { api } from "../services/api";
 import { toast } from "react-toastify";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Shield,
-  Tag,
-  ChevronRight,
-  X,
-  Check,
-} from "lucide-react";
+import { ActionButton } from "../components/ui/ActionButton";
+import { Plus, Pencil, Shield, Tag, ChevronRight } from "lucide-react";
 
-// ─── Categorias protegidas do sistema (não podem ser editadas/excluídas) ───────
+// ─── Categorias protegidas do sistema ─────────────────────────────────────────
 const CATEGORIAS_SISTEMA = [
   "Fornecedor / Pg. Fornecedor",
   "Fornecedor / Estoque",
@@ -19998,11 +20000,10 @@ const CATEGORIAS_SISTEMA = [
   "Colaboradores / (Adiantamento, Comissão, Prêmio e Contrato)",
 ];
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Categoria {
   id_categoria: number;
   nome: string;
-  tipo: "DESPESA" | "RECEITA" | "AMBOS";
+  tipo: string;
   parentId: number | null;
 }
 
@@ -20010,34 +20011,23 @@ const TIPO_LABELS: Record<string, string> = {
   DESPESA: "Despesa",
   RECEITA: "Receita",
   AMBOS: "Ambos",
+  ENTRADA: "Entrada",
+  SAIDA: "Saída",
 };
 
 const TIPO_COLORS: Record<string, string> = {
   DESPESA: "text-red-600 bg-red-50",
   RECEITA: "text-emerald-600 bg-emerald-50",
   AMBOS: "text-violet-600 bg-violet-50",
-};
-
-const emptyForm = {
-  nome: "",
-  tipo: "DESPESA" as Categoria["tipo"],
-  parentId: "" as number | "",
+  ENTRADA: "text-emerald-600 bg-emerald-50",
+  SAIDA: "text-red-600 bg-red-50",
 };
 
 // ─── Componente principal ──────────────────────────────────────────────────────
 export const CategoriasPage = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Modal state
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<Categoria | null>(null);
-  const [form, setForm] = useState(emptyForm);
-  const [saving, setSaving] = useState(false);
-
-  // Confirm delete
-  const [deleteTarget, setDeleteTarget] = useState<Categoria | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isManagerOpen, setIsManagerOpen] = useState(false);
 
   // ── Fetch ───────────────────────────────────────────────────────────────────
   const fetchCategorias = useCallback(async () => {
@@ -20062,90 +20052,29 @@ export const CategoriasPage = () => {
   const getCatPai = (parentId: number | null) =>
     parentId ? categorias.find((c) => c.id_categoria === parentId) : null;
 
-  const catsPai = categorias.filter((c) => c.parentId === null);
-
-  // ── Modal handlers ──────────────────────────────────────────────────────────
-  const openCreate = () => {
-    setEditTarget(null);
-    setForm(emptyForm);
-    setModalOpen(true);
-  };
-
-  const openEdit = (cat: Categoria) => {
-    setEditTarget(cat);
-    setForm({
-      nome: cat.nome,
-      tipo: cat.tipo,
-      parentId: cat.parentId ?? "",
-    });
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditTarget(null);
-    setForm(emptyForm);
-  };
-
-  const handleSave = async () => {
-    if (!form.nome.trim()) {
-      toast.warning("Informe um nome para a categoria.");
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        nome: form.nome.trim(),
-        tipo: form.tipo,
-        parentId: form.parentId !== "" ? Number(form.parentId) : null,
-      };
-
-      if (editTarget) {
-        await api.put(
-          `/categoria-financeira/${editTarget.id_categoria}`,
-          payload,
-        );
-        toast.success("Categoria atualizada.");
-      } else {
-        await api.post("/categoria-financeira", payload);
-        toast.success("Categoria criada.");
-      }
-
-      closeModal();
-      fetchCategorias();
-    } catch {
-      toast.error("Erro ao salvar categoria.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ── Delete handlers ─────────────────────────────────────────────────────────
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setDeleteLoading(true);
-    try {
-      await api.delete(`/categoria-financeira/${deleteTarget.id_categoria}`);
-      toast.success("Categoria excluída.");
-      setDeleteTarget(null);
-      fetchCategorias();
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        "Erro ao excluir. Verifique se há lançamentos vinculados.";
-      toast.error(msg);
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <PageLayout
       title="Categorias Financeiras"
       subtitle="Gerencie as categorias e subcategorias para classificação de receitas e despesas"
+      actions={
+        <Button
+          onClick={() => setIsManagerOpen(true)}
+          variant="secondary"
+          icon={Plus}
+        >
+          Nova Categoria
+        </Button>
+      }
     >
-      {/* Topo: Botão Nova Categoria */}
+      {/* Modal CategoryManager — o mesmo usado em Contas a Pagar */}
+      <CategoryManager
+        isOpen={isManagerOpen}
+        onClose={() => setIsManagerOpen(false)}
+        onUpdate={fetchCategorias}
+      />
+
+      {/* Topo: Resumo */}
       <div className="flex justify-between items-center mb-6">
         <p className="text-sm text-neutral-500">
           <span className="font-semibold text-neutral-700">
@@ -20153,20 +20082,13 @@ export const CategoriasPage = () => {
           </span>{" "}
           categorias cadastradas
         </p>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold shadow-sm"
-        >
-          <Plus size={16} />
-          Nova Categoria
-        </button>
       </div>
 
       {/* Tabela */}
       <div className="bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden">
         {loading ? (
           <div className="py-20 text-center text-neutral-400">
-            <div className="animate-spin w-8 h-8 border-4 border-primary-400 border-t-transparent rounded-full mx-auto mb-3" />
+            <div className="animate-spin w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full mx-auto mb-3" />
             Carregando...
           </div>
         ) : (
@@ -20188,7 +20110,7 @@ export const CategoriasPage = () => {
                   <tr
                     key={cat.id_categoria}
                     className={`hover:bg-neutral-50 transition-colors ${
-                      protegida ? "opacity-80" : ""
+                      protegida ? "opacity-75" : ""
                     }`}
                   >
                     {/* Nome */}
@@ -20200,10 +20122,7 @@ export const CategoriasPage = () => {
                             className="text-neutral-300 shrink-0"
                           />
                         ) : (
-                          <Tag
-                            size={14}
-                            className="text-primary-400 shrink-0"
-                          />
+                          <Tag size={14} className="text-orange-400 shrink-0" />
                         )}
                         {cat.nome}
                       </div>
@@ -20244,39 +20163,13 @@ export const CategoriasPage = () => {
 
                     {/* Ações */}
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => !protegida && openEdit(cat)}
-                          disabled={protegida}
-                          title={
-                            protegida
-                              ? "Categoria do sistema — não editável"
-                              : "Editar"
-                          }
-                          className={`p-1.5 rounded-lg transition-colors ${
-                            protegida
-                              ? "text-neutral-200 cursor-not-allowed"
-                              : "text-neutral-400 hover:text-primary-600 hover:bg-primary-50"
-                          }`}
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          onClick={() => !protegida && setDeleteTarget(cat)}
-                          disabled={protegida}
-                          title={
-                            protegida
-                              ? "Categoria do sistema — não excluível"
-                              : "Excluir"
-                          }
-                          className={`p-1.5 rounded-lg transition-colors ${
-                            protegida
-                              ? "text-neutral-200 cursor-not-allowed"
-                              : "text-neutral-400 hover:text-red-600 hover:bg-red-50"
-                          }`}
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                      <div className="flex items-center justify-end">
+                        <ActionButton
+                          onClick={() => setIsManagerOpen(true)}
+                          icon={Pencil}
+                          label="Gerenciar"
+                          variant="accent"
+                        />
                       </div>
                     </td>
                   </tr>
@@ -20297,170 +20190,6 @@ export const CategoriasPage = () => {
           </table>
         )}
       </div>
-
-      {/* ─── Modal de Criação / Edição ─────────────────────────────────────────── */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
-              <h2 className="text-base font-bold text-neutral-800">
-                {editTarget ? "Editar Categoria" : "Nova Categoria"}
-              </h2>
-              <button
-                onClick={closeModal}
-                className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="px-6 py-5 space-y-4">
-              {/* Nome */}
-              <div>
-                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">
-                  Nome *
-                </label>
-                <input
-                  type="text"
-                  value={form.nome}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, nome: e.target.value }))
-                  }
-                  placeholder="Ex: Aluguel, Combustível..."
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm text-neutral-800 outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400"
-                />
-              </div>
-
-              {/* Tipo */}
-              <div>
-                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">
-                  Tipo
-                </label>
-                <select
-                  value={form.tipo}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      tipo: e.target.value as Categoria["tipo"],
-                    }))
-                  }
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm text-neutral-700 bg-white outline-none focus:ring-2 focus:ring-primary-300"
-                >
-                  <option value="DESPESA">Despesa</option>
-                  <option value="RECEITA">Receita</option>
-                  <option value="AMBOS">Ambos</option>
-                </select>
-              </div>
-
-              {/* Categoria Pai (subcategoria) */}
-              <div>
-                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">
-                  Categoria Pai{" "}
-                  <span className="normal-case font-normal text-neutral-400">
-                    (opcional — para criar subcategoria)
-                  </span>
-                </label>
-                <select
-                  value={form.parentId}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      parentId: e.target.value ? Number(e.target.value) : "",
-                    }))
-                  }
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm text-neutral-700 bg-white outline-none focus:ring-2 focus:ring-primary-300"
-                >
-                  <option value="">Nenhuma (categoria raiz)</option>
-                  {catsPai
-                    .filter(
-                      (c) =>
-                        !editTarget ||
-                        c.id_categoria !== editTarget.id_categoria,
-                    )
-                    .map((c) => (
-                      <option key={c.id_categoria} value={c.id_categoria}>
-                        {c.nome}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 justify-end">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 text-sm text-neutral-600 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-60"
-              >
-                {saving ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Check size={16} />
-                )}
-                {editTarget ? "Salvar Alterações" : "Criar Categoria"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Confirm Delete ─────────────────────────────────────────────────────── */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-red-50 p-2.5 rounded-xl">
-                <Trash2 size={20} className="text-red-500" />
-              </div>
-              <div>
-                <h3 className="font-bold text-neutral-800">
-                  Excluir Categoria
-                </h3>
-                <p className="text-xs text-neutral-400">
-                  Esta ação não pode ser desfeita.
-                </p>
-              </div>
-            </div>
-            <p className="text-sm text-neutral-600 mb-5">
-              Deseja excluir a categoria{" "}
-              <strong className="text-neutral-800">
-                &quot;{deleteTarget.nome}&quot;
-              </strong>
-              ? Se houver lançamentos vinculados, a operação será bloqueada.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleteLoading}
-                className="px-4 py-2 text-sm text-neutral-600 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleteLoading}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-60"
-              >
-                {deleteLoading ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Trash2 size={14} />
-                )}
-                Excluir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </PageLayout>
   );
 };
@@ -22253,2827 +21982,6 @@ export function DaschboardPage() {
 ================================================================================
 FILE PATH: client\src\pages\EntradaEstoquePage.tsx
 ================================================================================
-import { useState, useEffect } from "react";
-import { toast } from "react-toastify";
-import { PageLayout } from "../components/ui/PageLayout";
-import { Modal } from "../components/ui/Modal";
-import { FornecedorForm } from "../components/forms/FornecedorForm";
-import { EntradaFornecedorForm } from "../components/estoque/EntradaFornecedorForm";
-import { EntradaItensForm } from "../components/estoque/EntradaItensForm";
-import { api } from "../services/api";
-import { EstoqueService } from "../services/estoque.service";
-import type {
-  IItemEntrada,
-  IEntradaEstoquePayload,
-} from "../types/estoque.types";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { CheckCircle, FileText } from "lucide-react";
-
-export const EntradaEstoquePage = () => {
-  // Header State
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [selectedSupplierId, setSelectedSupplierId] = useState("");
-  const [invoice, setInvoice] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [obs, setObs] = useState("");
-  const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
-
-  // Items State
-  const [items, setItems] = useState<IItemEntrada[]>([]);
-
-  // Financial Modal State
-  const [showFinancialModal, setShowFinancialModal] = useState(false);
-  const [enableFinancial, setEnableFinancial] = useState(true);
-  const [finDesc, setFinDesc] = useState("");
-  const [finValue, setFinValue] = useState("");
-  const [finDueDate, setFinDueDate] = useState("");
-  const [finPaid, setFinPaid] = useState(false);
-  const [finPayDate, setFinPayDate] = useState("");
-
-  // Load Suppliers
-  useEffect(() => {
-    loadSuppliers();
-  }, []);
-
-  const loadSuppliers = () => {
-    api
-      .get("/fornecedor")
-      .then((res) => setSuppliers(res.data))
-      .catch(console.error);
-  };
-
-  const totalValue = items.reduce(
-    (acc, i) => acc + i.quantidade * i.valor_custo,
-    0,
-  );
-
-  const handlePreSubmit = () => {
-    if (!selectedSupplierId) {
-      toast.error("Selecione um Fornecedor.");
-      return;
-    }
-    if (items.length === 0) {
-      toast.error("Adicione pelo menos um item.");
-      return;
-    }
-
-    // Pre-fill Financial Data
-    const supplierObj = suppliers.find(
-      (s) => s.id_fornecedor === Number(selectedSupplierId),
-    );
-    const supplierName =
-      supplierObj?.nome_fantasia || supplierObj?.nome || "Fornecedor";
-    setFinDesc(`Compra Estoque - NF ${invoice || "S/N"} - ${supplierName}`);
-    setFinValue(totalValue.toFixed(2));
-    setFinDueDate(date); // Default due date = purchase date
-    setFinPayDate(new Date().toISOString().split("T")[0]); // Default pay date = today
-    setFinPaid(false); // Default to Unpaid
-    setEnableFinancial(true);
-
-    setShowFinancialModal(true);
-  };
-
-  const handleFinalSubmit = async () => {
-    try {
-      const payload: IEntradaEstoquePayload = {
-        id_fornecedor: Number(selectedSupplierId),
-        nota_fiscal: invoice,
-        data_compra: new Date(date),
-        obs: obs,
-        itens: items,
-        financeiro: enableFinancial
-          ? {
-              descricao: finDesc,
-              valor: Number(finValue),
-              dt_vencimento: finDueDate,
-              dt_pagamento: finPaid ? finPayDate : null,
-              status: finPaid ? "PAGO" : "PENDENTE",
-            }
-          : undefined,
-      };
-
-      await EstoqueService.createEntry(payload);
-
-      toast.success("Entrada Registrada com Sucesso!");
-      setShowFinancialModal(false);
-
-      // Clear All
-      setItems([]);
-      setInvoice("");
-      setObs("");
-    } catch (e: any) {
-      console.error(e);
-      toast.error(
-        "Erro ao processar entrada: " + (e.response?.data?.error || e.message),
-      );
-    }
-  };
-
-  return (
-    <PageLayout
-      title="Nova Compra / Entrada de Estoque"
-      subtitle="Registre novas aquisições de peças e atualize o estoque automaticamente."
-    >
-      <div className="space-y-6">
-        <EntradaFornecedorForm
-          suppliers={suppliers}
-          selectedSupplierId={selectedSupplierId}
-          setSelectedSupplierId={setSelectedSupplierId}
-          invoice={invoice}
-          setInvoice={setInvoice}
-          date={date}
-          setDate={setDate}
-          onNewSupplier={() => setShowNewSupplierModal(true)}
-        />
-
-        <EntradaItensForm
-          items={items}
-          setItems={setItems}
-          onSubmit={handlePreSubmit}
-          totalValue={totalValue}
-        />
-
-        {/* NEW FINANCIAL MODAL - Could also be extracted but kept here for now as it orchestrates final submit */}
-        {showFinancialModal && (
-          <Modal
-            title="Financeiro da Compra"
-            onClose={() => setShowFinancialModal(false)}
-            className="max-w-2xl"
-          >
-            <div className="space-y-6 pt-2">
-              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
-                <div className="bg-blue-100 p-2 rounded-lg text-blue-600 mt-1">
-                  <FileText size={20} />
-                </div>
-                <div>
-                  <p className="text-sm text-blue-900 font-bold">
-                    Confirmação de Contas a Pagar
-                  </p>
-                  <p className="text-xs text-blue-700 mt-1 leading-relaxed">
-                    Um registro será criado em <strong>Contas a Pagar</strong>.
-                    Se marcado como pago, o valor será debitado do{" "}
-                    <strong>Livro Caixa</strong> automaticamente.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                <input
-                  type="checkbox"
-                  id="chkEnableFin"
-                  checked={enableFinancial}
-                  onChange={(e) => setEnableFinancial(e.target.checked)}
-                  className="w-5 h-5 accent-primary-600 rounded cursor-pointer"
-                />
-                <label
-                  htmlFor="chkEnableFin"
-                  className="font-bold text-neutral-700 cursor-pointer select-none text-sm"
-                >
-                  Lançar valor no Financeiro (Contas a Pagar)?
-                </label>
-              </div>
-
-              {enableFinancial && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
-                  <Input
-                    label="Descrição do Lançamento"
-                    value={finDesc}
-                    onChange={(e) => setFinDesc(e.target.value)}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="Valor Total (R$)"
-                      type="number"
-                      value={finValue}
-                      readOnly
-                      className="bg-neutral-100 font-bold text-neutral-600"
-                    />
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                        Vencimento
-                      </label>
-                      <input
-                        type="date"
-                        value={finDueDate}
-                        onChange={(e) => setFinDueDate(e.target.value)}
-                        className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-blue-500 font-medium h-[42px]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200">
-                    <div className="flex items-center gap-3 mb-4">
-                      <input
-                        type="checkbox"
-                        id="chkPaid"
-                        checked={finPaid}
-                        onChange={(e) => setFinPaid(e.target.checked)}
-                        className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
-                      />
-                      <label
-                        htmlFor="chkPaid"
-                        className="font-bold text-neutral-700 cursor-pointer select-none text-sm"
-                      >
-                        Compra à vista / Já foi paga?
-                      </label>
-                    </div>
-
-                    {finPaid && (
-                      <div className="animate-in fade-in slide-in-from-top-2">
-                        <label className="block text-xs font-bold text-emerald-600 uppercase mb-1">
-                          Data do Pagamento
-                        </label>
-                        <input
-                          type="date"
-                          value={finPayDate}
-                          onChange={(e) => setFinPayDate(e.target.value)}
-                          className="w-full border p-2.5 rounded-xl outline-none focus:border-emerald-500 font-bold text-emerald-800 border-emerald-200 bg-emerald-50 h-[42px]"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end pt-4 gap-3 border-t border-neutral-100 mt-4">
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowFinancialModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleFinalSubmit}
-                  icon={CheckCircle}
-                >
-                  Confirmar Lançamento
-                </Button>
-              </div>
-            </div>
-          </Modal>
-        )}
-
-        {/* NEW SUPPLIER MODAL */}
-        {showNewSupplierModal && (
-          <Modal
-            title="Novo Fornecedor"
-            onClose={() => setShowNewSupplierModal(false)}
-            className="max-w-5xl"
-          >
-            <FornecedorForm
-              onSuccess={(newSupplier) => {
-                if (newSupplier) {
-                  setSuppliers((prev) => [...prev, newSupplier]);
-                  setSelectedSupplierId(String(newSupplier.id_fornecedor));
-                  toast.success("Fornecedor Cadastrado e Selecionado!");
-                }
-                setShowNewSupplierModal(false);
-              }}
-              onCancel={() => setShowNewSupplierModal(false)}
-            />
-          </Modal>
-        )}
-      </div>
-    </PageLayout>
-  );
-};
-
-
-
-================================================================================
-FILE PATH: client\src\pages\ExtratoBancarioPage.tsx
-================================================================================
-import { useState, useEffect } from "react";
-import { formatCurrency } from "../utils/formatCurrency";
-import { useParams, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
-import { api } from "../services/api";
-import { CategoryManager } from "../components/shared/financeiro/CategoryManager";
-import {
-  ArrowLeft,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Plus,
-  Search,
-  Calendar,
-  Wallet,
-  ArrowRight,
-  Settings,
-  FilterX,
-} from "lucide-react";
-import type { IContaBancaria } from "../types/backend";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { Modal } from "../components/ui/Modal";
-
-export const ExtratoBancarioPage = () => {
-  const { idConta } = useParams();
-  const navigate = useNavigate();
-
-  // State
-  const [conta, setConta] = useState<IContaBancaria | null>(null);
-  const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Filters
-  const [searchTerm, setSearchTerm] = useState("");
-  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
-    start: new Date(new Date().setDate(new Date().getDate() - 30))
-      .toISOString()
-      .split("T")[0], // Last 30 days
-    end: new Date().toISOString().split("T")[0],
-  });
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedType, setSelectedType] = useState("");
-  const [activeShortcut, setActiveShortcut] = useState<string | null>(
-    "30 Dias",
-  );
-
-  // Modal & Form State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [formLoading, setFormLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    descricao: "",
-    valor: "",
-    tipo_movimentacao: "SAIDA",
-    categoria: "OUTROS",
-    obs: "",
-  });
-
-  useEffect(() => {
-    if (idConta) {
-      loadData();
-      loadCategories();
-    }
-  }, [idConta]);
-
-  const loadCategories = async () => {
-    try {
-      const res = await api.get("/categoria-financeira");
-      setCategories(res.data);
-    } catch (error) {
-      console.error("Erro ao carregar categorias:", error);
-    }
-  };
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [contaRes, movRes] = await Promise.all([
-        api.get("/conta-bancaria"),
-        api.get("/livro-caixa"),
-      ]);
-
-      const contaFound = contaRes.data.find(
-        (c: any) => c.id_conta === Number(idConta),
-      );
-      setConta(contaFound || null);
-
-      // 1. Livro Caixa (Manuais ou Automáticos que geraram registro) - FONTE ÚNICA
-      const entriesLivro = movRes.data
-        .filter((m: any) => m.id_conta_bancaria === Number(idConta))
-        .map((m: any) => ({
-          id: `cx-${m.id_livro_caixa}`,
-          id_livro_caixa: m.id_livro_caixa,
-          dt_movimentacao: m.dt_movimentacao,
-          descricao: m.descricao,
-          categoria: m.categoria,
-          tipo_movimentacao: m.tipo_movimentacao,
-          valor: Number(m.valor),
-          obs: m.obs || "",
-          deleted_at: m.deleted_at,
-          origem: "LIVRO_CAIXA",
-          paymentMethod:
-            m.categoria === "CONCILIACAO_CARTAO"
-              ? "CARTÃO"
-              : m.descricao.includes("PIX")
-                ? "PIX"
-                : m.origem === "MANUAL"
-                  ? "MANUAL"
-                  : "OUTROS",
-        }));
-
-      const allMovs = entriesLivro.sort(
-        (a: any, b: any) =>
-          new Date(b.dt_movimentacao).getTime() -
-          new Date(a.dt_movimentacao).getTime(),
-      );
-
-      setMovimentacoes(allMovs);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Apply Filters
-  const filteredMovimentacoes = movimentacoes.filter((mov) => {
-    const matchesSearch = (() => {
-      if (!searchTerm.trim()) return true;
-      const term = searchTerm.toLowerCase();
-      const terms = term.split(" ").filter((t) => t.trim() !== "");
-      const searchString = [
-        mov.descricao || "",
-        mov.obs || "",
-        mov.categoria || "",
-        mov.paymentMethod || "",
-        mov.tipo_movimentacao === "ENTRADA" ? "entrada" : "saída",
-        mov.valor?.toString() || "",
-        (Number(mov.valor) || 0).toLocaleString("pt-BR", {
-          minimumFractionDigits: 2,
-        }),
-        new Date(mov.dt_movimentacao).toLocaleDateString("pt-BR"),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return terms.every((t) => searchString.includes(t));
-    })();
-
-    const matchesCategory = selectedCategory
-      ? mov.categoria === selectedCategory
-      : true;
-    const matchesType = selectedType
-      ? mov.tipo_movimentacao === selectedType
-      : true;
-
-    const movDate = new Date(mov.dt_movimentacao).toISOString().split("T")[0];
-    const matchesDate =
-      (!dateRange.start || movDate >= dateRange.start) &&
-      (!dateRange.end || movDate <= dateRange.end);
-
-    return matchesSearch && matchesCategory && matchesType && matchesDate;
-  });
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-neutral-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-      </div>
-    );
-  }
-
-  if (!conta) {
-    return (
-      <div className="p-8 text-center bg-surface min-h-screen">
-        <h2 className="text-xl font-bold text-neutral-800">
-          Conta não encontrada
-        </h2>
-        <Button
-          onClick={() => navigate("/financeiro/livro-caixa")}
-          variant="ghost"
-          className="mt-4"
-        >
-          Voltar
-        </Button>
-      </div>
-    );
-  }
-
-  // Apply Totals (Based on Filtered Data)
-  const totalEntradas = filteredMovimentacoes
-    .filter((m) => m.tipo_movimentacao === "ENTRADA")
-    .reduce((acc: any, m: any) => acc + Number(m.valor), 0);
-
-  const totalSaidas = filteredMovimentacoes
-    .filter((m) => m.tipo_movimentacao === "SAIDA")
-    .reduce((acc: any, m: any) => acc + Number(m.valor), 0);
-
-  return (
-    <div className="min-h-screen bg-neutral-50 p-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="mb-8 max-w-7xl mx-auto space-y-6">
-        <button
-          onClick={() => navigate("/financeiro?tab=contas")}
-          className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors font-bold text-sm"
-        >
-          <ArrowLeft size={16} />
-          Voltar para Contas Bancárias
-        </button>
-
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-surface p-8 rounded-2xl border border-neutral-200 shadow-sm relative overflow-hidden">
-          {/* Decorative Background */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-primary-50 text-primary-600 rounded-lg">
-                <Wallet size={24} />
-              </div>
-              <h1 className="text-3xl font-bold text-neutral-900">
-                {conta.nome}
-              </h1>
-              <span className="px-3 py-1 bg-neutral-100 rounded-lg text-xs font-bold text-neutral-600 uppercase tracking-wide border border-neutral-200">
-                {conta.banco}
-              </span>
-            </div>
-            <p className="text-neutral-500 font-medium ml-1">
-              {conta.agencia && `Ag: ${conta.agencia}`}{" "}
-              {conta.conta && `CC: ${conta.conta}`}
-            </p>
-          </div>
-
-          <div className="text-right flex items-center gap-6 relative z-10">
-            <div>
-              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">
-                Saldo Atual
-              </p>
-              <p
-                className={`text-4xl font-black ${Number(conta.saldo_atual) >= 0 ? "text-neutral-900" : "text-red-500"}`}
-              >
-                {formatCurrency(Number(conta.saldo_atual))}
-              </p>
-            </div>
-
-            <div className="h-12 w-px bg-neutral-200 hidden md:block"></div>
-            <CategoryManager
-              isOpen={isCategoryModalOpen}
-              onClose={() => setIsCategoryModalOpen(false)}
-              onUpdate={() => {
-                loadCategories();
-              }}
-            />
-            <Button
-              onClick={() => setIsCategoryModalOpen(true)}
-              variant="secondary"
-              icon={Settings}
-            >
-              Categorias
-            </Button>
-            <Button
-              onClick={() => setIsModalOpen(true)}
-              variant="primary"
-              size="lg"
-              icon={Plus}
-              className="shadow-xl shadow-primary-500/20"
-            >
-              Novo Lançamento
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Date Shortcuts */}
-        <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 w-fit">
-          {[
-            { label: "Hoje", days: 0 },
-            { label: "7 Dias", days: 7 },
-            { label: "15 Dias", days: 15 },
-            { label: "30 Dias", days: 30 },
-            { label: "Mês Atual", type: "MONTH" },
-          ].map((item: any) => (
-            <button
-              key={item.label}
-              onClick={() => {
-                setActiveShortcut(item.label);
-                const end = new Date().toISOString().split("T")[0];
-                let start = "";
-                if (item.type === "MONTH") {
-                  const now = new Date();
-                  start = new Date(now.getFullYear(), now.getMonth(), 1)
-                    .toISOString()
-                    .split("T")[0];
-                } else {
-                  start = new Date(
-                    new Date().setDate(new Date().getDate() - item.days),
-                  )
-                    .toISOString()
-                    .split("T")[0];
-                }
-                setDateRange({ start, end });
-              }}
-              className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
-                activeShortcut === item.label
-                  ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Filter Bar */}
-        <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex flex-col xl:flex-row gap-4 items-end">
-          <div className="flex-1 w-full xl:w-auto">
-            <Input
-              label="Buscar"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Descrição ou observação..."
-              icon={Search}
-            />
-          </div>
-          <div className="w-full xl:w-auto flex gap-2">
-            <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
-                De
-              </label>
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => {
-                  setDateRange({ ...dateRange, start: e.target.value });
-                  setActiveShortcut(null);
-                }}
-                className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
-                Até
-              </label>
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => {
-                  setDateRange({ ...dateRange, end: e.target.value });
-                  setActiveShortcut(null);
-                }}
-                className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
-              />
-            </div>
-          </div>
-          <div className="w-full xl:w-48">
-            <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
-              Tipo
-            </label>
-            <div className="relative">
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-              >
-                <option value="">Todos</option>
-                <option value="ENTRADA">Entradas</option>
-                <option value="SAIDA">Saídas</option>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                <ArrowDownCircle size={14} />
-              </div>
-            </div>
-          </div>
-          <div className="w-full xl:w-56">
-            <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
-              Categoria
-            </label>
-            <div className="relative">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-              >
-                <option value="">Todas</option>
-                {categories.map((cat) => (
-                  <option key={cat.id_categoria} value={cat.nome}>
-                    {cat.nome}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                <ArrowDownCircle size={14} />
-              </div>
-            </div>
-          </div>
-          <div className="w-full xl:w-auto">
-            <Button
-              variant="primary"
-              onClick={() => {
-                setSearchTerm("");
-                setActiveShortcut(null);
-                setDateRange({
-                  start: new Date(new Date().setDate(new Date().getDate() - 30))
-                    .toISOString()
-                    .split("T")[0],
-                  end: new Date().toISOString().split("T")[0],
-                });
-                setSelectedCategory("");
-                setSelectedType("");
-              }}
-              className="h-[42px] w-full shadow-lg shadow-primary-500/20"
-              icon={FilterX}
-            >
-              Limpar
-            </Button>
-          </div>
-        </div>
-
-        {/* Summary Area */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-                Entradas
-              </p>
-              <p className="text-2xl font-black text-emerald-600">
-                {formatCurrency(totalEntradas)}
-              </p>
-            </div>
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-              <ArrowUpCircle size={24} />
-            </div>
-          </div>
-          <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-                Saídas
-              </p>
-              <p className="text-2xl font-black text-red-600">
-                {formatCurrency(totalSaidas)}
-              </p>
-            </div>
-            <div className="p-3 bg-red-50 text-red-600 rounded-xl">
-              <ArrowDownCircle size={24} />
-            </div>
-          </div>
-          <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-                Resultado
-              </p>
-              <p
-                className={`text-2xl font-black ${totalEntradas - totalSaidas >= 0 ? "text-blue-600" : "text-red-500"}`}
-              >
-                {formatCurrency(totalEntradas - totalSaidas)}
-              </p>
-            </div>
-            <div
-              className={`p-3 rounded-xl ${totalEntradas - totalSaidas >= 0 ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}
-            >
-              <ArrowRight size={24} />
-            </div>
-          </div>
-        </div>
-
-        {/* Transactions Table */}
-        <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-          <table className="tabela-limpa w-full">
-            <thead>
-              <tr className="">
-                <th className="p-4 w-40">Data</th>
-                <th className="p-4">Descrição</th>
-                <th className="p-4 w-32">Forma Pagto</th>
-                <th className="p-4 w-40">Categoria</th>
-                <th className="p-4 w-32 text-center">Tipo</th>
-                <th className="p-4 w-40 text-right">Valor</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {filteredMovimentacoes.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-12 text-center text-neutral-400">
-                    <div className="flex flex-col items-center gap-2">
-                      <Search size={32} className="opacity-20 mb-2" />
-                      <p className="font-bold">
-                        Nenhuma movimentação encontrada.
-                      </p>
-                      <p className="text-xs">Tente ajustar os filtros.</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredMovimentacoes.map((mov) => (
-                  <tr
-                    key={mov.id_livro_caixa}
-                    className={`hover:bg-neutral-50 transition-colors group ${mov.deleted_at ? "opacity-50" : ""}`}
-                  >
-                    <td className="p-4">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5 text-sm font-bold text-neutral-700">
-                          <Calendar size={14} className="text-neutral-400" />
-                          {new Date(mov.dt_movimentacao).toLocaleDateString()}
-                        </div>
-                        <span className="text-[10px] font-bold text-neutral-400 pl-5">
-                          {new Date(mov.dt_movimentacao).toLocaleTimeString(
-                            [],
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-col">
-                        <span
-                          className={`text-sm font-bold text-neutral-900 ${mov.deleted_at ? "line-through" : ""}`}
-                        >
-                          {mov.descricao}
-                        </span>
-                        {mov.obs && (
-                          <span className="text-xs font-medium text-neutral-500 mt-0.5 italic truncate max-w-[300px]">
-                            {mov.obs}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-neutral-100 ${!mov.paymentMethod || mov.paymentMethod === "MANUAL" ? "text-neutral-500" : "text-primary-600 bg-primary-50"}`}
-                      >
-                        {mov.paymentMethod || "MANUAL"}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border border-neutral-200">
-                        {mov.categoria === "CONCILIACAO_CARTAO"
-                          ? "Recebimento (Cartão)"
-                          : mov.categoria === "VENDA"
-                            ? "Faturamento"
-                            : mov.categoria}
-                      </span>
-                    </td>
-                    <td className="p-4 text-center">
-                      {mov.tipo_movimentacao === "ENTRADA" ? (
-                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
-                          <ArrowUpCircle size={16} />
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-50 text-red-600 border border-red-100">
-                          <ArrowDownCircle size={16} />
-                        </div>
-                      )}
-                    </td>
-                    <td
-                      className={`p-4 text-right font-black text-sm whitespace-nowrap ${
-                        mov.deleted_at
-                          ? "text-neutral-400 line-through"
-                          : mov.tipo_movimentacao === "ENTRADA"
-                            ? "text-emerald-600"
-                            : "text-red-600"
-                      }`}
-                    >
-                      {mov.tipo_movimentacao === "SAIDA" ? "- " : "+ "}
-                      {formatCurrency(Number(mov.valor))}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* CREATE MODAL */}
-      {isModalOpen && (
-        <Modal
-          title="Novo Lançamento Bancário"
-          onClose={() => setIsModalOpen(false)}
-        >
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              try {
-                setFormLoading(true);
-                await api.post("/livro-caixa", {
-                  ...formData,
-                  id_conta_bancaria: Number(idConta),
-                  origem: "MANUAL",
-                });
-                setIsModalOpen(false);
-                setFormData({
-                  descricao: "",
-                  valor: "",
-                  tipo_movimentacao: "SAIDA",
-                  categoria: "OUTROS",
-                  obs: "",
-                });
-                loadData(); // Recarrega extrato e saldo
-              } catch (error) {
-                console.error(error);
-                toast.error("Erro ao criar lançamento.");
-              } finally {
-                setFormLoading(false);
-              }
-            }}
-            className="space-y-4"
-          >
-            <div>
-              <Input
-                label="Descrição"
-                required
-                value={formData.descricao}
-                onChange={(e) =>
-                  setFormData({ ...formData, descricao: e.target.value })
-                }
-                placeholder="Ex: Taxa Bancária, Material de Limpeza..."
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Input
-                  label="Valor (R$)"
-                  required
-                  type="number"
-                  step="0.01"
-                  value={formData.valor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, valor: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                  Tipo
-                </label>
-                <div className="relative">
-                  <select
-                    value={formData.tipo_movimentacao}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        tipo_movimentacao: e.target.value,
-                      })
-                    }
-                    className="w-full bg-neutral-50 border border-neutral-200 px-3 py-[11px] rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-                  >
-                    <option value="ENTRADA">Entrada (+)</option>
-                    <option value="SAIDA">Saída (-)</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                    <ArrowDownCircle size={14} />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                Categoria
-              </label>
-              <div className="relative">
-                <select
-                  value={formData.categoria}
-                  onChange={(e) =>
-                    setFormData({ ...formData, categoria: e.target.value })
-                  }
-                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-[11px] rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.id_categoria} value={cat.nome}>
-                      {cat.nome}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                  <ArrowDownCircle size={14} />
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                Observação (Opcional)
-              </label>
-              <textarea
-                rows={3}
-                value={formData.obs}
-                onChange={(e) =>
-                  setFormData({ ...formData, obs: e.target.value })
-                }
-                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-lg font-medium text-neutral-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all"
-              />
-            </div>
-            <div className="pt-4 flex gap-3 justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setIsModalOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={formLoading}
-                className="shadow-lg shadow-primary-500/20"
-              >
-                {formLoading ? "Salvando..." : "Confirmar Lançamento"}
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-    </div>
-  );
-};
-
-
-
-================================================================================
-FILE PATH: client\src\pages\FechamentoFinanceiroDetalhePage.tsx
-================================================================================
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams, useBlocker } from "react-router-dom";
-import { formatCurrency } from "../utils/formatCurrency";
-import { api } from "../services/api";
-import { getStatusStyle } from "../utils/osUtils";
-import {
-  Save,
-  Plus,
-  BadgeCheck,
-  Trash2,
-  ArrowLeft,
-  Edit,
-  AlertCircle,
-  Truck,
-  Phone,
-} from "lucide-react";
-import { PagamentoClienteForm } from "../components/forms/PagamentoClienteForm";
-import { FornecedorForm } from "../components/forms/FornecedorForm";
-import { LaborManager } from "../components/shared/os/LaborManager";
-import { Modal } from "../components/ui/Modal";
-import { Button } from "../components/ui/Button";
-import { ActionButton } from "../components/ui/ActionButton";
-import { Card } from "../components/ui/Card";
-import { toast } from "react-toastify";
-
-interface ItemOS {
-  id_iten: number;
-  id_pecas_estoque?: number;
-  valor_total: number;
-  valor_venda: number;
-  descricao: string;
-  quantidade: number;
-  codigo_referencia?: string;
-  pecas_estoque?: {
-    valor_custo: number;
-    nome: string;
-  };
-  pagamentos_peca?: {
-    id_pagamento_peca: number;
-    id_fornecedor: number;
-    custo_real: number;
-    pago_ao_fornecedor: boolean;
-  }[];
-}
-
-interface IFornecedor {
-  id_fornecedor: number;
-  nome: string;
-}
-
-interface ItemFinanceiroState {
-  id_pagamento_peca?: number;
-  id_fornecedor: string;
-  custo_real: string;
-  pago_fornecedor: boolean;
-}
-
-interface OSData {
-  id_os: number;
-  dt_abertura: string;
-  status: string;
-  valor_total_cliente: number;
-  valor_mao_de_obra: number;
-  valor_pecas: number;
-  itens_os: ItemOS[];
-  defeito_relatado?: string;
-  diagnostico?: string;
-  cliente: {
-    pessoa_fisica?: { pessoa: { nome: string } };
-    pessoa_juridica?: { nome_fantasia: string };
-    telefone_1?: string;
-    id_cliente?: number;
-  };
-  veiculo: {
-    placa: string;
-    modelo: string;
-    cor: string;
-  };
-  cliente_telefone?: string;
-  pagamentos_cliente?: {
-    id_pagamento_cliente: number;
-    metodo_pagamento: string;
-    valor: number;
-    data_pagamento: string;
-    bandeira_cartao?: string;
-    codigo_transacao?: string;
-    qtd_parcelas?: number;
-    tipo_parcelamento?: string;
-    deleted_at?: string;
-    conta_bancaria?: { nome_banco: string; nome_conta: string };
-    operadora?: { nome: string };
-  }[];
-  fechamento_financeiro?: {
-    id_fechamento_financeiro: number;
-  };
-  servicos_mao_de_obra?: {
-    id_servico_mao_de_obra: number;
-    valor: number;
-    funcionario?: {
-      pessoa_fisica?: {
-        pessoa: {
-          nome: string;
-        };
-      };
-      cargo?: string;
-    };
-  }[];
-}
-
-// ... existing code ...
-
-export const FechamentoFinanceiroDetalhePage = () => {
-  const { id } = useParams(); // Get ID from URL
-  const navigate = useNavigate();
-
-  const [loading, setLoading] = useState(false);
-  const [fetchingOs, setFetchingOs] = useState(false);
-
-  const [osData, setOsData] = useState<OSData | null>(null);
-  const [fornecedores, setFornecedores] = useState<IFornecedor[]>([]);
-
-  const [itemsState, setItemsState] = useState<
-    Record<number, ItemFinanceiroState>
-  >({});
-  const [showFornecedorModal, setShowFornecedorModal] = useState(false);
-  const [paymentModal, setPaymentModal] = useState<{
-    isOpen: boolean;
-    data: any;
-  }>({ isOpen: false, data: null });
-
-  // Item Edit State
-  const [editItemModal, setEditItemModal] = useState<{
-    isOpen: boolean;
-    item: ItemOS | null;
-  }>({ isOpen: false, item: null });
-  const [editItemForm, setEditItemForm] = useState({
-    descricao: "",
-    quantidade: 1,
-    valor_venda: 0,
-    codigo_referencia: "",
-  });
-
-  // Dirty Check State
-  const [isDirty, setIsDirty] = useState(false);
-
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname,
-  );
-
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
-
-  const [employees, setEmployees] = useState<any[]>([]);
-
-  const handleLaborTotalChange = useCallback((total: number) => {
-    setOsData((prev) =>
-      prev
-        ? {
-            ...prev,
-            valor_mao_de_obra: total,
-            valor_total_cliente: (prev.valor_pecas || 0) + total,
-          }
-        : null,
-    );
-  }, []);
-
-  useEffect(() => {
-    loadFornecedores();
-    loadEmployees();
-    if (id) {
-      fetchOsData(Number(id));
-    }
-  }, [id]);
-
-  const loadFornecedores = async () => {
-    try {
-      const response = await api.get("/fornecedor");
-      setFornecedores(response.data);
-    } catch (error) {
-      console.error("Erro ao carregar fornecedores");
-    }
-  };
-
-  const loadEmployees = async () => {
-    try {
-      const response = await api.get("/funcionario");
-      setEmployees(response.data);
-    } catch (error) {
-      console.error("Erro ao carregar funcionários");
-    }
-  };
-
-  const fetchOsData = async (osId: number) => {
-    setFetchingOs(true);
-    try {
-      const response = await api.get(`/ordem-de-servico/${osId}`);
-      const os: OSData = response.data;
-      setOsData(os);
-
-      const initialItemsState: Record<number, ItemFinanceiroState> = {};
-      os.itens_os.forEach((item) => {
-        const existingPayment =
-          item.pagamentos_peca && item.pagamentos_peca.length > 0
-            ? item.pagamentos_peca[0]
-            : null;
-
-        const initialCost = existingPayment
-          ? String(existingPayment.custo_real)
-          : item.pecas_estoque?.valor_custo
-            ? (
-                Number(item.pecas_estoque.valor_custo) * item.quantidade
-              ).toFixed(2)
-            : "";
-
-        initialItemsState[item.id_iten] = {
-          id_pagamento_peca: existingPayment?.id_pagamento_peca,
-          id_fornecedor: existingPayment
-            ? String(existingPayment.id_fornecedor)
-            : "",
-          custo_real: initialCost,
-          pago_fornecedor: existingPayment
-            ? existingPayment.pago_ao_fornecedor
-            : false,
-        };
-      });
-      setItemsState(initialItemsState);
-      setIsDirty(false); // Reset dirty after fetch
-    } catch (error) {
-      console.error(error);
-      toast.error("OS não encontrada ou erro ao buscar dados.");
-    } finally {
-      setFetchingOs(false);
-    }
-  };
-
-  const handleDeletePayment = (paymentId: number) => {
-    setConfirmModal({
-      isOpen: true,
-      title: "Excluir Pagamento",
-      message: "Tem certeza que deseja excluir este pagamento?",
-      onConfirm: async () => {
-        try {
-          await api.delete(`/pagamento-cliente/${paymentId}`);
-          toast.success("Pagamento removido!");
-          if (osData) fetchOsData(osData.id_os);
-        } catch (error) {
-          toast.error("Erro ao remover pagamento.");
-        }
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-      },
-    });
-  };
-
-  const handleItemChange = (
-    id_iten: number,
-    field: keyof ItemFinanceiroState,
-    value: any,
-  ) => {
-    setItemsState((prev) => {
-      const newState = {
-        ...prev,
-        [id_iten]: {
-          ...prev[id_iten],
-          [field]: value,
-        },
-      };
-      return newState;
-    });
-    setIsDirty(true);
-  };
-
-  // --- ITEM CRUD ---
-  const handleOpenEditItem = (item: ItemOS) => {
-    setEditItemForm({
-      descricao: item.descricao,
-      quantidade: item.quantidade,
-      valor_venda:
-        Number(item.valor_venda) || Number(item.valor_total) / item.quantidade,
-      codigo_referencia: item.codigo_referencia || "",
-    });
-    setEditItemModal({ isOpen: true, item });
-  };
-
-  const handleDeleteItemOS = async (itemId: number) => {
-    setConfirmModal({
-      isOpen: true,
-      title: "Excluir Item",
-      message: "Tem certeza que deseja excluir este item da OS?",
-      onConfirm: async () => {
-        try {
-          await api.delete(`/itens-os/${itemId}`);
-          toast.success("Item removido com sucesso!");
-          if (osData) fetchOsData(osData.id_os);
-        } catch (error) {
-          console.error(error);
-          toast.error("Erro ao excluir item.");
-        }
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-      },
-    });
-  };
-
-  const handleSaveEditItem = async () => {
-    if (!editItemModal.item || !osData) return;
-    try {
-      const valorTotal =
-        Number(editItemForm.quantidade) * Number(editItemForm.valor_venda);
-      await api.put(`/itens-os/${editItemModal.item.id_iten}`, {
-        descricao: editItemForm.descricao,
-        quantidade: Number(editItemForm.quantidade),
-        valor_venda: Number(editItemForm.valor_venda),
-        valor_total: valorTotal,
-        codigo_referencia: editItemForm.codigo_referencia,
-      });
-
-      setEditItemModal({ isOpen: false, item: null });
-      setEditItemModal({ isOpen: false, item: null });
-      fetchOsData(osData.id_os);
-      toast.success("Item atualizado!");
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro ao atualizar item.");
-    }
-  };
-
-  const calculateTotals = () => {
-    if (!osData)
-      return {
-        totalReceita: 0,
-        totalCusto: 0,
-        lucro: 0,
-        margem: 0,
-        totalItemsRevenue: 0,
-        totalItemsCost: 0,
-        totalLaborRevenue: 0,
-      };
-
-    const totalItemsRevenue = osData.itens_os.reduce(
-      (acc, i) => acc + Number(i.valor_total),
-      0,
-    );
-    const totalItemsCost = osData.itens_os.reduce(
-      (acc, i) => acc + Number(itemsState[i.id_iten]?.custo_real || 0),
-      0,
-    );
-    const totalLaborRevenue =
-      osData.servicos_mao_de_obra?.reduce(
-        (acc, s) => acc + Number(s.valor),
-        0,
-      ) || 0;
-    const totalReceita = totalItemsRevenue + totalLaborRevenue;
-    const totalCusto = totalItemsCost; // Updated to use totalItemsCost
-
-    const lucro = totalReceita - totalCusto;
-    const margem = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
-
-    return {
-      totalReceita,
-      totalCusto,
-      lucro,
-      margem,
-      totalItemsRevenue,
-      totalItemsCost,
-      totalLaborRevenue,
-    };
-  };
-
-  const {
-    totalReceita,
-    totalCusto,
-    totalItemsRevenue,
-    totalItemsCost,
-    totalLaborRevenue,
-  } = calculateTotals();
-
-  const handleSave = async (finalize: boolean = false) => {
-    setLoading(true);
-    if (!osData) return;
-
-    try {
-      // Upsert Payments (Costs)
-      const pagamentoPromises = osData.itens_os.map(async (item) => {
-        const st = itemsState[item.id_iten];
-        if (!st || !st.id_fornecedor) return null; // Skip incomplete items? Or strictly require?
-        // If finalize is true, we might strictly require. If just saving, allow partial?
-        // Let's allow partial save if not finalizing.
-
-        if (st && st.id_fornecedor && st.custo_real) {
-          const payload = {
-            id_item_os: item.id_iten,
-            id_fornecedor: Number(st.id_fornecedor),
-            custo_real: Number(st.custo_real),
-            data_compra: new Date().toISOString(),
-            pago_ao_fornecedor: st.pago_fornecedor,
-          };
-
-          if (st.id_pagamento_peca) {
-            return api.put(`/pagamento-peca/${st.id_pagamento_peca}`, payload);
-          } else {
-            return api.post("/pagamento-peca", payload);
-          }
-        }
-        return null;
-      });
-
-      await Promise.all(pagamentoPromises);
-
-      await Promise.all(pagamentoPromises);
-
-      // Finalize OS if requested
-      if (finalize) {
-        // Upsert Fechamento ONLY when finalizing
-        const fechamentoPayload = {
-          id_os: Number(osData.id_os),
-          custo_total_pecas_real: totalCusto,
-        };
-        if (osData.fechamento_financeiro) {
-          await api.put(
-            `/fechamento-financeiro/${osData.fechamento_financeiro.id_fechamento_financeiro}`,
-            fechamentoPayload,
-          );
-        } else {
-          await api.post("/fechamento-financeiro", fechamentoPayload);
-        }
-
-        // Update Defect/Diagnosis
-        await api.put(`/ordem-de-servico/${osData.id_os}`, {
-          status: osData.status, // Preserve status unless finalizing
-          defeito_relatado: osData.defeito_relatado,
-          diagnostico: osData.diagnostico,
-        });
-
-        // Validation: Check Revenue
-        const totalPago =
-          osData.pagamentos_cliente?.reduce(
-            (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
-            0,
-          ) || 0;
-        if (totalPago === 0) {
-          toast.warn("Aviso: Nenhum recebimento registrado.");
-        }
-
-        if (osData.status !== "FINALIZADA") {
-          await api.put(`/ordem-de-servico/${osData.id_os}`, {
-            status: "FINALIZADA",
-            valor_final: totalReceita,
-            valor_pecas: totalItemsRevenue,
-          });
-        }
-        toast.success("OS Finalizada com Sucesso!");
-        setIsDirty(false);
-        setTimeout(() => navigate("/fechamento-financeiro"), 1000);
-      } else {
-        toast.success("Dados Salvos!");
-        setIsDirty(false);
-        // Refresh data
-        fetchOsData(osData.id_os);
-      }
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Erro ao salvar.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getClientName = () =>
-    osData?.cliente?.pessoa_fisica?.pessoa?.nome ||
-    osData?.cliente?.pessoa_juridica?.nome_fantasia ||
-    "Cliente";
-
-  // --- RENDER ---
-  if (fetchingOs)
-    return (
-      <div className="p-10 text-center text-neutral-500">
-        Carregando detalhes...
-      </div>
-    );
-  if (!osData)
-    return (
-      <div className="p-10 text-center text-neutral-500">
-        OS não encontrada.
-      </div>
-    );
-
-  const handleReopenOS = async () => {
-    if (!osData) return;
-    setConfirmModal({
-      isOpen: true,
-      title: "Reabrir OS",
-      message:
-        "Tem certeza que deseja reabrir esta OS? Isso irá ESTORNAR todos os lançamentos financeiros (Caixa, Recebíveis) e remover o fechamento. O status voltará para ABERTA.",
-      onConfirm: async () => {
-        try {
-          // 1. Se houver Fechamento Financeiro, reverter primeiro
-          if (osData.fechamento_financeiro?.id_fechamento_financeiro) {
-            await api.post("/fechamento-financeiro/reverter", {
-              idFechamento:
-                osData.fechamento_financeiro.id_fechamento_financeiro,
-            });
-            toast.success("Consolidação Financeira revertida!");
-          }
-
-          // 2. Atualizar Status para ABERTA
-          await api.put(`/ordem-de-servico/${osData.id_os}`, {
-            status: "ABERTA",
-          });
-
-          toast.success("OS Reaberta com sucesso! Você será redirecionado.");
-          setTimeout(() => navigate(`/ordem-de-servico/${osData.id_os}`), 1000);
-        } catch (error: any) {
-          console.error(error);
-          const msg =
-            error.response?.data?.details ||
-            error.response?.data?.error ||
-            "Erro ao reabrir OS.";
-          toast.error(`Não foi possível reabrir: ${msg}`);
-        }
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-      },
-    });
-  };
-
-  return (
-    <div className="space-y-6 pb-20">
-      {blocker.state === "blocked" && (
-        <Modal
-          title="Salvar Alterações?"
-          onClose={() => blocker.reset && blocker.reset()}
-        >
-          <div className="space-y-4">
-            <p className="text-neutral-600">
-              Você tem alterações não salvas. Deseja salvar antes de sair?
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="secondary"
-                onClick={() => blocker.proceed && blocker.proceed()}
-              >
-                Descartar e Sair
-              </Button>
-              <Button
-                variant="primary"
-                onClick={async () => {
-                  await handleSave(false);
-                  blocker.proceed && blocker.proceed();
-                }}
-              >
-                Salvar e Sair
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 hover:bg-neutral-100 rounded-lg transition-all text-neutral-500 hover:text-neutral-700 active:scale-95"
-            title="Voltar"
-          >
-            <ArrowLeft size={20} />
-          </button>
-
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-neutral-700 leading-none m-0 tracking-tight">
-              Fechamento Financeiro #{osData.id_os}
-            </h1>
-            <span className="h-6 w-px bg-neutral-300 mx-1"></span>
-            <span
-              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(osData.status)}`}
-            >
-              {osData.status === "PRONTO PARA FINANCEIRO"
-                ? "FINANCEIRO"
-                : osData.status.replace(/_/g, " ")}
-            </span>
-            {isDirty && (
-              <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                <AlertCircle size={10} /> Alterações Pendentes
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Reopen Button */}
-        {(osData.status === "FINALIZADA" ||
-          osData.status === "PRONTO PARA FINANCEIRO") && (
-          <Button
-            variant="ghost"
-            className="text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200"
-            onClick={handleReopenOS}
-          >
-            Reabrir OS
-          </Button>
-        )}
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Col 1: Vehicle */}
-          {/* Col 1: Vehicle */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                Veículo
-              </p>
-              <button
-                onClick={() =>
-                  navigate(`/cadastro/${osData.cliente?.id_cliente}`)
-                }
-                className="text-primary-600 hover:text-primary-700 p-0.5 hover:bg-primary-50 rounded transition-colors"
-                title="Editar Veículo"
-              >
-                <Edit size={12} />
-              </button>
-            </div>
-            <div className="flex flex-col">
-              <h3 className="text-2xl font-bold text-neutral-600 leading-none tracking-tight">
-                {osData.veiculo?.modelo} - {osData.veiculo?.cor || "Cor N/I"}
-              </h3>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm font-bold text-primary-600 uppercase tracking-widest  px-2 py-0.5 rounded-md">
-                  {osData.veiculo?.placa}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Col 2: Client */}
-          <div className="md:border-l md:border-gray-100 md:pl-8">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Cliente
-              </p>
-              <button
-                onClick={() =>
-                  navigate(`/cadastro/${osData.cliente?.id_cliente}`)
-                }
-                className="text-primary-600 hover:text-primary-700 p-0.5 hover:bg-primary-50 rounded transition-colors"
-                title="Editar Cliente"
-              >
-                <Edit size={12} />
-              </button>
-            </div>
-            <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">
-              {getClientName()}
-            </h3>
-            <p className="text-gray-600 font-medium text-sm flex items-center gap-2">
-              <Phone size={14} className="text-gray-400" />
-              {osData.cliente.telefone_1 || "Sem telefone"}
-            </p>
-          </div>
-
-          {/* Col 3: Removed (Moved to body) */}
-        </div>
-      </div>
-
-      {/* SPLIT LAYOUT: Obs (Left) & Labor (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start mt-6">
-        {/* LEFT COL: Obs */}
-        <div className="space-y-4 lg:col-span-1">
-          <Card className="space-y-4 p-4">
-            <div className="space-y-1">
-              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>{" "}
-                Defeito Relatado
-              </label>
-              <textarea
-                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-32 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
-                placeholder="Descreva o defeito..."
-                value={osData.defeito_relatado || ""}
-                onChange={(e) => {
-                  setOsData({ ...osData, defeito_relatado: e.target.value });
-                  setIsDirty(true);
-                }}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>{" "}
-                Observações / Diagnóstico
-              </label>
-              <textarea
-                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-32 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
-                placeholder="Insira observações ou diagnóstico..."
-                value={osData.diagnostico || ""}
-                onChange={(e) => {
-                  setOsData({ ...osData, diagnostico: e.target.value });
-                  setIsDirty(true);
-                }}
-              />
-            </div>
-          </Card>
-        </div>
-
-        {/* RIGHT COL: Labor Manager */}
-        <div className="w-full space-y-2 h-full lg:col-span-2">
-          <Card className="h-full p-4 space-y-2">
-            <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2 pb-2 border-b border-neutral-50">
-              <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
-                <BadgeCheck size={14} />
-              </div>
-              Mão de Obra (Execução)
-            </h3>
-            <LaborManager
-              osId={osData.id_os}
-              mode="api"
-              employees={employees}
-              initialData={osData.servicos_mao_de_obra as any[]}
-              onChange={() => {
-                fetchOsData(osData.id_os);
-                setIsDirty(true);
-              }}
-              readOnly={false}
-              onTotalChange={handleLaborTotalChange}
-            />
-          </Card>
-        </div>
-      </div>
-
-      {/* PARTS COSTS */}
-      <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-          <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide">
-            Custos de Peças (Fornecedores)
-          </h4>
-          <button
-            type="button"
-            onClick={() => setShowFornecedorModal(true)}
-            className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
-          >
-            <Plus size={12} /> Novo Fornecedor
-          </button>
-        </div>
-        <table className="w-full text-left">
-          <thead className="bg-gray-50/50 text-xs font-bold text-gray-400 uppercase">
-            <tr>
-              <th className="p-4 w-1/3">Peça</th>
-              <th className="p-4">Ref / Nota</th>
-              <th className="p-4">Fornecedor</th>
-              <th className="p-4 w-44">Custo (R$)</th>
-              <th className="p-4 text-center w-20">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {osData.itens_os.map((item) => (
-              <tr
-                key={item.id_iten}
-                className="hover:bg-gray-50/50 transition-colors group"
-              >
-                <td className="p-4 relative">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-bold text-gray-800 text-sm">
-                        {item.descricao}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        Qtd: {item.quantidade} x{" "}
-                        {formatCurrency(
-                          Number(item.valor_total) / item.quantidade,
-                        )}{" "}
-                        ={" "}
-                        <span className="text-green-600 font-bold">
-                          {formatCurrency(Number(item.valor_total))}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 text-xs font-mono font-bold text-gray-500">
-                  {item.codigo_referencia || "-"}
-                </td>
-                <td className="p-4">
-                  {item.pecas_estoque || item.id_pecas_estoque ? (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-neutral-100 rounded-lg border border-neutral-200 text-neutral-500 font-bold text-xs uppercase tracking-wider justify-center">
-                      <Truck size={14} /> Estoque Próprio
-                    </div>
-                  ) : (
-                    <select
-                      className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
-                      value={itemsState[item.id_iten]?.id_fornecedor || ""}
-                      onChange={(e) =>
-                        handleItemChange(
-                          item.id_iten,
-                          "id_fornecedor",
-                          e.target.value,
-                        )
-                      }
-                    >
-                      <option value="">-- Selecione --</option>
-                      {fornecedores.map((f) => (
-                        <option key={f.id_fornecedor} value={f.id_fornecedor}>
-                          {f.nome}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </td>
-                <td className="p-4">
-                  {item.pecas_estoque || item.id_pecas_estoque ? (
-                    <div className="opacity-50">
-                      <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 px-3 py-2 w-full">
-                        <span className="text-gray-400 text-xs font-bold mr-2">
-                          R$
-                        </span>
-                        <input
-                          disabled
-                          value="0.00"
-                          className="w-full bg-transparent text-sm font-bold text-gray-400 cursor-not-allowed outline-none"
-                        />
-                      </div>
-                      <div className="text-[9px] text-gray-400 mt-1 text-center font-medium">
-                        {item.pecas_estoque
-                          ? `Custo Orig: ${formatCurrency(Number(item.pecas_estoque.valor_custo))}`
-                          : "Estoque"}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center border border-gray-200 rounded-lg bg-white px-3 py-2 w-full focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition-all shadow-sm">
-                      <span className="text-gray-400 text-xs font-bold mr-2">
-                        R$
-                      </span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={itemsState[item.id_iten]?.custo_real}
-                        onChange={(e) =>
-                          handleItemChange(
-                            item.id_iten,
-                            "custo_real",
-                            e.target.value,
-                          )
-                        }
-                        onBlur={(e) => {
-                          const val = parseFloat(e.target.value);
-                          if (!isNaN(val))
-                            handleItemChange(
-                              item.id_iten,
-                              "custo_real",
-                              val.toFixed(2),
-                            );
-                        }}
-                        className="w-full text-sm font-bold text-red-600 outline-none placeholder-gray-300"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  )}
-                </td>
-                <td className="p-4 text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <ActionButton
-                      icon={Edit}
-                      label="Editar"
-                      onClick={() => handleOpenEditItem(item)}
-                      variant="neutral"
-                    />
-                    <ActionButton
-                      icon={Trash2}
-                      label="Excluir"
-                      onClick={() => handleDeleteItemOS(item.id_iten)}
-                      variant="danger"
-                    />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* RECEBIMENTOS */}
-      <div className="border border-green-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-        <div className="bg-green-100 px-4 py-3 border-b border-green-200 flex justify-between items-center">
-          <h4 className="font-bold text-sm text-green-800 uppercase tracking-wide">
-            Recebimentos
-          </h4>
-          <button
-            type="button"
-            onClick={() => setPaymentModal({ isOpen: true, data: null })}
-            className="text-[10px] font-black uppercase text-green-700 bg-white border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
-          >
-            <Plus size={12} /> Novo Pagamento
-          </button>
-        </div>
-        <div className="p-4">
-          {/* Using a simplified list here or reuse Table logic */}
-          {osData.pagamentos_cliente?.filter((p) => !p.deleted_at).length ===
-          0 ? (
-            <p className="text-gray-400 text-sm text-center">
-              Nenhum recebimento.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {osData.pagamentos_cliente
-                ?.filter((p) => !p.deleted_at)
-                .map((pag) => (
-                  <div
-                    key={pag.id_pagamento_cliente}
-                    className="flex flex-col gap-1 bg-green-50/50 p-3 rounded-lg text-sm border border-green-100 group transition-all hover:bg-green-50 hover:shadow-sm"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-green-800 text-base">
-                          {formatCurrency(Number(pag.valor))}
-                        </span>
-                        <div className="flex items-center gap-2 text-xs text-green-700 font-medium">
-                          <span className="uppercase tracking-wider px-1.5 py-0.5 bg-green-200 rounded text-[10px] font-bold">
-                            {pag.metodo_pagamento}
-                          </span>
-
-                          {pag.metodo_pagamento === "PIX" &&
-                            pag.conta_bancaria && (
-                              <span className="flex items-center gap-1">
-                                • {pag.conta_bancaria.nome_banco}
-                              </span>
-                            )}
-
-                          {(pag.metodo_pagamento === "CREDITO" ||
-                            pag.metodo_pagamento === "DEBITO") && (
-                            <span className="flex items-center gap-1">
-                              • {pag.operadora?.nome || "Operadora N/I"}
-                              {pag.qtd_parcelas &&
-                                pag.qtd_parcelas > 1 &&
-                                ` (${pag.qtd_parcelas}x)`}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() =>
-                            setPaymentModal({ isOpen: true, data: pag })
-                          }
-                          className="text-neutral-400 hover:text-blue-600 p-1 hover:bg-blue-50 rounded"
-                          title="Editar"
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleDeletePayment(pag.id_pagamento_cliente)
-                          }
-                          className="text-neutral-400 hover:text-red-600 p-1 hover:bg-red-50 rounded"
-                          title="Excluir"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 mt-2 text-[10px] text-gray-500 border-t border-green-100/50 pt-2">
-                      <span>
-                        📅 {new Date(pag.data_pagamento).toLocaleDateString()}
-                      </span>
-                      <span>
-                        🕒{" "}
-                        {new Date(pag.data_pagamento).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-
-                      {(pag.codigo_transacao || pag.bandeira_cartao) && (
-                        <span className="font-mono bg-white px-1 rounded border border-gray-100 text-gray-400">
-                          {pag.bandeira_cartao}{" "}
-                          {pag.codigo_transacao
-                            ? `| NSU: ${pag.codigo_transacao}`
-                            : ""}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* BOTTOM SUMMARY CARD */}
-      <div className="bg-neutral-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
-          <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-              Total Peças
-            </p>
-            <p className="text-2xl font-black text-white">
-              {formatCurrency(totalItemsRevenue)}
-            </p>
-            <p className="text-[10px] font-bold text-emerald-400 mt-1">
-              Ref: {formatCurrency(Number(totalItemsRevenue) - totalItemsCost)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-              Total Mão de Obra
-            </p>
-            <p className="text-2xl font-black text-white">
-              {formatCurrency(totalLaborRevenue)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-              Total Geral
-            </p>
-            <p className="text-3xl font-black text-white">
-              {formatCurrency(totalReceita)}
-            </p>
-          </div>
-          <div className="text-right">
-            <div
-              className={`inline-block px-4 py-2 rounded-xl font-black uppercase text-xs tracking-wider ${
-                (osData.pagamentos_cliente?.reduce(
-                  (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
-                  0,
-                ) || 0) >= totalReceita
-                  ? "bg-emerald-500 text-emerald-950"
-                  : "bg-amber-500 text-amber-950"
-              }`}
-            >
-              {(osData.pagamentos_cliente?.reduce(
-                (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
-                0,
-              ) || 0) >= totalReceita
-                ? "QUITADO"
-                : "PENDENTE"}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ACTIONS (Inline now) */}
-      <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
-        <Button variant="secondary" onClick={() => navigate(-1)}>
-          Voltar
-        </Button>
-
-        <Button
-          onClick={() => handleSave(false)}
-          variant="primary"
-          isLoading={loading}
-        >
-          <Save size={18} className="mr-2" /> Salvar Alterações
-        </Button>
-
-        <Button
-          onClick={() => handleSave(true)}
-          variant="success"
-          isLoading={loading}
-        >
-          <BadgeCheck size={18} className="mr-2" /> Salvar e Consolidar
-        </Button>
-      </div>
-
-      {/* MODALS */}
-      {showFornecedorModal && (
-        <Modal
-          title="Novo Fornecedor"
-          onClose={() => setShowFornecedorModal(false)}
-        >
-          <FornecedorForm
-            onSuccess={() => {
-              setShowFornecedorModal(false);
-              loadFornecedores();
-            }}
-            onCancel={() => setShowFornecedorModal(false)}
-          />
-        </Modal>
-      )}
-      {paymentModal.isOpen && osData && (
-        <Modal
-          title={paymentModal.data ? "Editar Pagamento" : "Novo Pagamento"}
-          onClose={() => setPaymentModal({ isOpen: false, data: null })}
-        >
-          <PagamentoClienteForm
-            osId={osData.id_os}
-            valorTotal={
-              totalReceita -
-              (osData.pagamentos_cliente
-                ?.filter((p) => !p.deleted_at)
-                .reduce((acc, p) => acc + Number(p.valor), 0) || 0) +
-              (paymentModal.data ? Number(paymentModal.data.valor) : 0)
-            }
-            initialData={paymentModal.data}
-            onSuccess={() => {
-              setPaymentModal({ isOpen: false, data: null });
-              fetchOsData(osData.id_os);
-            }}
-            onCancel={() => setPaymentModal({ isOpen: false, data: null })}
-          />
-        </Modal>
-      )}
-
-      {/* Edit Item Modal */}
-      {editItemModal.isOpen && (
-        <Modal
-          title="Editar Item OS"
-          onClose={() => setEditItemModal({ isOpen: false, item: null })}
-        >
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                Descrição
-              </label>
-              <input
-                type="text"
-                value={editItemForm.descricao}
-                onChange={(e) =>
-                  setEditItemForm({
-                    ...editItemForm,
-                    descricao: e.target.value,
-                  })
-                }
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Quantidade
-                </label>
-                <input
-                  type="number"
-                  value={editItemForm.quantidade}
-                  onChange={(e) =>
-                    setEditItemForm({
-                      ...editItemForm,
-                      quantidade: Number(e.target.value),
-                    })
-                  }
-                  className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Valor Unit. Venda
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={editItemForm.valor_venda}
-                  onChange={(e) =>
-                    setEditItemForm({
-                      ...editItemForm,
-                      valor_venda: Number(e.target.value),
-                    })
-                  }
-                  className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                Ref / Nota
-              </label>
-              <input
-                type="text"
-                value={editItemForm.codigo_referencia}
-                onChange={(e) =>
-                  setEditItemForm({
-                    ...editItemForm,
-                    codigo_referencia: e.target.value,
-                  })
-                }
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Opcional"
-              />
-            </div>
-            <div className="pt-2 flex justify-end gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => setEditItemModal({ isOpen: false, item: null })}
-              >
-                Cancelar
-              </Button>
-              <Button variant="primary" onClick={handleSaveEditItem}>
-                Salvar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {confirmModal.isOpen && (
-        <Modal
-          title={confirmModal.title}
-          onClose={() =>
-            setConfirmModal((prev) => ({ ...prev, isOpen: false }))
-          }
-        >
-          <p className="mb-6">{confirmModal.message}</p>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="secondary"
-              onClick={() =>
-                setConfirmModal((prev) => ({ ...prev, isOpen: false }))
-              }
-            >
-              Cancelar
-            </Button>
-            <Button variant="danger" onClick={confirmModal.onConfirm}>
-              Confirmar
-            </Button>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-};
-
-
-
-================================================================================
-FILE PATH: client\src\pages\FechamentoFinanceiroPage.tsx
-================================================================================
-import { useState, useEffect } from "react";
-import { formatCurrency } from "../utils/formatCurrency";
-import { getStatusStyle } from "../utils/osUtils";
-import { FinanceiroService } from "../services/financeiro.service";
-import { OsService } from "../services/os.service";
-import { ActionButton } from "../components/ui/ActionButton";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { PageLayout } from "../components/ui/PageLayout";
-import { Card } from "../components/ui/Card";
-import { ConfirmModal } from "../components/ui/ConfirmModal";
-import { toast } from "react-toastify";
-import { DocumentoModal } from "../components/shared/DocumentoModal";
-
-import { Search, Trash2, Edit, CheckCircle, Printer } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
-import type { IOrdemDeServico, IFechamentoFinanceiro } from "../types/backend";
-
-// Extended interface if IFechamentoFinanceiro in backend.d.ts doesn't have the relation yet
-// or we leverage the one from backend.d.ts if it's sufficient.
-// Based on previous analysis, IFechamentoFinanceiro in backend.d.ts lacks 'ordem_de_servico'.
-// We will augment it locally for now or rely on the fact that the API returns it.
-interface IFechamentoWithOS extends IFechamentoFinanceiro {
-  ordem_de_servico: IOrdemDeServico;
-}
-
-export const FechamentoFinanceiroPage = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [fechamentos, setFechamentos] = useState<IFechamentoWithOS[]>([]);
-  const [pendingOss, setPendingOss] = useState<IOrdemDeServico[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Confirm Delete Modal
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-
-  // Document Modal (Print)
-  const [printData, setPrintData] = useState<{
-    id_os: number;
-    status: string;
-    clienteNome: string;
-    clienteEmail: string;
-    clienteTelefone: string;
-  } | null>(null);
-
-  // Date Filters
-  const [activeFilter, setActiveFilter] = useState<
-    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
-  >("WEEK");
-
-  const [filterStart, setFilterStart] = useState(() => {
-    const now = new Date();
-    const weekAgo = new Date(now);
-    weekAgo.setDate(now.getDate() - 7);
-    return weekAgo.toLocaleDateString("en-CA");
-  });
-
-  const [filterEnd, setFilterEnd] = useState(() => {
-    return new Date().toLocaleDateString("en-CA");
-  });
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const urlIdOs = params.get("id_os");
-    if (urlIdOs) {
-      handleOpenFechamento(Number(urlIdOs));
-    }
-  }, [location.search]);
-
-  const loadData = async () => {
-    try {
-      const [fechamentosData, allOss] = await Promise.all([
-        FinanceiroService.getFechamentos(),
-        OsService.getAll(),
-      ]);
-
-      setFechamentos(fechamentosData);
-
-      // Filter OSs pending closure
-      const pending = allOss.filter(
-        (os) =>
-          [
-            "ABERTA",
-            "EM_ANDAMENTO",
-            "PRONTO PARA FINANCEIRO",
-            "FINALIZADA",
-          ].includes(os.status) &&
-          !fechamentosData.some(
-            (f: IFechamentoFinanceiro) => f.id_os === os.id_os,
-          ),
-      );
-      setPendingOss(pending);
-    } catch (error) {
-      console.error("Erro ao carregar dados", error);
-      toast.error("Erro ao carregar dados financeiros");
-    }
-  };
-
-  const handleOpenFechamento = (id_os: number) => {
-    navigate(`/fechamento-financeiro/${id_os}`);
-  };
-
-  const handleEditFechamento = (fechamento: IFechamentoFinanceiro) => {
-    navigate(`/fechamento-financeiro/${fechamento.id_os}`);
-  };
-
-  const handleDelete = async () => {
-    if (!confirmDeleteId) return;
-    try {
-      await FinanceiroService.deleteFechamento(confirmDeleteId);
-      toast.success("Fechamento cancelado com sucesso!");
-      loadData();
-      setConfirmDeleteId(null);
-    } catch (error) {
-      toast.error("Erro ao deletar fechamento");
-    }
-  };
-
-  const handlePrint = (os: IOrdemDeServico) => {
-    setPrintData({
-      id_os: os.id_os,
-      status: os.status,
-      clienteNome: getClientName(os),
-      clienteEmail: os.cliente?.email || "",
-      clienteTelefone: os.cliente?.telefone_1 || "",
-    });
-  };
-
-  const getClientName = (os: IOrdemDeServico | undefined) => {
-    if (!os) return "Cliente N/I";
-    return (
-      os.cliente?.pessoa_fisica?.pessoa?.nome ||
-      os.cliente?.pessoa_juridica?.nome_fantasia ||
-      os.cliente?.pessoa_juridica?.razao_social ||
-      "Cliente N/I"
-    );
-  };
-
-  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
-    setActiveFilter(type);
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-CA");
-
-    if (type === "TODAY") {
-      setFilterStart(todayStr);
-      setFilterEnd(todayStr);
-    } else if (type === "WEEK") {
-      const weekAgo = new Date(now);
-      weekAgo.setDate(now.getDate() - 7);
-      setFilterStart(weekAgo.toLocaleDateString("en-CA"));
-      setFilterEnd(todayStr);
-    } else if (type === "MONTH") {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      setFilterStart(firstDay.toLocaleDateString("en-CA"));
-      setFilterEnd(todayStr);
-    }
-  };
-
-  const filteredFechamentos = fechamentos
-    .filter((f) => {
-      if (filterStart) {
-        const recordDate = new Date(f.data_fechamento_financeiro);
-        const recordDateLocal = recordDate.toLocaleDateString("en-CA");
-        if (recordDateLocal < filterStart) return false;
-      }
-      if (filterEnd) {
-        const recordDate = new Date(f.data_fechamento_financeiro);
-        const recordDateLocal = recordDate.toLocaleDateString("en-CA");
-        if (recordDateLocal > filterEnd) return false;
-      }
-
-      if (!searchTerm) return true;
-      const q = searchTerm.toLowerCase();
-
-      const id = String(f.id_fechamento_financeiro);
-      const fullId = `#${id}`;
-      const osId = String(f.id_os);
-      const fullOsId = `#${osId}`;
-      const plate = f.ordem_de_servico?.veiculo?.placa?.toLowerCase() || "";
-      const model = f.ordem_de_servico?.veiculo?.modelo?.toLowerCase() || "";
-      const color = f.ordem_de_servico?.veiculo?.cor?.toLowerCase() || "";
-
-      return [id, fullId, osId, fullOsId, plate, model, color]
-        .join(" ")
-        .includes(q);
-    })
-    .sort((a, b) => b.id_fechamento_financeiro - a.id_fechamento_financeiro);
-
-  return (
-    <PageLayout
-      title="Consolidação"
-      subtitle="Consolidação de custos e serviços."
-    >
-      {/* PENDING OS LIST */}
-      <h2 className="text-xl font-bold text-neutral-600 flex items-center gap-2 mb-4">
-        <span className="w-2 h-8 bg-orange-500 rounded-full"></span>
-        Aguardando Consolidação
-      </h2>
-      <Card className="p-0 overflow-hidden mb-8">
-        {pendingOss.length === 0 ? (
-          <div className="p-8 text-center text-neutral-400 italic font-medium">
-            Nenhum fechamento pendente
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="tabela-limpa w-full">
-              <thead>
-                <tr>
-                  <th>OS / Data</th>
-                  <th>Cliente</th>
-                  <th>Veículo</th>
-                  <th className="w-1/4">Defeito / Diagnóstico</th>
-                  <th className="text-center">Status</th>
-                  <th className="text-right">Ação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingOss.map((os) => (
-                  <tr
-                    key={os.id_os}
-                    className="hover:bg-neutral-50 transition-colors group"
-                  >
-                    <td className="p-4">
-                      <div className="font-bold text-neutral-600">
-                        #{os.id_os}
-                      </div>
-                      {/* Show both Date and Time if available */}
-                      {os.dt_abertura && (
-                        <div className="flex flex-col mt-1">
-                          <span className="text-[10px] font-bold text-neutral-500">
-                            {new Date(os.dt_abertura).toLocaleDateString(
-                              "pt-BR",
-                            )}
-                          </span>
-                          <span className="text-[10px] text-neutral-400">
-                            {new Date(os.dt_abertura).toLocaleTimeString(
-                              "pt-BR",
-                              { hour: "2-digit", minute: "2-digit" },
-                            )}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
-                        {getClientName(os)}
-                      </div>
-                      <div className="text-[12px] text-neutral-400 font-medium">
-                        {os.cliente?.telefone_1 || "Sem telefone"}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
-                          {os.veiculo?.marca} {os.veiculo?.modelo} -{" "}
-                          {os.veiculo?.cor}
-                        </span>
-                        <span className="text-[14px] text-primary-500 font-bold uppercase">
-                          {os.veiculo?.placa || "Placa N/I"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-col gap-2 max-w-xs transition-opacity opacity-80 group-hover:opacity-100">
-                        <div className="leading-tight">
-                          <span className="text-[10px] font-bold text-neutral-600 uppercase block">
-                            Defeito
-                          </span>
-                          <span
-                            className="text-xs text-primary-500 font-medium line-clamp-2"
-                            title={os.defeito_relatado || ""}
-                          >
-                            {os.defeito_relatado || "-"}
-                          </span>
-                        </div>
-                        <div className="leading-tight">
-                          <span className="text-[10px] font-bold text-neutral-600 uppercase block">
-                            Diagnóstico
-                          </span>
-                          <span
-                            className="text-xs text-primary-500 font-medium line-clamp-2"
-                            title={os.diagnostico || ""}
-                          >
-                            {os.diagnostico || "-"}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4 text-center">
-                      <span
-                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(
-                          os.status,
-                        )}`}
-                      >
-                        {os.status === "PRONTO PARA FINANCEIRO"
-                          ? "FINANCEIRO"
-                          : os.status.replace(/_/g, " ")}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          onClick={() => handleOpenFechamento(os.id_os)}
-                          variant="primary"
-                          size="sm"
-                          icon={CheckCircle}
-                        >
-                          Fechar Financeiro
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-
-      {/* HISTORY LIST */}
-      <h2 className="text-xl font-bold text-neutral-600 flex items-center gap-2 mb-4">
-        <span className="w-2 h-8 bg-green-600 rounded-full"></span>
-        Histórico de Fechamentos
-      </h2>
-
-      {/* FILTERS & SEARCH */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
-        <div className="w-full md:flex-1 relative">
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por ID ou Placa..."
-            icon={Search}
-            className="w-full"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-          {/* Quick Filters Group */}
-          <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
-            <button
-              onClick={() => applyQuickFilter("TODAY")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                activeFilter === "TODAY"
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
-              }`}
-            >
-              Hoje
-            </button>
-            <button
-              onClick={() => applyQuickFilter("WEEK")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                activeFilter === "WEEK"
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
-              }`}
-            >
-              Semana
-            </button>
-            <button
-              onClick={() => applyQuickFilter("MONTH")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                activeFilter === "MONTH"
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
-              }`}
-            >
-              Mês
-            </button>
-          </div>
-
-          {/* Manual Date Inputs */}
-          <div className="flex gap-2 items-center">
-            <input
-              type="date"
-              value={filterStart}
-              onChange={(e) => {
-                setFilterStart(e.target.value);
-                setActiveFilter("CUSTOM");
-              }}
-              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
-                activeFilter === "CUSTOM"
-                  ? "border-primary-300 text-primary-700"
-                  : "border-neutral-200 text-neutral-600"
-              }`}
-            />
-            <span className="text-neutral-400 self-center">-</span>
-            <input
-              type="date"
-              value={filterEnd}
-              onChange={(e) => {
-                setFilterEnd(e.target.value);
-                setActiveFilter("CUSTOM");
-              }}
-              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
-                activeFilter === "CUSTOM"
-                  ? "border-primary-300 text-primary-700"
-                  : "border-neutral-200 text-neutral-600"
-              }`}
-            />
-          </div>
-        </div>
-      </div>
-
-      <Card className="p-0 overflow-hidden min-h-[300px]">
-        <div className="overflow-x-auto">
-          <table className="tabela-limpa w-full">
-            <thead>
-              <tr>
-                <th>OS</th>
-                <th>Cliente</th>
-                <th>Veículo (Placa/Cor)</th>
-                <th>Valor Serviço</th>
-                <th>Mão de Obra (Execução)</th>
-                <th>Data</th>
-                <th className="text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredFechamentos.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="p-12 text-center text-neutral-500">
-                    <div className="flex flex-col items-center gap-4">
-                      <p className="font-bold text-neutral-400 mb-2">
-                        {searchTerm || filterStart
-                          ? "Nenhum registro encontrado para a busca."
-                          : "Nenhum fechamento realizado ainda."}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredFechamentos.map((fech) => (
-                  <tr
-                    key={fech.id_fechamento_financeiro}
-                    className="hover:bg-neutral-50 transition-colors group"
-                  >
-                    <td className="p-4">
-                      <span className="font-bold text-neutral-600 px-2 py-1 rounded text-sm">
-                        #{fech.id_os}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
-                        {getClientName(fech.ordem_de_servico)}
-                      </div>
-                      <div className="text-[12px] text-neutral-400 font-medium">
-                        {fech.ordem_de_servico?.cliente?.telefone_1 ||
-                          "Sem telefone"}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
-                          {fech.ordem_de_servico?.veiculo?.marca}{" "}
-                          {fech.ordem_de_servico?.veiculo?.modelo} -{" "}
-                          {fech.ordem_de_servico?.veiculo?.cor}
-                        </span>
-                        <span className="text-[14px] text-primary-500 font-bold uppercase">
-                          {fech.ordem_de_servico?.veiculo?.placa || "Placa N/I"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1 text-primary-600 font-bold bg-primary-50 w-fit px-3 py-1 rounded-lg">
-                        {formatCurrency(
-                          Number(
-                            fech.ordem_de_servico?.valor_total_cliente || 0,
-                          ),
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-1">
-                        {fech.ordem_de_servico?.servicos_mao_de_obra &&
-                        fech.ordem_de_servico.servicos_mao_de_obra.length >
-                          0 ? (
-                          Array.from(
-                            new Set(
-                              fech.ordem_de_servico.servicos_mao_de_obra
-                                .map(
-                                  (svc) =>
-                                    svc.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
-                                      " ",
-                                    )[0],
-                                )
-                                .filter(Boolean),
-                            ),
-                          ).map((name, idx) => (
-                            <span
-                              key={idx}
-                              className="text-xs font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded"
-                            >
-                              {name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-xs text-neutral-400 italic">
-                            Não informado
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4 text-sm font-medium text-neutral-500">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-neutral-600">
-                          {new Date(
-                            fech.data_fechamento_financeiro,
-                          ).toLocaleDateString("pt-BR")}
-                        </span>
-                        <span className="text-[10px] text-neutral-400">
-                          {new Date(
-                            fech.data_fechamento_financeiro,
-                          ).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ActionButton
-                          onClick={() => handlePrint(fech.ordem_de_servico)}
-                          icon={Printer}
-                          label="Imprimir"
-                          variant="neutral"
-                        />
-                        <ActionButton
-                          onClick={() => handleEditFechamento(fech)}
-                          icon={Edit}
-                          label="Editar"
-                          variant="primary"
-                        />
-                        <ActionButton
-                          onClick={() =>
-                            setConfirmDeleteId(fech.id_fechamento_financeiro)
-                          }
-                          icon={Trash2}
-                          label="Cancelar"
-                          variant="danger"
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* Confirm Modal */}
-      <ConfirmModal
-        isOpen={!!confirmDeleteId}
-        onClose={() => setConfirmDeleteId(null)}
-        onConfirm={handleDelete}
-        title="Cancelar Fechamento"
-        description="Tem certeza que deseja cancelar este fechamento financeiro? Isso não apaga a OS, apenas a consolidação."
-        variant="danger"
-      />
-
-      {/* Document Print Modal */}
-      {printData && (
-        <DocumentoModal
-          isOpen={true}
-          onClose={() => setPrintData(null)}
-          osId={printData.id_os}
-          status={printData.status}
-          clienteNome={printData.clienteNome}
-          clienteEmail={printData.clienteEmail}
-          clienteTelefone={printData.clienteTelefone}
-        />
-      )}
-    </PageLayout>
-  );
-};
-
 
 
 ================================================================================
@@ -30764,7 +27672,15 @@ export const PessoaPage = () => {
 FILE PATH: client\src\pages\RelatoriosPage.tsx
 ================================================================================
 import { useState, useEffect } from "react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  subYears,
+  startOfYear,
+  endOfYear,
+} from "date-fns";
 import { PageLayout } from "../components/ui/PageLayout";
 import { ReportFilter } from "../components/relatorios/ReportFilter";
 import type {
@@ -30775,7 +27691,6 @@ import type {
   EvolucaoDespesaTemporal,
 } from "../types/relatorios.types";
 import { RelatoriosService } from "../services/relatorios.service";
-import { api } from "../services/api";
 import { formatCurrency } from "../utils/formatCurrency";
 import {
   BarChart,
@@ -30839,9 +27754,6 @@ export const RelatoriosPage = () => {
   const [timeline, setTimeline] = useState<EvolucaoDespesaTemporal[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
 
-  // Todas as categorias financeiras do banco (para o dropdown)
-  const [todasCategorias, setTodasCategorias] = useState<any[]>([]);
-
   // Cores do Pie chart
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
 
@@ -30871,7 +27783,9 @@ export const RelatoriosPage = () => {
       setEvolLoading(true);
       try {
         const data = await RelatoriosService.getEvolucaoMensal(
-          evolGroupBy as "month" | "quarter",
+          evolStart,
+          evolEnd,
+          evolGroupBy as "month" | "quarter" | "semester" | "year",
         );
         setEvolucao(data);
       } catch (error) {
@@ -30883,13 +27797,41 @@ export const RelatoriosPage = () => {
     fetchEvolucao();
   }, [evolGroupBy, evolStart, evolEnd]);
 
-  // ── Categorias do banco (montagem, uma vez) ──────────────────────────────────
-  useEffect(() => {
-    api
-      .get("/categoria-financeira")
-      .then((res) => setTodasCategorias(res.data))
-      .catch(console.error);
-  }, []);
+  // ── handleEvolucaoPreset ───────────────────────────────────────────────
+  // Ao clicar nos bottons de agrupamento, atualiza TANTO o groupBy QUANTO
+  // as datas para um intervalo lógico correspondente, de forma automática.
+  const handleEvolucaoPreset = (preset: GroupByOption) => {
+    const today = new Date();
+    let newStart: Date;
+    let newEnd: Date;
+
+    switch (preset) {
+      case "month":
+        // Últimos 12 meses
+        newStart = startOfMonth(subMonths(today, 11));
+        newEnd = endOfMonth(today);
+        break;
+      case "quarter":
+        // Último 1 ano completo (4 trimestres)
+        newStart = startOfMonth(subMonths(today, 11));
+        newEnd = endOfMonth(today);
+        break;
+      case "semester":
+        // Últimos 2 anos (4 semestres)
+        newStart = startOfYear(subYears(today, 1));
+        newEnd = endOfYear(today);
+        break;
+      case "year":
+        // Últimos 3 anos
+        newStart = startOfYear(subYears(today, 2));
+        newEnd = endOfYear(today);
+        break;
+    }
+
+    setEvolGroupBy(preset);
+    setEvolStart(format(newStart, "yyyy-MM-dd"));
+    setEvolEnd(format(newEnd, "yyyy-MM-dd"));
+  };
 
   // ── Timeline de Despesas (10 meses) ──────────────────────────────────────────
   useEffect(() => {
@@ -31129,7 +28071,7 @@ export const RelatoriosPage = () => {
                       (key) => (
                         <button
                           key={key}
-                          onClick={() => setEvolGroupBy(key)}
+                          onClick={() => handleEvolucaoPreset(key)}
                           className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
                             evolGroupBy === key
                               ? "bg-white text-neutral-800 shadow-sm"
@@ -31334,16 +28276,19 @@ export const RelatoriosPage = () => {
                   className="text-xs border border-neutral-200 rounded-lg px-3 py-1.5 text-neutral-700 bg-white outline-none focus:ring-1 focus:ring-primary-300 cursor-pointer"
                 >
                   <option value="">Todas as Categorias</option>
-                  {todasCategorias.map((cat: any) => (
-                    <option key={cat.id_categoria} value={cat.nome}>
-                      {cat.nome}
+                  {resumo?.despesasPorCategoria.map((cat) => (
+                    <option key={cat.categoria} value={cat.categoria}>
+                      {cat.categoria}
                     </option>
                   ))}
                 </select>
               </div>
 
               {/* Gráfico de barras da timeline */}
-              <div className="h-[400px] w-full flex-1">
+              <div
+                className="w-full flex-shrink-0"
+                style={{ width: "100%", height: 400 }}
+              >
                 {timelineLoading ? (
                   <div className="h-full flex items-center justify-center text-neutral-400 text-sm">
                     <div className="animate-spin w-6 h-6 border-2 border-red-400 border-t-transparent rounded-full mr-2" />
@@ -31436,8 +28381,8 @@ export const RelatoriosPage = () => {
                   <thead className="text-xs text-neutral-400 uppercase bg-neutral-50">
                     <tr>
                       <th className="px-4 py-2 text-left">Categoria</th>
-                      <th className="px-4 py-2 text-right">Atual</th>
                       <th className="px-4 py-2 text-right">Anterior</th>
+                      <th className="px-4 py-2 text-right">Atual</th>
                       <th className="px-4 py-2 text-right">Var %</th>
                     </tr>
                   </thead>
@@ -31450,11 +28395,11 @@ export const RelatoriosPage = () => {
                           <td className="px-4 py-3 font-medium text-neutral-700">
                             {cat.categoria}
                           </td>
-                          <td className="px-4 py-3 text-right text-neutral-700 font-semibold">
-                            {formatCurrency(cat.valorAtual)}
-                          </td>
                           <td className="px-4 py-3 text-right text-neutral-400">
                             {formatCurrency(cat.valorAnterior)}
+                          </td>
+                          <td className="px-4 py-3 text-right text-neutral-700 font-semibold">
+                            {formatCurrency(cat.valorAtual)}
                           </td>
                           <td
                             className={`px-4 py-3 text-right font-bold text-xs ${
@@ -33423,10 +30368,12 @@ export const RelatoriosService = {
   },
 
   getEvolucaoMensal: async (
-    groupBy: "month" | "quarter" = "month",
+    startDate: string,
+    endDate: string,
+    groupBy: "month" | "quarter" | "semester" | "year" = "month",
   ): Promise<EvolucaoMensal[]> => {
     const response = await api.get("/relatorios/evolucao", {
-      params: { groupBy },
+      params: { startDate, endDate, groupBy },
     });
     return response.data;
   },
@@ -37574,23 +34521,6 @@ ALTER TABLE "ordem_de_servico" ALTER COLUMN "status" SET DATA TYPE VARCHAR(50);
 ================================================================================
 FILE PATH: server\prisma\migrations\20251220222534_201220251925\migration.sql
 ================================================================================
--- CreateTable
-CREATE TABLE "pagamento_cliente" (
-    "id_pagamento_cliente" SERIAL NOT NULL,
-    "id_os" INTEGER NOT NULL,
-    "metodo_pagamento" VARCHAR(50) NOT NULL,
-    "valor" DECIMAL(10,2) NOT NULL,
-    "data_pagamento" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "bandeira_cartao" VARCHAR(50),
-    "codigo_transacao" VARCHAR(100),
-    "qtd_parcelas" INTEGER NOT NULL DEFAULT 1,
-
-    CONSTRAINT "pagamento_cliente_pkey" PRIMARY KEY ("id_pagamento_cliente")
-);
-
--- AddForeignKey
-ALTER TABLE "pagamento_cliente" ADD CONSTRAINT "pagamento_cliente_id_os_fkey" FOREIGN KEY ("id_os") REFERENCES "ordem_de_servico"("id_os") ON DELETE RESTRICT ON UPDATE CASCADE;
-
 
 
 ================================================================================
@@ -38340,6 +35270,46 @@ FILE PATH: server\src\controllers\categoriaFinanceira.controller.ts
 import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
 
+// ── Corrige encoding UTF-8 mal interpretado (Latin-1 → UTF-8) ─────────────────
+const fixEncoding = (str: string | null | undefined): string => {
+  if (!str) return "";
+  return (
+    str
+      // ── minúsculas ────────────────────────────────────────────────────────────
+      .replace(/├º/g, "ç")
+      .replace(/├ú/g, "ã")
+      .replace(/├á/g, "à")
+      .replace(/├í/g, "á")
+      .replace(/├®/g, "é")
+      .replace(/├¬/g, "ê")
+      .replace(/├¡/g, "í")
+      .replace(/├ó/g, "â")
+      .replace(/├│/g, "ó")
+      .replace(/├╡/g, "õ")
+      .replace(/├╣/g, "ú")
+      .replace(/├┤/g, "ô")
+      .replace(/├«/g, "î")
+      .replace(/├»/g, "ï")
+      .replace(/├╕/g, "û")
+      .replace(/├▒/g, "ñ")
+      // ── maiúsculas ───────────────────────────────────────────────────────────
+      .replace(/├ü/g, "Á")
+      .replace(/├â/g, "Â")
+      .replace(/├Ç/g, "À")
+      .replace(/├É/g, "É")
+      .replace(/├ê/g, "Ê")
+      .replace(/├Í/g, "Í")
+      .replace(/├Ó/g, "Ó")
+      .replace(/├ô/g, "Ô")
+      .replace(/├Ú/g, "Ú")
+      .replace(/├ç/g, "Ç")
+      .replace(/├Ñ/g, "Ñ")
+      // ── compostos ────────────────────────────────────────────────────────────
+      .replace(/├úo/g, "ão")
+      .replace(/├╡es/g, "ões")
+  );
+};
+
 export const getAll = async (req: Request, res: Response) => {
   try {
     // Sync: Fetch distinct categories from LivroCaixa that are NOT in CategoriaFinanceira
@@ -38373,7 +35343,14 @@ export const getAll = async (req: Request, res: Response) => {
     const categorias = await prisma.categoriaFinanceira.findMany({
       orderBy: { nome: "asc" },
     });
-    res.json(categorias);
+
+    // Aplicar fixEncoding em TODOS os nomes antes de enviar ao frontend
+    const categoriasHigienizadas = categorias.map((c) => ({
+      ...c,
+      nome: fixEncoding(c.nome),
+    }));
+
+    res.json(categoriasHigienizadas);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao buscar categorias" });
@@ -38682,10 +35659,38 @@ export const ConfiguracaoController = {
   get: async (req: Request, res: Response) => {
     try {
       const config = await ConfiguracaoRepository.get();
-      return res.json(config);
+      // Retorna config ou objeto neutro — NUNCA deixa o frontend sem dados
+      return res.json(
+        config ?? {
+          id: null,
+          nomeFantasia: "Oficina",
+          razaoSocial: "",
+          cnpj: "",
+          inscricaoEstadual: "",
+          endereco: "",
+          telefone: "",
+          email: "",
+          logoUrl: null,
+        },
+      );
     } catch (error) {
-      console.error("Error fetching configuracao:", error);
-      return res.status(500).json({ error: "Erro ao buscar configurações" });
+      // Coluna inexistente no banco ou qualquer erro de runtime → retorna dados
+      // neutros para não quebrar a Sidebar / tela de Configurações
+      console.error(
+        "Error fetching configuracao (retornando fallback):",
+        error,
+      );
+      return res.status(200).json({
+        id: null,
+        nomeFantasia: "Oficina",
+        razaoSocial: "",
+        cnpj: "",
+        inscricaoEstadual: "",
+        endereco: "",
+        telefone: "",
+        email: "",
+        logoUrl: null,
+      });
     }
   },
 
@@ -41956,9 +38961,27 @@ export class RelatoriosController {
 
   async getEvolucaoMensal(req: Request, res: Response) {
     try {
-      const { groupBy } = req.query; // 'month' or 'quarter'
+      const { groupBy, startDate, endDate } = req.query;
+
+      // Datas obrigatórias — fallback para o mês corrente se não informadas
+      const start = startDate
+        ? new Date(startDate as string)
+        : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const end = endDate
+        ? new Date(endDate as string)
+        : new Date(
+            new Date().getFullYear(),
+            new Date().getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+          );
+
       const data = await relatoriosService.getEvolucaoMensal(
-        groupBy as "month" | "quarter",
+        start,
+        end,
+        (groupBy as "month" | "quarter" | "semester" | "year") || "month",
       );
       return res.json(data);
     } catch (error) {
@@ -42077,6 +39100,68 @@ export const servicoMaoDeObraController = new ServicoMaoDeObraController();
 
 ================================================================================
 FILE PATH: server\src\controllers\tipo.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { TipoRepository } from '../repositories/tipo.repository.js';
+
+const repository = new TipoRepository();
+
+export class TipoController {
+  async create(req: Request, res: Response) {
+    try {
+      const tipo = await repository.create(req.body);
+      res.status(201).json(tipo);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create Tipo', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const tipos = await repository.findAll();
+      res.json(tipos);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Tipos' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const tipo = await repository.findById(id);
+      if (!tipo) {
+        return res.status(404).json({ error: 'Tipo not found' });
+      }
+      res.json(tipo);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Tipo' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const tipo = await repository.update(id, req.body);
+      res.json(tipo);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Tipo' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Tipo' });
+    }
+  }
+}
+
+
+
+================================================================================
 FILE PATH: server\src\controllers\veiculo.controller.ts
 ================================================================================
 import { Request, Response } from "express";
@@ -45875,6 +42960,11 @@ pagamentoPecaRoutes.delete('/:id', controller.delete);
 
 export { pagamentoPecaRoutes };
 
+
+
+================================================================================
+FILE PATH: server\src\routes\pecasEstoque.routes.ts
+================================================================================
 import { Router } from 'express';
 import { PecasEstoqueController } from '../controllers/pecasEstoque.controller.js';
 
@@ -45914,6 +43004,24 @@ export { pessoaRoutes };
 
 
 ================================================================================
+FILE PATH: server\src\routes\pessoaFisica.routes.ts
+================================================================================
+import { Router } from 'express';
+import { PessoaFisicaController } from '../controllers/pessoaFisica.controller.js';
+
+const pessoaFisicaRoutes = Router();
+const controller = new PessoaFisicaController();
+
+pessoaFisicaRoutes.post('/', controller.create);
+pessoaFisicaRoutes.get('/', controller.findAll);
+pessoaFisicaRoutes.get('/:id', controller.findById);
+pessoaFisicaRoutes.put('/:id', controller.update);
+pessoaFisicaRoutes.delete('/:id', controller.delete);
+
+export { pessoaFisicaRoutes };
+
+
+
 ================================================================================
 FILE PATH: server\src\routes\pessoaJuridica.routes.ts
 ================================================================================
@@ -48061,26 +45169,41 @@ const CATEGORIAS_FORNECEDOR = [
 
 const fixEncoding = (str: string | null | undefined): string => {
   if (!str) return "";
-  return str
-    .replace(/├º/g, "ç")
-    .replace(/├ú/g, "ã")
-    .replace(/├á/g, "à")
-    .replace(/├í/g, "á")
-    .replace(/├®/g, "é")
-    .replace(/├¬/g, "ê")
-    .replace(/├¡/g, "í")
-    .replace(/├ó/g, "â")
-    .replace(/├│/g, "ó")
-    .replace(/├╡/g, "õ")
-    .replace(/├úo/g, "ão")
-    .replace(/├ô/g, "Ô")
-    .replace(/├Ç/g, "À")
-    .replace(/├ê/g, "Ê")
-    .replace(/├É/g, "É")
-    .replace(/├Í/g, "Í")
-    .replace(/├Ó/g, "Ó")
-    .replace(/├Ú/g, "Ú")
-    .replace(/├Ñ/g, "Ñ");
+  return (
+    str
+      // ── minúsculas ────────────────────────────────────────────────────────────
+      .replace(/├º/g, "ç")
+      .replace(/├ú/g, "ã")
+      .replace(/├á/g, "à")
+      .replace(/├í/g, "á")
+      .replace(/├®/g, "é")
+      .replace(/├¬/g, "ê")
+      .replace(/├¡/g, "í")
+      .replace(/├ó/g, "â")
+      .replace(/├│/g, "ó")
+      .replace(/├╡/g, "õ")
+      .replace(/├╣/g, "ú")
+      .replace(/├┤/g, "ô")
+      .replace(/├«/g, "î")
+      .replace(/├»/g, "ï")
+      .replace(/├╕/g, "û")
+      .replace(/├▒/g, "ñ")
+      // ── maiúsculas ───────────────────────────────────────────────────────────
+      .replace(/├ü/g, "Á")
+      .replace(/├â/g, "Â")
+      .replace(/├Ç/g, "À")
+      .replace(/├É/g, "É")
+      .replace(/├ê/g, "Ê")
+      .replace(/├Í/g, "Í")
+      .replace(/├Ó/g, "Ó")
+      .replace(/├ô/g, "Ô")
+      .replace(/├Ú/g, "Ú")
+      .replace(/├ç/g, "Ç")
+      .replace(/├Ñ/g, "Ñ")
+      // ── compostos ────────────────────────────────────────────────────────────
+      .replace(/├úo/g, "ão") // ã seguido de o (sufixo comum)
+      .replace(/├╡es/g, "ões")
+  ); // õ seguido de es
 };
 
 export class RelatoriosService {
@@ -48165,7 +45288,7 @@ export class RelatoriosService {
       const val = Number(c.valor || 0);
       totalContasPagar += val;
       const catName = fixEncoding(
-        c.categoria || c.categoria_financeira?.nome || "Outros",
+        c.categoria || c.categoria_financeira?.nome || "Sem Categoria",
       );
       despesasMap.set(catName, (despesasMap.get(catName) || 0) + val);
 
@@ -48324,7 +45447,7 @@ export class RelatoriosService {
       // Aplicar filtro de categoria se fornecido
       if (categoriaFiltro) {
         const catName = fixEncoding(
-          c.categoria || c.categoria_financeira?.nome || "Outros",
+          c.categoria || c.categoria_financeira?.nome || "Sem Categoria",
         );
         if (catName !== categoriaFiltro) return;
       }
@@ -48582,15 +45705,16 @@ export class RelatoriosService {
   }
 
   /**
-   * Evolução Temporal (Mês ou Trimestre)
+   * Evolução Temporal — respeita as datas do frontend
+   * groupBy: 'month' | 'quarter' | 'semester' | 'year'
    */
-  async getEvolucaoMensal(groupBy: "month" | "quarter" = "month") {
-    const today = new Date();
-    const start =
-      groupBy === "month"
-        ? subMonths(startOfDay(today), 11)
-        : subQuarters(startOfDay(today), 3);
-    const end = endOfDay(today);
+  async getEvolucaoMensal(
+    startDate: Date,
+    endDate: Date,
+    groupBy: "month" | "quarter" | "semester" | "year" = "month",
+  ) {
+    const start = startOfDay(startDate);
+    const end = endOfDay(endDate);
 
     const allOs = await prisma.ordemDeServico.findMany({
       where: {
@@ -48624,38 +45748,89 @@ export class RelatoriosService {
       }
     >();
 
+    // ── Inicializa buckets de acordo com o agrupamento ──────────────────────
     if (groupBy === "month") {
-      for (let i = 0; i < 12; i++) {
-        const d = subMonths(today, i);
-        const key = format(d, "yyyy-MM");
+      // Itera mês a mês no intervalo
+      let cursor = startOfMonth(start);
+      while (cursor <= end) {
+        const key = format(cursor, "yyyy-MM");
         map.set(key, {
-          label: format(d, "MMM/yy", { locale: ptBR }),
+          label: format(cursor, "MMM/yy", { locale: ptBR }),
           receita: 0,
           despesa: 0,
           lucro: 0,
           sortKey: key,
         });
+        cursor = addMonths(cursor, 1);
+      }
+    } else if (groupBy === "quarter") {
+      let cursor = startOfQuarter(start);
+      while (cursor <= end) {
+        const q = getQuarter(cursor);
+        const y = cursor.getFullYear();
+        const key = `${y}-Q${q}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            label: `${q}º Tri/${y}`,
+            receita: 0,
+            despesa: 0,
+            lucro: 0,
+            sortKey: key,
+          });
+        }
+        cursor = addMonths(cursor, 3);
+      }
+    } else if (groupBy === "semester") {
+      // Semestre: S1 = Jan-Jun, S2 = Jul-Dez
+      let cursor = startOfMonth(start);
+      while (cursor <= end) {
+        const m = cursor.getMonth(); // 0-indexed
+        const s = m < 6 ? 1 : 2;
+        const y = cursor.getFullYear();
+        const key = `${y}-S${s}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            label: `${s}º Sem/${y}`,
+            receita: 0,
+            despesa: 0,
+            lucro: 0,
+            sortKey: key,
+          });
+        }
+        cursor = addMonths(cursor, 1);
       }
     } else {
-      for (let i = 0; i < 4; i++) {
-        const d = subQuarters(today, i);
-        const q = getQuarter(d);
-        const y = d.getFullYear();
-        const key = `${y}-Q${q}`;
-        map.set(key, {
-          label: `${q}º Tri/${y}`,
-          receita: 0,
-          despesa: 0,
-          lucro: 0,
-          sortKey: key,
-        });
+      // year
+      let cursor = startOfMonth(start);
+      while (cursor <= end) {
+        const y = cursor.getFullYear();
+        const key = `${y}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            label: `${y}`,
+            receita: 0,
+            despesa: 0,
+            lucro: 0,
+            sortKey: key,
+          });
+        }
+        cursor = addMonths(cursor, 1);
       }
     }
 
-    const getKey = (date: Date) => {
+    // ── Função de chave por data ─────────────────────────────────────────────
+    const getKey = (date: Date): string | null => {
       if (!date) return null;
       if (groupBy === "month") return format(date, "yyyy-MM");
-      return `${date.getFullYear()}-Q${getQuarter(date)}`;
+      if (groupBy === "quarter") {
+        return `${date.getFullYear()}-Q${getQuarter(date)}`;
+      }
+      if (groupBy === "semester") {
+        const s = date.getMonth() < 6 ? 1 : 2;
+        return `${date.getFullYear()}-S${s}`;
+      }
+      // year
+      return `${date.getFullYear()}`;
     };
 
     const processItem = (

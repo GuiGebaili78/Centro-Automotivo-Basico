@@ -51,6 +51,7 @@ export class MensageriaService {
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
         <style>
           body { font-family: Arial, sans-serif; font-size: 12px; color: #333; }
           .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #ccc; padding-bottom: 15px; }
@@ -294,11 +295,8 @@ export class MensageriaService {
       ]);
       console.log(`[Mensageria] Email enviado com sucesso para ${to}`);
     } catch (error) {
-      console.error(
-        `[Mensageria] Erro ao enviar email (não bloqueante):`,
-        error,
-      );
-      // Do not throw, so the client receives 200 OK for the PDF generation
+      console.error(`[Mensageria] Erro ao enviar email:`, error);
+      throw error;
     }
   }
 
