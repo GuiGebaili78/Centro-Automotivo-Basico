@@ -31,26 +31,41 @@ const CATEGORIAS_FORNECEDOR = [
 
 const fixEncoding = (str: string | null | undefined): string => {
   if (!str) return "";
-  return str
-    .replace(/├º/g, "ç")
-    .replace(/├ú/g, "ã")
-    .replace(/├á/g, "à")
-    .replace(/├í/g, "á")
-    .replace(/├®/g, "é")
-    .replace(/├¬/g, "ê")
-    .replace(/├¡/g, "í")
-    .replace(/├ó/g, "â")
-    .replace(/├│/g, "ó")
-    .replace(/├╡/g, "õ")
-    .replace(/├úo/g, "ão")
-    .replace(/├ô/g, "Ô")
-    .replace(/├Ç/g, "À")
-    .replace(/├ê/g, "Ê")
-    .replace(/├É/g, "É")
-    .replace(/├Í/g, "Í")
-    .replace(/├Ó/g, "Ó")
-    .replace(/├Ú/g, "Ú")
-    .replace(/├Ñ/g, "Ñ");
+  return (
+    str
+      // ── minúsculas ────────────────────────────────────────────────────────────
+      .replace(/├º/g, "ç")
+      .replace(/├ú/g, "ã")
+      .replace(/├á/g, "à")
+      .replace(/├í/g, "á")
+      .replace(/├®/g, "é")
+      .replace(/├¬/g, "ê")
+      .replace(/├¡/g, "í")
+      .replace(/├ó/g, "â")
+      .replace(/├│/g, "ó")
+      .replace(/├╡/g, "õ")
+      .replace(/├╣/g, "ú")
+      .replace(/├┤/g, "ô")
+      .replace(/├«/g, "î")
+      .replace(/├»/g, "ï")
+      .replace(/├╕/g, "û")
+      .replace(/├▒/g, "ñ")
+      // ── maiúsculas ───────────────────────────────────────────────────────────
+      .replace(/├ü/g, "Á")
+      .replace(/├â/g, "Â")
+      .replace(/├Ç/g, "À")
+      .replace(/├É/g, "É")
+      .replace(/├ê/g, "Ê")
+      .replace(/├Í/g, "Í")
+      .replace(/├Ó/g, "Ó")
+      .replace(/├ô/g, "Ô")
+      .replace(/├Ú/g, "Ú")
+      .replace(/├ç/g, "Ç")
+      .replace(/├Ñ/g, "Ñ")
+      // ── compostos ────────────────────────────────────────────────────────────
+      .replace(/├úo/g, "ão") // ã seguido de o (sufixo comum)
+      .replace(/├╡es/g, "ões")
+  ); // õ seguido de es
 };
 
 export class RelatoriosService {
@@ -135,7 +150,7 @@ export class RelatoriosService {
       const val = Number(c.valor || 0);
       totalContasPagar += val;
       const catName = fixEncoding(
-        c.categoria || c.categoria_financeira?.nome || "Outros",
+        c.categoria || c.categoria_financeira?.nome || "Sem Categoria",
       );
       despesasMap.set(catName, (despesasMap.get(catName) || 0) + val);
 
@@ -294,7 +309,7 @@ export class RelatoriosService {
       // Aplicar filtro de categoria se fornecido
       if (categoriaFiltro) {
         const catName = fixEncoding(
-          c.categoria || c.categoria_financeira?.nome || "Outros",
+          c.categoria || c.categoria_financeira?.nome || "Sem Categoria",
         );
         if (catName !== categoriaFiltro) return;
       }
@@ -552,15 +567,16 @@ export class RelatoriosService {
   }
 
   /**
-   * Evolução Temporal (Mês ou Trimestre)
+   * Evolução Temporal — respeita as datas do frontend
+   * groupBy: 'month' | 'quarter' | 'semester' | 'year'
    */
-  async getEvolucaoMensal(groupBy: "month" | "quarter" = "month") {
-    const today = new Date();
-    const start =
-      groupBy === "month"
-        ? subMonths(startOfDay(today), 11)
-        : subQuarters(startOfDay(today), 3);
-    const end = endOfDay(today);
+  async getEvolucaoMensal(
+    startDate: Date,
+    endDate: Date,
+    groupBy: "month" | "quarter" | "semester" | "year" = "month",
+  ) {
+    const start = startOfDay(startDate);
+    const end = endOfDay(endDate);
 
     const allOs = await prisma.ordemDeServico.findMany({
       where: {
@@ -594,38 +610,89 @@ export class RelatoriosService {
       }
     >();
 
+    // ── Inicializa buckets de acordo com o agrupamento ──────────────────────
     if (groupBy === "month") {
-      for (let i = 0; i < 12; i++) {
-        const d = subMonths(today, i);
-        const key = format(d, "yyyy-MM");
+      // Itera mês a mês no intervalo
+      let cursor = startOfMonth(start);
+      while (cursor <= end) {
+        const key = format(cursor, "yyyy-MM");
         map.set(key, {
-          label: format(d, "MMM/yy", { locale: ptBR }),
+          label: format(cursor, "MMM/yy", { locale: ptBR }),
           receita: 0,
           despesa: 0,
           lucro: 0,
           sortKey: key,
         });
+        cursor = addMonths(cursor, 1);
+      }
+    } else if (groupBy === "quarter") {
+      let cursor = startOfQuarter(start);
+      while (cursor <= end) {
+        const q = getQuarter(cursor);
+        const y = cursor.getFullYear();
+        const key = `${y}-Q${q}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            label: `${q}º Tri/${y}`,
+            receita: 0,
+            despesa: 0,
+            lucro: 0,
+            sortKey: key,
+          });
+        }
+        cursor = addMonths(cursor, 3);
+      }
+    } else if (groupBy === "semester") {
+      // Semestre: S1 = Jan-Jun, S2 = Jul-Dez
+      let cursor = startOfMonth(start);
+      while (cursor <= end) {
+        const m = cursor.getMonth(); // 0-indexed
+        const s = m < 6 ? 1 : 2;
+        const y = cursor.getFullYear();
+        const key = `${y}-S${s}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            label: `${s}º Sem/${y}`,
+            receita: 0,
+            despesa: 0,
+            lucro: 0,
+            sortKey: key,
+          });
+        }
+        cursor = addMonths(cursor, 1);
       }
     } else {
-      for (let i = 0; i < 4; i++) {
-        const d = subQuarters(today, i);
-        const q = getQuarter(d);
-        const y = d.getFullYear();
-        const key = `${y}-Q${q}`;
-        map.set(key, {
-          label: `${q}º Tri/${y}`,
-          receita: 0,
-          despesa: 0,
-          lucro: 0,
-          sortKey: key,
-        });
+      // year
+      let cursor = startOfMonth(start);
+      while (cursor <= end) {
+        const y = cursor.getFullYear();
+        const key = `${y}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            label: `${y}`,
+            receita: 0,
+            despesa: 0,
+            lucro: 0,
+            sortKey: key,
+          });
+        }
+        cursor = addMonths(cursor, 1);
       }
     }
 
-    const getKey = (date: Date) => {
+    // ── Função de chave por data ─────────────────────────────────────────────
+    const getKey = (date: Date): string | null => {
       if (!date) return null;
       if (groupBy === "month") return format(date, "yyyy-MM");
-      return `${date.getFullYear()}-Q${getQuarter(date)}`;
+      if (groupBy === "quarter") {
+        return `${date.getFullYear()}-Q${getQuarter(date)}`;
+      }
+      if (groupBy === "semester") {
+        const s = date.getMonth() < 6 ? 1 : 2;
+        return `${date.getFullYear()}-S${s}`;
+      }
+      // year
+      return `${date.getFullYear()}`;
     };
 
     const processItem = (

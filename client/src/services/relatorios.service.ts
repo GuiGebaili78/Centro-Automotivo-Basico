@@ -40,10 +40,12 @@ export const RelatoriosService = {
   },
 
   getEvolucaoMensal: async (
-    groupBy: "month" | "quarter" = "month",
+    startDate: string,
+    endDate: string,
+    groupBy: "month" | "quarter" | "semester" | "year" = "month",
   ): Promise<EvolucaoMensal[]> => {
     const response = await api.get("/relatorios/evolucao", {
-      params: { groupBy },
+      params: { startDate, endDate, groupBy },
     });
     return response.data;
   },

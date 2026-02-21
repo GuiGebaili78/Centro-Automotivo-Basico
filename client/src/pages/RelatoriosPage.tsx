@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  subYears,
+  startOfYear,
+  endOfYear,
+} from "date-fns";
 import { PageLayout } from "../components/ui/PageLayout";
 import { ReportFilter } from "../components/relatorios/ReportFilter";
 import type {
@@ -10,7 +18,6 @@ import type {
   EvolucaoDespesaTemporal,
 } from "../types/relatorios.types";
 import { RelatoriosService } from "../services/relatorios.service";
-import { api } from "../services/api";
 import { formatCurrency } from "../utils/formatCurrency";
 import {
   BarChart,
@@ -74,9 +81,6 @@ export const RelatoriosPage = () => {
   const [timeline, setTimeline] = useState<EvolucaoDespesaTemporal[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
 
-  // Todas as categorias financeiras do banco (para o dropdown)
-  const [todasCategorias, setTodasCategorias] = useState<any[]>([]);
-
   // Cores do Pie chart
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
 
@@ -106,7 +110,9 @@ export const RelatoriosPage = () => {
       setEvolLoading(true);
       try {
         const data = await RelatoriosService.getEvolucaoMensal(
-          evolGroupBy as "month" | "quarter",
+          evolStart,
+          evolEnd,
+          evolGroupBy as "month" | "quarter" | "semester" | "year",
         );
         setEvolucao(data);
       } catch (error) {
@@ -118,13 +124,41 @@ export const RelatoriosPage = () => {
     fetchEvolucao();
   }, [evolGroupBy, evolStart, evolEnd]);
 
-  // ── Categorias do banco (montagem, uma vez) ──────────────────────────────────
-  useEffect(() => {
-    api
-      .get("/categoria-financeira")
-      .then((res) => setTodasCategorias(res.data))
-      .catch(console.error);
-  }, []);
+  // ── handleEvolucaoPreset ───────────────────────────────────────────────
+  // Ao clicar nos bottons de agrupamento, atualiza TANTO o groupBy QUANTO
+  // as datas para um intervalo lógico correspondente, de forma automática.
+  const handleEvolucaoPreset = (preset: GroupByOption) => {
+    const today = new Date();
+    let newStart: Date;
+    let newEnd: Date;
+
+    switch (preset) {
+      case "month":
+        // Últimos 12 meses
+        newStart = startOfMonth(subMonths(today, 11));
+        newEnd = endOfMonth(today);
+        break;
+      case "quarter":
+        // Último 1 ano completo (4 trimestres)
+        newStart = startOfMonth(subMonths(today, 11));
+        newEnd = endOfMonth(today);
+        break;
+      case "semester":
+        // Últimos 2 anos (4 semestres)
+        newStart = startOfYear(subYears(today, 1));
+        newEnd = endOfYear(today);
+        break;
+      case "year":
+        // Últimos 3 anos
+        newStart = startOfYear(subYears(today, 2));
+        newEnd = endOfYear(today);
+        break;
+    }
+
+    setEvolGroupBy(preset);
+    setEvolStart(format(newStart, "yyyy-MM-dd"));
+    setEvolEnd(format(newEnd, "yyyy-MM-dd"));
+  };
 
   // ── Timeline de Despesas (10 meses) ──────────────────────────────────────────
   useEffect(() => {
@@ -364,7 +398,7 @@ export const RelatoriosPage = () => {
                       (key) => (
                         <button
                           key={key}
-                          onClick={() => setEvolGroupBy(key)}
+                          onClick={() => handleEvolucaoPreset(key)}
                           className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
                             evolGroupBy === key
                               ? "bg-white text-neutral-800 shadow-sm"
@@ -569,16 +603,19 @@ export const RelatoriosPage = () => {
                   className="text-xs border border-neutral-200 rounded-lg px-3 py-1.5 text-neutral-700 bg-white outline-none focus:ring-1 focus:ring-primary-300 cursor-pointer"
                 >
                   <option value="">Todas as Categorias</option>
-                  {todasCategorias.map((cat: any) => (
-                    <option key={cat.id_categoria} value={cat.nome}>
-                      {cat.nome}
+                  {resumo?.despesasPorCategoria.map((cat) => (
+                    <option key={cat.categoria} value={cat.categoria}>
+                      {cat.categoria}
                     </option>
                   ))}
                 </select>
               </div>
 
               {/* Gráfico de barras da timeline */}
-              <div className="h-[400px] w-full flex-1">
+              <div
+                className="w-full flex-shrink-0"
+                style={{ width: "100%", height: 400 }}
+              >
                 {timelineLoading ? (
                   <div className="h-full flex items-center justify-center text-neutral-400 text-sm">
                     <div className="animate-spin w-6 h-6 border-2 border-red-400 border-t-transparent rounded-full mr-2" />
@@ -671,8 +708,8 @@ export const RelatoriosPage = () => {
                   <thead className="text-xs text-neutral-400 uppercase bg-neutral-50">
                     <tr>
                       <th className="px-4 py-2 text-left">Categoria</th>
-                      <th className="px-4 py-2 text-right">Atual</th>
                       <th className="px-4 py-2 text-right">Anterior</th>
+                      <th className="px-4 py-2 text-right">Atual</th>
                       <th className="px-4 py-2 text-right">Var %</th>
                     </tr>
                   </thead>
@@ -685,11 +722,11 @@ export const RelatoriosPage = () => {
                           <td className="px-4 py-3 font-medium text-neutral-700">
                             {cat.categoria}
                           </td>
-                          <td className="px-4 py-3 text-right text-neutral-700 font-semibold">
-                            {formatCurrency(cat.valorAtual)}
-                          </td>
                           <td className="px-4 py-3 text-right text-neutral-400">
                             {formatCurrency(cat.valorAnterior)}
+                          </td>
+                          <td className="px-4 py-3 text-right text-neutral-700 font-semibold">
+                            {formatCurrency(cat.valorAtual)}
                           </td>
                           <td
                             className={`px-4 py-3 text-right font-bold text-xs ${

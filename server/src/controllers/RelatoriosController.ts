@@ -67,9 +67,27 @@ export class RelatoriosController {
 
   async getEvolucaoMensal(req: Request, res: Response) {
     try {
-      const { groupBy } = req.query; // 'month' or 'quarter'
+      const { groupBy, startDate, endDate } = req.query;
+
+      // Datas obrigatórias — fallback para o mês corrente se não informadas
+      const start = startDate
+        ? new Date(startDate as string)
+        : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const end = endDate
+        ? new Date(endDate as string)
+        : new Date(
+            new Date().getFullYear(),
+            new Date().getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+          );
+
       const data = await relatoriosService.getEvolucaoMensal(
-        groupBy as "month" | "quarter",
+        start,
+        end,
+        (groupBy as "month" | "quarter" | "semester" | "year") || "month",
       );
       return res.json(data);
     } catch (error) {

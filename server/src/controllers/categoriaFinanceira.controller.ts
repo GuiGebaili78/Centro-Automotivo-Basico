@@ -1,6 +1,46 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
 
+// ── Corrige encoding UTF-8 mal interpretado (Latin-1 → UTF-8) ─────────────────
+const fixEncoding = (str: string | null | undefined): string => {
+  if (!str) return "";
+  return (
+    str
+      // ── minúsculas ────────────────────────────────────────────────────────────
+      .replace(/├º/g, "ç")
+      .replace(/├ú/g, "ã")
+      .replace(/├á/g, "à")
+      .replace(/├í/g, "á")
+      .replace(/├®/g, "é")
+      .replace(/├¬/g, "ê")
+      .replace(/├¡/g, "í")
+      .replace(/├ó/g, "â")
+      .replace(/├│/g, "ó")
+      .replace(/├╡/g, "õ")
+      .replace(/├╣/g, "ú")
+      .replace(/├┤/g, "ô")
+      .replace(/├«/g, "î")
+      .replace(/├»/g, "ï")
+      .replace(/├╕/g, "û")
+      .replace(/├▒/g, "ñ")
+      // ── maiúsculas ───────────────────────────────────────────────────────────
+      .replace(/├ü/g, "Á")
+      .replace(/├â/g, "Â")
+      .replace(/├Ç/g, "À")
+      .replace(/├É/g, "É")
+      .replace(/├ê/g, "Ê")
+      .replace(/├Í/g, "Í")
+      .replace(/├Ó/g, "Ó")
+      .replace(/├ô/g, "Ô")
+      .replace(/├Ú/g, "Ú")
+      .replace(/├ç/g, "Ç")
+      .replace(/├Ñ/g, "Ñ")
+      // ── compostos ────────────────────────────────────────────────────────────
+      .replace(/├úo/g, "ão")
+      .replace(/├╡es/g, "ões")
+  );
+};
+
 export const getAll = async (req: Request, res: Response) => {
   try {
     // Sync: Fetch distinct categories from LivroCaixa that are NOT in CategoriaFinanceira
@@ -34,7 +74,14 @@ export const getAll = async (req: Request, res: Response) => {
     const categorias = await prisma.categoriaFinanceira.findMany({
       orderBy: { nome: "asc" },
     });
-    res.json(categorias);
+
+    // Aplicar fixEncoding em TODOS os nomes antes de enviar ao frontend
+    const categoriasHigienizadas = categorias.map((c) => ({
+      ...c,
+      nome: fixEncoding(c.nome),
+    }));
+
+    res.json(categoriasHigienizadas);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao buscar categorias" });

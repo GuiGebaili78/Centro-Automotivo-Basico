@@ -11,10 +11,38 @@ export const ConfiguracaoController = {
   get: async (req: Request, res: Response) => {
     try {
       const config = await ConfiguracaoRepository.get();
-      return res.json(config);
+      // Retorna config ou objeto neutro — NUNCA deixa o frontend sem dados
+      return res.json(
+        config ?? {
+          id: null,
+          nomeFantasia: "Oficina",
+          razaoSocial: "",
+          cnpj: "",
+          inscricaoEstadual: "",
+          endereco: "",
+          telefone: "",
+          email: "",
+          logoUrl: null,
+        },
+      );
     } catch (error) {
-      console.error("Error fetching configuracao:", error);
-      return res.status(500).json({ error: "Erro ao buscar configurações" });
+      // Coluna inexistente no banco ou qualquer erro de runtime → retorna dados
+      // neutros para não quebrar a Sidebar / tela de Configurações
+      console.error(
+        "Error fetching configuracao (retornando fallback):",
+        error,
+      );
+      return res.status(200).json({
+        id: null,
+        nomeFantasia: "Oficina",
+        razaoSocial: "",
+        cnpj: "",
+        inscricaoEstadual: "",
+        endereco: "",
+        telefone: "",
+        email: "",
+        logoUrl: null,
+      });
     }
   },
 
