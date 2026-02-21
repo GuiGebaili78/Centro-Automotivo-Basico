@@ -66,8 +66,10 @@ export const ModalPagamentoUnificado: React.FC<
     });
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} className="max-w-md">
+    <Modal onClose={onClose} title={title} className="max-w-md">
       <div className="space-y-6 pt-4">
         {/* Account Selection */}
         <div>
