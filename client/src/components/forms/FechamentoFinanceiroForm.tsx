@@ -515,7 +515,7 @@ export const FechamentoFinanceiroForm = ({
                   <span
                     className={`px-3 py-1 rounded-md text-[10px] font-black uppercase whitespace-nowrap ${getStatusStyle(osData.status)}`}
                   >
-                    {osData.status === "PRONTO PARA FINANCEIRO"
+                    {osData.status === "FINANCEIRO"
                       ? "FINANCEIRO"
                       : osData.status.replace(/_/g, " ")}
                   </span>

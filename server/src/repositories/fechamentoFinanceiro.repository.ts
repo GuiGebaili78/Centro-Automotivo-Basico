@@ -84,7 +84,7 @@ export class FechamentoFinanceiroRepository {
         throw new Error("OS não encontrada");
       }
 
-      if (os.status !== "PRONTO PARA FINANCEIRO") {
+      if (os.status !== "FINANCEIRO") {
         throw new Error("OS não está pronta para consolidação financeira");
       }
 
@@ -111,9 +111,15 @@ export class FechamentoFinanceiroRepository {
       // "OS Nº {id} - {cliente} | {placa} | {veiculo} | {cor}"
       const descricaoPadrao = `OS Nº ${idOs} - ${nomeCliente} | ${placa} | ${veiculoDesc} | ${cor}`;
 
-      // 2. Criar Fechamento Financeiro
-      const fechamento = await tx.fechamentoFinanceiro.create({
-        data: {
+      // 2. Criar ou Atualizar Fechamento Financeiro
+      const fechamento = await tx.fechamentoFinanceiro.upsert({
+        where: { id_os: idOs },
+        update: {
+          custo_total_pecas_real: custoTotalPecasReal,
+          data_fechamento_financeiro: new Date(),
+          deleted_at: null,
+        },
+        create: {
           id_os: idOs,
           custo_total_pecas_real: custoTotalPecasReal,
           data_fechamento_financeiro: new Date(),
@@ -562,10 +568,9 @@ export class FechamentoFinanceiroRepository {
         where: { id_fechamento_financeiro: idFechamento },
       });
 
-      // 3.4 Reverter Status da OS
       await tx.ordemDeServico.update({
         where: { id_os: os.id_os },
-        data: { status: "PRONTO PARA FINANCEIRO" },
+        data: { status: "FINANCEIRO" },
       });
 
       return { success: true, message: "Consolidação revertida com sucesso." };

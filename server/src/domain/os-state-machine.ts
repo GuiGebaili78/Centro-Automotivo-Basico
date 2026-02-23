@@ -41,16 +41,14 @@ export class OsStateMachine {
     currentStatus: OsStatus,
     nextStatus: OsStatus | undefined,
   ): void {
-    // 1. Bloqueio Total de Imutabilidade
-    if (currentStatus === OsStatus.FINALIZADA) {
-      throw new Error(
-        "A OS está FINALIZADA e não pode sofrer nenhuma alteração.",
-      );
-    }
-
-    // 2. Se não houver mudança de status, permite (pois já passou pelo check de FINALIZADA)
+    // 1. Se não houver mudança de status, permite (mesmo se FINALIZADA, para permitir atualizar outros campos como defeito/diagnostico)
     if (!nextStatus || currentStatus === nextStatus) {
       return;
+    }
+
+    // 2. Bloqueio Total de Imutabilidade para mudanças de status reais
+    if (currentStatus === OsStatus.FINALIZADA) {
+      throw new Error("A OS está FINALIZADA e o status não pode ser alterado.");
     }
 
     // 3. Validação da Transição

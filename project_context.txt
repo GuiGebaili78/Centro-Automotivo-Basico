@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 02/21/2026 11:46:30
+PROJECT DUMP GENERATED ON 02/21/2026 16:35:16
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -1439,6 +1439,7 @@ FILE PATH: client\index.html
 </html>
 
 
+================================================================================
 FILE PATH: client\package.json
 ================================================================================
 {
@@ -12346,7 +12347,7 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-400 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-800 shadow-2xl z-50">
+    <aside className="w-64 bg-slate-900 text-slate-400 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-800 shadow-2xl z-50 print:hidden">
       <div className="border-b border-slate-800 bg-slate-950 flex items-center justify-center h-32 overflow-hidden shrink-0">
         {config?.logoUrl ? (
           <img
@@ -13929,6 +13930,228 @@ export const ContasTab = () => {
         variant={accountToToggle?.ativo ? "danger" : "primary"}
       />
     </div>
+  );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\components\shared\financeiro\ModalPagamentoUnificado.tsx
+================================================================================
+import React, { useState, useEffect } from "react";
+import { Modal } from "../../ui/Modal";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
+import { formatCurrency } from "../../../utils/formatCurrency";
+import { DollarSign, Calendar, Percent, Landmark, Save, X } from "lucide-react";
+
+interface ModalPagamentoUnificadoProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (data: {
+    accountId: number;
+    date: string;
+    discountValue: number;
+  }) => void;
+  totalAmount: number;
+  bankAccounts: any[];
+  title?: string;
+  showDiscount?: boolean;
+  isLoading?: boolean;
+}
+
+export const ModalPagamentoUnificado: React.FC<
+  ModalPagamentoUnificadoProps
+> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  totalAmount,
+  bankAccounts,
+  title = "Confirmar Pagamento",
+  showDiscount = false,
+  isLoading = false,
+}) => {
+  const [accountId, setAccountId] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+
+  // Discount States
+  const [discountType, setDiscountType] = useState<"VALUE" | "PERCENT">(
+    "VALUE",
+  );
+  const [discountInput, setDiscountInput] = useState("");
+  const [finalDiscount, setFinalDiscount] = useState(0);
+  const [netAmount, setNetAmount] = useState(totalAmount);
+
+  useEffect(() => {
+    let disc = 0;
+    const inputVal = Number(discountInput) || 0;
+
+    if (discountType === "PERCENT") {
+      disc = (totalAmount * inputVal) / 100;
+    } else {
+      disc = inputVal;
+    }
+
+    setFinalDiscount(disc);
+    setNetAmount(totalAmount - disc);
+  }, [discountInput, discountType, totalAmount]);
+
+  const handleConfirm = () => {
+    if (!accountId) return;
+    onConfirm({
+      accountId: Number(accountId),
+      date,
+      discountValue: showDiscount ? finalDiscount : 0,
+    });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <Modal onClose={onClose} title={title} className="max-w-md">
+      <div className="space-y-6 pt-4">
+        {/* Account Selection */}
+        <div>
+          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2 block">
+            Conta Bancária de Origem
+          </label>
+          <div className="relative">
+            <Landmark
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+              size={18}
+            />
+            <select
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-neutral-200 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all text-neutral-600"
+            >
+              <option value="">Selecione a conta...</option>
+              {bankAccounts.map((acc) => (
+                <option key={acc.id_conta} value={acc.id_conta}>
+                  {acc.nome} - Saldo: {formatCurrency(Number(acc.saldo_atual))}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Date Selection */}
+        <Input
+          label="Data do Pagamento"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          icon={Calendar}
+          required
+        />
+
+        {/* Amount Summary */}
+        <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 flex justify-between items-center">
+          <div>
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+              Valor Bruto
+            </p>
+            <p className="text-xl font-bold text-neutral-600">
+              {formatCurrency(totalAmount)}
+            </p>
+          </div>
+          <div className="h-10 w-10 bg-white rounded-full flex items-center justify-center text-neutral-300 shadow-sm">
+            <DollarSign size={20} />
+          </div>
+        </div>
+
+        {/* Discount Section */}
+        {showDiscount && (
+          <div className="space-y-4 border-t border-neutral-100 pt-4">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                Aplicar Desconto
+              </label>
+              <div className="flex bg-neutral-100 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setDiscountType("VALUE")}
+                  className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${
+                    discountType === "VALUE"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-neutral-500 hover:text-neutral-700"
+                  }`}
+                >
+                  R$
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDiscountType("PERCENT")}
+                  className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${
+                    discountType === "PERCENT"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-neutral-500 hover:text-neutral-700"
+                  }`}
+                >
+                  %
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                placeholder={discountType === "VALUE" ? "0.00" : "0"}
+                type="number"
+                value={discountInput}
+                onChange={(e) => setDiscountInput(e.target.value)}
+                icon={discountType === "VALUE" ? DollarSign : Percent}
+              />
+              <div className="bg-orange-50 p-2 rounded-lg border border-orange-100 flex flex-col justify-center px-4">
+                <p className="text-[9px] font-bold text-orange-400 uppercase tracking-wider">
+                  Desconto Final
+                </p>
+                <p className="text-sm font-black text-orange-600">
+                  - {formatCurrency(finalDiscount)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Net Amount - Focus */}
+        <div className="bg-blue-600 p-6 rounded-2xl shadow-lg shadow-blue-500/20 flex items-center justify-between text-white animate-in zoom-in duration-300">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-blue-100">
+              Valor Líquido Final
+            </p>
+            <p className="text-3xl font-black tracking-tighter">
+              {formatCurrency(netAmount)}
+            </p>
+          </div>
+          <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center">
+            <Save size={24} />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 pt-2">
+          <Button
+            variant="ghost"
+            className="flex-1"
+            onClick={onClose}
+            icon={X}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            className="flex-1"
+            onClick={handleConfirm}
+            icon={Save}
+            disabled={!accountId || isLoading}
+          >
+            {isLoading ? "Processando..." : "Confirmar Baixa"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 };
 
@@ -16274,7 +16497,7 @@ export function MainLayout() {
   return (
     <div className="flex bg-background min-h-screen w-full">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
+      <main className="flex-1 ml-64 p-8 overflow-y-auto print:m-0 print:w-full print:p-0 print:ml-0">
         <div className="w-full">
           {/* Breadcrumbs ou Header Global poderiam entrar aqui */}
           <Outlet />
@@ -18867,7 +19090,6 @@ export const Modal = ({
 
 ================================================================================
 FILE PATH: client\src\components\ui\PageLayout.tsx
-================================================================================
 import React from "react";
 
 interface PageLayoutProps {
@@ -20434,6 +20656,7 @@ export const ConfiguracaoPage = () => {
       }
 
       const img = new Image();
+      img.crossOrigin = "Anonymous";
       img.onload = () => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
@@ -20813,6 +21036,7 @@ import { CategorySelector } from "../components/shared/financeiro/CategorySelect
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { ModalPagamentoUnificado } from "../components/shared/financeiro/ModalPagamentoUnificado";
 import { toast } from "react-toastify";
 import {
   Plus,
@@ -20870,10 +21094,7 @@ export const ContasAPagarPage = () => {
   // Payment Confirmation Modal
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [selectedConta, setSelectedConta] = useState<any>(null);
-  const [paymentDate, setPaymentDate] = useState("");
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
-  const [selectedBank, setSelectedBank] = useState("");
-  const [paymentValue, setPaymentValue] = useState("");
 
   // Confirm Delete Modal
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -20980,20 +21201,24 @@ export const ContasAPagarPage = () => {
 
   const handleQuickPay = (conta: any) => {
     setSelectedConta(conta);
-    setPaymentDate(new Date().toISOString().split("T")[0]); // Default to today
-    setPaymentValue(Number(conta.valor).toFixed(2));
-    setSelectedBank(""); // Reset bank selection
     setPayModalOpen(true);
   };
 
-  const executePay = async () => {
+  const executePay = async (data: {
+    accountId: number;
+    date: string;
+    discountValue: number;
+  }) => {
     if (!selectedConta) return;
     try {
+      // O valor final pago é o valor da conta menos o desconto
+      const valorFinal = Number(selectedConta.valor) - data.discountValue;
+
       await api.put(`/contas-pagar/${selectedConta.id_conta_pagar}`, {
         status: "PAGO",
-        valor: Number(paymentValue),
-        dt_pagamento: new Date(paymentDate).toISOString(),
-        id_conta_bancaria: selectedBank || null,
+        valor: valorFinal,
+        dt_pagamento: new Date(data.date).toISOString(),
+        id_conta_bancaria: data.accountId || null,
       });
       toast.success("Conta marcada como PAGA.");
       loadContas();
@@ -21676,81 +21901,17 @@ export const ContasAPagarPage = () => {
         </Modal>
       )}
 
-      {/* MODAL PAGAMENTO */}
-      {payModalOpen && (
-        <Modal
-          title="Baixa de Pagamento"
-          onClose={() => setPayModalOpen(false)}
-          className="max-w-md"
-        >
-          <div className="space-y-6 pt-2">
-            <div>
-              <p className="text-sm font-medium text-neutral-500 mb-1">
-                Referência
-              </p>
-              <p className="text-lg font-bold text-neutral-700">
-                {selectedConta?.descricao}
-              </p>
-              <p className="text-sm text-neutral-500">
-                {selectedConta?.credor}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest block mb-1">
-                Valor do Pagamento
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 font-bold text-xl">
-                  R$
-                </span>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-full bg-emerald-50/50 border border-emerald-100 rounded-xl py-4 pl-12 pr-4 text-2xl font-bold text-emerald-700 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all placeholder:text-emerald-300/50"
-                  value={paymentValue}
-                  onChange={(e) => setPaymentValue(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <Input
-              label="Data do Pagamento"
-              type="date"
-              value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
-            />
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-                Conta Bancária de Saída
-              </label>
-              <select
-                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
-                value={selectedBank}
-                onChange={(e) => setSelectedBank(e.target.value)}
-              >
-                <option value="">Selecione a conta...</option>
-                {bankAccounts.map((b) => (
-                  <option key={b.id_conta} value={b.id_conta}>
-                    {b.nome} ({b.banco}) - Saldo:{" "}
-                    {formatCurrency(Number(b.saldo_atual))}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button variant="ghost" onClick={() => setPayModalOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={executePay} variant="primary">
-                Confirmar Pagamento
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Modal de Pagamento Unificado */}
+      <ModalPagamentoUnificado
+        isOpen={payModalOpen}
+        onClose={() => setPayModalOpen(false)}
+        onConfirm={executePay}
+        totalAmount={Number(selectedConta?.valor || 0)}
+        bankAccounts={bankAccounts}
+        title="Baixa de Conta a Pagar"
+        showDiscount={true}
+        isLoading={loading}
+      />
 
       {/* Confirm Delete Modal */}
       <ConfirmModal
@@ -21982,6 +22143,2827 @@ export function DaschboardPage() {
 ================================================================================
 FILE PATH: client\src\pages\EntradaEstoquePage.tsx
 ================================================================================
+import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Modal } from "../components/ui/Modal";
+import { FornecedorForm } from "../components/forms/FornecedorForm";
+import { EntradaFornecedorForm } from "../components/estoque/EntradaFornecedorForm";
+import { EntradaItensForm } from "../components/estoque/EntradaItensForm";
+import { api } from "../services/api";
+import { EstoqueService } from "../services/estoque.service";
+import type {
+  IItemEntrada,
+  IEntradaEstoquePayload,
+} from "../types/estoque.types";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import { CheckCircle, FileText } from "lucide-react";
+
+export const EntradaEstoquePage = () => {
+  // Header State
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [invoice, setInvoice] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [obs, setObs] = useState("");
+  const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
+
+  // Items State
+  const [items, setItems] = useState<IItemEntrada[]>([]);
+
+  // Financial Modal State
+  const [showFinancialModal, setShowFinancialModal] = useState(false);
+  const [enableFinancial, setEnableFinancial] = useState(true);
+  const [finDesc, setFinDesc] = useState("");
+  const [finValue, setFinValue] = useState("");
+  const [finDueDate, setFinDueDate] = useState("");
+  const [finPaid, setFinPaid] = useState(false);
+  const [finPayDate, setFinPayDate] = useState("");
+
+  // Load Suppliers
+  useEffect(() => {
+    loadSuppliers();
+  }, []);
+
+  const loadSuppliers = () => {
+    api
+      .get("/fornecedor")
+      .then((res) => setSuppliers(res.data))
+      .catch(console.error);
+  };
+
+  const totalValue = items.reduce(
+    (acc, i) => acc + i.quantidade * i.valor_custo,
+    0,
+  );
+
+  const handlePreSubmit = () => {
+    if (!selectedSupplierId) {
+      toast.error("Selecione um Fornecedor.");
+      return;
+    }
+    if (items.length === 0) {
+      toast.error("Adicione pelo menos um item.");
+      return;
+    }
+
+    // Pre-fill Financial Data
+    const supplierObj = suppliers.find(
+      (s) => s.id_fornecedor === Number(selectedSupplierId),
+    );
+    const supplierName =
+      supplierObj?.nome_fantasia || supplierObj?.nome || "Fornecedor";
+    setFinDesc(`Compra Estoque - NF ${invoice || "S/N"} - ${supplierName}`);
+    setFinValue(totalValue.toFixed(2));
+    setFinDueDate(date); // Default due date = purchase date
+    setFinPayDate(new Date().toISOString().split("T")[0]); // Default pay date = today
+    setFinPaid(false); // Default to Unpaid
+    setEnableFinancial(true);
+
+    setShowFinancialModal(true);
+  };
+
+  const handleFinalSubmit = async () => {
+    try {
+      const payload: IEntradaEstoquePayload = {
+        id_fornecedor: Number(selectedSupplierId),
+        nota_fiscal: invoice,
+        data_compra: new Date(date),
+        obs: obs,
+        itens: items,
+        financeiro: enableFinancial
+          ? {
+              descricao: finDesc,
+              valor: Number(finValue),
+              dt_vencimento: finDueDate,
+              dt_pagamento: finPaid ? finPayDate : null,
+              status: finPaid ? "PAGO" : "PENDENTE",
+            }
+          : undefined,
+      };
+
+      await EstoqueService.createEntry(payload);
+
+      toast.success("Entrada Registrada com Sucesso!");
+      setShowFinancialModal(false);
+
+      // Clear All
+      setItems([]);
+      setInvoice("");
+      setObs("");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(
+        "Erro ao processar entrada: " + (e.response?.data?.error || e.message),
+      );
+    }
+  };
+
+  return (
+    <PageLayout
+      title="Nova Compra / Entrada de Estoque"
+      subtitle="Registre novas aquisições de peças e atualize o estoque automaticamente."
+    >
+      <div className="space-y-6">
+        <EntradaFornecedorForm
+          suppliers={suppliers}
+          selectedSupplierId={selectedSupplierId}
+          setSelectedSupplierId={setSelectedSupplierId}
+          invoice={invoice}
+          setInvoice={setInvoice}
+          date={date}
+          setDate={setDate}
+          onNewSupplier={() => setShowNewSupplierModal(true)}
+        />
+
+        <EntradaItensForm
+          items={items}
+          setItems={setItems}
+          onSubmit={handlePreSubmit}
+          totalValue={totalValue}
+        />
+
+        {/* NEW FINANCIAL MODAL - Could also be extracted but kept here for now as it orchestrates final submit */}
+        {showFinancialModal && (
+          <Modal
+            title="Financeiro da Compra"
+            onClose={() => setShowFinancialModal(false)}
+            className="max-w-2xl"
+          >
+            <div className="space-y-6 pt-2">
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+                <div className="bg-blue-100 p-2 rounded-lg text-blue-600 mt-1">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <p className="text-sm text-blue-900 font-bold">
+                    Confirmação de Contas a Pagar
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1 leading-relaxed">
+                    Um registro será criado em <strong>Contas a Pagar</strong>.
+                    Se marcado como pago, o valor será debitado do{" "}
+                    <strong>Livro Caixa</strong> automaticamente.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl border border-neutral-100">
+                <input
+                  type="checkbox"
+                  id="chkEnableFin"
+                  checked={enableFinancial}
+                  onChange={(e) => setEnableFinancial(e.target.checked)}
+                  className="w-5 h-5 accent-primary-600 rounded cursor-pointer"
+                />
+                <label
+                  htmlFor="chkEnableFin"
+                  className="font-bold text-neutral-700 cursor-pointer select-none text-sm"
+                >
+                  Lançar valor no Financeiro (Contas a Pagar)?
+                </label>
+              </div>
+
+              {enableFinancial && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
+                  <Input
+                    label="Descrição do Lançamento"
+                    value={finDesc}
+                    onChange={(e) => setFinDesc(e.target.value)}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Valor Total (R$)"
+                      type="number"
+                      value={finValue}
+                      readOnly
+                      className="bg-neutral-100 font-bold text-neutral-600"
+                    />
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
+                        Vencimento
+                      </label>
+                      <input
+                        type="date"
+                        value={finDueDate}
+                        onChange={(e) => setFinDueDate(e.target.value)}
+                        className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-blue-500 font-medium h-[42px]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200">
+                    <div className="flex items-center gap-3 mb-4">
+                      <input
+                        type="checkbox"
+                        id="chkPaid"
+                        checked={finPaid}
+                        onChange={(e) => setFinPaid(e.target.checked)}
+                        className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
+                      />
+                      <label
+                        htmlFor="chkPaid"
+                        className="font-bold text-neutral-700 cursor-pointer select-none text-sm"
+                      >
+                        Compra à vista / Já foi paga?
+                      </label>
+                    </div>
+
+                    {finPaid && (
+                      <div className="animate-in fade-in slide-in-from-top-2">
+                        <label className="block text-xs font-bold text-emerald-600 uppercase mb-1">
+                          Data do Pagamento
+                        </label>
+                        <input
+                          type="date"
+                          value={finPayDate}
+                          onChange={(e) => setFinPayDate(e.target.value)}
+                          className="w-full border p-2.5 rounded-xl outline-none focus:border-emerald-500 font-bold text-emerald-800 border-emerald-200 bg-emerald-50 h-[42px]"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4 gap-3 border-t border-neutral-100 mt-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowFinancialModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleFinalSubmit}
+                  icon={CheckCircle}
+                >
+                  Confirmar Lançamento
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* NEW SUPPLIER MODAL */}
+        {showNewSupplierModal && (
+          <Modal
+            title="Novo Fornecedor"
+            onClose={() => setShowNewSupplierModal(false)}
+            className="max-w-5xl"
+          >
+            <FornecedorForm
+              onSuccess={(newSupplier) => {
+                if (newSupplier) {
+                  setSuppliers((prev) => [...prev, newSupplier]);
+                  setSelectedSupplierId(String(newSupplier.id_fornecedor));
+                  toast.success("Fornecedor Cadastrado e Selecionado!");
+                }
+                setShowNewSupplierModal(false);
+              }}
+              onCancel={() => setShowNewSupplierModal(false)}
+            />
+          </Modal>
+        )}
+      </div>
+    </PageLayout>
+  );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\ExtratoBancarioPage.tsx
+================================================================================
+import { useState, useEffect } from "react";
+import { formatCurrency } from "../utils/formatCurrency";
+import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { api } from "../services/api";
+import { CategoryManager } from "../components/shared/financeiro/CategoryManager";
+import {
+  ArrowLeft,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Plus,
+  Search,
+  Calendar,
+  Wallet,
+  ArrowRight,
+  Settings,
+  FilterX,
+} from "lucide-react";
+import type { IContaBancaria } from "../types/backend";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import { Modal } from "../components/ui/Modal";
+
+export const ExtratoBancarioPage = () => {
+  const { idConta } = useParams();
+  const navigate = useNavigate();
+
+  // State
+  const [conta, setConta] = useState<IContaBancaria | null>(null);
+  const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
+    start: new Date(new Date().setDate(new Date().getDate() - 30))
+      .toISOString()
+      .split("T")[0], // Last 30 days
+    end: new Date().toISOString().split("T")[0],
+  });
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedType, setSelectedType] = useState("");
+  const [activeShortcut, setActiveShortcut] = useState<string | null>(
+    "30 Dias",
+  );
+
+  // Modal & Form State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    descricao: "",
+    valor: "",
+    tipo_movimentacao: "SAIDA",
+    categoria: "OUTROS",
+    obs: "",
+  });
+
+  useEffect(() => {
+    if (idConta) {
+      loadData();
+      loadCategories();
+    }
+  }, [idConta]);
+
+  const loadCategories = async () => {
+    try {
+      const res = await api.get("/categoria-financeira");
+      setCategories(res.data);
+    } catch (error) {
+      console.error("Erro ao carregar categorias:", error);
+    }
+  };
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [contaRes, movRes] = await Promise.all([
+        api.get("/conta-bancaria"),
+        api.get("/livro-caixa"),
+      ]);
+
+      const contaFound = contaRes.data.find(
+        (c: any) => c.id_conta === Number(idConta),
+      );
+      setConta(contaFound || null);
+
+      // 1. Livro Caixa (Manuais ou Automáticos que geraram registro) - FONTE ÚNICA
+      const entriesLivro = movRes.data
+        .filter((m: any) => m.id_conta_bancaria === Number(idConta))
+        .map((m: any) => ({
+          id: `cx-${m.id_livro_caixa}`,
+          id_livro_caixa: m.id_livro_caixa,
+          dt_movimentacao: m.dt_movimentacao,
+          descricao: m.descricao,
+          categoria: m.categoria,
+          tipo_movimentacao: m.tipo_movimentacao,
+          valor: Number(m.valor),
+          obs: m.obs || "",
+          deleted_at: m.deleted_at,
+          origem: "LIVRO_CAIXA",
+          paymentMethod:
+            m.categoria === "CONCILIACAO_CARTAO"
+              ? "CARTÃO"
+              : m.descricao.includes("PIX")
+                ? "PIX"
+                : m.origem === "MANUAL"
+                  ? "MANUAL"
+                  : "OUTROS",
+        }));
+
+      const allMovs = entriesLivro.sort(
+        (a: any, b: any) =>
+          new Date(b.dt_movimentacao).getTime() -
+          new Date(a.dt_movimentacao).getTime(),
+      );
+
+      setMovimentacoes(allMovs);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Apply Filters
+  const filteredMovimentacoes = movimentacoes.filter((mov) => {
+    const matchesSearch = (() => {
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      const terms = term.split(" ").filter((t) => t.trim() !== "");
+      const searchString = [
+        mov.descricao || "",
+        mov.obs || "",
+        mov.categoria || "",
+        mov.paymentMethod || "",
+        mov.tipo_movimentacao === "ENTRADA" ? "entrada" : "saída",
+        mov.valor?.toString() || "",
+        (Number(mov.valor) || 0).toLocaleString("pt-BR", {
+          minimumFractionDigits: 2,
+        }),
+        new Date(mov.dt_movimentacao).toLocaleDateString("pt-BR"),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return terms.every((t) => searchString.includes(t));
+    })();
+
+    const matchesCategory = selectedCategory
+      ? mov.categoria === selectedCategory
+      : true;
+    const matchesType = selectedType
+      ? mov.tipo_movimentacao === selectedType
+      : true;
+
+    const movDate = new Date(mov.dt_movimentacao).toISOString().split("T")[0];
+    const matchesDate =
+      (!dateRange.start || movDate >= dateRange.start) &&
+      (!dateRange.end || movDate <= dateRange.end);
+
+    return matchesSearch && matchesCategory && matchesType && matchesDate;
+  });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-neutral-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
+
+  if (!conta) {
+    return (
+      <div className="p-8 text-center bg-surface min-h-screen">
+        <h2 className="text-xl font-bold text-neutral-800">
+          Conta não encontrada
+        </h2>
+        <Button
+          onClick={() => navigate("/financeiro/livro-caixa")}
+          variant="ghost"
+          className="mt-4"
+        >
+          Voltar
+        </Button>
+      </div>
+    );
+  }
+
+  // Apply Totals (Based on Filtered Data)
+  const totalEntradas = filteredMovimentacoes
+    .filter((m) => m.tipo_movimentacao === "ENTRADA")
+    .reduce((acc: any, m: any) => acc + Number(m.valor), 0);
+
+  const totalSaidas = filteredMovimentacoes
+    .filter((m) => m.tipo_movimentacao === "SAIDA")
+    .reduce((acc: any, m: any) => acc + Number(m.valor), 0);
+
+  return (
+    <div className="min-h-screen bg-neutral-50 p-6 animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="mb-8 max-w-7xl mx-auto space-y-6">
+        <button
+          onClick={() => navigate("/financeiro?tab=contas")}
+          className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors font-bold text-sm"
+        >
+          <ArrowLeft size={16} />
+          Voltar para Contas Bancárias
+        </button>
+
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-surface p-8 rounded-2xl border border-neutral-200 shadow-sm relative overflow-hidden">
+          {/* Decorative Background */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-primary-50 text-primary-600 rounded-lg">
+                <Wallet size={24} />
+              </div>
+              <h1 className="text-3xl font-bold text-neutral-900">
+                {conta.nome}
+              </h1>
+              <span className="px-3 py-1 bg-neutral-100 rounded-lg text-xs font-bold text-neutral-600 uppercase tracking-wide border border-neutral-200">
+                {conta.banco}
+              </span>
+            </div>
+            <p className="text-neutral-500 font-medium ml-1">
+              {conta.agencia && `Ag: ${conta.agencia}`}{" "}
+              {conta.conta && `CC: ${conta.conta}`}
+            </p>
+          </div>
+
+          <div className="text-right flex items-center gap-6 relative z-10">
+            <div>
+              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">
+                Saldo Atual
+              </p>
+              <p
+                className={`text-4xl font-black ${Number(conta.saldo_atual) >= 0 ? "text-neutral-900" : "text-red-500"}`}
+              >
+                {formatCurrency(Number(conta.saldo_atual))}
+              </p>
+            </div>
+
+            <div className="h-12 w-px bg-neutral-200 hidden md:block"></div>
+            <CategoryManager
+              isOpen={isCategoryModalOpen}
+              onClose={() => setIsCategoryModalOpen(false)}
+              onUpdate={() => {
+                loadCategories();
+              }}
+            />
+            <Button
+              onClick={() => setIsCategoryModalOpen(true)}
+              variant="secondary"
+              icon={Settings}
+            >
+              Categorias
+            </Button>
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              variant="primary"
+              size="lg"
+              icon={Plus}
+              className="shadow-xl shadow-primary-500/20"
+            >
+              Novo Lançamento
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Date Shortcuts */}
+        <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 w-fit">
+          {[
+            { label: "Hoje", days: 0 },
+            { label: "7 Dias", days: 7 },
+            { label: "15 Dias", days: 15 },
+            { label: "30 Dias", days: 30 },
+            { label: "Mês Atual", type: "MONTH" },
+          ].map((item: any) => (
+            <button
+              key={item.label}
+              onClick={() => {
+                setActiveShortcut(item.label);
+                const end = new Date().toISOString().split("T")[0];
+                let start = "";
+                if (item.type === "MONTH") {
+                  const now = new Date();
+                  start = new Date(now.getFullYear(), now.getMonth(), 1)
+                    .toISOString()
+                    .split("T")[0];
+                } else {
+                  start = new Date(
+                    new Date().setDate(new Date().getDate() - item.days),
+                  )
+                    .toISOString()
+                    .split("T")[0];
+                }
+                setDateRange({ start, end });
+              }}
+              className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
+                activeShortcut === item.label
+                  ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Filter Bar */}
+        <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex flex-col xl:flex-row gap-4 items-end">
+          <div className="flex-1 w-full xl:w-auto">
+            <Input
+              label="Buscar"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Descrição ou observação..."
+              icon={Search}
+            />
+          </div>
+          <div className="w-full xl:w-auto flex gap-2">
+            <div>
+              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+                De
+              </label>
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => {
+                  setDateRange({ ...dateRange, start: e.target.value });
+                  setActiveShortcut(null);
+                }}
+                className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+                Até
+              </label>
+              <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => {
+                  setDateRange({ ...dateRange, end: e.target.value });
+                  setActiveShortcut(null);
+                }}
+                className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
+              />
+            </div>
+          </div>
+          <div className="w-full xl:w-48">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+              Tipo
+            </label>
+            <div className="relative">
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
+              >
+                <option value="">Todos</option>
+                <option value="ENTRADA">Entradas</option>
+                <option value="SAIDA">Saídas</option>
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                <ArrowDownCircle size={14} />
+              </div>
+            </div>
+          </div>
+          <div className="w-full xl:w-56">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+              Categoria
+            </label>
+            <div className="relative">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
+              >
+                <option value="">Todas</option>
+                {categories.map((cat) => (
+                  <option key={cat.id_categoria} value={cat.nome}>
+                    {cat.nome}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                <ArrowDownCircle size={14} />
+              </div>
+            </div>
+          </div>
+          <div className="w-full xl:w-auto">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setSearchTerm("");
+                setActiveShortcut(null);
+                setDateRange({
+                  start: new Date(new Date().setDate(new Date().getDate() - 30))
+                    .toISOString()
+                    .split("T")[0],
+                  end: new Date().toISOString().split("T")[0],
+                });
+                setSelectedCategory("");
+                setSelectedType("");
+              }}
+              className="h-[42px] w-full shadow-lg shadow-primary-500/20"
+              icon={FilterX}
+            >
+              Limpar
+            </Button>
+          </div>
+        </div>
+
+        {/* Summary Area */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+                Entradas
+              </p>
+              <p className="text-2xl font-black text-emerald-600">
+                {formatCurrency(totalEntradas)}
+              </p>
+            </div>
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+              <ArrowUpCircle size={24} />
+            </div>
+          </div>
+          <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+                Saídas
+              </p>
+              <p className="text-2xl font-black text-red-600">
+                {formatCurrency(totalSaidas)}
+              </p>
+            </div>
+            <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+              <ArrowDownCircle size={24} />
+            </div>
+          </div>
+          <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+                Resultado
+              </p>
+              <p
+                className={`text-2xl font-black ${totalEntradas - totalSaidas >= 0 ? "text-blue-600" : "text-red-500"}`}
+              >
+                {formatCurrency(totalEntradas - totalSaidas)}
+              </p>
+            </div>
+            <div
+              className={`p-3 rounded-xl ${totalEntradas - totalSaidas >= 0 ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}
+            >
+              <ArrowRight size={24} />
+            </div>
+          </div>
+        </div>
+
+        {/* Transactions Table */}
+        <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+          <table className="tabela-limpa w-full">
+            <thead>
+              <tr className="">
+                <th className="p-4 w-40">Data</th>
+                <th className="p-4">Descrição</th>
+                <th className="p-4 w-32">Forma Pagto</th>
+                <th className="p-4 w-40">Categoria</th>
+                <th className="p-4 w-32 text-center">Tipo</th>
+                <th className="p-4 w-40 text-right">Valor</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {filteredMovimentacoes.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-12 text-center text-neutral-400">
+                    <div className="flex flex-col items-center gap-2">
+                      <Search size={32} className="opacity-20 mb-2" />
+                      <p className="font-bold">
+                        Nenhuma movimentação encontrada.
+                      </p>
+                      <p className="text-xs">Tente ajustar os filtros.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredMovimentacoes.map((mov) => (
+                  <tr
+                    key={mov.id_livro_caixa}
+                    className={`hover:bg-neutral-50 transition-colors group ${mov.deleted_at ? "opacity-50" : ""}`}
+                  >
+                    <td className="p-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 text-sm font-bold text-neutral-700">
+                          <Calendar size={14} className="text-neutral-400" />
+                          {new Date(mov.dt_movimentacao).toLocaleDateString()}
+                        </div>
+                        <span className="text-[10px] font-bold text-neutral-400 pl-5">
+                          {new Date(mov.dt_movimentacao).toLocaleTimeString(
+                            [],
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span
+                          className={`text-sm font-bold text-neutral-900 ${mov.deleted_at ? "line-through" : ""}`}
+                        >
+                          {mov.descricao}
+                        </span>
+                        {mov.obs && (
+                          <span className="text-xs font-medium text-neutral-500 mt-0.5 italic truncate max-w-[300px]">
+                            {mov.obs}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-neutral-100 ${!mov.paymentMethod || mov.paymentMethod === "MANUAL" ? "text-neutral-500" : "text-primary-600 bg-primary-50"}`}
+                      >
+                        {mov.paymentMethod || "MANUAL"}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border border-neutral-200">
+                        {mov.categoria === "CONCILIACAO_CARTAO"
+                          ? "Recebimento (Cartão)"
+                          : mov.categoria === "VENDA"
+                            ? "Faturamento"
+                            : mov.categoria}
+                      </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      {mov.tipo_movimentacao === "ENTRADA" ? (
+                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                          <ArrowUpCircle size={16} />
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-50 text-red-600 border border-red-100">
+                          <ArrowDownCircle size={16} />
+                        </div>
+                      )}
+                    </td>
+                    <td
+                      className={`p-4 text-right font-black text-sm whitespace-nowrap ${
+                        mov.deleted_at
+                          ? "text-neutral-400 line-through"
+                          : mov.tipo_movimentacao === "ENTRADA"
+                            ? "text-emerald-600"
+                            : "text-red-600"
+                      }`}
+                    >
+                      {mov.tipo_movimentacao === "SAIDA" ? "- " : "+ "}
+                      {formatCurrency(Number(mov.valor))}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* CREATE MODAL */}
+      {isModalOpen && (
+        <Modal
+          title="Novo Lançamento Bancário"
+          onClose={() => setIsModalOpen(false)}
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                setFormLoading(true);
+                await api.post("/livro-caixa", {
+                  ...formData,
+                  id_conta_bancaria: Number(idConta),
+                  origem: "MANUAL",
+                });
+                setIsModalOpen(false);
+                setFormData({
+                  descricao: "",
+                  valor: "",
+                  tipo_movimentacao: "SAIDA",
+                  categoria: "OUTROS",
+                  obs: "",
+                });
+                loadData(); // Recarrega extrato e saldo
+              } catch (error) {
+                console.error(error);
+                toast.error("Erro ao criar lançamento.");
+              } finally {
+                setFormLoading(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <Input
+                label="Descrição"
+                required
+                value={formData.descricao}
+                onChange={(e) =>
+                  setFormData({ ...formData, descricao: e.target.value })
+                }
+                placeholder="Ex: Taxa Bancária, Material de Limpeza..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Input
+                  label="Valor (R$)"
+                  required
+                  type="number"
+                  step="0.01"
+                  value={formData.valor}
+                  onChange={(e) =>
+                    setFormData({ ...formData, valor: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                  Tipo
+                </label>
+                <div className="relative">
+                  <select
+                    value={formData.tipo_movimentacao}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        tipo_movimentacao: e.target.value,
+                      })
+                    }
+                    className="w-full bg-neutral-50 border border-neutral-200 px-3 py-[11px] rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="ENTRADA">Entrada (+)</option>
+                    <option value="SAIDA">Saída (-)</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                    <ArrowDownCircle size={14} />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                Categoria
+              </label>
+              <div className="relative">
+                <select
+                  value={formData.categoria}
+                  onChange={(e) =>
+                    setFormData({ ...formData, categoria: e.target.value })
+                  }
+                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-[11px] rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
+                >
+                  {categories.map((cat) => (
+                    <option key={cat.id_categoria} value={cat.nome}>
+                      {cat.nome}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+                  <ArrowDownCircle size={14} />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
+                Observação (Opcional)
+              </label>
+              <textarea
+                rows={3}
+                value={formData.obs}
+                onChange={(e) =>
+                  setFormData({ ...formData, obs: e.target.value })
+                }
+                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-lg font-medium text-neutral-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all"
+              />
+            </div>
+            <div className="pt-4 flex gap-3 justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={formLoading}
+                className="shadow-lg shadow-primary-500/20"
+              >
+                {formLoading ? "Salvando..." : "Confirmar Lançamento"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\FechamentoFinanceiroDetalhePage.tsx
+================================================================================
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useParams, useBlocker } from "react-router-dom";
+import { formatCurrency } from "../utils/formatCurrency";
+import { api } from "../services/api";
+import { getStatusStyle } from "../utils/osUtils";
+import {
+  Save,
+  Plus,
+  BadgeCheck,
+  Trash2,
+  ArrowLeft,
+  Edit,
+  AlertCircle,
+  Truck,
+  Phone,
+} from "lucide-react";
+import { PagamentoClienteForm } from "../components/forms/PagamentoClienteForm";
+import { FornecedorForm } from "../components/forms/FornecedorForm";
+import { LaborManager } from "../components/shared/os/LaborManager";
+import { Modal } from "../components/ui/Modal";
+import { Button } from "../components/ui/Button";
+import { ActionButton } from "../components/ui/ActionButton";
+import { Card } from "../components/ui/Card";
+import { toast } from "react-toastify";
+
+interface ItemOS {
+  id_iten: number;
+  id_pecas_estoque?: number;
+  valor_total: number;
+  valor_venda: number;
+  descricao: string;
+  quantidade: number;
+  codigo_referencia?: string;
+  pecas_estoque?: {
+    valor_custo: number;
+    nome: string;
+  };
+  pagamentos_peca?: {
+    id_pagamento_peca: number;
+    id_fornecedor: number;
+    custo_real: number;
+    pago_ao_fornecedor: boolean;
+  }[];
+}
+
+interface IFornecedor {
+  id_fornecedor: number;
+  nome: string;
+}
+
+interface ItemFinanceiroState {
+  id_pagamento_peca?: number;
+  id_fornecedor: string;
+  custo_real: string;
+  pago_fornecedor: boolean;
+}
+
+interface OSData {
+  id_os: number;
+  dt_abertura: string;
+  status: string;
+  valor_total_cliente: number;
+  valor_mao_de_obra: number;
+  valor_pecas: number;
+  itens_os: ItemOS[];
+  defeito_relatado?: string;
+  diagnostico?: string;
+  cliente: {
+    pessoa_fisica?: { pessoa: { nome: string } };
+    pessoa_juridica?: { nome_fantasia: string };
+    telefone_1?: string;
+    id_cliente?: number;
+  };
+  veiculo: {
+    placa: string;
+    modelo: string;
+    cor: string;
+  };
+  cliente_telefone?: string;
+  pagamentos_cliente?: {
+    id_pagamento_cliente: number;
+    metodo_pagamento: string;
+    valor: number;
+    data_pagamento: string;
+    bandeira_cartao?: string;
+    codigo_transacao?: string;
+    qtd_parcelas?: number;
+    tipo_parcelamento?: string;
+    deleted_at?: string;
+    conta_bancaria?: { nome_banco: string; nome_conta: string };
+    operadora?: { nome: string };
+  }[];
+  fechamento_financeiro?: {
+    id_fechamento_financeiro: number;
+  };
+  servicos_mao_de_obra?: {
+    id_servico_mao_de_obra: number;
+    valor: number;
+    funcionario?: {
+      pessoa_fisica?: {
+        pessoa: {
+          nome: string;
+        };
+      };
+      cargo?: string;
+    };
+  }[];
+}
+
+// ... existing code ...
+
+export const FechamentoFinanceiroDetalhePage = () => {
+  const { id } = useParams(); // Get ID from URL
+  const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(false);
+  const [fetchingOs, setFetchingOs] = useState(false);
+
+  const [osData, setOsData] = useState<OSData | null>(null);
+  const [fornecedores, setFornecedores] = useState<IFornecedor[]>([]);
+
+  const [itemsState, setItemsState] = useState<
+    Record<number, ItemFinanceiroState>
+  >({});
+  const [showFornecedorModal, setShowFornecedorModal] = useState(false);
+  const [paymentModal, setPaymentModal] = useState<{
+    isOpen: boolean;
+    data: any;
+  }>({ isOpen: false, data: null });
+
+  // Item Edit State
+  const [editItemModal, setEditItemModal] = useState<{
+    isOpen: boolean;
+    item: ItemOS | null;
+  }>({ isOpen: false, item: null });
+  const [editItemForm, setEditItemForm] = useState({
+    descricao: "",
+    quantidade: 1,
+    valor_venda: 0,
+    codigo_referencia: "",
+  });
+
+  // Dirty Check State
+  const [isDirty, setIsDirty] = useState(false);
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
+
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  const handleLaborTotalChange = useCallback((total: number) => {
+    setOsData((prev) =>
+      prev
+        ? {
+            ...prev,
+            valor_mao_de_obra: total,
+            valor_total_cliente: (prev.valor_pecas || 0) + total,
+          }
+        : null,
+    );
+  }, []);
+
+  useEffect(() => {
+    loadFornecedores();
+    loadEmployees();
+    if (id) {
+      fetchOsData(Number(id));
+    }
+  }, [id]);
+
+  const loadFornecedores = async () => {
+    try {
+      const response = await api.get("/fornecedor");
+      setFornecedores(response.data);
+    } catch (error) {
+      console.error("Erro ao carregar fornecedores");
+    }
+  };
+
+  const loadEmployees = async () => {
+    try {
+      const response = await api.get("/funcionario");
+      setEmployees(response.data);
+    } catch (error) {
+      console.error("Erro ao carregar funcionários");
+    }
+  };
+
+  const fetchOsData = async (osId: number) => {
+    setFetchingOs(true);
+    try {
+      const response = await api.get(`/ordem-de-servico/${osId}`);
+      const os: OSData = response.data;
+      setOsData(os);
+
+      const initialItemsState: Record<number, ItemFinanceiroState> = {};
+      os.itens_os.forEach((item) => {
+        const existingPayment =
+          item.pagamentos_peca && item.pagamentos_peca.length > 0
+            ? item.pagamentos_peca[0]
+            : null;
+
+        const initialCost = existingPayment
+          ? String(existingPayment.custo_real)
+          : item.pecas_estoque?.valor_custo
+            ? (
+                Number(item.pecas_estoque.valor_custo) * item.quantidade
+              ).toFixed(2)
+            : "";
+
+        initialItemsState[item.id_iten] = {
+          id_pagamento_peca: existingPayment?.id_pagamento_peca,
+          id_fornecedor: existingPayment
+            ? String(existingPayment.id_fornecedor)
+            : "",
+          custo_real: initialCost,
+          pago_fornecedor: existingPayment
+            ? existingPayment.pago_ao_fornecedor
+            : false,
+        };
+      });
+      setItemsState(initialItemsState);
+      setIsDirty(false); // Reset dirty after fetch
+    } catch (error) {
+      console.error(error);
+      toast.error("OS não encontrada ou erro ao buscar dados.");
+    } finally {
+      setFetchingOs(false);
+    }
+  };
+
+  const handleDeletePayment = (paymentId: number) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Excluir Pagamento",
+      message: "Tem certeza que deseja excluir este pagamento?",
+      onConfirm: async () => {
+        try {
+          await api.delete(`/pagamento-cliente/${paymentId}`);
+          toast.success("Pagamento removido!");
+          if (osData) fetchOsData(osData.id_os);
+        } catch (error) {
+          toast.error("Erro ao remover pagamento.");
+        }
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  const handleItemChange = (
+    id_iten: number,
+    field: keyof ItemFinanceiroState,
+    value: any,
+  ) => {
+    setItemsState((prev) => {
+      const newState = {
+        ...prev,
+        [id_iten]: {
+          ...prev[id_iten],
+          [field]: value,
+        },
+      };
+      return newState;
+    });
+    setIsDirty(true);
+  };
+
+  // --- ITEM CRUD ---
+  const handleOpenEditItem = (item: ItemOS) => {
+    setEditItemForm({
+      descricao: item.descricao,
+      quantidade: item.quantidade,
+      valor_venda:
+        Number(item.valor_venda) || Number(item.valor_total) / item.quantidade,
+      codigo_referencia: item.codigo_referencia || "",
+    });
+    setEditItemModal({ isOpen: true, item });
+  };
+
+  const handleDeleteItemOS = async (itemId: number) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Excluir Item",
+      message: "Tem certeza que deseja excluir este item da OS?",
+      onConfirm: async () => {
+        try {
+          await api.delete(`/itens-os/${itemId}`);
+          toast.success("Item removido com sucesso!");
+          if (osData) fetchOsData(osData.id_os);
+        } catch (error) {
+          console.error(error);
+          toast.error("Erro ao excluir item.");
+        }
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  const handleSaveEditItem = async () => {
+    if (!editItemModal.item || !osData) return;
+    try {
+      const valorTotal =
+        Number(editItemForm.quantidade) * Number(editItemForm.valor_venda);
+      await api.put(`/itens-os/${editItemModal.item.id_iten}`, {
+        descricao: editItemForm.descricao,
+        quantidade: Number(editItemForm.quantidade),
+        valor_venda: Number(editItemForm.valor_venda),
+        valor_total: valorTotal,
+        codigo_referencia: editItemForm.codigo_referencia,
+      });
+
+      setEditItemModal({ isOpen: false, item: null });
+      setEditItemModal({ isOpen: false, item: null });
+      fetchOsData(osData.id_os);
+      toast.success("Item atualizado!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao atualizar item.");
+    }
+  };
+
+  const calculateTotals = () => {
+    if (!osData)
+      return {
+        totalReceita: 0,
+        totalCusto: 0,
+        lucro: 0,
+        margem: 0,
+        totalItemsRevenue: 0,
+        totalItemsCost: 0,
+        totalLaborRevenue: 0,
+      };
+
+    const totalItemsRevenue = osData.itens_os.reduce(
+      (acc, i) => acc + Number(i.valor_total),
+      0,
+    );
+    const totalItemsCost = osData.itens_os.reduce(
+      (acc, i) => acc + Number(itemsState[i.id_iten]?.custo_real || 0),
+      0,
+    );
+    const totalLaborRevenue =
+      osData.servicos_mao_de_obra?.reduce(
+        (acc, s) => acc + Number(s.valor),
+        0,
+      ) || 0;
+    const totalReceita = totalItemsRevenue + totalLaborRevenue;
+    const totalCusto = totalItemsCost; // Updated to use totalItemsCost
+
+    const lucro = totalReceita - totalCusto;
+    const margem = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
+
+    return {
+      totalReceita,
+      totalCusto,
+      lucro,
+      margem,
+      totalItemsRevenue,
+      totalItemsCost,
+      totalLaborRevenue,
+    };
+  };
+
+  const {
+    totalReceita,
+    totalCusto,
+    totalItemsRevenue,
+    totalItemsCost,
+    totalLaborRevenue,
+  } = calculateTotals();
+
+  const handleSave = async (finalize: boolean = false) => {
+    setLoading(true);
+    if (!osData) return;
+
+    try {
+      // Upsert Payments (Costs)
+      const pagamentoPromises = osData.itens_os.map(async (item) => {
+        const st = itemsState[item.id_iten];
+        if (!st || !st.id_fornecedor) return null; // Skip incomplete items? Or strictly require?
+        // If finalize is true, we might strictly require. If just saving, allow partial?
+        // Let's allow partial save if not finalizing.
+
+        if (st && st.id_fornecedor && st.custo_real) {
+          const payload = {
+            id_item_os: item.id_iten,
+            id_fornecedor: Number(st.id_fornecedor),
+            custo_real: Number(st.custo_real),
+            data_compra: new Date().toISOString(),
+            pago_ao_fornecedor: st.pago_fornecedor,
+          };
+
+          if (st.id_pagamento_peca) {
+            return api.put(`/pagamento-peca/${st.id_pagamento_peca}`, payload);
+          } else {
+            return api.post("/pagamento-peca", payload);
+          }
+        }
+        return null;
+      });
+
+      await Promise.all(pagamentoPromises);
+
+      await Promise.all(pagamentoPromises);
+
+      // Finalize OS if requested
+      if (finalize) {
+        // Upsert Fechamento ONLY when finalizing
+        const fechamentoPayload = {
+          id_os: Number(osData.id_os),
+          custo_total_pecas_real: totalCusto,
+        };
+        if (osData.fechamento_financeiro) {
+          await api.put(
+            `/fechamento-financeiro/${osData.fechamento_financeiro.id_fechamento_financeiro}`,
+            fechamentoPayload,
+          );
+        } else {
+          await api.post("/fechamento-financeiro", fechamentoPayload);
+        }
+
+        // Update Defect/Diagnosis
+        await api.put(`/ordem-de-servico/${osData.id_os}`, {
+          status: osData.status, // Preserve status unless finalizing
+          defeito_relatado: osData.defeito_relatado,
+          diagnostico: osData.diagnostico,
+        });
+
+        // Validation: Check Revenue
+        const totalPago =
+          osData.pagamentos_cliente?.reduce(
+            (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
+            0,
+          ) || 0;
+        if (totalPago === 0) {
+          toast.warn("Aviso: Nenhum recebimento registrado.");
+        }
+
+        if (osData.status !== "FINALIZADA") {
+          await api.put(`/ordem-de-servico/${osData.id_os}`, {
+            status: "FINALIZADA",
+            valor_final: totalReceita,
+            valor_pecas: totalItemsRevenue,
+          });
+        }
+        toast.success("OS Finalizada com Sucesso!");
+        setIsDirty(false);
+        setTimeout(() => navigate("/fechamento-financeiro"), 1000);
+      } else {
+        toast.success("Dados Salvos!");
+        setIsDirty(false);
+        // Refresh data
+        fetchOsData(osData.id_os);
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Erro ao salvar.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getClientName = () =>
+    osData?.cliente?.pessoa_fisica?.pessoa?.nome ||
+    osData?.cliente?.pessoa_juridica?.nome_fantasia ||
+    "Cliente";
+
+  // --- RENDER ---
+  if (fetchingOs)
+    return (
+      <div className="p-10 text-center text-neutral-500">
+        Carregando detalhes...
+      </div>
+    );
+  if (!osData)
+    return (
+      <div className="p-10 text-center text-neutral-500">
+        OS não encontrada.
+      </div>
+    );
+
+  const handleReopenOS = async () => {
+    if (!osData) return;
+    setConfirmModal({
+      isOpen: true,
+      title: "Reabrir OS",
+      message:
+        "Tem certeza que deseja reabrir esta OS? Isso irá ESTORNAR todos os lançamentos financeiros (Caixa, Recebíveis) e remover o fechamento. O status voltará para ABERTA.",
+      onConfirm: async () => {
+        try {
+          // 1. Se houver Fechamento Financeiro, reverter primeiro
+          if (osData.fechamento_financeiro?.id_fechamento_financeiro) {
+            await api.post("/fechamento-financeiro/reverter", {
+              idFechamento:
+                osData.fechamento_financeiro.id_fechamento_financeiro,
+            });
+            toast.success("Consolidação Financeira revertida!");
+          }
+
+          // 2. Atualizar Status para ABERTA
+          await api.put(`/ordem-de-servico/${osData.id_os}`, {
+            status: "ABERTA",
+          });
+
+          toast.success("OS Reaberta com sucesso! Você será redirecionado.");
+          setTimeout(() => navigate(`/ordem-de-servico/${osData.id_os}`), 1000);
+        } catch (error: any) {
+          console.error(error);
+          const msg =
+            error.response?.data?.details ||
+            error.response?.data?.error ||
+            "Erro ao reabrir OS.";
+          toast.error(`Não foi possível reabrir: ${msg}`);
+        }
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  return (
+    <div className="space-y-6 pb-20">
+      {blocker.state === "blocked" && (
+        <Modal
+          title="Salvar Alterações?"
+          onClose={() => blocker.reset && blocker.reset()}
+        >
+          <div className="space-y-4">
+            <p className="text-neutral-600">
+              Você tem alterações não salvas. Deseja salvar antes de sair?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => blocker.proceed && blocker.proceed()}
+              >
+                Descartar e Sair
+              </Button>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  await handleSave(false);
+                  blocker.proceed && blocker.proceed();
+                }}
+              >
+                Salvar e Sair
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* HEADER */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/")}
+            className="p-2 hover:bg-neutral-100 rounded-lg transition-all text-neutral-500 hover:text-neutral-700 active:scale-95"
+            title="Voltar"
+          >
+            <ArrowLeft size={20} />
+          </button>
+
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-neutral-700 leading-none m-0 tracking-tight">
+              Fechamento Financeiro #{osData.id_os}
+            </h1>
+            <span className="h-6 w-px bg-neutral-300 mx-1"></span>
+            <span
+              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(osData.status)}`}
+            >
+              {osData.status === "PRONTO PARA FINANCEIRO"
+                ? "FINANCEIRO"
+                : osData.status.replace(/_/g, " ")}
+            </span>
+            {isDirty && (
+              <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                <AlertCircle size={10} /> Alterações Pendentes
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Reopen Button */}
+        {(osData.status === "FINALIZADA" ||
+          osData.status === "PRONTO PARA FINANCEIRO") && (
+          <Button
+            variant="ghost"
+            className="text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200"
+            onClick={handleReopenOS}
+          >
+            Reabrir OS
+          </Button>
+        )}
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Col 1: Vehicle */}
+          {/* Col 1: Vehicle */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                Veículo
+              </p>
+              <button
+                onClick={() =>
+                  navigate(`/cadastro/${osData.cliente?.id_cliente}`)
+                }
+                className="text-primary-600 hover:text-primary-700 p-0.5 hover:bg-primary-50 rounded transition-colors"
+                title="Editar Veículo"
+              >
+                <Edit size={12} />
+              </button>
+            </div>
+            <div className="flex flex-col">
+              <h3 className="text-2xl font-bold text-neutral-600 leading-none tracking-tight">
+                {osData.veiculo?.modelo} - {osData.veiculo?.cor || "Cor N/I"}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm font-bold text-primary-600 uppercase tracking-widest  px-2 py-0.5 rounded-md">
+                  {osData.veiculo?.placa}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Col 2: Client */}
+          <div className="md:border-l md:border-gray-100 md:pl-8">
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                Cliente
+              </p>
+              <button
+                onClick={() =>
+                  navigate(`/cadastro/${osData.cliente?.id_cliente}`)
+                }
+                className="text-primary-600 hover:text-primary-700 p-0.5 hover:bg-primary-50 rounded transition-colors"
+                title="Editar Cliente"
+              >
+                <Edit size={12} />
+              </button>
+            </div>
+            <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">
+              {getClientName()}
+            </h3>
+            <p className="text-gray-600 font-medium text-sm flex items-center gap-2">
+              <Phone size={14} className="text-gray-400" />
+              {osData.cliente.telefone_1 || "Sem telefone"}
+            </p>
+          </div>
+
+          {/* Col 3: Removed (Moved to body) */}
+        </div>
+      </div>
+
+      {/* SPLIT LAYOUT: Obs (Left) & Labor (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start mt-6">
+        {/* LEFT COL: Obs */}
+        <div className="space-y-4 lg:col-span-1">
+          <Card className="space-y-4 p-4">
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>{" "}
+                Defeito Relatado
+              </label>
+              <textarea
+                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-32 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                placeholder="Descreva o defeito..."
+                value={osData.defeito_relatado || ""}
+                onChange={(e) => {
+                  setOsData({ ...osData, defeito_relatado: e.target.value });
+                  setIsDirty(true);
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>{" "}
+                Observações / Diagnóstico
+              </label>
+              <textarea
+                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-32 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                placeholder="Insira observações ou diagnóstico..."
+                value={osData.diagnostico || ""}
+                onChange={(e) => {
+                  setOsData({ ...osData, diagnostico: e.target.value });
+                  setIsDirty(true);
+                }}
+              />
+            </div>
+          </Card>
+        </div>
+
+        {/* RIGHT COL: Labor Manager */}
+        <div className="w-full space-y-2 h-full lg:col-span-2">
+          <Card className="h-full p-4 space-y-2">
+            <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2 pb-2 border-b border-neutral-50">
+              <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
+                <BadgeCheck size={14} />
+              </div>
+              Mão de Obra (Execução)
+            </h3>
+            <LaborManager
+              osId={osData.id_os}
+              mode="api"
+              employees={employees}
+              initialData={osData.servicos_mao_de_obra as any[]}
+              onChange={() => {
+                fetchOsData(osData.id_os);
+                setIsDirty(true);
+              }}
+              readOnly={false}
+              onTotalChange={handleLaborTotalChange}
+            />
+          </Card>
+        </div>
+      </div>
+
+      {/* PARTS COSTS */}
+      <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+          <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide">
+            Custos de Peças (Fornecedores)
+          </h4>
+          <button
+            type="button"
+            onClick={() => setShowFornecedorModal(true)}
+            className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
+          >
+            <Plus size={12} /> Novo Fornecedor
+          </button>
+        </div>
+        <table className="w-full text-left">
+          <thead className="bg-gray-50/50 text-xs font-bold text-gray-400 uppercase">
+            <tr>
+              <th className="p-4 w-1/3">Peça</th>
+              <th className="p-4">Ref / Nota</th>
+              <th className="p-4">Fornecedor</th>
+              <th className="p-4 w-44">Custo (R$)</th>
+              <th className="p-4 text-center w-20">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {osData.itens_os.map((item) => (
+              <tr
+                key={item.id_iten}
+                className="hover:bg-gray-50/50 transition-colors group"
+              >
+                <td className="p-4 relative">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-bold text-gray-800 text-sm">
+                        {item.descricao}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Qtd: {item.quantidade} x{" "}
+                        {formatCurrency(
+                          Number(item.valor_total) / item.quantidade,
+                        )}{" "}
+                        ={" "}
+                        <span className="text-green-600 font-bold">
+                          {formatCurrency(Number(item.valor_total))}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td className="p-4 text-xs font-mono font-bold text-gray-500">
+                  {item.codigo_referencia || "-"}
+                </td>
+                <td className="p-4">
+                  {item.pecas_estoque || item.id_pecas_estoque ? (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-neutral-100 rounded-lg border border-neutral-200 text-neutral-500 font-bold text-xs uppercase tracking-wider justify-center">
+                      <Truck size={14} /> Estoque Próprio
+                    </div>
+                  ) : (
+                    <select
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                      value={itemsState[item.id_iten]?.id_fornecedor || ""}
+                      onChange={(e) =>
+                        handleItemChange(
+                          item.id_iten,
+                          "id_fornecedor",
+                          e.target.value,
+                        )
+                      }
+                    >
+                      <option value="">-- Selecione --</option>
+                      {fornecedores.map((f) => (
+                        <option key={f.id_fornecedor} value={f.id_fornecedor}>
+                          {f.nome}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </td>
+                <td className="p-4">
+                  {item.pecas_estoque || item.id_pecas_estoque ? (
+                    <div className="opacity-50">
+                      <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 px-3 py-2 w-full">
+                        <span className="text-gray-400 text-xs font-bold mr-2">
+                          R$
+                        </span>
+                        <input
+                          disabled
+                          value="0.00"
+                          className="w-full bg-transparent text-sm font-bold text-gray-400 cursor-not-allowed outline-none"
+                        />
+                      </div>
+                      <div className="text-[9px] text-gray-400 mt-1 text-center font-medium">
+                        {item.pecas_estoque
+                          ? `Custo Orig: ${formatCurrency(Number(item.pecas_estoque.valor_custo))}`
+                          : "Estoque"}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center border border-gray-200 rounded-lg bg-white px-3 py-2 w-full focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition-all shadow-sm">
+                      <span className="text-gray-400 text-xs font-bold mr-2">
+                        R$
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={itemsState[item.id_iten]?.custo_real}
+                        onChange={(e) =>
+                          handleItemChange(
+                            item.id_iten,
+                            "custo_real",
+                            e.target.value,
+                          )
+                        }
+                        onBlur={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val))
+                            handleItemChange(
+                              item.id_iten,
+                              "custo_real",
+                              val.toFixed(2),
+                            );
+                        }}
+                        className="w-full text-sm font-bold text-red-600 outline-none placeholder-gray-300"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  )}
+                </td>
+                <td className="p-4 text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <ActionButton
+                      icon={Edit}
+                      label="Editar"
+                      onClick={() => handleOpenEditItem(item)}
+                      variant="neutral"
+                    />
+                    <ActionButton
+                      icon={Trash2}
+                      label="Excluir"
+                      onClick={() => handleDeleteItemOS(item.id_iten)}
+                      variant="danger"
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* RECEBIMENTOS */}
+      <div className="border border-green-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+        <div className="bg-green-100 px-4 py-3 border-b border-green-200 flex justify-between items-center">
+          <h4 className="font-bold text-sm text-green-800 uppercase tracking-wide">
+            Recebimentos
+          </h4>
+          <button
+            type="button"
+            onClick={() => setPaymentModal({ isOpen: true, data: null })}
+            className="text-[10px] font-black uppercase text-green-700 bg-white border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
+          >
+            <Plus size={12} /> Novo Pagamento
+          </button>
+        </div>
+        <div className="p-4">
+          {/* Using a simplified list here or reuse Table logic */}
+          {osData.pagamentos_cliente?.filter((p) => !p.deleted_at).length ===
+          0 ? (
+            <p className="text-gray-400 text-sm text-center">
+              Nenhum recebimento.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {osData.pagamentos_cliente
+                ?.filter((p) => !p.deleted_at)
+                .map((pag) => (
+                  <div
+                    key={pag.id_pagamento_cliente}
+                    className="flex flex-col gap-1 bg-green-50/50 p-3 rounded-lg text-sm border border-green-100 group transition-all hover:bg-green-50 hover:shadow-sm"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-green-800 text-base">
+                          {formatCurrency(Number(pag.valor))}
+                        </span>
+                        <div className="flex items-center gap-2 text-xs text-green-700 font-medium">
+                          <span className="uppercase tracking-wider px-1.5 py-0.5 bg-green-200 rounded text-[10px] font-bold">
+                            {pag.metodo_pagamento}
+                          </span>
+
+                          {pag.metodo_pagamento === "PIX" &&
+                            pag.conta_bancaria && (
+                              <span className="flex items-center gap-1">
+                                • {pag.conta_bancaria.nome_banco}
+                              </span>
+                            )}
+
+                          {(pag.metodo_pagamento === "CREDITO" ||
+                            pag.metodo_pagamento === "DEBITO") && (
+                            <span className="flex items-center gap-1">
+                              • {pag.operadora?.nome || "Operadora N/I"}
+                              {pag.qtd_parcelas &&
+                                pag.qtd_parcelas > 1 &&
+                                ` (${pag.qtd_parcelas}x)`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() =>
+                            setPaymentModal({ isOpen: true, data: pag })
+                          }
+                          className="text-neutral-400 hover:text-blue-600 p-1 hover:bg-blue-50 rounded"
+                          title="Editar"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleDeletePayment(pag.id_pagamento_cliente)
+                          }
+                          className="text-neutral-400 hover:text-red-600 p-1 hover:bg-red-50 rounded"
+                          title="Excluir"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 mt-2 text-[10px] text-gray-500 border-t border-green-100/50 pt-2">
+                      <span>
+                        📅 {new Date(pag.data_pagamento).toLocaleDateString()}
+                      </span>
+                      <span>
+                        🕒{" "}
+                        {new Date(pag.data_pagamento).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+
+                      {(pag.codigo_transacao || pag.bandeira_cartao) && (
+                        <span className="font-mono bg-white px-1 rounded border border-gray-100 text-gray-400">
+                          {pag.bandeira_cartao}{" "}
+                          {pag.codigo_transacao
+                            ? `| NSU: ${pag.codigo_transacao}`
+                            : ""}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* BOTTOM SUMMARY CARD */}
+      <div className="bg-neutral-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
+          <div>
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+              Total Peças
+            </p>
+            <p className="text-2xl font-black text-white">
+              {formatCurrency(totalItemsRevenue)}
+            </p>
+            <p className="text-[10px] font-bold text-emerald-400 mt-1">
+              Ref: {formatCurrency(Number(totalItemsRevenue) - totalItemsCost)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+              Total Mão de Obra
+            </p>
+            <p className="text-2xl font-black text-white">
+              {formatCurrency(totalLaborRevenue)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+              Total Geral
+            </p>
+            <p className="text-3xl font-black text-white">
+              {formatCurrency(totalReceita)}
+            </p>
+          </div>
+          <div className="text-right">
+            <div
+              className={`inline-block px-4 py-2 rounded-xl font-black uppercase text-xs tracking-wider ${
+                (osData.pagamentos_cliente?.reduce(
+                  (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
+                  0,
+                ) || 0) >= totalReceita
+                  ? "bg-emerald-500 text-emerald-950"
+                  : "bg-amber-500 text-amber-950"
+              }`}
+            >
+              {(osData.pagamentos_cliente?.reduce(
+                (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
+                0,
+              ) || 0) >= totalReceita
+                ? "QUITADO"
+                : "PENDENTE"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ACTIONS (Inline now) */}
+      <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
+        <Button variant="secondary" onClick={() => navigate(-1)}>
+          Voltar
+        </Button>
+
+        <Button
+          onClick={() => handleSave(false)}
+          variant="primary"
+          isLoading={loading}
+        >
+          <Save size={18} className="mr-2" /> Salvar Alterações
+        </Button>
+
+        <Button
+          onClick={() => handleSave(true)}
+          variant="success"
+          isLoading={loading}
+        >
+          <BadgeCheck size={18} className="mr-2" /> Salvar e Consolidar
+        </Button>
+      </div>
+
+      {/* MODALS */}
+      {showFornecedorModal && (
+        <Modal
+          title="Novo Fornecedor"
+          onClose={() => setShowFornecedorModal(false)}
+        >
+          <FornecedorForm
+            onSuccess={() => {
+              setShowFornecedorModal(false);
+              loadFornecedores();
+            }}
+            onCancel={() => setShowFornecedorModal(false)}
+          />
+        </Modal>
+      )}
+      {paymentModal.isOpen && osData && (
+        <Modal
+          title={paymentModal.data ? "Editar Pagamento" : "Novo Pagamento"}
+          onClose={() => setPaymentModal({ isOpen: false, data: null })}
+        >
+          <PagamentoClienteForm
+            osId={osData.id_os}
+            valorTotal={
+              totalReceita -
+              (osData.pagamentos_cliente
+                ?.filter((p) => !p.deleted_at)
+                .reduce((acc, p) => acc + Number(p.valor), 0) || 0) +
+              (paymentModal.data ? Number(paymentModal.data.valor) : 0)
+            }
+            initialData={paymentModal.data}
+            onSuccess={() => {
+              setPaymentModal({ isOpen: false, data: null });
+              fetchOsData(osData.id_os);
+            }}
+            onCancel={() => setPaymentModal({ isOpen: false, data: null })}
+          />
+        </Modal>
+      )}
+
+      {/* Edit Item Modal */}
+      {editItemModal.isOpen && (
+        <Modal
+          title="Editar Item OS"
+          onClose={() => setEditItemModal({ isOpen: false, item: null })}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Descrição
+              </label>
+              <input
+                type="text"
+                value={editItemForm.descricao}
+                onChange={(e) =>
+                  setEditItemForm({
+                    ...editItemForm,
+                    descricao: e.target.value,
+                  })
+                }
+                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Quantidade
+                </label>
+                <input
+                  type="number"
+                  value={editItemForm.quantidade}
+                  onChange={(e) =>
+                    setEditItemForm({
+                      ...editItemForm,
+                      quantidade: Number(e.target.value),
+                    })
+                  }
+                  className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Valor Unit. Venda
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editItemForm.valor_venda}
+                  onChange={(e) =>
+                    setEditItemForm({
+                      ...editItemForm,
+                      valor_venda: Number(e.target.value),
+                    })
+                  }
+                  className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Ref / Nota
+              </label>
+              <input
+                type="text"
+                value={editItemForm.codigo_referencia}
+                onChange={(e) =>
+                  setEditItemForm({
+                    ...editItemForm,
+                    codigo_referencia: e.target.value,
+                  })
+                }
+                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Opcional"
+              />
+            </div>
+            <div className="pt-2 flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setEditItemModal({ isOpen: false, item: null })}
+              >
+                Cancelar
+              </Button>
+              <Button variant="primary" onClick={handleSaveEditItem}>
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmModal.isOpen && (
+        <Modal
+          title={confirmModal.title}
+          onClose={() =>
+            setConfirmModal((prev) => ({ ...prev, isOpen: false }))
+          }
+        >
+          <p className="mb-6">{confirmModal.message}</p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setConfirmModal((prev) => ({ ...prev, isOpen: false }))
+              }
+            >
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmModal.onConfirm}>
+              Confirmar
+            </Button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\FechamentoFinanceiroPage.tsx
+================================================================================
+import { useState, useEffect } from "react";
+import { formatCurrency } from "../utils/formatCurrency";
+import { getStatusStyle } from "../utils/osUtils";
+import { FinanceiroService } from "../services/financeiro.service";
+import { OsService } from "../services/os.service";
+import { ActionButton } from "../components/ui/ActionButton";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { toast } from "react-toastify";
+import { DocumentoModal } from "../components/shared/DocumentoModal";
+
+import { Search, Trash2, Edit, CheckCircle, Printer } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import type { IOrdemDeServico, IFechamentoFinanceiro } from "../types/backend";
+
+// Extended interface if IFechamentoFinanceiro in backend.d.ts doesn't have the relation yet
+// or we leverage the one from backend.d.ts if it's sufficient.
+// Based on previous analysis, IFechamentoFinanceiro in backend.d.ts lacks 'ordem_de_servico'.
+// We will augment it locally for now or rely on the fact that the API returns it.
+interface IFechamentoWithOS extends IFechamentoFinanceiro {
+  ordem_de_servico: IOrdemDeServico;
+}
+
+export const FechamentoFinanceiroPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [fechamentos, setFechamentos] = useState<IFechamentoWithOS[]>([]);
+  const [pendingOss, setPendingOss] = useState<IOrdemDeServico[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Confirm Delete Modal
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  // Document Modal (Print)
+  const [printData, setPrintData] = useState<{
+    id_os: number;
+    status: string;
+    clienteNome: string;
+    clienteEmail: string;
+    clienteTelefone: string;
+  } | null>(null);
+
+  // Date Filters
+  const [activeFilter, setActiveFilter] = useState<
+    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
+  >("WEEK");
+
+  const [filterStart, setFilterStart] = useState(() => {
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+    return weekAgo.toLocaleDateString("en-CA");
+  });
+
+  const [filterEnd, setFilterEnd] = useState(() => {
+    return new Date().toLocaleDateString("en-CA");
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlIdOs = params.get("id_os");
+    if (urlIdOs) {
+      handleOpenFechamento(Number(urlIdOs));
+    }
+  }, [location.search]);
+
+  const loadData = async () => {
+    try {
+      const [fechamentosData, allOss] = await Promise.all([
+        FinanceiroService.getFechamentos(),
+        OsService.getAll(),
+      ]);
+
+      setFechamentos(fechamentosData);
+
+      // Filter OSs pending closure
+      const pending = allOss.filter(
+        (os) =>
+          [
+            "ABERTA",
+            "EM_ANDAMENTO",
+            "PRONTO PARA FINANCEIRO",
+            "FINALIZADA",
+          ].includes(os.status) &&
+          !fechamentosData.some(
+            (f: IFechamentoFinanceiro) => f.id_os === os.id_os,
+          ),
+      );
+      setPendingOss(pending);
+    } catch (error) {
+      console.error("Erro ao carregar dados", error);
+      toast.error("Erro ao carregar dados financeiros");
+    }
+  };
+
+  const handleOpenFechamento = (id_os: number) => {
+    navigate(`/fechamento-financeiro/${id_os}`);
+  };
+
+  const handleEditFechamento = (fechamento: IFechamentoFinanceiro) => {
+    navigate(`/fechamento-financeiro/${fechamento.id_os}`);
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return;
+    try {
+      await FinanceiroService.deleteFechamento(confirmDeleteId);
+      toast.success("Fechamento cancelado com sucesso!");
+      loadData();
+      setConfirmDeleteId(null);
+    } catch (error) {
+      toast.error("Erro ao deletar fechamento");
+    }
+  };
+
+  const handlePrint = (os: IOrdemDeServico) => {
+    setPrintData({
+      id_os: os.id_os,
+      status: os.status,
+      clienteNome: getClientName(os),
+      clienteEmail: os.cliente?.email || "",
+      clienteTelefone: os.cliente?.telefone_1 || "",
+    });
+  };
+
+  const getClientName = (os: IOrdemDeServico | undefined) => {
+    if (!os) return "Cliente N/I";
+    return (
+      os.cliente?.pessoa_fisica?.pessoa?.nome ||
+      os.cliente?.pessoa_juridica?.nome_fantasia ||
+      os.cliente?.pessoa_juridica?.razao_social ||
+      "Cliente N/I"
+    );
+  };
+
+  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
+    setActiveFilter(type);
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("en-CA");
+
+    if (type === "TODAY") {
+      setFilterStart(todayStr);
+      setFilterEnd(todayStr);
+    } else if (type === "WEEK") {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      setFilterStart(weekAgo.toLocaleDateString("en-CA"));
+      setFilterEnd(todayStr);
+    } else if (type === "MONTH") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFilterStart(firstDay.toLocaleDateString("en-CA"));
+      setFilterEnd(todayStr);
+    }
+  };
+
+  const filteredFechamentos = fechamentos
+    .filter((f) => {
+      if (filterStart) {
+        const recordDate = new Date(f.data_fechamento_financeiro);
+        const recordDateLocal = recordDate.toLocaleDateString("en-CA");
+        if (recordDateLocal < filterStart) return false;
+      }
+      if (filterEnd) {
+        const recordDate = new Date(f.data_fechamento_financeiro);
+        const recordDateLocal = recordDate.toLocaleDateString("en-CA");
+        if (recordDateLocal > filterEnd) return false;
+      }
+
+      if (!searchTerm) return true;
+      const q = searchTerm.toLowerCase();
+
+      const id = String(f.id_fechamento_financeiro);
+      const fullId = `#${id}`;
+      const osId = String(f.id_os);
+      const fullOsId = `#${osId}`;
+      const plate = f.ordem_de_servico?.veiculo?.placa?.toLowerCase() || "";
+      const model = f.ordem_de_servico?.veiculo?.modelo?.toLowerCase() || "";
+      const color = f.ordem_de_servico?.veiculo?.cor?.toLowerCase() || "";
+
+      return [id, fullId, osId, fullOsId, plate, model, color]
+        .join(" ")
+        .includes(q);
+    })
+    .sort((a, b) => b.id_fechamento_financeiro - a.id_fechamento_financeiro);
+
+  return (
+    <PageLayout
+      title="Consolidação"
+      subtitle="Consolidação de custos e serviços."
+    >
+      {/* PENDING OS LIST */}
+      <h2 className="text-xl font-bold text-neutral-600 flex items-center gap-2 mb-4">
+        <span className="w-2 h-8 bg-orange-500 rounded-full"></span>
+        Aguardando Consolidação
+      </h2>
+      <Card className="p-0 overflow-hidden mb-8">
+        {pendingOss.length === 0 ? (
+          <div className="p-8 text-center text-neutral-400 italic font-medium">
+            Nenhum fechamento pendente
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="tabela-limpa w-full">
+              <thead>
+                <tr>
+                  <th>OS / Data</th>
+                  <th>Cliente</th>
+                  <th>Veículo</th>
+                  <th className="w-1/4">Defeito / Diagnóstico</th>
+                  <th className="text-center">Status</th>
+                  <th className="text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingOss.map((os) => (
+                  <tr
+                    key={os.id_os}
+                    className="hover:bg-neutral-50 transition-colors group"
+                  >
+                    <td className="p-4">
+                      <div className="font-bold text-neutral-600">
+                        #{os.id_os}
+                      </div>
+                      {/* Show both Date and Time if available */}
+                      {os.dt_abertura && (
+                        <div className="flex flex-col mt-1">
+                          <span className="text-[10px] font-bold text-neutral-500">
+                            {new Date(os.dt_abertura).toLocaleDateString(
+                              "pt-BR",
+                            )}
+                          </span>
+                          <span className="text-[10px] text-neutral-400">
+                            {new Date(os.dt_abertura).toLocaleTimeString(
+                              "pt-BR",
+                              { hour: "2-digit", minute: "2-digit" },
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
+                        {getClientName(os)}
+                      </div>
+                      <div className="text-[12px] text-neutral-400 font-medium">
+                        {os.cliente?.telefone_1 || "Sem telefone"}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
+                          {os.veiculo?.marca} {os.veiculo?.modelo} -{" "}
+                          {os.veiculo?.cor}
+                        </span>
+                        <span className="text-[14px] text-primary-500 font-bold uppercase">
+                          {os.veiculo?.placa || "Placa N/I"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col gap-2 max-w-xs transition-opacity opacity-80 group-hover:opacity-100">
+                        <div className="leading-tight">
+                          <span className="text-[10px] font-bold text-neutral-600 uppercase block">
+                            Defeito
+                          </span>
+                          <span
+                            className="text-xs text-primary-500 font-medium line-clamp-2"
+                            title={os.defeito_relatado || ""}
+                          >
+                            {os.defeito_relatado || "-"}
+                          </span>
+                        </div>
+                        <div className="leading-tight">
+                          <span className="text-[10px] font-bold text-neutral-600 uppercase block">
+                            Diagnóstico
+                          </span>
+                          <span
+                            className="text-xs text-primary-500 font-medium line-clamp-2"
+                            title={os.diagnostico || ""}
+                          >
+                            {os.diagnostico || "-"}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span
+                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(
+                          os.status,
+                        )}`}
+                      >
+                        {os.status === "PRONTO PARA FINANCEIRO"
+                          ? "FINANCEIRO"
+                          : os.status.replace(/_/g, " ")}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          onClick={() => handleOpenFechamento(os.id_os)}
+                          variant="primary"
+                          size="sm"
+                          icon={CheckCircle}
+                        >
+                          Fechar Financeiro
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* HISTORY LIST */}
+      <h2 className="text-xl font-bold text-neutral-600 flex items-center gap-2 mb-4">
+        <span className="w-2 h-8 bg-green-600 rounded-full"></span>
+        Histórico de Fechamentos
+      </h2>
+
+      {/* FILTERS & SEARCH */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+        <div className="w-full md:flex-1 relative">
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por ID ou Placa..."
+            icon={Search}
+            className="w-full"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+          {/* Quick Filters Group */}
+          <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
+            <button
+              onClick={() => applyQuickFilter("TODAY")}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                activeFilter === "TODAY"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
+              }`}
+            >
+              Hoje
+            </button>
+            <button
+              onClick={() => applyQuickFilter("WEEK")}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                activeFilter === "WEEK"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
+              }`}
+            >
+              Semana
+            </button>
+            <button
+              onClick={() => applyQuickFilter("MONTH")}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                activeFilter === "MONTH"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
+              }`}
+            >
+              Mês
+            </button>
+          </div>
+
+          {/* Manual Date Inputs */}
+          <div className="flex gap-2 items-center">
+            <input
+              type="date"
+              value={filterStart}
+              onChange={(e) => {
+                setFilterStart(e.target.value);
+                setActiveFilter("CUSTOM");
+              }}
+              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
+                activeFilter === "CUSTOM"
+                  ? "border-primary-300 text-primary-700"
+                  : "border-neutral-200 text-neutral-600"
+              }`}
+            />
+            <span className="text-neutral-400 self-center">-</span>
+            <input
+              type="date"
+              value={filterEnd}
+              onChange={(e) => {
+                setFilterEnd(e.target.value);
+                setActiveFilter("CUSTOM");
+              }}
+              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
+                activeFilter === "CUSTOM"
+                  ? "border-primary-300 text-primary-700"
+                  : "border-neutral-200 text-neutral-600"
+              }`}
+            />
+          </div>
+        </div>
+      </div>
+
+      <Card className="p-0 overflow-hidden min-h-[300px]">
+        <div className="overflow-x-auto">
+          <table className="tabela-limpa w-full">
+            <thead>
+              <tr>
+                <th>OS</th>
+                <th>Cliente</th>
+                <th>Veículo (Placa/Cor)</th>
+                <th>Valor Serviço</th>
+                <th>Mão de Obra (Execução)</th>
+                <th>Data</th>
+                <th className="text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredFechamentos.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-12 text-center text-neutral-500">
+                    <div className="flex flex-col items-center gap-4">
+                      <p className="font-bold text-neutral-400 mb-2">
+                        {searchTerm || filterStart
+                          ? "Nenhum registro encontrado para a busca."
+                          : "Nenhum fechamento realizado ainda."}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredFechamentos.map((fech) => (
+                  <tr
+                    key={fech.id_fechamento_financeiro}
+                    className="hover:bg-neutral-50 transition-colors group"
+                  >
+                    <td className="p-4">
+                      <span className="font-bold text-neutral-600 px-2 py-1 rounded text-sm">
+                        #{fech.id_os}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
+                        {getClientName(fech.ordem_de_servico)}
+                      </div>
+                      <div className="text-[12px] text-neutral-400 font-medium">
+                        {fech.ordem_de_servico?.cliente?.telefone_1 ||
+                          "Sem telefone"}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
+                          {fech.ordem_de_servico?.veiculo?.marca}{" "}
+                          {fech.ordem_de_servico?.veiculo?.modelo} -{" "}
+                          {fech.ordem_de_servico?.veiculo?.cor}
+                        </span>
+                        <span className="text-[14px] text-primary-500 font-bold uppercase">
+                          {fech.ordem_de_servico?.veiculo?.placa || "Placa N/I"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-1 text-primary-600 font-bold bg-primary-50 w-fit px-3 py-1 rounded-lg">
+                        {formatCurrency(
+                          Number(
+                            fech.ordem_de_servico?.valor_total_cliente || 0,
+                          ),
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap gap-1">
+                        {fech.ordem_de_servico?.servicos_mao_de_obra &&
+                        fech.ordem_de_servico.servicos_mao_de_obra.length >
+                          0 ? (
+                          Array.from(
+                            new Set(
+                              fech.ordem_de_servico.servicos_mao_de_obra
+                                .map(
+                                  (svc) =>
+                                    svc.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
+                                      " ",
+                                    )[0],
+                                )
+                                .filter(Boolean),
+                            ),
+                          ).map((name, idx) => (
+                            <span
+                              key={idx}
+                              className="text-xs font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded"
+                            >
+                              {name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-neutral-400 italic">
+                            Não informado
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4 text-sm font-medium text-neutral-500">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-neutral-600">
+                          {new Date(
+                            fech.data_fechamento_financeiro,
+                          ).toLocaleDateString("pt-BR")}
+                        </span>
+                        <span className="text-[10px] text-neutral-400">
+                          {new Date(
+                            fech.data_fechamento_financeiro,
+                          ).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ActionButton
+                          onClick={() => handlePrint(fech.ordem_de_servico)}
+                          icon={Printer}
+                          label="Imprimir"
+                          variant="neutral"
+                        />
+                        <ActionButton
+                          onClick={() => handleEditFechamento(fech)}
+                          icon={Edit}
+                          label="Editar"
+                          variant="primary"
+                        />
+                        <ActionButton
+                          onClick={() =>
+                            setConfirmDeleteId(fech.id_fechamento_financeiro)
+                          }
+                          icon={Trash2}
+                          label="Cancelar"
+                          variant="danger"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Cancelar Fechamento"
+        description="Tem certeza que deseja cancelar este fechamento financeiro? Isso não apaga a OS, apenas a consolidação."
+        variant="danger"
+      />
+
+      {/* Document Print Modal */}
+      {printData && (
+        <DocumentoModal
+          isOpen={true}
+          onClose={() => setPrintData(null)}
+          osId={printData.id_os}
+          status={printData.status}
+          clienteNome={printData.clienteNome}
+          clienteEmail={printData.clienteEmail}
+          clienteTelefone={printData.clienteTelefone}
+        />
+      )}
+    </PageLayout>
+  );
+};
+
 
 
 ================================================================================
@@ -22886,6 +25868,7 @@ import { Button } from "../components/ui/Button";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { toast } from "react-toastify";
+import { ModalPagamentoUnificado } from "../components/shared/financeiro/ModalPagamentoUnificado";
 
 export const NovoPagamentoPage = () => {
   const navigate = useNavigate();
@@ -22926,10 +25909,13 @@ export const NovoPagamentoPage = () => {
   const [filterEnd, setFilterEnd] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
 
   // --- EFFECTS ---
   useEffect(() => {
     loadFuncionarios();
+    loadAccounts();
   }, []);
 
   // Auto-select from navigation state
@@ -22970,6 +25956,15 @@ export const NovoPagamentoPage = () => {
     } catch (e) {
       console.error(e);
       toast.error("Erro ao carregar colaboradores.");
+    }
+  };
+
+  const loadAccounts = async () => {
+    try {
+      const res = await api.get("/conta-bancaria");
+      setBankAccounts(res.data);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -23072,12 +26067,19 @@ export const NovoPagamentoPage = () => {
     else setSelectedVales(valesPendentes.map((v) => v.id_pagamento_equipe));
   };
 
-  const handlePay = async () => {
+  const handlePayClick = () => {
     if (!selectedFuncionarioId) {
       toast.warning("Selecione um colaborador.");
       return;
     }
+    setIsPayModalOpen(true);
+  };
 
+  const handlePay = async (data: {
+    accountId: number;
+    date: string;
+    discountValue: number;
+  }) => {
     try {
       setIsLoading(true);
       if (mode === "ADIANTAMENTO") {
@@ -23090,9 +26092,8 @@ export const NovoPagamentoPage = () => {
           forma_pagamento: paymentMethod,
           premio_valor: null,
           tipo_lancamento: "VALE",
-          referencia_inicio: dataAdiantamento
-            ? new Date(dataAdiantamento)
-            : null,
+          referencia_inicio: data.date ? new Date(data.date) : null,
+          id_conta_bancaria: data.accountId,
         });
       } else {
         await api.post("/pagamento-equipe", {
@@ -23107,10 +26108,13 @@ export const NovoPagamentoPage = () => {
           tipo_lancamento: "COMISSAO",
           referencia_inicio: null,
           include_salary: includeSalary,
+          id_conta_bancaria: data.accountId,
+          data_pagamento: data.date,
         });
       }
 
       toast.success("Lançamento realizado com sucesso!");
+      setIsPayModalOpen(false);
       setTimeout(() => navigate("/pagamento-equipe"), 1500);
     } catch (error) {
       console.error(error);
@@ -23621,7 +26625,7 @@ export const NovoPagamentoPage = () => {
                 <Button
                   variant="primary"
                   className="flex-1"
-                  onClick={handlePay}
+                  onClick={handlePayClick}
                   disabled={isLoading}
                   icon={Save}
                 >
@@ -23632,6 +26636,26 @@ export const NovoPagamentoPage = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Pagamento Unificado */}
+      <ModalPagamentoUnificado
+        isOpen={isPayModalOpen}
+        onClose={() => setIsPayModalOpen(false)}
+        onConfirm={handlePay}
+        totalAmount={
+          mode === "ADIANTAMENTO"
+            ? Number(valorAdiantamento)
+            : finalTotalPagamento
+        }
+        bankAccounts={bankAccounts}
+        title={
+          mode === "ADIANTAMENTO"
+            ? "Confirmar Novo Vale"
+            : "Confirmar Pagamento"
+        }
+        showDiscount={false} // Para funcionários, o desconto já é calculado no form principal (vales)
+        isLoading={isLoading}
+      />
     </PageLayout>
   );
 };
@@ -25981,9 +29005,10 @@ import {
   Plus,
 } from "lucide-react";
 import { Modal } from "../components/ui/Modal";
+import { ModalPagamentoUnificado } from "../components/shared/financeiro/ModalPagamentoUnificado";
 
 export const PagamentoPecaPage = () => {
-  const [, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // --- STATES FOR ACCOUNTS PAYABLE (PEÇAS) ---
   const [payments, setPayments] = useState<any[]>([]);
@@ -26141,37 +29166,34 @@ export const PagamentoPecaPage = () => {
     setPaymentModal((prev) => ({ ...prev, isOpen: true }));
   };
 
-  const processBatchPayment = async () => {
-    if (!paymentModal.accountId) {
-      toast.warning("Selecione uma conta bancária de origem.");
-      return;
-    }
-
+  const processBatchPayment = async (data: {
+    accountId: number;
+    date: string;
+    discountValue: number;
+  }) => {
     try {
       setLoading(true);
 
-      // Process updates in parallel
-      await Promise.all(
-        selectedIds.map((id) => {
-          return api.put(`/pagamento-peca/${id}`, {
-            pago_ao_fornecedor: true,
-            id_conta_bancaria: Number(paymentModal.accountId),
-            data_pagamento_fornecedor: paymentModal.date,
-          });
-        }),
-      );
+      await api.post("/pagamento-peca/baixa", {
+        ids: selectedIds,
+        desconto_total_aplicado: data.discountValue,
+        id_conta_bancaria: data.accountId,
+        data_pagamento: data.date,
+      });
 
       toast.success(
-        `${selectedIds.length} pagamentos confirmados e debitados!`,
+        `${selectedIds.length} pagamentos processados com sucesso!`,
       );
 
       // Clear selection and reload
       setSelectedIds([]);
       setPaymentModal((prev) => ({ ...prev, isOpen: false }));
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Erro ao processar pagamentos.");
+      toast.error(
+        error.response?.data?.error || "Erro ao processar pagamentos.",
+      );
     } finally {
       setLoading(false);
     }
@@ -26878,71 +29900,17 @@ export const PagamentoPecaPage = () => {
         </Modal>
       )}
 
-      {/* Batch Payment Modal */}
-      {paymentModal.isOpen && (
-        <Modal
-          title={`Confirmar ${selectedIds.length} Pagamento(s)`}
-          onClose={() =>
-            setPaymentModal((prev) => ({ ...prev, isOpen: false }))
-          }
-        >
-          <div className="space-y-4">
-            <p className="text-neutral-600">
-              Selecione a conta de onde sairá o dinheiro e a data do pagamento.
-            </p>
-            <div>
-              <label className="text-sm font-medium text-neutral-700 block mb-1">
-                Conta Bancária
-              </label>
-              <select
-                value={paymentModal.accountId}
-                onChange={(e) =>
-                  setPaymentModal((prev) => ({
-                    ...prev,
-                    accountId: e.target.value,
-                  }))
-                }
-                className="w-full h-10 px-3 bg-white border border-neutral-300 rounded-lg"
-              >
-                <option value="">Selecione...</option>
-                {accounts.map((acc: any) => (
-                  <option key={acc.id_conta} value={acc.id_conta}>
-                    {acc.banco} - {acc.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-neutral-700 block mb-1">
-                Data do Pagamento
-              </label>
-              <Input
-                type="date"
-                value={paymentModal.date}
-                onChange={(e) =>
-                  setPaymentModal((prev) => ({ ...prev, date: e.target.value }))
-                }
-              />
-            </div>
-            <div className="bg-yellow-50 p-3 rounded-lg text-xs text-yellow-800">
-              Isso criará lançamentos de saída no Livro Caixa automaticamente.
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-neutral-100">
-            <Button
-              variant="ghost"
-              onClick={() =>
-                setPaymentModal((prev) => ({ ...prev, isOpen: false }))
-              }
-            >
-              Cancelar
-            </Button>
-            <Button variant="success" onClick={processBatchPayment}>
-              Confirmar Pagamentos
-            </Button>
-          </div>
-        </Modal>
-      )}
+      {/* Modal de Pagamento Unificado */}
+      <ModalPagamentoUnificado
+        isOpen={paymentModal.isOpen}
+        onClose={() => setPaymentModal((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={processBatchPayment}
+        totalAmount={totalSelected}
+        bankAccounts={accounts}
+        title={`Pagar ${selectedIds.length} Peça(s)`}
+        showDiscount={true}
+        isLoading={loading}
+      />
 
       {/* CONFIRM DELETE MODAL */}
       <ConfirmModal
@@ -30470,48 +33438,6 @@ export const fetchVehicleData = async (placa: string): Promise<VehicleData> => {
   }
 };
 
-
-
-================================================================================
-FILE PATH: client\src\services\veiculo.service.ts
-================================================================================
-import { api } from "./api";
-import type { IVeiculo } from "../types/backend";
-
-export const VeiculoService = {
-  getAll: async () => {
-    const response = await api.get<IVeiculo[]>("/veiculo");
-    return response.data;
-  },
-
-  getById: async (id: number) => {
-    const response = await api.get<IVeiculo>(`/veiculo/${id}`);
-    return response.data;
-  },
-
-  create: async (data: Partial<IVeiculo>) => {
-    const response = await api.post<IVeiculo>("/veiculo", data);
-    return response.data;
-  },
-
-  update: async (id: number, data: Partial<IVeiculo>) => {
-    const response = await api.put<IVeiculo>(`/veiculo/${id}`, data);
-    return response.data;
-  },
-
-  delete: async (id: number) => {
-    await api.delete(`/veiculo/${id}`);
-  },
-
-  getByClienteId: async (_clienteId: number) => {
-    // Assuming backend supports filtering or we misuse getAll for now
-    return [];
-  },
-};
-
-
-
-================================================================================
 FILE PATH: client\src\types\backend.d.ts
 ================================================================================
 export interface IPessoa {
@@ -33072,6 +35998,7 @@ model PagamentoPeca {
   id_item_os                Int
   id_fornecedor             Int
   custo_real                Decimal     @db.Decimal(10, 2)
+  valor_desconto_rateado    Decimal?    @db.Decimal(10, 2)
   data_compra               DateTime    @db.Timestamp(6)
   data_pagamento_fornecedor DateTime?   @db.Timestamp(6)
   pago_ao_fornecedor        Boolean     @default(false)
@@ -34521,6 +37448,23 @@ ALTER TABLE "ordem_de_servico" ALTER COLUMN "status" SET DATA TYPE VARCHAR(50);
 ================================================================================
 FILE PATH: server\prisma\migrations\20251220222534_201220251925\migration.sql
 ================================================================================
+-- CreateTable
+CREATE TABLE "pagamento_cliente" (
+    "id_pagamento_cliente" SERIAL NOT NULL,
+    "id_os" INTEGER NOT NULL,
+    "metodo_pagamento" VARCHAR(50) NOT NULL,
+    "valor" DECIMAL(10,2) NOT NULL,
+    "data_pagamento" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "bandeira_cartao" VARCHAR(50),
+    "codigo_transacao" VARCHAR(100),
+    "qtd_parcelas" INTEGER NOT NULL DEFAULT 1,
+
+    CONSTRAINT "pagamento_cliente_pkey" PRIMARY KEY ("id_pagamento_cliente")
+);
+
+-- AddForeignKey
+ALTER TABLE "pagamento_cliente" ADD CONSTRAINT "pagamento_cliente_id_os_fkey" FOREIGN KEY ("id_os") REFERENCES "ordem_de_servico"("id_os") ON DELETE RESTRICT ON UPDATE CASCADE;
+
 
 
 ================================================================================
@@ -36939,7 +39883,11 @@ export class OrdemDeServicoController {
       const pdfBuffer = await mensageria.gerarPdfOs(os);
 
       if (method === "EMAIL") {
-        await mensageria.enviarEmail(target, os, pdfBuffer);
+        try {
+          await mensageria.enviarEmail(target, os, pdfBuffer);
+        } catch (e: any) {
+          return res.status(500).json({ error: e.message || e });
+        }
       } else if (method === "TELEGRAM") {
         await mensageria.enviarTelegram(target, os, pdfBuffer);
       } else {
@@ -36947,9 +39895,11 @@ export class OrdemDeServicoController {
       }
 
       res.json({ success: true, message: `Sent via ${method}` });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Send Error:", error);
-      res.status(500).json({ error: "Failed to send document" });
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to send document" });
     }
   }
 }
@@ -37523,6 +40473,7 @@ export const createPagamento = async (req: Request, res: Response) => {
       tipo_lancamento,
       referencia_inicio,
       referencia_fim,
+      id_conta_bancaria,
     } = req.body;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -37590,8 +40541,23 @@ export const createPagamento = async (req: Request, res: Response) => {
           tipo_movimentacao: "SAIDA",
           categoria: "EQUIPE",
           id_pagamento_equipe: pagamento.id_pagamento_equipe,
+          id_conta_bancaria: id_conta_bancaria
+            ? Number(id_conta_bancaria)
+            : null,
         },
       });
+
+      // 5. Atualizar Saldo da Conta Bancária (se fornecida)
+      if (id_conta_bancaria) {
+        await tx.contaBancaria.update({
+          where: { id_conta: Number(id_conta_bancaria) },
+          data: {
+            saldo_atual: {
+              decrement: Number(valor_total),
+            },
+          },
+        });
+      }
 
       return pagamento;
     });
@@ -37734,6 +40700,37 @@ export class PagamentoPecaController {
       res.json(pagamento);
     } catch (error) {
       res.status(400).json({ error: "Failed to update Pagamento Peca" });
+    }
+  }
+
+  async baixa(req: Request, res: Response) {
+    try {
+      const {
+        ids,
+        desconto_total_aplicado,
+        id_conta_bancaria,
+        data_pagamento,
+      } = req.body;
+
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "IDs das peças são obrigatórios" });
+      }
+
+      const result = await repository.baixaPecas(
+        ids,
+        Number(desconto_total_aplicado || 0),
+        Number(id_conta_bancaria),
+        data_pagamento ? new Date(data_pagamento + "T12:00:00") : new Date(),
+      );
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Baixa failed", error);
+      res
+        .status(400)
+        .json({ error: error.message || "Failed to process part payments" });
     }
   }
 
@@ -41417,6 +44414,100 @@ export class PagamentoPecaRepository {
       });
     });
   }
+
+  async baixaPecas(
+    ids: number[],
+    descontoTotal: number,
+    accountId: number,
+    dataPagamento: Date,
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Buscar as peças
+      const pagamentos = await tx.pagamentoPeca.findMany({
+        where: { id_pagamento_peca: { in: ids } },
+        include: {
+          fornecedor: true,
+          item_os: { include: { ordem_de_servico: true } },
+        },
+      });
+
+      if (pagamentos.length === 0)
+        throw new Error("Nenhum pagamento encontrado");
+      if (pagamentos.some((p) => p.pago_ao_fornecedor))
+        throw new Error("Uma ou mais peças já foram pagas.");
+
+      // 2. Calcular Valor Total Selecionado (Bruto)
+      const valorTotalBruto = pagamentos.reduce(
+        (acc, p) => acc + Number(p.custo_real),
+        0,
+      );
+
+      // 3. Rateio e Atualização de cada peça
+      for (const p of pagamentos) {
+        // Regra: (valor_peca / valor_total_selecionado) * desconto_total_aplicado
+        const valorPeca = Number(p.custo_real);
+        const descontoRateado = (valorPeca / valorTotalBruto) * descontoTotal;
+
+        await tx.pagamentoPeca.update({
+          where: { id_pagamento_peca: p.id_pagamento_peca },
+          data: {
+            pago_ao_fornecedor: true,
+            data_pagamento_fornecedor: dataPagamento,
+            valor_desconto_rateado: descontoRateado,
+          },
+        });
+      }
+
+      // 4. Regra de Caixa: Valor Líquido
+      const valorLiquidoTotal = valorTotalBruto - descontoTotal;
+
+      // 5. Debit Account (Saldo Líquido)
+      await tx.contaBancaria.update({
+        where: { id_conta: accountId },
+        data: { saldo_atual: { decrement: valorLiquidoTotal } },
+      });
+
+      // 6. Create Livro Caixa Entry (Valor Líquido)
+      // Descrição agregada para o lote
+      const idOsUnicos = [
+        ...new Set(pagamentos.map((p) => p.item_os.ordem_de_servico.id_os)),
+      ];
+      const fornecedoresUnicos = [
+        ...new Set(
+          pagamentos.map(
+            (p) => p.fornecedor.nome_fantasia || p.fornecedor.nome,
+          ),
+        ),
+      ];
+
+      const descricao = `Pg. Peças Lote - OSs: ${idOsUnicos.join(", ")} - Fornecedores: ${fornecedoresUnicos.join(", ")} | Desc. Total: R$ ${descontoTotal.toFixed(2)}`;
+
+      const lc = await tx.livroCaixa.create({
+        data: {
+          descricao: descricao,
+          valor: valorLiquidoTotal,
+          tipo_movimentacao: "SAIDA",
+          categoria: "Auto Peças",
+          id_categoria: null,
+          dt_movimentacao: new Date(),
+          origem: "AUTOMATICA",
+          id_conta_bancaria: accountId,
+        },
+      });
+
+      // 7. Vincular id_livro_caixa em todas as peças do lote
+      await tx.pagamentoPeca.updateMany({
+        where: { id_pagamento_peca: { in: ids } },
+        data: { id_livro_caixa: lc.id_livro_caixa },
+      });
+
+      return {
+        success: true,
+        valor_liquidado: valorLiquidoTotal,
+        id_livro_caixa: lc.id_livro_caixa,
+      };
+    });
+  }
 }
 
 
@@ -42946,17 +46037,18 @@ pagamentoEquipeRoutes.get('/', PagamentoEquipeController.getHistorico);
 ================================================================================
 FILE PATH: server\src\routes\pagamentoPeca.routes.ts
 ================================================================================
-import { Router } from 'express';
-import { PagamentoPecaController } from '../controllers/pagamentoPeca.controller.js';
+import { Router } from "express";
+import { PagamentoPecaController } from "../controllers/pagamentoPeca.controller.js";
 
 const pagamentoPecaRoutes = Router();
 const controller = new PagamentoPecaController();
 
-pagamentoPecaRoutes.post('/', controller.create);
-pagamentoPecaRoutes.get('/', controller.findAll);
-pagamentoPecaRoutes.get('/:id', controller.findById);
-pagamentoPecaRoutes.put('/:id', controller.update);
-pagamentoPecaRoutes.delete('/:id', controller.delete);
+pagamentoPecaRoutes.post("/", controller.create);
+pagamentoPecaRoutes.get("/", controller.findAll);
+pagamentoPecaRoutes.get("/:id", controller.findById);
+pagamentoPecaRoutes.put("/:id", controller.update);
+pagamentoPecaRoutes.post("/baixa", controller.baixa);
+pagamentoPecaRoutes.delete("/:id", controller.delete);
 
 export { pagamentoPecaRoutes };
 
@@ -44687,6 +47779,7 @@ export class MensageriaService {
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
         <style>
           body { font-family: Arial, sans-serif; font-size: 12px; color: #333; }
           .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #ccc; padding-bottom: 15px; }
@@ -44930,11 +48023,8 @@ export class MensageriaService {
       ]);
       console.log(`[Mensageria] Email enviado com sucesso para ${to}`);
     } catch (error) {
-      console.error(
-        `[Mensageria] Erro ao enviar email (não bloqueante):`,
-        error,
-      );
-      // Do not throw, so the client receives 200 OK for the PDF generation
+      console.error(`[Mensageria] Erro ao enviar email:`, error);
+      throw error;
     }
   }
 

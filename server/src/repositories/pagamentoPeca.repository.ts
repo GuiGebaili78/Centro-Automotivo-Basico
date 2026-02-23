@@ -239,6 +239,7 @@ export class PagamentoPecaRepository {
         // Regra: (valor_peca / valor_total_selecionado) * desconto_total_aplicado
         const valorPeca = Number(p.custo_real);
         const descontoRateado = (valorPeca / valorTotalBruto) * descontoTotal;
+        const custoLiquido = valorPeca - descontoRateado;
 
         await tx.pagamentoPeca.update({
           where: { id_pagamento_peca: p.id_pagamento_peca },
@@ -246,6 +247,7 @@ export class PagamentoPecaRepository {
             pago_ao_fornecedor: true,
             data_pagamento_fornecedor: dataPagamento,
             valor_desconto_rateado: descontoRateado,
+            custo_real: custoLiquido, // Sincroniza o custo real com o valor líquido
           },
         });
       }
@@ -260,10 +262,40 @@ export class PagamentoPecaRepository {
       });
 
       // 6. Create Livro Caixa Entry (Valor Líquido)
-      // Descrição agregada para o lote
       const idOsUnicos = [
         ...new Set(pagamentos.map((p) => p.item_os.ordem_de_servico.id_os)),
       ];
+
+      // 6.1 Recalcular Fechamento Financeiro para cada OS impactada
+      for (const idOs of idOsUnicos) {
+        const fechamento = await tx.fechamentoFinanceiro.findUnique({
+          where: { id_os: idOs },
+        });
+
+        if (fechamento) {
+          // Soma atualizada de todos os custos reais das peças (já com os impostos/descontos aplicados na baixa)
+          const todasPecasOs = await tx.pagamentoPeca.findMany({
+            where: {
+              item_os: { id_os: idOs },
+              deleted_at: null,
+            },
+            select: { custo_real: true },
+          });
+
+          const novoCustoTotalPecas = todasPecasOs.reduce(
+            (acc, piece) => acc + Number(piece.custo_real),
+            0,
+          );
+
+          await tx.fechamentoFinanceiro.update({
+            where: {
+              id_fechamento_financeiro: fechamento.id_fechamento_financeiro,
+            },
+            data: { custo_total_pecas_real: novoCustoTotalPecas },
+          });
+        }
+      }
+
       const fornecedoresUnicos = [
         ...new Set(
           pagamentos.map(

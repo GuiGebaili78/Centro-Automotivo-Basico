@@ -14,6 +14,7 @@ import { Badge } from "../ui/Badge";
 import { ActionButton } from "../ui/ActionButton";
 import { Button } from "../ui/Button";
 import { ConfirmModal } from "../ui/ConfirmModal";
+import { formatPhone } from "../../utils/normalize";
 import type { ICliente } from "../../types/cliente.types";
 
 interface ClientesTableProps {
@@ -108,28 +109,35 @@ export const ClientesTable = ({
                     >
                       <User size={18} />
                     </div>
-                    <span className="font-bold text-neutral-900 text-sm">
+                    <span className="text-base font-medium text-neutral-600 uppercase line-clamp-2 leading-relaxed">
                       {getNome(c)}
                     </span>
                   </div>
                 </td>
                 <td className="py-4">
                   <div className="flex flex-col gap-1">
-                    <span className="flex items-center gap-2 text-sm text-neutral-700 font-medium">
+                    <span className="flex items-center gap-2 text-base text-neutral-600 font-medium">
                       <Phone size={14} className="text-neutral-400" />
-                      {c.telefone_1}
+                      {formatPhone(c.telefone_1)}
                     </span>
                     {c.email && (
-                      <span className="text-xs text-neutral-500 pl-6">
+                      <span className="text-sm text-neutral-500 pl-6">
                         {c.email}
                       </span>
                     )}
                   </div>
                 </td>
                 <td className="py-4">
-                  <div className="flex items-center gap-2 text-sm text-neutral-600">
-                    <MapPin size={14} className="text-neutral-400" />
-                    {c.cidade}, {c.estado}
+                  <div className="flex flex-col gap-0.5 text-sm text-neutral-600 font-medium">
+                    <div className="flex items-center gap-2">
+                      <MapPin size={14} className="text-neutral-400" />
+                      <span className="uppercase">
+                        {c.logradouro}, {c.nr_logradouro}
+                      </span>
+                    </div>
+                    <span className="pl-6 text-xs text-neutral-500 uppercase">
+                      {c.bairro} — {c.cidade}, {c.estado}
+                    </span>
                   </div>
                 </td>
                 <td className="py-4">
@@ -170,12 +178,11 @@ export const ClientesTable = ({
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <Car size={18} className="text-primary-600" />
-                          <h4 className="text-xs font-bold uppercase text-neutral-500 tracking-widest">
+                          <h4 className="text-sm font-bold uppercase text-neutral-500 tracking-widest">
                             Veículos Cadastrados ({c.veiculos?.length || 0})
                           </h4>
                         </div>
                         <Button
-                          size="sm"
                           variant="primary"
                           icon={Plus}
                           onClick={() => navigate(`/cadastro/${c.id_cliente}`)}
@@ -196,19 +203,19 @@ export const ClientesTable = ({
                               className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-primary-200 transition-all group/card flex justify-between items-start"
                             >
                               <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                  <div className="w-2 h-2 rounded-full bg-success"></div>
-                                  <p className="text-sm font-bold text-neutral-900">
+                                <div className="flex flex-col">
+                                  <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
+                                    {v.marca} {v.modelo} • {v.cor || "COR N/A"}
+                                  </span>
+                                  <span className="text-base text-primary-600 uppercase mt-0.5 font-bold">
                                     {v.placa}
-                                  </p>
+                                  </span>
+                                  {v.ano_modelo && (
+                                    <span className="text-basetext-neutral-600 mt-1 uppercase">
+                                      Ano: {v.ano_modelo}
+                                    </span>
+                                  )}
                                 </div>
-                                <p className="text-xs text-neutral-500 font-medium uppercase tracking-wide">
-                                  {v.marca} {v.modelo}
-                                </p>
-                                <p className="text-[10px] text-neutral-400 mt-1">
-                                  {v.ano_modelo || "Ano N/A"} •{" "}
-                                  {v.cor || "Cor N/A"}
-                                </p>
                               </div>
                               <ActionButton
                                 icon={Wrench}

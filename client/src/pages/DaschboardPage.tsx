@@ -81,10 +81,10 @@ export function DaschboardPage() {
         <div className="w-full flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
           {/* Title / Welcome */}
           <div className="shrink-0">
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-4xl font-black text-neutral-600 tracking-tight">
               Monitor
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-neutral-600 mt-1">
               {currentDateTime.toLocaleDateString("pt-BR", {
                 weekday: "long",
                 year: "numeric",

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import type { IOrdemDeServico } from "../types/backend";
 import { Search, Plus, Phone, CheckCircle, Wrench } from "lucide-react";
+import { OsTable } from "../components/shared/os/OsTable";
 
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
@@ -13,7 +14,6 @@ import { Card } from "../components/ui/Card";
 import { toast } from "react-toastify";
 import { OsCreationModal } from "../components/shared/os/OsCreationModal";
 import { OsStatus } from "../types/os.types";
-import { getStatusStyle } from "../utils/osUtils";
 import { OsService } from "../services/os.service";
 import { ClienteService } from "../services/cliente.service";
 import { VeiculoService } from "../services/veiculo.service";
@@ -308,166 +308,34 @@ export const OrdemDeServicoPage = () => {
         </div>
 
         <Card className="p-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="tabela-limpa w-full">
-              <thead>
-                <tr>
-                  <th className="p-4">OS / Data</th>
-                  <th className="p-4">Veículo</th>
-                  <th className="p-4">Diagnóstico / Ações</th>
-                  <th className="p-4">Técnico</th>
-                  <th className="p-4">Cliente</th>
-                  <th className="p-4 text-center">Status</th>
-                  <th className="p-4 text-center">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {filteredOss
-                  .sort((a, b) => b.id_os - a.id_os)
-                  .map((os) => (
-                    <tr
-                      key={os.id_os}
-                      className="transition-colors hover:bg-neutral-50 group"
-                    >
-                      <td className="p-4">
-                        <div className="font-bold text-neutral-600">
-                          #{os.id_os}
-                        </div>
-                        <div className="text-[13px] text-neutral-600 font-medium">
-                          {new Date(os.dt_abertura).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
-                          {os.veiculo?.marca} {os.veiculo?.modelo} -{" "}
-                          {os.veiculo?.cor}
-                        </div>
-                        <div className="text-[14px] text-primary-500 font-bold uppercase">
-                          {os.veiculo?.placa || "Placa N/I"}
-                        </div>
-                      </td>
-                      <td
-                        className="p-4 max-w-[200px]"
-                        title={
-                          os.diagnostico ||
-                          os.defeito_relatado ||
-                          "Sem diagnóstico registrado"
-                        }
-                      >
-                        <p className="text-xs font-medium text-neutral-600 line-clamp-2">
-                          {os.diagnostico || os.defeito_relatado || (
-                            <span className="text-neutral-300 italic">
-                              Pendente
-                            </span>
-                          )}
-                        </p>
-                      </td>
-                      <td className="p-4">
-                        <p
-                          className="text-xs font-bold text-neutral-700 uppercase truncate max-w-[120px]"
-                          title="Responsável Técnico"
-                        >
-                          {(() => {
-                            // @ts-ignore
-                            const mechanics = os.servicos_mao_de_obra
-                              ?.map(
-                                (s) =>
-                                  s.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
-                                    " ",
-                                  )[0],
-                              )
-                              .filter(Boolean);
-                            const uniqueMechanics = [
-                              ...new Set(mechanics || []),
-                            ];
+          <OsTable
+            oss={filteredOss.sort((a, b) => b.id_os - a.id_os)}
+            onRowClick={handleManageItem}
+            renderActions={(os) => (
+              <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ActionButton
+                  onClick={() => handleManageItem(os)}
+                  label="Gerenciar"
+                  variant="neutral"
+                  icon={Wrench}
+                />
 
-                            if (uniqueMechanics.length > 0) {
-                              return uniqueMechanics.join(", ");
-                            }
-                            return (
-                              os.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
-                                " ",
-                              )[0] || (
-                                <span className="text-neutral-300">---</span>
-                              )
-                            );
-                          })()}
-                        </p>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
-                          {os.cliente?.pessoa_fisica?.pessoa?.nome ||
-                            os.cliente?.pessoa_juridica?.razao_social ||
-                            "Desconhecido"}
-                        </div>
-                        <div className="text-[10px] text-neutral-400 font-medium">
-                          {os.cliente?.telefone_1}
-                        </div>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span
-                          className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
-                        >
-                          {os.status === "PRONTO PARA FINANCEIRO"
-                            ? "FINANCEIRO"
-                            : os.status.replace(/_/g, " ")}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <ActionButton
-                            onClick={() => handleManageItem(os)}
-                            label="Gerenciar"
-                            variant="neutral"
-                            icon={Wrench}
-                          />
-
-                          {(os.status === "FINALIZADA" ||
-                            os.status === "PRONTO PARA FINANCEIRO" ||
-                            os.status === "PAGA_CLIENTE") && (
-                            <ActionButton
-                              onClick={() =>
-                                handleOpenNewOsForExisting(
-                                  os.veiculo,
-                                  os.cliente,
-                                )
-                              }
-                              icon={Plus}
-                              label="Nova OS"
-                              variant="primary"
-                            />
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                {filteredOss.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="p-12 text-center text-neutral-500"
-                    >
-                      <div className="flex flex-col items-center gap-4">
-                        <p className="font-bold text-neutral-400 mb-2">
-                          Nenhum registro encontrado.
-                        </p>
-                        <p className="text-sm text-neutral-400 mb-4">
-                          Deseja iniciar um novo atendimento?
-                        </p>
-                        <Button
-                          onClick={() => setOsCreationModalOpen(true)}
-                          variant="primary"
-                          icon={Plus}
-                        >
-                          NOVO CADASTRO
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+                {(os.status === "FINALIZADA" ||
+                  os.status === "PRONTO PARA FINANCEIRO" ||
+                  os.status === "PAGA_CLIENTE") && (
+                  <ActionButton
+                    onClick={() =>
+                      handleOpenNewOsForExisting(os.veiculo, os.cliente)
+                    }
+                    icon={Plus}
+                    label="Nova OS"
+                    variant="primary"
+                  />
                 )}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            )}
+            emptyMessage="Nenhum registro encontrado."
+          />
         </Card>
       </PageLayout>
 

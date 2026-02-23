@@ -39,16 +39,16 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6 overflow-hidden">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-neutral-700 tracking-tight flex items-center gap-2">
+    <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-3 overflow-hidden">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-bold text-neutral-600 tracking-tight flex items-center gap-2">
           <CalendarIcon size={16} className="text-purple-500" />
           Agenda (Próximos 15 dias)
         </h2>
         {/* Simple pagination controls if needed, or just horizontal scroll */}
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar snap-x snap-mandatory">
+      <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar snap-x snap-mandatory">
         {days.map((day, idx) => {
           // Adjust comparison to ignore time and potential timezone offsets creating mismatches
           const dayDateStr = day.toLocaleDateString("en-CA");
@@ -64,7 +64,7 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
           return (
             <div
               key={idx}
-              className={`min-w-[140px] flex-1 border rounded-xl p-3 snap-start relative flex flex-col ${
+              className={`min-w-[140px] flex-1 border rounded-xl p-2 snap-start relative flex flex-col ${
                 isCurrentDay
                   ? "bg-purple-50/50 border-purple-100"
                   : isWeekend
@@ -77,12 +77,12 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
                 className={`flex flex-col mb-3 pb-2 border-b ${isCurrentDay ? "border-purple-200" : "border-neutral-200"}`}
               >
                 <span
-                  className={`text-[10px] font-bold uppercase tracking-widest ${isCurrentDay ? "text-purple-600" : "text-neutral-400"}`}
+                  className={`text-xs font-bold uppercase tracking-widest ${isCurrentDay ? "text-purple-600" : "text-neutral-400"}`}
                 >
                   {getDayName(day)}
                 </span>
                 <span
-                  className={`text-xl font-black ${isCurrentDay ? "text-purple-700" : "text-neutral-700"}`}
+                  className={`text-base font-black ${isCurrentDay ? "text-purple-700" : "text-neutral-700"}`}
                 >
                   {day.getDate()}
                 </span>
@@ -100,24 +100,24 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
                       className="bg-white p-1.5 rounded-lg border border-neutral-200 shadow-sm cursor-pointer hover:border-purple-300 hover:shadow-md transition-all group shrink-0"
                     >
                       <div className="flex items-center justify-between gap-1">
-                        <p className="text-[10px] font-bold text-purple-700 line-clamp-1 flex-1">
+                        <p className="text-xs font-bold text-purple-700 line-clamp-1 flex-1">
                           {item.clientName}
                         </p>
-                        <span className="text-[9px] text-neutral-400 font-medium bg-neutral-50 px-1 rounded shrink-0">
+                        <span className="text-xs text-neutral-600 font-medium bg-neutral-50 px-1 rounded shrink-0">
                           {item.date.toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
                         </span>
                       </div>
-                      <p className="text-[9px] text-neutral-500 line-clamp-1 mt-0.5">
+                      <p className="text-xs text-neutral-600 line-clamp-1 mt-0.5">
                         {item.vehicleModel || "Veículo N/I"}
                       </p>
                     </div>
                   ))
                 ) : (
                   <div className="h-full flex items-center justify-center pt-2 opacity-30">
-                    <span className="text-[10px] font-medium text-neutral-400">
+                    <span className="text-xs font-medium text-neutral-600">
                       ---
                     </span>
                   </div>

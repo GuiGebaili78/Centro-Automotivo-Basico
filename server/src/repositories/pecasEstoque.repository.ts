@@ -209,7 +209,7 @@ export class PecasEstoqueRepository {
         deleted_at: null,
         ordem_de_servico: {
           status: {
-            notIn: ["FINALIZADA", "PAGA_CLIENTE", "PRONTO PARA FINANCEIRO"],
+            notIn: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"],
           }, // Using active statuses
           deleted_at: null,
         },

@@ -5,7 +5,7 @@
  * Exemplos: "GIN-1175" -> "GIN1175", "gin1175" -> "GIN1175"
  */
 export const normalizePlate = (plate: string): string => {
-  return plate.replace(/-/g, '').toUpperCase().trim();
+  return plate.replace(/-/g, "").toUpperCase().trim();
 };
 
 /**
@@ -24,9 +24,9 @@ export const normalizeName = (name: string): string => {
 export const formatNameTitleCase = (name: string): string => {
   return name
     .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 };
 
 /**
@@ -51,6 +51,23 @@ export const caseInsensitiveMatch = (str1: string, str2: string): boolean => {
 /**
  * Verifica se uma string contém outra (case-insensitive)
  */
-export const caseInsensitiveIncludes = (haystack: string, needle: string): boolean => {
+export const caseInsensitiveIncludes = (
+  haystack: string,
+  needle: string,
+): boolean => {
   return haystack.toUpperCase().includes(needle.toUpperCase());
+};
+/**
+ * Formata um número de telefone para o padrão (XX) XXXX-XXXX ou (XX) XXXXX-XXXX
+ */
+export const formatPhone = (phone: string): string => {
+  const digits = phone.replace(/\D/g, "");
+
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  } else if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+
+  return phone;
 };

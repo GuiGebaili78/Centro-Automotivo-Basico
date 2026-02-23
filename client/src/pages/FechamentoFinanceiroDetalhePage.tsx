@@ -414,23 +414,16 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
       // Finalize OS if requested
       if (finalize) {
-        // Upsert Fechamento ONLY when finalizing
-        const fechamentoPayload = {
-          id_os: Number(osData.id_os),
-          custo_total_pecas_real: totalCusto,
+        // 1. CONSOLIDAR FINANCEIRAMENTE (Usa o novo endpoint que cria tudo de uma vez)
+        const consolidarPayload = {
+          idOs: Number(osData.id_os),
+          custoTotalPecasReal: totalCusto,
         };
-        if (osData.fechamento_financeiro) {
-          await api.put(
-            `/fechamento-financeiro/${osData.fechamento_financeiro.id_fechamento_financeiro}`,
-            fechamentoPayload,
-          );
-        } else {
-          await api.post("/fechamento-financeiro", fechamentoPayload);
-        }
 
-        // Update Defect/Diagnosis
+        await api.post("/fechamento-financeiro/consolidar", consolidarPayload);
+
+        // 2. Atualizar Defeito e Diagnóstico se alterados (State machine agora permite isso mesmo se FINALIZADA)
         await api.put(`/ordem-de-servico/${osData.id_os}`, {
-          status: osData.status, // Preserve status unless finalizing
           defeito_relatado: osData.defeito_relatado,
           diagnostico: osData.diagnostico,
         });
@@ -577,7 +570,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             <span
               className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(osData.status)}`}
             >
-              {osData.status === "PRONTO PARA FINANCEIRO"
+              {osData.status === "FINANCEIRO"
                 ? "FINANCEIRO"
                 : osData.status.replace(/_/g, " ")}
             </span>
@@ -590,8 +583,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
         </div>
 
         {/* Reopen Button */}
-        {(osData.status === "FINALIZADA" ||
-          osData.status === "PRONTO PARA FINANCEIRO") && (
+        {(osData.status === "FINALIZADA" || osData.status === "FINANCEIRO") && (
           <Button
             variant="ghost"
             className="text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200"

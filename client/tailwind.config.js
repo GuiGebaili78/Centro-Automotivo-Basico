@@ -5,25 +5,48 @@ export default {
     content: [
         "./index.html",
         "./src/**/*.{js,ts,jsx,tsx}",
-        "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}", // Necessário para os relatórios Tremor
+        "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
     ],
     theme: {
         transparent: "transparent",
         current: "current",
         extend: {
+            fontFamily: {
+                // Força o sistema inteiro a usar Roboto como padrão
+                sans: ['Roboto', 'sans-serif'],
+            },
             colors: {
-                // Definindo as cores que usamos no index.css
                 primary: {
-                    100: "#dbeafe", // Azul clarinho (para anéis de foco e backgrounds)
-                    600: "#2563eb", // Azul principal
-                    700: "#2b458a", // Azul hover
-                    800: "#182a5a", // Azul Botão Sidebar
+                    50: '#eff6ff',
+                    100: '#dbeafe',
+                    500: '#3b82f6',
+                    600: '#2563eb', // Azul Principal
+                    700: '#1d4ed8',
+                    800: '#1e40af', // Azul Sidebar/Escuro
+                    900: '#1e3a8a',
                 },
                 secondary: {
-                    500: "#f97316", // Laranja/Amber
-                    600: "#ea580c",
+                    50: '#fff7ed',
+                    100: '#ffedd5',
+                    500: '#f97316', // Laranja Principal
+                    600: '#ea580c',
+                    700: '#c2410c',
                 },
-                // Configuração específica para o Tremor herdar seu padrão
+                success: {
+                    50: '#f0fdf4',
+                    100: '#dcfce7',
+                    500: '#22c55e', // Verde Principal (Lucros, Sucesso)
+                    600: '#16a34a',
+                    700: '#15803d',
+                },
+                highlight: {
+                    50: '#faf5ff',
+                    100: '#f3e8ff',
+                    500: '#a855f7', // Roxo Principal (Destaques, Ações Especiais)
+                    600: '#9333ea',
+                    700: '#7e22ce',
+                },
+                // Tremor colors...
                 tremor: {
                     brand: {
                         faint: "#dbeafe",
@@ -34,28 +57,27 @@ export default {
                         inverted: "#ffffff",
                     },
                     background: {
-                        muted: "#f9fafb",
-                        subtle: "#f3f4f6",
+                        muted: "#f8fafc", // Ajustado para a paleta slate
+                        subtle: "#f1f5f9",
                         DEFAULT: "#ffffff",
-                        emphasis: "#374151",
+                        emphasis: "#334155",
                     },
                     border: {
-                        DEFAULT: "#e5e7eb",
+                        DEFAULT: "#e2e8f0",
                     },
                     ring: {
-                        DEFAULT: "#e5e7eb",
+                        DEFAULT: "#e2e8f0",
                     },
                     content: {
-                        subtle: "#9ca3af",
-                        DEFAULT: "#6b7280",
-                        emphasis: "#374151",
-                        strong: "#111827",
+                        subtle: "#94a3b8",
+                        DEFAULT: "#64748b",
+                        emphasis: "#334155",
+                        strong: "#0f172a",
                         inverted: "#ffffff",
                     },
                 },
             },
             boxShadow: {
-                // Um sombreado mais suave e moderno para seus cards
                 'premium': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
             },
             borderRadius: {
@@ -71,10 +93,9 @@ export default {
             },
         },
     },
-    // Esta parte é importante para o Tremor funcionar corretamente com as cores novas
     safelist: [
         {
-            pattern: /^(bg|text|border|ring|stroke|fill)-(tremor|primary|secondary)/,
+            pattern: /^(bg|text|border|ring|stroke|fill)-(tremor|primary|secondary|success|highlight)/,
             variants: ['hover', 'ui-selected'],
         },
     ],
