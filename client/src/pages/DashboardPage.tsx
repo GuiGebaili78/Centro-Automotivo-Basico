@@ -13,7 +13,7 @@ import { DashboardMetrics } from "../components/dashboard/DashboardMetrics";
 import { RecentOsWidget } from "../components/dashboard/RecentOsWidget";
 import type { IDashboardStats } from "../types/dashboard.types";
 
-export function DaschboardPage() {
+export function DashboardPage() {
   const navigate = useNavigate();
 
   const [decisionModalOpen, setDecisionModalOpen] = useState(false);
@@ -30,6 +30,7 @@ export function DaschboardPage() {
     livroCaixaExits: 0,
     autoPecasPendentes: 0,
     consolidacao: 0,
+    alertaEstoque: 0,
   });
 
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -124,7 +125,10 @@ export function DaschboardPage() {
             </Button>
           </div>
 
-          {/* Stats 2x2 Grid - MOVED TO RIGHT */}
+          {/* Stats 2x2 Grid - REMOVED FROM HERE */}
+        </div>
+
+        <div className="mb-8 p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700">
           <DashboardMetrics stats={stats} />
         </div>
 
@@ -132,7 +136,9 @@ export function DaschboardPage() {
           <DashboardCalendar
             items={recentOss
               .filter(
-                (o: any) => o.status === "ORCAMENTO" || o.status === "AGENDA",
+                (o: any) =>
+                  o.status === OsStatus.ORCAMENTO ||
+                  o.status === OsStatus.AGENDAMENTO,
               )
               .map((o: any) => ({
                 id_os: o.id_os,

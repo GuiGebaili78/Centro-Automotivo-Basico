@@ -36,6 +36,7 @@ export const EntradaItensForm = ({
   const [rowSale, setRowSale] = useState("");
   const [rowRef, setRowRef] = useState("");
   const [rowObs, setRowObs] = useState("");
+  const [rowMinStock, setRowMinStock] = useState("");
 
   // New Part Fields (if isNewPart)
   const [newPartName, setNewPartName] = useState("");
@@ -116,6 +117,7 @@ export const EntradaItensForm = ({
             descricao: newPartDesc || newPartName || partSearch,
             fabricante: newPartFab,
             unidade_medida: newPartUnit,
+            estoque_minimo: Number(rowMinStock) || 0,
           }
         : null,
       displayName: isNewPart
@@ -138,6 +140,7 @@ export const EntradaItensForm = ({
     setRowSale("");
     setRowRef("");
     setRowObs("");
+    setRowMinStock("");
     setSelectedStockPart(null);
     setPartSearch("");
     setIsNewPart(false);
@@ -186,6 +189,7 @@ export const EntradaItensForm = ({
     setRowSale(String(item.valor_venda));
     setRowRef(item.ref_cod || "");
     setRowObs(item.obs || "");
+    setRowMinStock(String(item.new_part_data?.estoque_minimo || 0));
 
     // Remove from list so it can be re-added
     handleRemoveItem(item.tempId);
@@ -346,6 +350,15 @@ export const EntradaItensForm = ({
               label="Ref/Cod (Opc)"
               value={rowRef}
               onChange={(e) => setRowRef(e.target.value)}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Input
+              label="Aviso Est. (Opc)"
+              type="number"
+              className="text-center font-bold text-orange-600 border-orange-200"
+              value={rowMinStock}
+              onChange={(e) => setRowMinStock(e.target.value)}
             />
           </div>
           <div className="md:col-span-2 flex items-end">

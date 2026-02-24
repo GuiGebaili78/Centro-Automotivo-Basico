@@ -4,13 +4,14 @@ import type { IDashboardData, IDashboardStats } from "../types/dashboard.types";
 
 export const DashboardService = {
   getDashboardData: async (): Promise<IDashboardData> => {
-    const [osRes, contasRes, pagPecaRes, pagCliRes, livroRes] =
+    const [osRes, contasRes, pagPecaRes, pagCliRes, livroRes, pecasRes] =
       await Promise.all([
         api.get("/ordem-de-servico"),
         api.get("/contas-pagar"),
         api.get("/pagamento-peca"),
         api.get("/pagamento-cliente"),
         api.get("/livro-caixa"),
+        api.get("/pecas-estoque"),
       ]);
 
     const oss = osRes.data;
@@ -19,6 +20,7 @@ export const DashboardService = {
     const pagPecas = pagPecaRes.data?.data || pagPecaRes.data || [];
     const pagClients = pagCliRes.data;
     const manualEntries = livroRes.data;
+    const pecas = pecasRes.data;
 
     // 1. Serviços em Aberto
     const osAberta = oss.filter(
@@ -110,6 +112,10 @@ export const DashboardService = {
         !o.fechamento_financeiro,
     ).length;
 
+    const alertaEstoque = pecas.filter(
+      (p: any) => Number(p.estoque_atual) <= Number(p.estoque_minimo || 0),
+    ).length;
+
     const stats: IDashboardStats = {
       osAberta,
       contasPagarPending,
@@ -118,6 +124,7 @@ export const DashboardService = {
       livroCaixaExits: todayExits,
       autoPecasPendentes,
       consolidacao,
+      alertaEstoque,
     };
 
     return {

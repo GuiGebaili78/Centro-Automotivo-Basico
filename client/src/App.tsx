@@ -33,14 +33,14 @@ import { SearchVeiculoPage } from "./pages/SearchVeiculoPage";
 import { NovoPagamentoPage } from "./pages/NovoPagamentoPage";
 import { PagamentoEquipePage } from "./pages/PagamentoEquipePage";
 import { ExtratoBancarioPage } from "./pages/ExtratoBancarioPage";
-import { DaschboardPage } from "./pages/DaschboardPage";
+import { DashboardPage } from "./pages/DashboardPage";
 import { ConfiguracaoPage } from "./pages/ConfiguracaoPage";
 import { CategoriasPage } from "./pages/CategoriasPage";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route element={<MainLayout />}>
-      <Route path="/" element={<DaschboardPage />} />
+      <Route path="/" element={<DashboardPage />} />
       {/* Páginas Modernizadas */}
       <Route path="/cliente" element={<ClientePage />} />
       <Route path="/print/os/:id" element={<OsPrintView />} />

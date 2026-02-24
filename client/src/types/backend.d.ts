@@ -118,6 +118,7 @@ export interface IPecasEstoque {
   valor_custo: number; // Decimal
   valor_venda: number; // Decimal
   estoque_atual: number;
+  estoque_minimo: number;
   unidade_medida?: string | null;
   custo_unitario_padrao: number; // Decimal
   dt_ultima_compra?: string | null;

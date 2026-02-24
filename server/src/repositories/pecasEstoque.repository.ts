@@ -113,6 +113,7 @@ export class PecasEstoqueRepository {
               estoque_atual: 0, // Will act increment below
               valor_custo: item.valor_custo,
               valor_venda: item.valor_venda,
+              estoque_minimo: item.new_part_data.estoque_minimo || 0,
               custo_unitario_padrao: item.valor_custo, // Init standard cost
               fabricante: item.new_part_data.fabricante || null,
             },

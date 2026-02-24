@@ -54,7 +54,7 @@ export const OsHeader = ({
           Imprimir/Enviar
         </Button>
 
-        {(os.status === "ORCAMENTO" || os.status === "AGENDA") && (
+        {(os.status === "ORCAMENTO" || os.status === "AGENDAMENTO") && (
           <>
             {onSave && (
               <Button

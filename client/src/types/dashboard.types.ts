@@ -6,6 +6,7 @@ export interface IDashboardStats {
   livroCaixaExits: number;
   autoPecasPendentes: number;
   consolidacao: number;
+  alertaEstoque: number;
 }
 
 export interface IDashboardData {

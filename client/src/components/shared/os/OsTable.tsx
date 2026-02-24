@@ -143,7 +143,7 @@ export const OsTable = ({
                     {os.status === "PRONTO PARA FINANCEIRO"
                       ? "FINANCEIRO"
                       : os.status === "ORCAMENTO"
-                        ? "AGENDAMENTO"
+                        ? "ORÇAMENTO"
                         : (os.status as string).replace(/_/g, " ")}
                   </span>
                 </td>

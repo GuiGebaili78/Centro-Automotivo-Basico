@@ -1,4 +1,4 @@
-import { CreditCard, Wallet, Package, CheckCircle } from "lucide-react";
+import { CreditCard, Wallet, CheckCircle, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { IDashboardStats } from "../../types/dashboard.types";
 
@@ -26,13 +26,13 @@ const StatCard = ({
 }: StatCardProps) => (
   <div
     onClick={onClick}
-    className="bg-white p-2 rounded-xl shadow-sm border border-neutral-200 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 group h-20 w-56 flex flex-col justify-center items-center"
+    className="bg-white p-2 rounded-xl shadow-sm border border-neutral-200 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 group h-20 w-full flex flex-col justify-center items-center"
   >
     <div className="flex items-center gap-1.5 mb-0.5">
       <div className={`p-1.5 rounded-lg ${color.bg} ${color.text}`}>
         <Icon size={16} />
       </div>
-      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest truncate">
+      <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest truncate">
         {title}
       </p>
     </div>
@@ -42,13 +42,9 @@ const StatCard = ({
         children
       ) : (
         <>
-          <h3 className={`text-lg font-black text-neutral-800 leading-none`}>
-            {value}
-          </h3>
+          <h3 className={`text-lg  text-neutral-800 leading-none`}>{value}</h3>
           {subtext && (
-            <p className="text-xs text-neutral-400 font-bold uppercase mt-1">
-              {subtext}
-            </p>
+            <p className="text-xs text-neutral-400 uppercase mt-1">{subtext}</p>
           )}
         </>
       )}
@@ -64,7 +60,7 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
   const navigate = useNavigate();
 
   return (
-    <div className="grid grid-cols-2 gap-2 shrink-0 order-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0 order-3 w-full">
       <StatCard
         title="Contas a Pagar"
         color={{
@@ -76,20 +72,18 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
       >
         <div className="flex justify-between items-center w-full px-1 gap-2">
           <div className="flex flex-col items-center">
-            <h3 className="text-lg font-black text-blue-600">
+            <h3 className="text-lg text-neutral-600">
               {stats.contasPagarPending}
             </h3>
-            <p className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">
-              Pend
+            <p className="text-xs text-neutral-400 uppercase mt-0.5 font-medium">
+              Pendente
             </p>
           </div>
           <div className="h-5 w-px bg-neutral-200"></div>
           <div className="flex flex-col items-center">
-            <h3 className="text-lg font-black text-red-600">
-              {stats.contasPagarOverdue}
-            </h3>
-            <p className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">
-              Atras
+            <h3 className="text-lg text-red-600">{stats.contasPagarOverdue}</h3>
+            <p className="text-xs text-neutral-400 uppercase mt-0.5 font-medium">
+              Atrasada
             </p>
           </div>
         </div>
@@ -103,7 +97,7 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
         }}
         icon={Wallet}
         onClick={() => navigate("/financeiro/livro-caixa")}
-        subtext={`E:${stats.livroCaixaEntries} | S:${stats.livroCaixaExits}`}
+        subtext={`Entrada: ${stats.livroCaixaEntries} | Saída: ${stats.livroCaixaExits}`}
       />
       <StatCard
         title="Auto Peças"
@@ -114,7 +108,18 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
         }}
         icon={Package}
         onClick={() => navigate("/financeiro/pagamento-pecas")}
-        subtext="Pendentes"
+        subtext="A Pagar"
+      />
+      <StatCard
+        title="Alerta Estoque"
+        value={stats.alertaEstoque}
+        color={{
+          bg: "bg-red-100",
+          text: "text-red-700",
+        }}
+        icon={Package}
+        onClick={() => navigate("/pecas-estoque")}
+        subtext="Peças em falta"
       />
       <StatCard
         title="Consolidação"

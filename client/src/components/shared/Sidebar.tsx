@@ -189,8 +189,8 @@ export const Sidebar = () => {
                         to={sub.path}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${
                           isSubActive
-                            ? "text-white bg-primary-800 shadow-lg shadow-green-200/20 font-bold"
-                            : "text-primary-500 hover:text-primary-400 hover:bg-slate-800/30 font-medium"
+                            ? "text-white bg-primary-800 shadow-lg shadow-green-200/20"
+                            : "text-primary-200 hover:text-primary-400 hover:bg-slate-800/30"
                         }`}
                       >
                         {sub.label}

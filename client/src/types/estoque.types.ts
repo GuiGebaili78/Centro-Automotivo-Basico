@@ -10,6 +10,7 @@ export interface IEstoqueUpdatePayload {
   valor_custo: number;
   valor_venda: number;
   estoque_atual: number;
+  estoque_minimo: number;
 }
 
 export interface IItemEntrada {
@@ -20,7 +21,9 @@ export interface IItemEntrada {
     descricao: string;
     fabricante: string;
     unidade_medida: string;
+    estoque_minimo: number;
   } | null;
+
   displayName: string;
   quantidade: number;
   valor_custo: number;

@@ -1,6 +1,7 @@
 import { formatCurrency } from "../../utils/formatCurrency";
 import { ActionButton } from "../ui/ActionButton";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, AlertCircle } from "lucide-react";
+
 import type { IPecasEstoque } from "../../types/estoque.types";
 
 interface EstoqueTableProps {
@@ -84,16 +85,32 @@ export const EstoqueTable = ({
                 </div>
               </td>
               <td className="text-left">
-                <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-block ${
-                    p.estoque_atual > 0
-                      ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                      : "bg-red-50 text-red-600 border border-red-100"
-                  }`}
-                >
-                  {p.estoque_atual} {p.unidade_medida || "UN"}
-                </span>
+                <div className="flex flex-col gap-1">
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-block w-fit ${
+                      p.estoque_atual > (p.estoque_minimo || 0)
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                        : p.estoque_atual > 0
+                          ? "bg-orange-50 text-orange-600 border border-orange-100"
+                          : "bg-red-50 text-red-600 border border-red-100"
+                    }`}
+                  >
+                    {p.estoque_atual} {p.unidade_medida || "UN"}
+                  </span>
+                  {p.estoque_atual <= (p.estoque_minimo || 0) &&
+                    p.estoque_atual > 0 && (
+                      <span className="text-[9px] text-orange-600 font-bold uppercase flex items-center gap-0.5 animate-pulse">
+                        <AlertCircle size={10} /> Estoque Baixo
+                      </span>
+                    )}
+                  {p.estoque_atual === 0 && (
+                    <span className="text-[9px] text-red-600 font-bold uppercase flex items-center gap-0.5">
+                      <AlertCircle size={10} /> Sem Estoque
+                    </span>
+                  )}
+                </div>
               </td>
+
               <td className="text-left text-sm font-bold text-neutral-800">
                 {formatCurrency(Number(p.valor_venda))}
               </td>

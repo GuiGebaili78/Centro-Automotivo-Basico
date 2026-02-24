@@ -31,6 +31,7 @@ export const EdicaoPecaModal = ({
     margem_lucro: "",
     valor_venda: "",
     estoque_atual: "",
+    estoque_minimo: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -55,6 +56,7 @@ export const EdicaoPecaModal = ({
         margem_lucro: margin,
         valor_venda: Number(peca.valor_venda).toFixed(2),
         estoque_atual: String(peca.estoque_atual),
+        estoque_minimo: String(peca.estoque_minimo || 0),
       });
     }
   }, [peca, isOpen]);
@@ -97,6 +99,7 @@ export const EdicaoPecaModal = ({
         valor_custo: Number(formData.valor_custo),
         valor_venda: Number(formData.valor_venda),
         estoque_atual: Number(formData.estoque_atual),
+        estoque_minimo: Number(formData.estoque_minimo),
       };
 
       await EstoqueService.update(peca.id_pecas_estoque, payload);
@@ -203,7 +206,19 @@ export const EdicaoPecaModal = ({
                 step="0.5"
                 value={formData.margem_lucro}
                 onChange={(e) => handleRecalcSale(e.target.value)}
-                className="text-center font-medium"
+                className="text-center font-bold"
+              />
+              <Input
+                label="Aviso Estoque (Mín)"
+                type="number"
+                value={formData.estoque_minimo}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    estoque_minimo: e.target.value,
+                  })
+                }
+                className="text-center font-bold text-orange-600 border-orange-200"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

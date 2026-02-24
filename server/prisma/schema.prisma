@@ -140,6 +140,7 @@ model PecasEstoque {
   valor_custo           Decimal       @db.Decimal(10, 2)
   valor_venda           Decimal       @db.Decimal(10, 2)
   estoque_atual         Int
+  estoque_minimo        Int           @default(0)
   unidade_medida        String?       @db.VarChar(20)
   dt_ultima_compra      DateTime?     @db.Timestamp(6)
   dt_cadastro           DateTime      @default(now()) @db.Timestamp(6)
@@ -149,6 +150,7 @@ model PecasEstoque {
 
   @@map("pecas_estoque")
 }
+
 
 model Veiculo {
   id_veiculo        Int              @id @default(autoincrement())

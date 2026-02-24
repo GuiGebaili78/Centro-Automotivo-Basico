@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 02/21/2026 16:35:16
+PROJECT DUMP GENERATED ON 02/24/2026 15:52:13
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -920,101 +920,6 @@ SELECT pg_catalog.setval('public.veiculo_id_veiculo_seq', 9, true);
 
 
 ================================================================================
-FILE PATH: DEBUG_CARTOES.md
-================================================================================
-# 🔍 CHECKLIST DE DEBUG - CARTÕES NO CAIXA
-
-## TESTE PASSO A PASSO:
-
-### 1. Criar OS com Cartão de Crédito 3x
-
-1. Criar nova OS
-2. Adicionar pagamento Crédito 3x de R$ 300,00
-3. **IMPORTANTE**: Selecionar operadora (ex: Stone, Cielo)
-4. Salvar pagamento
-5. Ir em Fechamento Financeiro
-6. Clicar em "Salvar e Finalizar"
-
-### 2. Verificar Console do Navegador (F12)
-
-Procurar por erros ou mensagens
-
-### 3. Verificar Banco de Dados
-
-Execute no PostgreSQL:
-
-```sql
--- Verificar se pagamento tem id_operadora
-SELECT 
-  id_pagamento_cliente,
-  metodo_pagamento,
-  valor,
-  id_operadora,
-  id_conta_bancaria
-FROM pagamento_cliente
-ORDER BY id_pagamento_cliente DESC
-LIMIT 5;
-
--- Verificar se lançamento foi criado no caixa
-SELECT 
-  id_livro_caixa,
-  descricao,
-  valor,
-  tipo_movimentacao,
-  categoria,
-  dt_movimentacao
-FROM livro_caixa
-ORDER BY id_livro_caixa DESC
-LIMIT 10;
-
--- Verificar se recebíveis foram criados
-SELECT 
-  id_recebivel,
-  id_os,
-  id_operadora,
-  num_parcela,
-  total_parcelas,
-  valor_bruto,
-  valor_liquido,
-  status
-FROM recebivel_cartao
-ORDER BY id_recebivel DESC
-LIMIT 10;
-```
-
-### 4. Resultados Esperados:
-
-✅ `pagamento_cliente.id_operadora` deve ter um valor (não null)
-✅ Deve existir 1 lançamento no `livro_caixa` com descrição "Faturamento CREDITO - OS #X"
-✅ Devem existir 3 registros em `recebivel_cartao` (uma para cada parcela)
-
-### 5. Se `id_operadora` for NULL:
-
-**Problema**: Frontend não está enviando a operadora
-**Solução**: Verificar se o select de operadora está funcionando no formulário verde
-
-### 6. Se `id_operadora` existe mas não tem lançamento no caixa:
-
-**Problema**: Consolidação não está executando ou está falhando
-**Solução**: Verificar logs do servidor Docker
-
-```bash
-docker compose logs api --tail=100
-```
-
----
-
-## PRÓXIMO PASSO:
-
-Execute o teste acima e me informe:
-1. O valor de `id_operadora` no banco
-2. Se existe lançamento no caixa
-3. Se existem recebíveis
-4. Qualquer erro no console ou logs
-
-
-
-================================================================================
 FILE PATH: docker-compose.yml
 ================================================================================
 services:
@@ -1086,56 +991,6 @@ volumes:
 networks:
   app-network:
     driver: bridge
-
-
-================================================================================
-FILE PATH: implementation_plan_reports.md
-================================================================================
-# Plano de Implementação: Relatórios Financeiros
-
-Este plano descreve a criação do módulo de "Inteligência Financeira".
-
-## 1. Visão Geral
-
-Criaremos uma nova página "Relatórios Financeiros" e um controller dedicado.
-
-## 2. Arquitetura do Backend (`/api/relatorios`)
-
-Não alteraremos tabelas existentes.
-
-### Novo Controller: `RelatorioFinanceiroController.ts`
-
-Endpoint único: `GET /api/relatorios/dashboard`
-Retorno JSON:
-
-1.  **DRE Mensal**: Receita Bruta, Custos Diretos (CMV), Despesas Operacionais, Lucro Líquido.
-2.  **Fluxo de Caixa**: Histórico `livro_caixa` vs Futuro `recebivel_cartao` + `contas_pagar`.
-3.  **Churn**: Clientes inativos > 180 dias.
-4.  **Despesas por Categoria**: Gráfico Donut.
-
-## 3. Frontend (`RelatoriosFinanceirosPage.tsx`)
-
-Biblioteca **Recharts**.
-
-- **KPIs**: Lucro Atual, Previsão Entradas.
-- **Gráficos**: DRE (Barras), Fluxo (Linha), Despesas (Donut).
-- **Tabela**: Churn.
-
-## 4. Passos
-
-1.  Criar `RelatorioFinanceiroController.ts`.
-2.  Criar rota `relatorio.routes.ts` e registrar no `server.ts`.
-3.  Criar `RelatoriosFinanceirosPage.tsx`.
-
-## 5. Não-Regressão
-
-- Nenhuma tabela alterada.
-- Nenhum dado modificado (`READ ONLY`).
-
----
-
-**Aguardando validação.**
-
 
 
 ================================================================================
@@ -1275,48 +1130,6 @@ FILE PATH: README.md
 ================================================================================
 # Centro-Automotivo-Basico
 
-
-
-
-================================================================================
-FILE PATH: TESTE_CONSOLIDACAO.md
-================================================================================
-# 🔍 DIAGNÓSTICO - PROBLEMAS DE CONSOLIDAÇÃO
-
-## PROBLEMAS REPORTADOS:
-
-1. ❌ PIX aparece no caixa mas NÃO na conta bancária
-2. ❌ Crédito aparece em recebíveis mas NÃO no caixa
-3. ❌ Extrato não mostra movimentações (só saldo)
-
-## POSSÍVEIS CAUSAS:
-
-### Problema 1: PIX não atualiza conta
-**Causa provável**: `id_conta_bancaria` não está sendo salvo no `PagamentoCliente`
-**Solução**: Verificar se o campo está sendo enviado do frontend
-
-### Problema 2: Crédito não aparece no caixa
-**Causa provável**: Lançamento no caixa não está sendo criado para cartões
-**Solução**: Verificar lógica de consolidação (linhas 148-185 do repository)
-
-### Problema 3: Extrato não mostra movimentações
-**Causa provável**: Movimentações não têm `id_conta_bancaria` vinculado
-**Solução**: Verificar se consolidação está criando lançamentos com `id_conta_bancaria`
-
-## CHECKLIST DE VERIFICAÇÃO:
-
-- [ ] Frontend está enviando `id_conta_bancaria` para PIX/Dinheiro?
-- [ ] Frontend está enviando `id_operadora` para Cartões?
-- [ ] Backend está recebendo esses campos?
-- [ ] Consolidação está criando lançamentos no caixa?
-- [ ] Consolidação está vinculando `id_conta_bancaria` aos lançamentos?
-- [ ] Consolidação está atualizando saldo bancário?
-
-## PRÓXIMOS PASSOS:
-
-1. Testar novamente após correção do status (mudança para PRONTO PARA FINANCEIRO antes de consolidar)
-2. Verificar logs do servidor para erros
-3. Verificar banco de dados diretamente se necessário
 
 
 
@@ -1587,25 +1400,49 @@ export default {
     content: [
         "./index.html",
         "./src/**/*.{js,ts,jsx,tsx}",
-        "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}", // Necessário para os relatórios Tremor
+        "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
     ],
     theme: {
         transparent: "transparent",
         current: "current",
         extend: {
+            fontFamily: {
+                // Força o sistema inteiro a usar Roboto como padrão
+                sans: ['Roboto', 'sans-serif'],
+            },
             colors: {
-                // Definindo as cores que usamos no index.css
                 primary: {
-                    100: "#dbeafe", // Azul clarinho (para anéis de foco e backgrounds)
-                    600: "#2563eb", // Azul principal
-                    700: "#2b458a", // Azul hover
-                    800: "#182a5a", // Azul Botão Sidebar
+                    50: '#eff6ff',
+                    100: '#dbeafe',
+                    200: '#bfdbfe',
+                    500: '#3b82f6',
+                    600: '#2563eb', // Azul Principal
+                    700: '#1d4ed8',
+                    800: '#1e40af', // Azul Sidebar/Escuro
+                    900: '#1e3a8a',
                 },
                 secondary: {
-                    500: "#f97316", // Laranja/Amber
-                    600: "#ea580c",
+                    50: '#fff7ed',
+                    100: '#ffedd5',
+                    500: '#f97316', // Laranja Principal
+                    600: '#ea580c',
+                    700: '#c2410c',
                 },
-                // Configuração específica para o Tremor herdar seu padrão
+                success: {
+                    50: '#f0fdf4',
+                    100: '#dcfce7',
+                    500: '#22c55e', // Verde Principal (Lucros, Sucesso)
+                    600: '#16a34a',
+                    700: '#15803d',
+                },
+                highlight: {
+                    50: '#faf5ff',
+                    100: '#f3e8ff',
+                    500: '#a855f7', // Roxo Principal (Destaques, Ações Especiais)
+                    600: '#9333ea',
+                    700: '#7e22ce',
+                },
+                // Tremor colors...
                 tremor: {
                     brand: {
                         faint: "#dbeafe",
@@ -1616,28 +1453,27 @@ export default {
                         inverted: "#ffffff",
                     },
                     background: {
-                        muted: "#f9fafb",
-                        subtle: "#f3f4f6",
+                        muted: "#f8fafc", // Ajustado para a paleta slate
+                        subtle: "#f1f5f9",
                         DEFAULT: "#ffffff",
-                        emphasis: "#374151",
+                        emphasis: "#334155",
                     },
                     border: {
-                        DEFAULT: "#e5e7eb",
+                        DEFAULT: "#e2e8f0",
                     },
                     ring: {
-                        DEFAULT: "#e5e7eb",
+                        DEFAULT: "#e2e8f0",
                     },
                     content: {
-                        subtle: "#9ca3af",
-                        DEFAULT: "#6b7280",
-                        emphasis: "#374151",
-                        strong: "#111827",
+                        subtle: "#94a3b8",
+                        DEFAULT: "#64748b",
+                        emphasis: "#334155",
+                        strong: "#0f172a",
                         inverted: "#ffffff",
                     },
                 },
             },
             boxShadow: {
-                // Um sombreado mais suave e moderno para seus cards
                 'premium': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
             },
             borderRadius: {
@@ -1653,10 +1489,9 @@ export default {
             },
         },
     },
-    // Esta parte é importante para o Tremor funcionar corretamente com as cores novas
     safelist: [
         {
-            pattern: /^(bg|text|border|ring|stroke|fill)-(tremor|primary|secondary)/,
+            pattern: /^(bg|text|border|ring|stroke|fill)-(tremor|primary|secondary|success|highlight)/,
             variants: ['hover', 'ui-selected'],
         },
     ],
@@ -1859,14 +1694,14 @@ import { SearchVeiculoPage } from "./pages/SearchVeiculoPage";
 import { NovoPagamentoPage } from "./pages/NovoPagamentoPage";
 import { PagamentoEquipePage } from "./pages/PagamentoEquipePage";
 import { ExtratoBancarioPage } from "./pages/ExtratoBancarioPage";
-import { DaschboardPage } from "./pages/DaschboardPage";
+import { DashboardPage } from "./pages/DashboardPage";
 import { ConfiguracaoPage } from "./pages/ConfiguracaoPage";
 import { CategoriasPage } from "./pages/CategoriasPage";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route element={<MainLayout />}>
-      <Route path="/" element={<DaschboardPage />} />
+      <Route path="/" element={<DashboardPage />} />
       {/* Páginas Modernizadas */}
       <Route path="/cliente" element={<ClientePage />} />
       <Route path="/print/os/:id" element={<OsPrintView />} />
@@ -1936,99 +1771,75 @@ export default App;
 ================================================================================
 FILE PATH: client\src\index.css
 ================================================================================
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* Variáveis de Cores (Sincronizadas com o tailwind.config.js) */
-    --color-primary-100: #dbeafe;
-    --color-primary-600: #2563eb;
-    --color-primary-700: #2b458a;
-    --color-primary-800: #182a5a;
-
-    --color-secondary-500: #f97316;
-    --color-secondary-600: #ea580c;
-  }
-  html {
-    /* Base: 1rem = 16px */
-    font-size: 16px;
-    @apply antialiased text-slate-800 bg-slate-50; /* Fundo da página cinza claro */
-    font-family:
-      "Inter",
-      system-ui,
-      -apple-system,
-      sans-serif;
+  html,
+  body {
+    @apply antialiased text-slate-800 bg-slate-50 font-sans;
   }
 
-  /* --- PADRONIZAÇÃO DE TIPOGRAFIA (Escala de Mercado) --- */
+  /* --- PADRONIZAÇÃO DE TIPOGRAFIA --- */
+  /* Agora, ao usar <h1> nas páginas, ele assume esse padrão. 
+     Dica: Nas páginas, limpe as classes dos h1 (ex: deixe apenas <h1>Título</h1>) 
+     para que esse estilo global funcione sem conflitos. */
 
-  /* H1: Títulos Principais de Página */
   h1 {
-    @apply text-[1.5rem] font-black text-slate-900 tracking-tight leading-none mb-6;
+    @apply text-2xl font-black text-slate-900 tracking-tight leading-none mb-6;
   }
 
-  /* H2: Títulos de Seções ou Cards */
   h2 {
-    @apply text-[1.125rem] font-bold text-slate-800 leading-none mb-4;
+    @apply text-lg font-bold text-slate-800 leading-none mb-4;
   }
 
-  /* Texto Padrão (Leitura Geral, Inputs e Tabelas) - 14px */
-  p,
-  span,
-  div,
-  li,
-  td {
-    @apply text-[0.875rem] leading-relaxed;
-  }
-
-  /* Labels e Cabeçalhos - 12px */
   label {
-    @apply text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block;
+    @apply text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block;
   }
 
   /* --- INPUTS GLOBAIS --- */
   input,
   select,
   textarea {
-    @apply w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[0.875rem]
+    @apply w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm
            placeholder:text-slate-400 transition-all outline-none
-           focus:ring-4 focus:ring-primary-100 focus:border-primary-600;
+           focus:ring-2 focus:ring-primary-100 focus:border-primary-500;
   }
 }
 
 @layer components {
-  /* --- CLASSE PARA TABELAS (LISTAS) --- */
+  /* --- COMPONENTES GLOBAIS --- */
   .tabela-limpa {
-    @apply w-full border-separate border-spacing-0;
+    @apply w-full border-separate border-spacing-0 text-sm;
   }
 
   .tabela-limpa th {
-    @apply bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold p-4 
-           border-b border-slate-100 text-left leading-none;
+    @apply bg-slate-100/50 text-slate-500 text-xs uppercase tracking-wider font-bold p-4 
+           border-b border-slate-200 text-left leading-none;
   }
 
   .tabela-limpa td {
-    @apply p-4 text-[0.875rem] text-slate-600 border-b border-slate-50 transition-colors align-middle;
+    @apply p-4 text-slate-600 border-b border-slate-100 transition-colors align-top;
   }
 
-  /* Remove borda da última linha para não conflitar com o arredondamento do Card */
   .tabela-limpa tr:last-child td {
     @apply border-b-0;
   }
 
   .tabela-limpa tr:hover td {
-    @apply bg-slate-50/50;
+    @apply bg-slate-50;
   }
 
-  /* --- CUSTOMIZAÇÃO TOASTIFY (Notificações) --- */
+  /* --- TOASTIFY --- */
   .Toastify__toast {
-    @apply rounded-2xl shadow-premium border border-slate-100 !important;
+    @apply rounded-xl shadow-premium border border-slate-100 font-sans !important;
   }
 
   .Toastify__toast-body {
-    @apply text-sm font-bold text-slate-700 !important;
+    @apply text-sm font-medium text-slate-700 !important;
   }
 
   /* --- SCROLLBARS --- */
@@ -2045,15 +1856,15 @@ FILE PATH: client\src\index.css
   }
 }
 
-/* Animação suave para troca de páginas */
+/* Animações */
 .animate-in {
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeIn 0.3s ease-out forwards;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -2080,106 +1891,6 @@ createRoot(document.getElementById("root")!).render(
     </AppProvider>
   </StrictMode>,
 );
-
-
-
-================================================================================
-FILE PATH: client\src\standardization_checklist.md
-================================================================================
-# Checklist de Padronização
-
-Este checklist define os padrões visuais e funcionais para páginas de "Gestão de Entidades" (Cliente, Veículo, Fornecedor, Funcionário) para garantir consistência.
-
-## 1. Layout da Página (Visão Principal)
-
-- **Componente**: `PageLayout` deve ser o wrapper raiz.
-- **Título**: Título claro no plural (ex: "Gestão de Clientes"). Suporta string ou ReactNode complexo (ex: Título + Badge).
-- **Subtítulo**: Descrição opcional em texto abaixo do título.
-- **Ações**: Botão primário "Novo" no canto superior direito (`<Button variant="primary" icon={Plus}>...`).
-- **Busca**:
-  - Posicionada **diretamente** na div de espaçamento do layout (NÃO dentro de um `<Card>`).
-  - Usar componente `Input` com `icon={Search}`.
-  - Largura total (`w-full`).
-- **Card da Tabela**:
-  - Envolvido em `<Card className="p-0 overflow-hidden">`.
-  - Classe da tabela: `tabela-limpa w-full`.
-  - Colunas `<thead>` devem ser claras.
-  - Linhas `<tbody>`: `className="hover:bg-neutral-50 transition-colors group"`.
-- **Ações da Linha**:
-  - Posicionadas na última coluna (`text-center` ou `pr-6`).
-  - Envolvidas em uma div com `opacity-0 group-hover:opacity-100 transition-opacity`.
-  - Usar componente `ActionButton`.
-
-- **Botões de Filtro (Tipo Radio)**:
-  - Container: `flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1`.
-  - Item Base: `px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all cursor-pointer`.
-  - **Estado Ativo**: `bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm`.
-  - **Estado Inativo**: `text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100`.
-
-## 2. Layout do Formulário (Visão "Editar/Criar")
-
-- **Padrão de Troca de Visão**: Se não estiver usando uma rota separada (como `Fornecedor` e `Funcionario`), o componente deve retornar o componente de Formulário quando `view === 'form'`.
-- **Estrutura do Componente de Formulário**:
-  - **Container Raiz**: `<div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">`
-  - **Cabeçalho**:
-    - Container Flex com Botão Voltar (`variant="ghost" size="sm"`) e Título/Subtítulo.
-    - Título: "Novo [Entidade]" ou "Editar [Entidade]".
-  - **Tag Form**: `<form className="space-y-6 text-neutral-900">` (SEM `pb-24` ou padding fixo).
-  - **Conteúdo do Formulário**:
-    - Agrupar campos logicamente (ex: Identificação, Contato, Endereço).
-    - Usar padrões do componente `Input`.
-    - Usar layouts de grid (`grid-cols-1 md:grid-cols-2`, etc.).
-  - **Ações de Rodapé**:
-    - **NÃO FIXADO**.
-    - Localizado ao final do fluxo do formulário.
-    - Estilizado como:
-      ```tsx
-      <div className="flex flex-col-reverse md:flex-row justify-end gap-4 pt-6 border-t border-neutral-200">
-        <Button variant="ghost" onClick={onCancel}>
-          CANCELAR
-        </Button>
-        <Button type="submit" variant="primary" icon={Save / CheckCircle}>
-          SALVAR
-        </Button>
-      </div>
-      ```
-
-## 3. Feedback & Interação
-
-- **Notificações Toast**:
-  - Usar `react-toastify`.
-  - Mensagem de sucesso deve ser disparada **após** a chamada de API bem-sucedida, tipicamente no `handleSuccess` da Página pai ou potencialmente no Formulário se ele gerenciar seu próprio redirecionamento/troca de visão.
-  - **Específico de Funcionário**: `FuncionarioPage` lida com o toast de sucesso em `handleFormSuccess`. Garanta que `FuncionarioForm` chame `onSuccess` _após_ a chamada da API.
-- **Confirmação de Exclusão**:
-  - Usar componente `ConfirmModal`.
-  - Nunca usar `window.confirm`.
-- **Confirmação Salvar/Cancelar**:
-  - (Opcional mas recomendado para formulários complexos) Usar `ConfirmModal` se o formulário estiver "sujo" (alterado).
-
-## 4. Específicos da Tarefa Atual (Funcionário)
-
-- [x] Layout: `PageLayout`.
-- [x] Busca: Input fora do Card.
-- [x] Tabela: Tabela limpa, ações no hover.
-- [ ] Rodapé do Formulário: **Correção necessária**. Mudar de posição fixa para layout estático.
-- [ ] Toast: Garantir que o callback `onSuccess` no Formulário permita que a Página dispare o Toast ou o Formulário o dispare. (Código atual da Página: `handleFormSuccess` dispara toast. Código do Formulário: `onSuccess()` chamado após API. Este é o fluxo correto, apenas precisa verificar o feedback visual).
-
-## 5. Visão de Detalhes / Dashboard (ex: Detalhes da OS)
-
-- **Layout**: Usar `PageLayout`.
-- **Cabeçalho**:
-  - Pode incluir "Botão Voltar" e Badges de Status na área do Título.
-  - Subtítulo deve descrever o contexto (ex: "Gerencie os detalhes...").
-- **Seções**:
-  - Usar `Card` (`<Card className="p-4 ...">`) para agrupar informações relacionadas.
-  - Usar layouts Grid (`grid-cols-1 lg:grid-cols-2`) para visões divididas (ex: Diagnóstico vs Mão de Obra).
-- **Feedback**:
-  - Usar `react-toastify` para todo feedback de operação assíncrona (Sucesso/Erro).
-  - Evitar `StatusBanner` inline a menos que persista um estado crítico (ex: sistema offline).
-- **Modais**:
-  - Usar componente `Modal` Compartilhado para edições/confirmações.
-
-  teste vercel 2
 
 
 
@@ -2218,6 +1929,7 @@ import { Badge } from "../ui/Badge";
 import { ActionButton } from "../ui/ActionButton";
 import { Button } from "../ui/Button";
 import { ConfirmModal } from "../ui/ConfirmModal";
+import { formatPhone } from "../../utils/normalize";
 import type { ICliente } from "../../types/cliente.types";
 
 interface ClientesTableProps {
@@ -2312,28 +2024,35 @@ export const ClientesTable = ({
                     >
                       <User size={18} />
                     </div>
-                    <span className="font-bold text-neutral-900 text-sm">
+                    <span className="text-base font-medium text-neutral-600 uppercase line-clamp-2 leading-relaxed">
                       {getNome(c)}
                     </span>
                   </div>
                 </td>
                 <td className="py-4">
                   <div className="flex flex-col gap-1">
-                    <span className="flex items-center gap-2 text-sm text-neutral-700 font-medium">
+                    <span className="flex items-center gap-2 text-base text-neutral-600 font-medium">
                       <Phone size={14} className="text-neutral-400" />
-                      {c.telefone_1}
+                      {formatPhone(c.telefone_1)}
                     </span>
                     {c.email && (
-                      <span className="text-xs text-neutral-500 pl-6">
+                      <span className="text-sm text-neutral-500 pl-6">
                         {c.email}
                       </span>
                     )}
                   </div>
                 </td>
                 <td className="py-4">
-                  <div className="flex items-center gap-2 text-sm text-neutral-600">
-                    <MapPin size={14} className="text-neutral-400" />
-                    {c.cidade}, {c.estado}
+                  <div className="flex flex-col gap-0.5 text-sm text-neutral-600 font-medium">
+                    <div className="flex items-center gap-2">
+                      <MapPin size={14} className="text-neutral-400" />
+                      <span className="uppercase">
+                        {c.logradouro}, {c.nr_logradouro}
+                      </span>
+                    </div>
+                    <span className="pl-6 text-xs text-neutral-500 uppercase">
+                      {c.bairro} — {c.cidade}, {c.estado}
+                    </span>
                   </div>
                 </td>
                 <td className="py-4">
@@ -2374,12 +2093,11 @@ export const ClientesTable = ({
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <Car size={18} className="text-primary-600" />
-                          <h4 className="text-xs font-bold uppercase text-neutral-500 tracking-widest">
+                          <h4 className="text-sm font-bold uppercase text-neutral-500 tracking-widest">
                             Veículos Cadastrados ({c.veiculos?.length || 0})
                           </h4>
                         </div>
                         <Button
-                          size="sm"
                           variant="primary"
                           icon={Plus}
                           onClick={() => navigate(`/cadastro/${c.id_cliente}`)}
@@ -2400,19 +2118,19 @@ export const ClientesTable = ({
                               className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-primary-200 transition-all group/card flex justify-between items-start"
                             >
                               <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                  <div className="w-2 h-2 rounded-full bg-success"></div>
-                                  <p className="text-sm font-bold text-neutral-900">
+                                <div className="flex flex-col">
+                                  <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
+                                    {v.marca} {v.modelo} • {v.cor || "COR N/A"}
+                                  </span>
+                                  <span className="text-base text-primary-600 uppercase mt-0.5 font-bold">
                                     {v.placa}
-                                  </p>
+                                  </span>
+                                  {v.ano_modelo && (
+                                    <span className="text-basetext-neutral-600 mt-1 uppercase">
+                                      Ano: {v.ano_modelo}
+                                    </span>
+                                  )}
                                 </div>
-                                <p className="text-xs text-neutral-500 font-medium uppercase tracking-wide">
-                                  {v.marca} {v.modelo}
-                                </p>
-                                <p className="text-[10px] text-neutral-400 mt-1">
-                                  {v.ano_modelo || "Ano N/A"} •{" "}
-                                  {v.cor || "Cor N/A"}
-                                </p>
                               </div>
                               <ActionButton
                                 icon={Wrench}
@@ -2551,7 +2269,7 @@ export const ColaboradoresTable = ({
 ================================================================================
 FILE PATH: client\src\components\dashboard\DashboardMetrics.tsx
 ================================================================================
-import { CreditCard, Wallet, Package, CheckCircle } from "lucide-react";
+import { CreditCard, Wallet, CheckCircle, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { IDashboardStats } from "../../types/dashboard.types";
 
@@ -2579,13 +2297,13 @@ const StatCard = ({
 }: StatCardProps) => (
   <div
     onClick={onClick}
-    className="bg-white p-2 rounded-xl shadow-sm border border-neutral-200 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 group h-20 w-56 flex flex-col justify-center items-center"
+    className="bg-white p-2 rounded-xl shadow-sm border border-neutral-200 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 group h-20 w-full flex flex-col justify-center items-center"
   >
     <div className="flex items-center gap-1.5 mb-0.5">
       <div className={`p-1.5 rounded-lg ${color.bg} ${color.text}`}>
         <Icon size={16} />
       </div>
-      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest truncate">
+      <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest truncate">
         {title}
       </p>
     </div>
@@ -2595,13 +2313,9 @@ const StatCard = ({
         children
       ) : (
         <>
-          <h3 className={`text-lg font-black text-neutral-800 leading-none`}>
-            {value}
-          </h3>
+          <h3 className={`text-lg  text-neutral-800 leading-none`}>{value}</h3>
           {subtext && (
-            <p className="text-xs text-neutral-400 font-bold uppercase mt-1">
-              {subtext}
-            </p>
+            <p className="text-xs text-neutral-400 uppercase mt-1">{subtext}</p>
           )}
         </>
       )}
@@ -2617,7 +2331,7 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
   const navigate = useNavigate();
 
   return (
-    <div className="grid grid-cols-2 gap-2 shrink-0 order-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0 order-3 w-full">
       <StatCard
         title="Contas a Pagar"
         color={{
@@ -2629,20 +2343,18 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
       >
         <div className="flex justify-between items-center w-full px-1 gap-2">
           <div className="flex flex-col items-center">
-            <h3 className="text-lg font-black text-blue-600">
+            <h3 className="text-lg text-neutral-600">
               {stats.contasPagarPending}
             </h3>
-            <p className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">
-              Pend
+            <p className="text-xs text-neutral-400 uppercase mt-0.5">
+              Pendente
             </p>
           </div>
           <div className="h-5 w-px bg-neutral-200"></div>
           <div className="flex flex-col items-center">
-            <h3 className="text-lg font-black text-red-600">
-              {stats.contasPagarOverdue}
-            </h3>
-            <p className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">
-              Atras
+            <h3 className="text-lg text-red-600">{stats.contasPagarOverdue}</h3>
+            <p className="text-xs text-neutral-400 uppercase mt-0.5">
+              Atrasada
             </p>
           </div>
         </div>
@@ -2656,7 +2368,7 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
         }}
         icon={Wallet}
         onClick={() => navigate("/financeiro/livro-caixa")}
-        subtext={`E:${stats.livroCaixaEntries} | S:${stats.livroCaixaExits}`}
+        subtext={`Entrada: ${stats.livroCaixaEntries} | Saída: ${stats.livroCaixaExits}`}
       />
       <StatCard
         title="Auto Peças"
@@ -2667,7 +2379,18 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
         }}
         icon={Package}
         onClick={() => navigate("/financeiro/pagamento-pecas")}
-        subtext="Pendentes"
+        subtext="A Pagar"
+      />
+      <StatCard
+        title="Alerta Estoque"
+        value={stats.alertaEstoque}
+        color={{
+          bg: "bg-red-100",
+          text: "text-red-700",
+        }}
+        icon={Package}
+        onClick={() => navigate("/pecas-estoque")}
+        subtext="Peças em falta"
       />
       <StatCard
         title="Consolidação"
@@ -2691,11 +2414,10 @@ FILE PATH: client\src\components\dashboard\RecentOsWidget.tsx
 ================================================================================
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, Wrench } from "lucide-react";
+import { Clock } from "lucide-react";
 import { Card } from "../ui/Card";
-import { Button } from "../ui/Button";
 import { OsStatus } from "../../types/os.types";
-import { getStatusStyle } from "../../utils/osUtils";
+import { OsTable } from "../shared/os/OsTable";
 import type { FilterPeriod } from "../../types/dashboard.types";
 
 interface RecentOsWidgetProps {
@@ -2764,16 +2486,16 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
   const filteredServices = getFilteredRecentServices();
 
   const getFilterButtonClass = (isActive: boolean) =>
-    `px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+    `px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
       isActive
         ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-        : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100"
+        : "text-neutral-600 hover:text-neutral-700 hover:bg-neutral-100"
     }`;
 
   return (
     <Card className="p-0 overflow-hidden">
-      <div className="p-6 border-b border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white">
-        <h2 className="text-sm font-bold text-neutral-700 tracking-tight flex items-center gap-2">
+      <div className="p-2 border-b border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white">
+        <h2 className="text-base font-bold text-neutral-600 tracking-tight flex items-center gap-2">
           <Clock size={16} className="text-blue-500" />
           Atividade Recente (OS)
         </h2>
@@ -2792,159 +2514,17 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="tabela-limpa w-full">
-          <thead>
-            <tr>
-              <th className="w-[15%]">Data / OS</th>
-              <th className="w-[20%]">Veículo</th>
-              <th className="w-[25%]">Diagnóstico / Defeito</th>
-              <th className="w-[15%]">Colaborador</th>
-              <th className="w-[15%]">Cliente</th>
-              <th className="w-[10%] text-center">Status</th>
-              <th className="w-[10%] text-center">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-50">
-            {filteredServices.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="p-12 text-center text-neutral-400 font-medium italic"
-                >
-                  Nenhuma atualização neste período.
-                </td>
-              </tr>
-            ) : (
-              filteredServices.map((os: any) => (
-                <tr
-                  key={os.id_os}
-                  onClick={() =>
-                    navigate(
-                      os.status === "PRONTO PARA FINANCEIRO"
-                        ? `/fechamento-financeiro?id_os=${os.id_os}`
-                        : `/ordem-de-servico?id=${os.id_os}`,
-                    )
-                  }
-                  className="hover:bg-neutral-50 cursor-pointer transition-colors group"
-                >
-                  <td className="p-4">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-black text-neutral-700 bg-neutral-100 px-1.5 rounded w-fit mb-1">
-                        #{os.id_os}
-                      </span>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-neutral-600">
-                          {new Date(os.dt_abertura).toLocaleDateString()}
-                        </span>
-                        <span className="text-[10px] text-neutral-400 font-medium">
-                          {new Date(os.dt_abertura).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-neutral-800 text-xs uppercase">
-                        {os.veiculo?.modelo || "Modelo N/I"}
-                      </span>
-                      <span className="text-[10px] font-bold text-neutral-400 uppercase mt-0.5">
-                        {os.veiculo?.placa || "---"}
-                      </span>
-                      {os.veiculo?.cor && (
-                        <span className="text-[9px] text-neutral-400">
-                          {os.veiculo.cor}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <p className="text-xs font-medium text-neutral-600 line-clamp-2 leading-relaxed">
-                      {os.diagnostico || os.defeito_relatado || (
-                        <span className="text-neutral-300 italic">---</span>
-                      )}
-                    </p>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-wrap gap-1">
-                      {(() => {
-                        const mechanics = os.servicos_mao_de_obra
-                          ?.map(
-                            (s: any) =>
-                              s.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
-                                " ",
-                              )[0],
-                          )
-                          .filter(Boolean);
-                        const uniqueMechanics = [...new Set(mechanics || [])];
-                        if (uniqueMechanics.length > 0)
-                          return uniqueMechanics.map((mech: any, i: number) => (
-                            <span
-                              key={i}
-                              className="text-[9px] font-bold text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded uppercase"
-                            >
-                              {mech}
-                            </span>
-                          ));
-                        return (
-                          <span className="text-neutral-300 text-xs">---</span>
-                        );
-                      })()}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-neutral-700 text-xs truncate max-w-[120px]">
-                        {os.cliente?.pessoa_fisica?.pessoa?.nome ||
-                          os.cliente?.pessoa_juridica?.razao_social ||
-                          "Desconhecido"}
-                      </span>
-                      {os.cliente?.telefone_1 && (
-                        <span className="text-[10px] text-neutral-400">
-                          {os.cliente.telefone_1}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4 text-center">
-                    <span
-                      className={`px-2 py-1 rounded-md text-[9px] font-black uppercase whitespace-nowrap ring-1 ${getStatusStyle(
-                        os.status,
-                      )}`}
-                    >
-                      {os.status === "PRONTO PARA FINANCEIRO"
-                        ? "FINANCEIRO"
-                        : os.status === "ORCAMENTO"
-                          ? "AGENDAMENTO"
-                          : os.status.replace(/_/g, " ")}
-                    </span>
-                  </td>
-                  <td className="p-4 text-center">
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(
-                          os.status === "PRONTO PARA FINANCEIRO"
-                            ? `/fechamento-financeiro?id_os=${os.id_os}`
-                            : `/ordem-de-servico?id=${os.id_os}`,
-                        );
-                      }}
-                      variant="secondary"
-                      size="sm"
-                      icon={Wrench}
-                    >
-                      Gerenciar
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <OsTable
+        oss={filteredServices}
+        onRowClick={(os) =>
+          navigate(
+            os.status === "PRONTO PARA FINANCEIRO"
+              ? `/fechamento-financeiro?id_os=${os.id_os}`
+              : `/ordem-de-servico?id=${os.id_os}`,
+          )
+        }
+        emptyMessage="Nenhuma atualização neste período."
+      />
     </Card>
   );
 };
@@ -2987,6 +2567,7 @@ export const EdicaoPecaModal = ({
     margem_lucro: "",
     valor_venda: "",
     estoque_atual: "",
+    estoque_minimo: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -3011,6 +2592,7 @@ export const EdicaoPecaModal = ({
         margem_lucro: margin,
         valor_venda: Number(peca.valor_venda).toFixed(2),
         estoque_atual: String(peca.estoque_atual),
+        estoque_minimo: String(peca.estoque_minimo || 0),
       });
     }
   }, [peca, isOpen]);
@@ -3053,6 +2635,7 @@ export const EdicaoPecaModal = ({
         valor_custo: Number(formData.valor_custo),
         valor_venda: Number(formData.valor_venda),
         estoque_atual: Number(formData.estoque_atual),
+        estoque_minimo: Number(formData.estoque_minimo),
       };
 
       await EstoqueService.update(peca.id_pecas_estoque, payload);
@@ -3159,7 +2742,19 @@ export const EdicaoPecaModal = ({
                 step="0.5"
                 value={formData.margem_lucro}
                 onChange={(e) => handleRecalcSale(e.target.value)}
-                className="text-center font-medium"
+                className="text-center font-bold"
+              />
+              <Input
+                label="Aviso Estoque (Mín)"
+                type="number"
+                value={formData.estoque_minimo}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    estoque_minimo: e.target.value,
+                  })
+                }
+                className="text-center font-bold text-orange-600 border-orange-200"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -3349,6 +2944,7 @@ export const EntradaItensForm = ({
   const [rowSale, setRowSale] = useState("");
   const [rowRef, setRowRef] = useState("");
   const [rowObs, setRowObs] = useState("");
+  const [rowMinStock, setRowMinStock] = useState("");
 
   // New Part Fields (if isNewPart)
   const [newPartName, setNewPartName] = useState("");
@@ -3429,6 +3025,7 @@ export const EntradaItensForm = ({
             descricao: newPartDesc || newPartName || partSearch,
             fabricante: newPartFab,
             unidade_medida: newPartUnit,
+            estoque_minimo: Number(rowMinStock) || 0,
           }
         : null,
       displayName: isNewPart
@@ -3451,6 +3048,7 @@ export const EntradaItensForm = ({
     setRowSale("");
     setRowRef("");
     setRowObs("");
+    setRowMinStock("");
     setSelectedStockPart(null);
     setPartSearch("");
     setIsNewPart(false);
@@ -3499,6 +3097,7 @@ export const EntradaItensForm = ({
     setRowSale(String(item.valor_venda));
     setRowRef(item.ref_cod || "");
     setRowObs(item.obs || "");
+    setRowMinStock(String(item.new_part_data?.estoque_minimo || 0));
 
     // Remove from list so it can be re-added
     handleRemoveItem(item.tempId);
@@ -3661,6 +3260,15 @@ export const EntradaItensForm = ({
               onChange={(e) => setRowRef(e.target.value)}
             />
           </div>
+          <div className="md:col-span-2">
+            <Input
+              label="Aviso Est. (Opc)"
+              type="number"
+              className="text-center font-bold text-orange-600 border-orange-200"
+              value={rowMinStock}
+              onChange={(e) => setRowMinStock(e.target.value)}
+            />
+          </div>
           <div className="md:col-span-2 flex items-end">
             <Button
               onClick={handleAddItem}
@@ -3798,7 +3406,8 @@ FILE PATH: client\src\components\estoque\EstoqueTable.tsx
 ================================================================================
 import { formatCurrency } from "../../utils/formatCurrency";
 import { ActionButton } from "../ui/ActionButton";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, AlertCircle } from "lucide-react";
+
 import type { IPecasEstoque } from "../../types/estoque.types";
 
 interface EstoqueTableProps {
@@ -3882,16 +3491,32 @@ export const EstoqueTable = ({
                 </div>
               </td>
               <td className="text-left">
-                <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-block ${
-                    p.estoque_atual > 0
-                      ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                      : "bg-red-50 text-red-600 border border-red-100"
-                  }`}
-                >
-                  {p.estoque_atual} {p.unidade_medida || "UN"}
-                </span>
+                <div className="flex flex-col gap-1">
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-block w-fit ${
+                      p.estoque_atual > (p.estoque_minimo || 0)
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                        : p.estoque_atual > 0
+                          ? "bg-orange-50 text-orange-600 border border-orange-100"
+                          : "bg-red-50 text-red-600 border border-red-100"
+                    }`}
+                  >
+                    {p.estoque_atual} {p.unidade_medida || "UN"}
+                  </span>
+                  {p.estoque_atual <= (p.estoque_minimo || 0) &&
+                    p.estoque_atual > 0 && (
+                      <span className="text-[9px] text-orange-600 font-bold uppercase flex items-center gap-0.5 animate-pulse">
+                        <AlertCircle size={10} /> Estoque Baixo
+                      </span>
+                    )}
+                  {p.estoque_atual === 0 && (
+                    <span className="text-[9px] text-red-600 font-bold uppercase flex items-center gap-0.5">
+                      <AlertCircle size={10} /> Sem Estoque
+                    </span>
+                  )}
+                </div>
               </td>
+
               <td className="text-left text-sm font-bold text-neutral-800">
                 {formatCurrency(Number(p.valor_venda))}
               </td>
@@ -7811,7 +7436,7 @@ export const FechamentoFinanceiroForm = ({
                   <span
                     className={`px-3 py-1 rounded-md text-[10px] font-black uppercase whitespace-nowrap ${getStatusStyle(osData.status)}`}
                   >
-                    {osData.status === "PRONTO PARA FINANCEIRO"
+                    {osData.status === "FINANCEIRO"
                       ? "FINANCEIRO"
                       : osData.status.replace(/_/g, " ")}
                   </span>
@@ -10499,103 +10124,182 @@ export const PagamentoPecaForm = ({ onSuccess, onCancel }: PagamentoPecaFormProp
 ================================================================================
 FILE PATH: client\src\components\forms\PecasEstoqueForm.tsx
 ================================================================================
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { api } from '../../services/api';
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { api } from "../../services/api";
 
 interface PecasEstoqueFormProps {
-    onSuccess: (newItem: any) => void;
-    onCancel: () => void;
+  onSuccess: (newItem: any) => void;
+  onCancel: () => void;
 }
 
-export const PecasEstoqueForm = ({ onSuccess, onCancel }: PecasEstoqueFormProps) => {
-    const [loading, setLoading] = useState(false);
+export const PecasEstoqueForm = ({
+  onSuccess,
+  onCancel,
+}: PecasEstoqueFormProps) => {
+  const [loading, setLoading] = useState(false);
 
-    // Form States
-    const [nome, setNome] = useState('');
-    const [descricao, setDescricao] = useState('');
+  // Form States
+  const [nome, setNome] = useState("");
+  const [descricao, setDescricao] = useState("");
 
-    const [unidadeMedida, setUnidadeMedida] = useState('');
-    const [valorCusto, setValorCusto] = useState('');
-    const [valorVenda, setValorVenda] = useState('');
-    const [estoqueAtual, setEstoqueAtual] = useState('');
-    const [custoUnitarioPadrao, setCustoUnitarioPadrao] = useState('');
+  const [unidadeMedida, setUnidadeMedida] = useState("");
+  const [valorCusto, setValorCusto] = useState("");
+  const [valorVenda, setValorVenda] = useState("");
+  const [estoqueAtual, setEstoqueAtual] = useState("");
+  const [estoqueMinimo, setEstoqueMinimo] = useState("");
+  const [custoUnitarioPadrao, setCustoUnitarioPadrao] = useState("");
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            const payload = {
-                nome,
-                descricao,
-                unidade_medida: unidadeMedida,
-                valor_custo: Number(valorCusto),
-                valor_venda: Number(valorVenda),
-                estoque_atual: Number(estoqueAtual),
-                custo_unitario_padrao: custoUnitarioPadrao ? Number(custoUnitarioPadrao) : 0
-            };
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const payload = {
+        nome,
+        descricao,
+        unidade_medida: unidadeMedida,
+        valor_custo: Number(valorCusto),
+        valor_venda: Number(valorVenda),
+        estoque_atual: Number(estoqueAtual),
+        estoque_minimo: Number(estoqueMinimo) || 0,
+        custo_unitario_padrao: custoUnitarioPadrao
+          ? Number(custoUnitarioPadrao)
+          : 0,
+      };
 
-            const response = await api.post('/pecas-estoque', payload);
-            alert('Peça cadastrada com sucesso!');
-            onSuccess(response.data);
-        } catch (error) {
-            console.error(error);
-            alert('Erro ao cadastrar peça.');
-        } finally {
-            setLoading(false);
-        }
-    };
+      const response = await api.post("/pecas-estoque", payload);
+      alert("Peça cadastrada com sucesso!");
+      onSuccess(response.data);
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao cadastrar peça.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="col-span-2">
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Nome da Peça *</label>
-                    <input value={nome} onChange={e => setNome(e.target.value)} className="w-full border p-2 rounded border-gray-300" required />
-                </div>
-                 <div className="col-span-2">
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Descrição Detalhada *</label>
-                    <input value={descricao} onChange={e => setDescricao(e.target.value)} className="w-full border p-2 rounded border-gray-300" required />
-                </div>
-                
-                <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Unidade Medida</label>
-                    <input value={unidadeMedida} onChange={e => setUnidadeMedida(e.target.value)} className="w-full border p-2 rounded border-gray-300" placeholder="Ex: UN, KG, LT" />
-                </div>
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="col-span-2">
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Nome da Peça *
+          </label>
+          <input
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+            required
+          />
+        </div>
+        <div className="col-span-2">
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Descrição Detalhada *
+          </label>
+          <input
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+            required
+          />
+        </div>
 
-                <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Valor Custo (R$) *</label>
-                    <input type="number" step="0.01" value={valorCusto} onChange={e => setValorCusto(e.target.value)} className="w-full border p-2 rounded border-gray-300" required />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Valor Venda (R$) *</label>
-                    <input type="number" step="0.01" value={valorVenda} onChange={e => setValorVenda(e.target.value)} className="w-full border p-2 rounded border-gray-300" required />
-                </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Unidade Medida
+          </label>
+          <input
+            value={unidadeMedida}
+            onChange={(e) => setUnidadeMedida(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+            placeholder="Ex: UN, KG, LT"
+          />
+        </div>
 
-                <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Estoque Atual *</label>
-                    <input type="number" value={estoqueAtual} onChange={e => setEstoqueAtual(e.target.value)} className="w-full border p-2 rounded border-gray-300" required />
-                </div>
-                 <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Custo Padrão (Ref.)</label>
-                    <input type="number" step="0.01" value={custoUnitarioPadrao} onChange={e => setCustoUnitarioPadrao(e.target.value)} className="w-full border p-2 rounded border-gray-300" />
-                </div>
-            </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Valor Custo (R$) *
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            value={valorCusto}
+            onChange={(e) => setValorCusto(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Valor Venda (R$) *
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            value={valorVenda}
+            onChange={(e) => setValorVenda(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+            required
+          />
+        </div>
 
-            <div className="flex gap-2 pt-4">
-                <button type="button" onClick={onCancel} className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg">
-                    Cancelar
-                </button>
-                <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                    {loading ? 'Salvando...' : 'Salvar Peça'}
-                </button>
-            </div>
-        </form>
-    );
+        <div>
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Estoque Atual *
+          </label>
+          <input
+            type="number"
+            value={estoqueAtual}
+            onChange={(e) => setEstoqueAtual(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-orange-600 uppercase mb-1">
+            Aviso de Estoque Baixo *
+          </label>
+          <input
+            type="number"
+            value={estoqueMinimo}
+            onChange={(e) => setEstoqueMinimo(e.target.value)}
+            className="w-full border p-2 rounded border-orange-200"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+            Custo Padrão (Ref.)
+          </label>
+
+          <input
+            type="number"
+            step="0.01"
+            value={custoUnitarioPadrao}
+            onChange={(e) => setCustoUnitarioPadrao(e.target.value)}
+            className="w-full border p-2 rounded border-gray-300"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? "Salvando..." : "Salvar Peça"}
+        </button>
+      </div>
+    </form>
+  );
 };
 
 
@@ -12347,8 +12051,8 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-400 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-800 shadow-2xl z-50 print:hidden">
-      <div className="border-b border-slate-800 bg-slate-950 flex items-center justify-center h-32 overflow-hidden shrink-0">
+    <aside className="w-64 bg-slate-900 text-primary-100 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-800 shadow-2xl z-50 print:hidden">
+      <div className="border-b border-slate-800 bg-slate-950 flex items-center justify-center h-24 overflow-hidden shrink-0">
         {config?.logoUrl ? (
           <img
             src={`${getLogoUrl(config.logoUrl || "")}?t=${logoVersion}`}
@@ -12430,8 +12134,8 @@ export const Sidebar = () => {
                         to={sub.path}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${
                           isSubActive
-                            ? "text-white bg-primary-800 shadow-lg shadow-green-200/20 font-bold"
-                            : "text-primary-500 hover:text-primary-400 hover:bg-slate-800/30 font-medium"
+                            ? "text-white bg-primary-800 shadow-lg shadow-green-200/20"
+                            : "text-primary-200 hover:text-primary-400 hover:bg-slate-800/30"
                         }`}
                       >
                         {sub.label}
@@ -12445,8 +12149,8 @@ export const Sidebar = () => {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800 bg-slate-950 shrink-0">
-        <div className="bg-slate-800/50 rounded-lg p-3">
+      <div className="p-2 border-t border-slate-800 bg-slate-950 shrink-0">
+        <div className="bg-slate-800/50 rounded-lg p-2">
           <p className="text-xs text-center text-slate-500">
             &copy; 2026 Centro Automotivo <br /> Guilherme Gebaili <br />{" "}
             https://github.com/GuiGebaili78
@@ -12503,16 +12207,16 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6 overflow-hidden">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-neutral-700 tracking-tight flex items-center gap-2">
-          <CalendarIcon size={16} className="text-purple-500" />
+    <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-3 overflow-hidden">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-bold text-purple-700 tracking-tight flex items-center gap-2">
+          <CalendarIcon size={16} className="text-purple-700" />
           Agenda (Próximos 15 dias)
         </h2>
         {/* Simple pagination controls if needed, or just horizontal scroll */}
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar snap-x snap-mandatory">
+      <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar snap-x snap-mandatory">
         {days.map((day, idx) => {
           // Adjust comparison to ignore time and potential timezone offsets creating mismatches
           const dayDateStr = day.toLocaleDateString("en-CA");
@@ -12528,12 +12232,12 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
           return (
             <div
               key={idx}
-              className={`min-w-[140px] flex-1 border rounded-xl p-3 snap-start relative flex flex-col ${
+              className={`min-w-[140px] flex-1 border rounded-xl p-2 snap-start relative flex flex-col ${
                 isCurrentDay
-                  ? "bg-purple-50/50 border-purple-100"
+                  ? "bg-purple-50/50 border-purple-200"
                   : isWeekend
-                    ? "bg-slate-100 border-slate-200 shadow-inner"
-                    : "bg-neutral-50/50 border-neutral-100"
+                    ? "bg-purple-200 border-slate-200 shadow-inner"
+                    : "bg-neutral-50/50 border-neutral-200"
               }`}
             >
               {/* Header of the Day Card */}
@@ -12541,12 +12245,12 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
                 className={`flex flex-col mb-3 pb-2 border-b ${isCurrentDay ? "border-purple-200" : "border-neutral-200"}`}
               >
                 <span
-                  className={`text-[10px] font-bold uppercase tracking-widest ${isCurrentDay ? "text-purple-600" : "text-neutral-400"}`}
+                  className={`text-xs font-bold uppercase tracking-widest ${isCurrentDay ? "text-purple-700" : "text-neutral-400"}`}
                 >
                   {getDayName(day)}
                 </span>
                 <span
-                  className={`text-xl font-black ${isCurrentDay ? "text-purple-700" : "text-neutral-700"}`}
+                  className={`text-base font-black ${isCurrentDay ? "text-purple-700" : "text-neutral-700"}`}
                 >
                   {day.getDate()}
                 </span>
@@ -12561,27 +12265,27 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
                       onClick={() =>
                         navigate(`/ordem-de-servico?id=${item.id_os}`)
                       }
-                      className="bg-white p-1.5 rounded-lg border border-neutral-200 shadow-sm cursor-pointer hover:border-purple-300 hover:shadow-md transition-all group shrink-0"
+                      className="bg-purple-100 p-1.5 rounded-lg border border-neutral-200 shadow-sm cursor-pointer hover:border-purple-300 hover:shadow-md transition-all group shrink-0"
                     >
                       <div className="flex items-center justify-between gap-1">
-                        <p className="text-[10px] font-bold text-purple-700 line-clamp-1 flex-1">
+                        <p className="text-xs font-bold text-purple-700 line-clamp-1 flex-1">
                           {item.clientName}
                         </p>
-                        <span className="text-[9px] text-neutral-400 font-medium bg-neutral-50 px-1 rounded shrink-0">
+                        <span className="text-xs text-neutral-600 font-medium bg-neutral-50 px-1 rounded shrink-0">
                           {item.date.toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
                         </span>
                       </div>
-                      <p className="text-[9px] text-neutral-500 line-clamp-1 mt-0.5">
+                      <p className="text-xs text-neutral-600 line-clamp-1 mt-0.5">
                         {item.vehicleModel || "Veículo N/I"}
                       </p>
                     </div>
                   ))
                 ) : (
                   <div className="h-full flex items-center justify-center pt-2 opacity-30">
-                    <span className="text-[10px] font-medium text-neutral-400">
+                    <span className="text-xs font-medium text-neutral-600">
                       ---
                     </span>
                   </div>
@@ -17697,7 +17401,7 @@ export const OsHeader = ({
           Imprimir/Enviar
         </Button>
 
-        {(os.status === "ORCAMENTO" || os.status === "AGENDA") && (
+        {(os.status === "ORCAMENTO" || os.status === "AGENDAMENTO") && (
           <>
             {onSave && (
               <Button
@@ -18372,6 +18076,184 @@ export const OsShareModal = ({
         </div>
       </div>
     </Modal>
+  );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\components\shared\os\OsTable.tsx
+================================================================================
+import { Phone, Wrench } from "lucide-react";
+import { getStatusStyle } from "../../../utils/osUtils";
+import { formatPhone } from "../../../utils/normalize";
+import { ActionButton } from "../../ui/ActionButton";
+import type { IOrdemDeServico } from "../../../types/backend";
+
+interface OsTableProps {
+  oss: IOrdemDeServico[];
+  onRowClick: (os: IOrdemDeServico) => void;
+  renderActions?: (os: IOrdemDeServico) => React.ReactNode;
+  emptyMessage?: string;
+}
+
+export const OsTable = ({
+  oss,
+  onRowClick,
+  renderActions,
+  emptyMessage = "Nenhum registro encontrado.",
+}: OsTableProps) => {
+  return (
+    <div className="overflow-x-auto">
+      <table className="tabela-limpa w-full">
+        <thead>
+          <tr>
+            <th className="w-[15%]">OS / Data</th>
+            <th className="w-[20%]">Veículo</th>
+            <th className="w-[25%]">Diagnóstico / Ações</th>
+            <th className="w-[15%]">Técnico</th>
+            <th className="w-[15%]">Cliente</th>
+            <th className="w-[10%] text-center">Status</th>
+            <th className="w-[10%] text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-neutral-50">
+          {oss.length === 0 ? (
+            <tr>
+              <td
+                colSpan={7}
+                className="p-12 text-center text-neutral-400 font-medium italic"
+              >
+                {emptyMessage}
+              </td>
+            </tr>
+          ) : (
+            oss.map((os) => (
+              <tr
+                key={os.id_os}
+                onClick={() => onRowClick(os)}
+                className="hover:bg-neutral-50 cursor-pointer transition-colors group"
+              >
+                <td className="p-4">
+                  <div className="flex flex-col items-start">
+                    <div className="text-base font-bold text-neutral-600">
+                      OS | {os.id_os}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-neutral-600 font-medium">
+                        {new Date(os.dt_abertura).toLocaleDateString()}
+                      </span>
+                      <span className="text-xs text-neutral-600 font-medium">
+                        {new Date(os.dt_abertura).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td className="p-4">
+                  <div className="flex flex-col">
+                    <span className="text-neutral-600 text-base font-medium uppercase">
+                      {os.veiculo?.marca} {os.veiculo?.modelo} •{" "}
+                      {os.veiculo?.cor}
+                    </span>
+                    <span className="text-base text-primary-600 uppercase mt-0.5">
+                      {os.veiculo?.placa || "---"} -{" "}
+                      {os.veiculo?.ano_modelo || "---"}
+                    </span>
+                  </div>
+                </td>
+                <td className="p-4">
+                  <div className="flex flex-col">
+                    <p className="text-base font-medium text-neutral-600 line-clamp-2 uppercase leading-relaxed">
+                      {os.diagnostico || os.defeito_relatado || (
+                        <span className="text-neutral-300 italic">---</span>
+                      )}
+                    </p>
+                    <div className="h-4"></div>
+                  </div>
+                </td>
+                <td className="p-4">
+                  <div className="flex flex-col">
+                    <div className="flex flex-wrap gap-1">
+                      {(() => {
+                        const mechanics = os.servicos_mao_de_obra
+                          ?.map(
+                            (s: any) =>
+                              s.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
+                                " ",
+                              )[0],
+                          )
+                          .filter(Boolean);
+                        const uniqueMechanics = [...new Set(mechanics || [])];
+                        if (uniqueMechanics.length > 0)
+                          return uniqueMechanics.map((mech: any, i: number) => (
+                            <span
+                              key={i}
+                              className="text-base font-medium text-neutral-600 uppercase line-clamp-2 leading-relaxed"
+                            >
+                              {mech}
+                            </span>
+                          ));
+                        return (
+                          <span className="text-neutral-300 text-xs">---</span>
+                        );
+                      })()}
+                    </div>
+                    <div className="h-4"></div>
+                  </div>
+                </td>
+                <td className="p-4">
+                  <div className="flex flex-col">
+                    <span className="text-base font-medium text-neutral-600 uppercase line-clamp-2 leading-relaxed">
+                      {os.cliente?.pessoa_fisica?.pessoa?.nome ||
+                        os.cliente?.pessoa_juridica?.razao_social ||
+                        "Desconhecido"}
+                    </span>
+                    {os.cliente?.telefone_1 && (
+                      <span className="text-sm text-neutral-600 font-medium flex items-center gap-1.5 mt-1">
+                        <Phone size={12} className="text-neutral-400" />
+                        {formatPhone(os.cliente.telefone_1)}
+                      </span>
+                    )}
+                    <div className="h-4"></div>
+                  </div>
+                </td>
+                <td className="p-4 text-center">
+                  <span
+                    className={`px-2 py-1 rounded-md text-xs font-black uppercase whitespace-nowrap ring-1 ${getStatusStyle(
+                      os.status,
+                    )}`}
+                  >
+                    {os.status === "PRONTO PARA FINANCEIRO"
+                      ? "FINANCEIRO"
+                      : os.status === "ORCAMENTO"
+                        ? "ORÇAMENTO"
+                        : (os.status as string).replace(/_/g, " ")}
+                  </span>
+                </td>
+                <td
+                  className="p-4 text-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {renderActions ? (
+                    renderActions(os)
+                  ) : (
+                    <ActionButton
+                      onClick={() => onRowClick(os)}
+                      variant="primary"
+                      icon={Wrench}
+                      label="Gerenciar"
+                    />
+                  )}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 };
 
@@ -19090,6 +18972,7 @@ export const Modal = ({
 
 ================================================================================
 FILE PATH: client\src\components\ui\PageLayout.tsx
+================================================================================
 import React from "react";
 
 interface PageLayoutProps {
@@ -20418,7 +20301,6 @@ export const CategoriasPage = () => {
 
 
 
-================================================================================
 FILE PATH: client\src\pages\ClientePage.tsx
 ================================================================================
 import { useState, useEffect, useRef } from "react";
@@ -21968,7 +21850,7 @@ export const ContasAPagarPage = () => {
 
 
 ================================================================================
-FILE PATH: client\src\pages\DaschboardPage.tsx
+FILE PATH: client\src\pages\DashboardPage.tsx
 ================================================================================
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
@@ -21985,7 +21867,7 @@ import { DashboardMetrics } from "../components/dashboard/DashboardMetrics";
 import { RecentOsWidget } from "../components/dashboard/RecentOsWidget";
 import type { IDashboardStats } from "../types/dashboard.types";
 
-export function DaschboardPage() {
+export function DashboardPage() {
   const navigate = useNavigate();
 
   const [decisionModalOpen, setDecisionModalOpen] = useState(false);
@@ -22002,6 +21884,7 @@ export function DaschboardPage() {
     livroCaixaExits: 0,
     autoPecasPendentes: 0,
     consolidacao: 0,
+    alertaEstoque: 0,
   });
 
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -22053,10 +21936,10 @@ export function DaschboardPage() {
         <div className="w-full flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
           {/* Title / Welcome */}
           <div className="shrink-0">
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-4xl font-black text-neutral-600 tracking-tight">
               Monitor
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-neutral-600 mt-1">
               {currentDateTime.toLocaleDateString("pt-BR", {
                 weekday: "long",
                 year: "numeric",
@@ -22096,7 +21979,10 @@ export function DaschboardPage() {
             </Button>
           </div>
 
-          {/* Stats 2x2 Grid - MOVED TO RIGHT */}
+          {/* Stats 2x2 Grid - REMOVED FROM HERE */}
+        </div>
+
+        <div className="mb-8 p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700">
           <DashboardMetrics stats={stats} />
         </div>
 
@@ -22104,7 +21990,9 @@ export function DaschboardPage() {
           <DashboardCalendar
             items={recentOss
               .filter(
-                (o: any) => o.status === "ORCAMENTO" || o.status === "AGENDA",
+                (o: any) =>
+                  o.status === OsStatus.ORCAMENTO ||
+                  o.status === OsStatus.AGENDAMENTO,
               )
               .map((o: any) => ({
                 id_os: o.id_os,
@@ -23574,23 +23462,16 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
       // Finalize OS if requested
       if (finalize) {
-        // Upsert Fechamento ONLY when finalizing
-        const fechamentoPayload = {
-          id_os: Number(osData.id_os),
-          custo_total_pecas_real: totalCusto,
+        // 1. CONSOLIDAR FINANCEIRAMENTE (Usa o novo endpoint que cria tudo de uma vez)
+        const consolidarPayload = {
+          idOs: Number(osData.id_os),
+          custoTotalPecasReal: totalCusto,
         };
-        if (osData.fechamento_financeiro) {
-          await api.put(
-            `/fechamento-financeiro/${osData.fechamento_financeiro.id_fechamento_financeiro}`,
-            fechamentoPayload,
-          );
-        } else {
-          await api.post("/fechamento-financeiro", fechamentoPayload);
-        }
 
-        // Update Defect/Diagnosis
+        await api.post("/fechamento-financeiro/consolidar", consolidarPayload);
+
+        // 2. Atualizar Defeito e Diagnóstico se alterados (State machine agora permite isso mesmo se FINALIZADA)
         await api.put(`/ordem-de-servico/${osData.id_os}`, {
-          status: osData.status, // Preserve status unless finalizing
           defeito_relatado: osData.defeito_relatado,
           diagnostico: osData.diagnostico,
         });
@@ -23737,7 +23618,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             <span
               className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(osData.status)}`}
             >
-              {osData.status === "PRONTO PARA FINANCEIRO"
+              {osData.status === "FINANCEIRO"
                 ? "FINANCEIRO"
                 : osData.status.replace(/_/g, " ")}
             </span>
@@ -23750,8 +23631,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
         </div>
 
         {/* Reopen Button */}
-        {(osData.status === "FINALIZADA" ||
-          osData.status === "PRONTO PARA FINANCEIRO") && (
+        {(osData.status === "FINALIZADA" || osData.status === "FINANCEIRO") && (
           <Button
             variant="ghost"
             className="text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200"
@@ -27193,6 +27073,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import type { IOrdemDeServico } from "../types/backend";
 import { Search, Plus, Phone, CheckCircle, Wrench } from "lucide-react";
+import { OsTable } from "../components/shared/os/OsTable";
 
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
@@ -27203,7 +27084,6 @@ import { Card } from "../components/ui/Card";
 import { toast } from "react-toastify";
 import { OsCreationModal } from "../components/shared/os/OsCreationModal";
 import { OsStatus } from "../types/os.types";
-import { getStatusStyle } from "../utils/osUtils";
 import { OsService } from "../services/os.service";
 import { ClienteService } from "../services/cliente.service";
 import { VeiculoService } from "../services/veiculo.service";
@@ -27498,166 +27378,34 @@ export const OrdemDeServicoPage = () => {
         </div>
 
         <Card className="p-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="tabela-limpa w-full">
-              <thead>
-                <tr>
-                  <th className="p-4">OS / Data</th>
-                  <th className="p-4">Veículo</th>
-                  <th className="p-4">Diagnóstico / Ações</th>
-                  <th className="p-4">Técnico</th>
-                  <th className="p-4">Cliente</th>
-                  <th className="p-4 text-center">Status</th>
-                  <th className="p-4 text-center">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {filteredOss
-                  .sort((a, b) => b.id_os - a.id_os)
-                  .map((os) => (
-                    <tr
-                      key={os.id_os}
-                      className="transition-colors hover:bg-neutral-50 group"
-                    >
-                      <td className="p-4">
-                        <div className="font-bold text-neutral-600">
-                          #{os.id_os}
-                        </div>
-                        <div className="text-[13px] text-neutral-600 font-medium">
-                          {new Date(os.dt_abertura).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
-                          {os.veiculo?.marca} {os.veiculo?.modelo} -{" "}
-                          {os.veiculo?.cor}
-                        </div>
-                        <div className="text-[14px] text-primary-500 font-bold uppercase">
-                          {os.veiculo?.placa || "Placa N/I"}
-                        </div>
-                      </td>
-                      <td
-                        className="p-4 max-w-[200px]"
-                        title={
-                          os.diagnostico ||
-                          os.defeito_relatado ||
-                          "Sem diagnóstico registrado"
-                        }
-                      >
-                        <p className="text-xs font-medium text-neutral-600 line-clamp-2">
-                          {os.diagnostico || os.defeito_relatado || (
-                            <span className="text-neutral-300 italic">
-                              Pendente
-                            </span>
-                          )}
-                        </p>
-                      </td>
-                      <td className="p-4">
-                        <p
-                          className="text-xs font-bold text-neutral-700 uppercase truncate max-w-[120px]"
-                          title="Responsável Técnico"
-                        >
-                          {(() => {
-                            // @ts-ignore
-                            const mechanics = os.servicos_mao_de_obra
-                              ?.map(
-                                (s) =>
-                                  s.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
-                                    " ",
-                                  )[0],
-                              )
-                              .filter(Boolean);
-                            const uniqueMechanics = [
-                              ...new Set(mechanics || []),
-                            ];
+          <OsTable
+            oss={filteredOss.sort((a, b) => b.id_os - a.id_os)}
+            onRowClick={handleManageItem}
+            renderActions={(os) => (
+              <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ActionButton
+                  onClick={() => handleManageItem(os)}
+                  label="Gerenciar"
+                  variant="neutral"
+                  icon={Wrench}
+                />
 
-                            if (uniqueMechanics.length > 0) {
-                              return uniqueMechanics.join(", ");
-                            }
-                            return (
-                              os.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
-                                " ",
-                              )[0] || (
-                                <span className="text-neutral-300">---</span>
-                              )
-                            );
-                          })()}
-                        </p>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
-                          {os.cliente?.pessoa_fisica?.pessoa?.nome ||
-                            os.cliente?.pessoa_juridica?.razao_social ||
-                            "Desconhecido"}
-                        </div>
-                        <div className="text-[10px] text-neutral-400 font-medium">
-                          {os.cliente?.telefone_1}
-                        </div>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span
-                          className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(os.status)}`}
-                        >
-                          {os.status === "PRONTO PARA FINANCEIRO"
-                            ? "FINANCEIRO"
-                            : os.status.replace(/_/g, " ")}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <ActionButton
-                            onClick={() => handleManageItem(os)}
-                            label="Gerenciar"
-                            variant="neutral"
-                            icon={Wrench}
-                          />
-
-                          {(os.status === "FINALIZADA" ||
-                            os.status === "PRONTO PARA FINANCEIRO" ||
-                            os.status === "PAGA_CLIENTE") && (
-                            <ActionButton
-                              onClick={() =>
-                                handleOpenNewOsForExisting(
-                                  os.veiculo,
-                                  os.cliente,
-                                )
-                              }
-                              icon={Plus}
-                              label="Nova OS"
-                              variant="primary"
-                            />
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                {filteredOss.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="p-12 text-center text-neutral-500"
-                    >
-                      <div className="flex flex-col items-center gap-4">
-                        <p className="font-bold text-neutral-400 mb-2">
-                          Nenhum registro encontrado.
-                        </p>
-                        <p className="text-sm text-neutral-400 mb-4">
-                          Deseja iniciar um novo atendimento?
-                        </p>
-                        <Button
-                          onClick={() => setOsCreationModalOpen(true)}
-                          variant="primary"
-                          icon={Plus}
-                        >
-                          NOVO CADASTRO
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+                {(os.status === "FINALIZADA" ||
+                  os.status === "PRONTO PARA FINANCEIRO" ||
+                  os.status === "PAGA_CLIENTE") && (
+                  <ActionButton
+                    onClick={() =>
+                      handleOpenNewOsForExisting(os.veiculo, os.cliente)
+                    }
+                    icon={Plus}
+                    label="Nova OS"
+                    variant="primary"
+                  />
                 )}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            )}
+            emptyMessage="Nenhum registro encontrado."
+          />
         </Card>
       </PageLayout>
 
@@ -27914,9 +27662,6 @@ export const OrdemDeServicoPage = () => {
   );
 };
 
-
-
-================================================================================
 FILE PATH: client\src\pages\OsPrintView.tsx
 ================================================================================
 import { useEffect, useState } from "react";
@@ -30452,190 +30197,6 @@ export const PessoaJuridicaPage = () => {
 
 
 ================================================================================
-FILE PATH: client\src\pages\PessoaPage.tsx
-================================================================================
-import { useState, useEffect } from 'react';
-import { api } from '../services/api';
-import type { IPessoa } from '../types/backend';
-import { PessoaForm } from '../components/forms/PessoaForm';
-import { Modal } from '../components/ui/Modal';
-import { Plus, Search, Trash2, Edit, User } from 'lucide-react';
-
-export const PessoaPage = () => {
-    const [pessoas, setPessoas] = useState<IPessoa[]>([]);
-    const [showModal, setShowModal] = useState(false);
-    const [searchId, setSearchId] = useState('');
-    const [editData, setEditData] = useState<IPessoa | null>(null);
-
-    useEffect(() => {
-        loadPessoas();
-    }, []);
-
-    const loadPessoas = async () => {
-        try {
-            const response = await api.get('/pessoa');
-            setPessoas(response.data);
-        } catch (error) {
-            alert('Erro ao carregar pessoas');
-        }
-    };
-
-    const handleSearch = async () => {
-        try {
-            const response = await api.get(`/pessoa/${searchId}`);
-            setEditData(response.data);
-        } catch (error) {
-            alert('Pessoa não encontrada');
-            setEditData(null);
-        }
-    };
-
-    const handleUpdate = async () => {
-        if (!editData) return;
-        try {
-            await api.put(`/pessoa/${editData.id_pessoa}`, editData);
-            alert('Pessoa atualizada!');
-            loadPessoas();
-        } catch (error) {
-            alert('Erro ao atualizar pessoa');
-        }
-    };
-
-    const handleDelete = async () => {
-        if (!searchId) return;
-        try {
-            await api.delete(`/pessoa/${searchId}`);
-            alert('Pessoa deletada!');
-            loadPessoas();
-            setEditData(null);
-            setSearchId('');
-        } catch (error) {
-            alert('Erro ao deletar pessoa');
-        }
-    };
-
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Gerenciar Pessoas</h1>
-                    <p className="text-slate-500">Cadastro base de pessoas (antes de PF/PJ).</p>
-                </div>
-                <button 
-                    onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
-                >
-                    <Plus size={20} />
-                    Nova Pessoa
-                </button>
-            </div>
-
-            {/* LIST */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50">
-                        <tr>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">ID</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Nome</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Gênero</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Data Nascimento</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Cadastro</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {pessoas.map((p) => (
-                            <tr key={p.id_pessoa} className="hover:bg-slate-50">
-                                <td className="p-4 text-gray-500 font-mono">#{p.id_pessoa}</td>
-                                <td className="p-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
-                                            <User size={18} />
-                                        </div>
-                                        <div className="font-medium text-slate-900">{p.nome}</div>
-                                    </div>
-                                </td>
-                                <td className="p-4 text-slate-600">{p.genero || '-'}</td>
-                                <td className="p-4 text-slate-600">
-                                    {p.dt_nascimento ? new Date(p.dt_nascimento).toLocaleDateString('pt-BR') : '-'}
-                                </td>
-                                <td className="p-4 text-xs text-slate-500">
-                                    {new Date(p.dt_cadastro).toLocaleDateString('pt-BR')}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* MANAGE */}
-            <div className="bg-white p-4 rounded-xl border border-gray-200">
-                <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Manutenção de Pessoa (Por ID)</h2>
-                <div className="flex gap-4 mb-4">
-                    <input 
-                        type="number" 
-                        value={searchId} 
-                        onChange={(e) => setSearchId(e.target.value)} 
-                        placeholder="Digite o ID da Pessoa..." 
-                        className="border p-2 rounded w-64"
-                    />
-                    <button onClick={handleSearch} className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-700">
-                        <Search size={18} /> Localizar
-                    </button>
-                    {searchId && <button onClick={handleDelete} className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200">
-                        <Trash2 size={18} /> Excluir
-                    </button>}
-                </div>
-
-                {editData && (
-                    <div className="bg-slate-50 p-4 rounded border animate-in fade-in">
-                        <h3 className="font-bold mb-2">Editando: {editData.nome}</h3>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div className="col-span-2">
-                                <label className="text-xs font-bold block mb-1">Nome</label>
-                                <input 
-                                    value={editData.nome} 
-                                    onChange={(e) => setEditData({...editData, nome: e.target.value})} 
-                                    className="border p-2 w-full rounded" 
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold block mb-1">Gênero</label>
-                                <select 
-                                    value={editData.genero || ''} 
-                                    onChange={(e) => setEditData({...editData, genero: e.target.value})} 
-                                    className="border p-2 w-full rounded"
-                                >
-                                    <option value="">Selecione...</option>
-                                    <option value="Masculino">Masculino</option>
-                                    <option value="Feminino">Feminino</option>
-                                    <option value="Outro">Outro</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button onClick={handleUpdate} className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-bold">
-                            <Edit size={18} /> Salvar Alterações
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {showModal && (
-                <Modal title="Nova Pessoa" onClose={() => setShowModal(false)}>
-                    <PessoaForm 
-                        onSuccess={() => {
-                            setShowModal(false);
-                            loadPessoas();
-                        }}
-                        onCancel={() => setShowModal(false)}
-                    />
-                </Modal>
-            )}
-        </div>
-    );
-};
-
-
-
 ================================================================================
 FILE PATH: client\src\pages\RelatoriosPage.tsx
 ================================================================================
@@ -32862,13 +32423,14 @@ import type { IDashboardData, IDashboardStats } from "../types/dashboard.types";
 
 export const DashboardService = {
   getDashboardData: async (): Promise<IDashboardData> => {
-    const [osRes, contasRes, pagPecaRes, pagCliRes, livroRes] =
+    const [osRes, contasRes, pagPecaRes, pagCliRes, livroRes, pecasRes] =
       await Promise.all([
         api.get("/ordem-de-servico"),
         api.get("/contas-pagar"),
         api.get("/pagamento-peca"),
         api.get("/pagamento-cliente"),
         api.get("/livro-caixa"),
+        api.get("/pecas-estoque"),
       ]);
 
     const oss = osRes.data;
@@ -32877,6 +32439,7 @@ export const DashboardService = {
     const pagPecas = pagPecaRes.data?.data || pagPecaRes.data || [];
     const pagClients = pagCliRes.data;
     const manualEntries = livroRes.data;
+    const pecas = pecasRes.data;
 
     // 1. Serviços em Aberto
     const osAberta = oss.filter(
@@ -32968,6 +32531,10 @@ export const DashboardService = {
         !o.fechamento_financeiro,
     ).length;
 
+    const alertaEstoque = pecas.filter(
+      (p: any) => Number(p.estoque_atual) <= Number(p.estoque_minimo || 0),
+    ).length;
+
     const stats: IDashboardStats = {
       osAberta,
       contasPagarPending,
@@ -32976,6 +32543,7 @@ export const DashboardService = {
       livroCaixaExits: todayExits,
       autoPecasPendentes,
       consolidacao,
+      alertaEstoque,
     };
 
     return {
@@ -33438,6 +33006,48 @@ export const fetchVehicleData = async (placa: string): Promise<VehicleData> => {
   }
 };
 
+
+
+================================================================================
+FILE PATH: client\src\services\veiculo.service.ts
+================================================================================
+import { api } from "./api";
+import type { IVeiculo } from "../types/backend";
+
+export const VeiculoService = {
+  getAll: async () => {
+    const response = await api.get<IVeiculo[]>("/veiculo");
+    return response.data;
+  },
+
+  getById: async (id: number) => {
+    const response = await api.get<IVeiculo>(`/veiculo/${id}`);
+    return response.data;
+  },
+
+  create: async (data: Partial<IVeiculo>) => {
+    const response = await api.post<IVeiculo>("/veiculo", data);
+    return response.data;
+  },
+
+  update: async (id: number, data: Partial<IVeiculo>) => {
+    const response = await api.put<IVeiculo>(`/veiculo/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    await api.delete(`/veiculo/${id}`);
+  },
+
+  getByClienteId: async (_clienteId: number) => {
+    // Assuming backend supports filtering or we misuse getAll for now
+    return [];
+  },
+};
+
+
+
+================================================================================
 FILE PATH: client\src\types\backend.d.ts
 ================================================================================
 export interface IPessoa {
@@ -33560,6 +33170,7 @@ export interface IPecasEstoque {
   valor_custo: number; // Decimal
   valor_venda: number; // Decimal
   estoque_atual: number;
+  estoque_minimo: number;
   unidade_medida?: string | null;
   custo_unitario_padrao: number; // Decimal
   dt_ultima_compra?: string | null;
@@ -33989,6 +33600,7 @@ export interface IDashboardStats {
   livroCaixaExits: number;
   autoPecasPendentes: number;
   consolidacao: number;
+  alertaEstoque: number;
 }
 
 export interface IDashboardData {
@@ -34015,6 +33627,7 @@ export interface IEstoqueUpdatePayload {
   valor_custo: number;
   valor_venda: number;
   estoque_atual: number;
+  estoque_minimo: number;
 }
 
 export interface IItemEntrada {
@@ -34025,7 +33638,9 @@ export interface IItemEntrada {
     descricao: string;
     fabricante: string;
     unidade_medida: string;
+    estoque_minimo: number;
   } | null;
+
   displayName: string;
   quantidade: number;
   valor_custo: number;
@@ -34391,7 +34006,7 @@ FILE PATH: client\src\utils\normalize.ts
  * Exemplos: "GIN-1175" -> "GIN1175", "gin1175" -> "GIN1175"
  */
 export const normalizePlate = (plate: string): string => {
-  return plate.replace(/-/g, '').toUpperCase().trim();
+  return plate.replace(/-/g, "").toUpperCase().trim();
 };
 
 /**
@@ -34410,9 +34025,9 @@ export const normalizeName = (name: string): string => {
 export const formatNameTitleCase = (name: string): string => {
   return name
     .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 };
 
 /**
@@ -34437,14 +34052,53 @@ export const caseInsensitiveMatch = (str1: string, str2: string): boolean => {
 /**
  * Verifica se uma string contém outra (case-insensitive)
  */
-export const caseInsensitiveIncludes = (haystack: string, needle: string): boolean => {
+export const caseInsensitiveIncludes = (
+  haystack: string,
+  needle: string,
+): boolean => {
   return haystack.toUpperCase().includes(needle.toUpperCase());
+};
+/**
+ * Formata um número de telefone para o padrão (XX) XXXX-XXXX ou (XX) XXXXX-XXXX
+ */
+export const formatPhone = (phone: string): string => {
+  const digits = phone.replace(/\D/g, "");
+
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  } else if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+
+  return phone;
 };
 
 
 
 ================================================================================
 FILE PATH: client\src\utils\osUtils.ts
+================================================================================
+export const getStatusStyle = (status: string) => {
+  switch (status) {
+    case "FINALIZADA":
+      return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
+    case "FINANCEIRO":
+      return "bg-orange-100 text-orange-700 ring-1 ring-orange-200";
+    case "ABERTA":
+      return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
+    case "ORCAMENTO":
+      return "bg-neutral-100 text-neutral-700 ring-1 ring-neutral-200";
+    case "AGENDAMENTO":
+      return "bg-purple-100 text-purple-700 ring-1 ring-purple-200";
+    case "CANCELADA":
+      return "bg-red-100 text-red-700 ring-1 ring-red-200";
+    default:
+      return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
+  }
+};
+
+
+
 ================================================================================
 FILE PATH: server\.dockerignore
 ================================================================================
@@ -34455,653 +34109,6 @@ build
 .git
 .gitignore
 README.md
-
-
-================================================================================
-FILE PATH: server\check_accounts.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const accounts = await prisma.$queryRaw`SELECT id_conta, nome FROM conta_bancaria`;
-    console.log('ACCOUNTS:', JSON.stringify(accounts, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\check_cashbook.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const cashbook = await prisma.$queryRaw`SELECT * FROM livro_caixa`;
-    console.log('CASHBOOK ALL:', JSON.stringify(cashbook, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\check_cashbook_by_pay.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const cashbook = await prisma.$queryRaw`SELECT * FROM livro_caixa WHERE id_pagamento_cliente IN (17, 18)`;
-    console.log('CASHBOOK FOR PAYMENTS:', JSON.stringify(cashbook, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\check_db.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const accounts = await prisma.contaBancaria.findMany();
-    console.log('ACCOUNTS:', JSON.stringify(accounts, null, 2));
-    const os13 = await prisma.ordemDeServico.findUnique({
-        where: { id_os: 13 },
-        include: { pagamentos_cliente: true }
-    });
-    console.log('OS13:', JSON.stringify(os13, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\check_db.ts
-================================================================================
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-async function main() {
-    console.log('--- Funcionarios ---');
-    const funcionarios = await prisma.funcionario.findMany();
-    console.log(JSON.stringify(funcionarios, null, 2));
-
-    console.log('--- ServicoMaoDeObra ---');
-    const servicos = await prisma.servicoMaoDeObra.findMany();
-    console.log(JSON.stringify(servicos, null, 2));
-}
-
-main()
-  .catch(e => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
-
-
-
-================================================================================
-FILE PATH: server\check_db_schema.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const tableInfoPay = await prisma.$queryRaw`
-    SELECT column_name, data_type 
-    FROM information_schema.columns 
-    WHERE table_name = 'pagamento_cliente'
-  `;
-    console.log('COLUMNS pagamento_cliente:', tableInfoPay);
-
-    const tableInfoLC = await prisma.$queryRaw`
-    SELECT column_name, data_type 
-    FROM information_schema.columns 
-    WHERE table_name = 'livro_caixa'
-  `;
-    console.log('COLUMNS livro_caixa:', tableInfoLC);
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\check_fechamento_os13.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const fechamentos = await prisma.$queryRaw`SELECT * FROM fechamento_financeiro WHERE id_os = 13`;
-    console.log('FECHAMENTOS:', JSON.stringify(fechamentos, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\check_os_status.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const os = await prisma.$queryRaw`SELECT id_os, status FROM ordem_de_servico WHERE id_os = 13`;
-    console.log('OS:', JSON.stringify(os, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\check_payments_deleted.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const payments = await prisma.$queryRaw`SELECT id_pagamento_cliente, metodo_pagamento, valor, deleted_at FROM pagamento_cliente WHERE id_os = 13`;
-    console.log('PAYMENTS WITH DELETED:', JSON.stringify(payments, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\check_payments_lc.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const payments = await prisma.$queryRaw`SELECT id_pagamento_cliente, id_livro_caixa FROM pagamento_cliente WHERE id_os = 13`;
-    console.log('PAYMENTS LC:', JSON.stringify(payments, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\check_times.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const p1 = await prisma.$queryRaw`SELECT id_pagamento_cliente, dt_cadastro FROM pagamento_cliente WHERE id_pagamento_cliente IN (17, 18)`;
-    console.log('PAYMENTS TIMES:', JSON.stringify(p1, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\check_times_fixed.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const p1 = await prisma.$queryRaw`SELECT id_pagamento_cliente, data_pagamento FROM pagamento_cliente WHERE id_pagamento_cliente IN (17, 18)`;
-    console.log('PAYMENTS TIMES:', JSON.stringify(p1, null, 2));
-
-    const f1 = await prisma.$queryRaw`SELECT id_fechamento_financeiro, data_fechamento_financeiro FROM fechamento_financeiro WHERE id_os = 13`;
-    console.log('FECHAMENTO TIME:', JSON.stringify(f1, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\debug_lc_today.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const lc = await prisma.livroCaixa.findMany({
-        where: {
-            dt_movimentacao: {
-                gte: today
-            }
-        },
-        orderBy: {
-            dt_movimentacao: 'desc'
-        }
-    });
-
-    console.log('LIVRO CAIXA HOJE:', JSON.stringify(lc, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\debug_os13.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const payments = await prisma.$queryRaw`SELECT id_pagamento_cliente, metodo_pagamento, valor, id_conta_bancaria, id_operadora FROM pagamento_cliente WHERE id_os = 13`;
-    console.log('PAYMENTS:', JSON.stringify(payments, null, 2));
-
-    const receivables = await prisma.$queryRaw`SELECT id_recebivel, valor_bruto, status, data_prevista FROM recebivel_cartao WHERE id_os = 13`;
-    console.log('RECEIVABLES:', JSON.stringify(receivables, null, 2));
-
-    const cashbook = await prisma.$queryRaw`SELECT id_livro_caixa, descricao, valor, id_conta_bancaria FROM livro_caixa WHERE descricao LIKE '%OS #13%'`;
-    console.log('CASHBOOK:', JSON.stringify(cashbook, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\debug_os14.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const payments = await prisma.$queryRaw`SELECT * FROM pagamento_cliente WHERE id_os = 14`;
-    console.log('PAYMENTS OS 14:', JSON.stringify(payments, null, 2));
-
-    const cashbook = await prisma.$queryRaw`SELECT * FROM livro_caixa WHERE descricao LIKE '%OS #14%'`;
-    console.log('CASHBOOK OS 14:', JSON.stringify(cashbook, null, 2));
-
-    const accounts = await prisma.$queryRaw`SELECT id_conta, nome, saldo_atual FROM conta_bancaria`;
-    console.log('ACCOUNTS:', JSON.stringify(accounts, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\debug_os14_report.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-import fs from 'fs';
-const prisma = new PrismaClient();
-async function main() {
-    const os14 = await prisma.ordemDeServico.findUnique({
-        where: { id_os: 14 },
-        include: {
-            pagamentos_cliente: {
-                include: {
-                    livro_caixa: true
-                }
-            }
-        }
-    });
-
-    const lc = await prisma.livroCaixa.findMany({
-        where: { descricao: { contains: 'OS #14' } }
-    });
-
-    const accounts = await prisma.contaBancaria.findMany();
-
-    const report = {
-        os14,
-        livro_caixa_all: lc,
-        accounts
-    };
-
-    fs.writeFileSync('os14_report.json', JSON.stringify(report, null, 2));
-    console.log('Report saved to os14_report.json');
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\debug_os14_v2.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const os14 = await prisma.ordemDeServico.findUnique({
-        where: { id_os: 14 },
-        include: {
-            pagamentos_cliente: true
-        }
-    });
-    console.log('OS 14:', JSON.stringify(os14, null, 2));
-
-    const lc = await prisma.livroCaixa.findMany({
-        where: { descricao: { contains: 'OS #14' } }
-    });
-    console.log('LIVRO CAIXA OS 14:', JSON.stringify(lc, null, 2));
-
-    const accounts = await prisma.contaBancaria.findMany();
-    console.log('ACCOUNTS:', JSON.stringify(accounts, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\debug_os_output.json
-================================================================================
-{
-  "os17": {
-    "id_os": 17,
-    "id_cliente": 4,
-    "id_veiculo": 4,
-    "id_funcionario": null,
-    "dt_abertura": "2026-01-13T14:02:54.108Z",
-    "dt_entrega": "2026-01-13T14:03:21.204Z",
-    "km_entrada": 0,
-    "status": "FINALIZADA",
-    "defeito_relatado": "",
-    "diagnostico": null,
-    "valor_servico": null,
-    "valor_pecas": "0",
-    "valor_final": "1000",
-    "valor_total_cliente": "1000",
-    "valor_mao_de_obra": "1000",
-    "modo_pagamento": null,
-    "cod_pagamento": null,
-    "parcelas": 1,
-    "obs": null,
-    "obs_final": null,
-    "dt_cadastro": "2026-01-13T14:02:54.108Z",
-    "deleted_at": null,
-    "updated_at": "2026-01-13T16:55:45.529Z",
-    "pagamentos_cliente": [
-      {
-        "id_pagamento_cliente": 28,
-        "id_os": 17,
-        "metodo_pagamento": "PIX",
-        "valor": "1000",
-        "data_pagamento": "2026-01-13T16:55:37.711Z",
-        "deleted_at": null,
-        "bandeira_cartao": null,
-        "codigo_transacao": null,
-        "qtd_parcelas": 1,
-        "id_operadora": null,
-        "id_conta_bancaria": 1,
-        "id_livro_caixa": null,
-        "livro_caixa": null
-      }
-    ]
-  },
-  "os18": {
-    "id_os": 18,
-    "id_cliente": 4,
-    "id_veiculo": 4,
-    "id_funcionario": null,
-    "dt_abertura": "2026-01-13T16:52:07.886Z",
-    "dt_entrega": "2026-01-13T16:52:50.554Z",
-    "km_entrada": 0,
-    "status": "FINALIZADA",
-    "defeito_relatado": "todos",
-    "diagnostico": "todos",
-    "valor_servico": null,
-    "valor_pecas": "0",
-    "valor_final": "300",
-    "valor_total_cliente": "300",
-    "valor_mao_de_obra": "300",
-    "modo_pagamento": null,
-    "cod_pagamento": null,
-    "parcelas": 1,
-    "obs": null,
-    "obs_final": null,
-    "dt_cadastro": "2026-01-13T16:52:07.886Z",
-    "deleted_at": null,
-    "updated_at": "2026-01-13T16:55:03.131Z",
-    "pagamentos_cliente": [
-      {
-        "id_pagamento_cliente": 26,
-        "id_os": 18,
-        "metodo_pagamento": "PIX",
-        "valor": "100",
-        "data_pagamento": "2026-01-13T16:52:35.602Z",
-        "deleted_at": null,
-        "bandeira_cartao": null,
-        "codigo_transacao": "65456",
-        "qtd_parcelas": 1,
-        "id_operadora": null,
-        "id_conta_bancaria": 1,
-        "id_livro_caixa": null,
-        "livro_caixa": null
-      },
-      {
-        "id_pagamento_cliente": 27,
-        "id_os": 18,
-        "metodo_pagamento": "CREDITO",
-        "valor": "200",
-        "data_pagamento": "2026-01-13T16:52:46.690Z",
-        "deleted_at": null,
-        "bandeira_cartao": "VISA",
-        "codigo_transacao": "65456",
-        "qtd_parcelas": 3,
-        "id_operadora": null,
-        "id_conta_bancaria": null,
-        "id_livro_caixa": null,
-        "livro_caixa": null
-      }
-    ]
-  },
-  "extrato_last_20": [
-    {
-      "id_livro_caixa": 6,
-      "descricao": "Rec. Confirmado (Lote) - PagSeguro (OS #18) Parc 1/3 [REC_ID:35]",
-      "valor": "62.94",
-      "tipo_movimentacao": "ENTRADA",
-      "categoria": "CONCILIACAO_CARTAO",
-      "dt_movimentacao": "2026-01-13T16:56:37.028Z",
-      "obs": null,
-      "origem": "AUTOMATICA",
-      "deleted_at": null,
-      "id_conta_bancaria": 1,
-      "id_pagamento_equipe": null
-    },
-    {
-      "id_livro_caixa": 5,
-      "descricao": "Rec. Confirmado (Lote) - PagSeguro (OS #14) Parc 1/3 [REC_ID:29]",
-      "valor": "178.94",
-      "tipo_movimentacao": "ENTRADA",
-      "categoria": "CONCILIACAO_CARTAO",
-      "dt_movimentacao": "2026-01-13T16:56:37.025Z",
-      "obs": null,
-      "origem": "AUTOMATICA",
-      "deleted_at": null,
-      "id_conta_bancaria": 1,
-      "id_pagamento_equipe": null
-    },
-    {
-      "id_livro_caixa": 4,
-      "descricao": "Rec. Confirmado (Lote) - PagSeguro (OS #13) Parc 1/3 [REC_ID:26]",
-      "valor": "251.13",
-      "tipo_movimentacao": "ENTRADA",
-      "categoria": "CONCILIACAO_CARTAO",
-      "dt_movimentacao": "2026-01-13T16:56:37.021Z",
-      "obs": null,
-      "origem": "AUTOMATICA",
-      "deleted_at": null,
-      "id_conta_bancaria": 1,
-      "id_pagamento_equipe": null
-    },
-    {
-      "id_livro_caixa": 3,
-      "descricao": "Rec. Confirmado (Lote) - PagSeguro (OS #14) Parc 3/3 [REC_ID:31]",
-      "valor": "178.94",
-      "tipo_movimentacao": "ENTRADA",
-      "categoria": "CONCILIACAO_CARTAO",
-      "dt_movimentacao": "2026-01-13T13:20:34.098Z",
-      "obs": null,
-      "origem": "AUTOMATICA",
-      "deleted_at": null,
-      "id_conta_bancaria": 1,
-      "id_pagamento_equipe": null
-    }
-  ]
-}
-
-
-================================================================================
-FILE PATH: server\debug_os_pix.js
-================================================================================
-
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-async function checkOSData(osId) {
-    console.log(`\n========= ANALISANDO OS #${osId} =========`);
-
-    // 1. Buscar a OS e pagamentos
-    const os = await prisma.ordemDeServico.findUnique({
-        where: { id_os: osId },
-        include: {
-            pagamentos_cliente: {
-                include: {
-                    livro_caixa: true // Ver se tem vínculo
-                }
-            }
-        }
-    });
-
-    if (!os) {
-        console.log(`❌ OS ${osId} não encontrada.`);
-        return;
-    }
-
-    console.log(`Status: ${os.status}`);
-    console.log(`Valor Final: ${os.valor_final}`);
-
-    if (os.pagamentos_cliente.length === 0) {
-        console.log(`⚠️ Nenhum pagamento registrado para esta OS.`);
-    } else {
-        for (const p of os.pagamentos_cliente) {
-            console.log(`\n--- Pagamento ID: ${p.id_pagamento_cliente} ---`);
-            console.log(`   Método: ${p.metodo_pagamento}`);
-            console.log(`   Valor: ${p.valor}`);
-            console.log(`   ID Conta Bancária (Original do Form): ${p.id_conta_bancaria}`);
-            console.log(`   ID Livro Caixa (Vínculo): ${p.id_livro_caixa}`);
-
-            if (p.livro_caixa) {
-                console.log(`   >>> Dados do Livro Caixa Vinculado:`);
-                console.log(`       ID: ${p.livro_caixa.id_livro_caixa}`);
-                console.log(`       Descrição: ${p.livro_caixa.descricao}`);
-                console.log(`       Valor: ${p.livro_caixa.valor}`);
-                console.log(`       ID Conta Bancária (No Livro): ${p.livro_caixa.id_conta_bancaria}  <-- IMPORTANTE`);
-                console.log(`       Data: ${p.livro_caixa.dt_movimentacao}`);
-            } else {
-                console.log(`   ❌ ESTE PAGAMENTO NÃO TEM REGISTRO NO LIVRO CAIXA!`);
-            }
-        }
-    }
-}
-
-async function main() {
-    await checkOSData(17);
-    await checkOSData(18);
-
-    // Listar últimas movimentações da conta Nubank (assumindo id 1, mas vamos listar todas)
-    console.log('\n========= ÚLTIMAS 10 MOVIMENTAÇÕES DE CONTA BANCÁRIA (LIVRO CAIXA) =========');
-    const movs = await prisma.livroCaixa.findMany({
-        where: {
-            id_conta_bancaria: { not: null }
-        },
-        orderBy: { dt_movimentacao: 'desc' },
-        take: 10
-    });
-
-    movs.forEach(m => {
-        console.log(`[${m.dt_movimentacao.toISOString()}] Conta: ${m.id_conta_bancaria} | Valor: ${m.valor} | Desc: ${m.descricao}`);
-    });
-}
-
-main()
-    .catch(e => console.error(e))
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
-
-
-
-================================================================================
-FILE PATH: server\debug_os_pix_file.js
-================================================================================
-
-import { PrismaClient } from '@prisma/client';
-import fs from 'fs';
-
-const prisma = new PrismaClient();
-
-async function getOSData(osId) {
-    const os = await prisma.ordemDeServico.findUnique({
-        where: { id_os: osId },
-        include: {
-            pagamentos_cliente: {
-                include: {
-                    livro_caixa: true
-                }
-            }
-        }
-    });
-    return os;
-}
-
-async function main() {
-    try {
-        const os17 = await getOSData(17);
-        const os18 = await getOSData(18);
-
-        // Buscar todas as movimentações de conta bancária recentes
-        const extrato = await prisma.livroCaixa.findMany({
-            where: { id_conta_bancaria: { not: null } },
-            orderBy: { dt_movimentacao: 'desc' },
-            take: 20
-        });
-
-        const report = {
-            os17,
-            os18,
-            extrato_last_20: extrato
-        };
-
-        fs.writeFileSync('debug_os_output.json', JSON.stringify(report, null, 2));
-        console.log('Report saved to debug_os_output.json');
-    } catch (error) {
-        console.error(error);
-    } finally {
-        await prisma.$disconnect();
-    }
-}
-
-main();
-
-
-
-================================================================================
-FILE PATH: server\debug_rec_31.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const rec = await prisma.recebivelCartao.findUnique({
-        where: { id_recebivel: 31 },
-        include: { operadora: true }
-    });
-    console.log('RECEBIVEL 31:', JSON.stringify(rec, null, 2));
-
-    const recs_os14 = await prisma.recebivelCartao.findMany({
-        where: { id_os: 14 }
-    });
-    console.log('RECS OS 14:', JSON.stringify(recs_os14, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\delete_caixa_geral.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-    const res = await prisma.$executeRaw`DELETE FROM conta_bancaria WHERE nome = 'Caixa Geral'`;
-    console.log('DELETED:', res);
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
-
 
 
 ================================================================================
@@ -35124,346 +34131,6 @@ COPY . .
 
 # Comando de inicialização não é o principal, pois o Docker Compose o sobrescreve
 CMD [ "npm", "run", "dev" ]
-
-
-================================================================================
-FILE PATH: server\fix_os17_18.js
-================================================================================
-
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-async function repairOS17() {
-    console.log('>>> REPARANDO OS 17 (PIX R$ 1000)...');
-
-    // 1. Check if already repaired
-    const os = await prisma.ordemDeServico.findUnique({
-        where: { id_os: 17 },
-        include: { pagamentos_cliente: true }
-    });
-
-    const pix = os.pagamentos_cliente.find(p => p.metodo_pagamento === 'PIX');
-    if (pix && !pix.id_livro_caixa) {
-        console.log('   Encontrado PIX sem Livro Caixa. Criando...');
-
-        // Criar Livro Caixa com vínculo bancário (Extrato)
-        const lc = await prisma.livroCaixa.create({
-            data: {
-                descricao: `Venda PIX - OS #17 (Reparo Manual)`,
-                valor: 1000,
-                tipo_movimentacao: 'ENTRADA',
-                categoria: 'VENDA',
-                dt_movimentacao: new Date(), // Agora
-                origem: 'AUTOMATICA',
-                id_conta_bancaria: 1 // Nubank
-            }
-        });
-
-        // Atualizar Saldo
-        await prisma.contaBancaria.update({
-            where: { id_conta: 1 },
-            data: { saldo_atual: { increment: 1000 } }
-        });
-        console.log('   ✅ Saldo Nubank atualizado (+1000)');
-
-        // Vincular
-        await prisma.pagamentoCliente.update({
-            where: { id_pagamento_cliente: pix.id_pagamento_cliente },
-            data: { id_livro_caixa: lc.id_livro_caixa }
-        });
-        console.log('   ✅ Vínculo criado.');
-    } else {
-        console.log('   ⚠️ PIX da OS 17 já parece estar correto ou não encontrado.');
-    }
-}
-
-async function repairOS18() {
-    console.log('\n>>> REPARANDO OS 18 (PIX R$ 100 + CARTÃO R$ 200)...');
-
-    const os = await prisma.ordemDeServico.findUnique({
-        where: { id_os: 18 },
-        include: { pagamentos_cliente: true }
-    });
-
-    // --- REPARO PIX (100) ---
-    const pix = os.pagamentos_cliente.find(p => p.metodo_pagamento === 'PIX');
-    if (pix && !pix.id_livro_caixa) {
-        console.log('   [PIX] Encontrado sem Livro Caixa. Criando...');
-        const lc = await prisma.livroCaixa.create({
-            data: {
-                descricao: `Venda PIX - OS #18 (Reparo Manual)`,
-                valor: 100,
-                tipo_movimentacao: 'ENTRADA',
-                categoria: 'VENDA',
-                dt_movimentacao: new Date(),
-                origem: 'AUTOMATICA',
-                id_conta_bancaria: 1 // Nubank
-            }
-        });
-        await prisma.contaBancaria.update({
-            where: { id_conta: 1 },
-            data: { saldo_atual: { increment: 100 } }
-        });
-        await prisma.pagamentoCliente.update({
-            where: { id_pagamento_cliente: pix.id_pagamento_cliente },
-            data: { id_livro_caixa: lc.id_livro_caixa }
-        });
-        console.log('   ✅ [PIX] Reparado.');
-    }
-
-    // --- REPARO CARTÃO (200) ---
-    const card = os.pagamentos_cliente.find(p => p.metodo_pagamento === 'CREDITO');
-    if (card && !card.id_livro_caixa) {
-        console.log('   [CARTÃO] Encontrado sem Livro Caixa/Recebíveis. Criando...');
-
-        // 1. Livro Caixa (Faturamento - Sem Banco)
-        const lc = await prisma.livroCaixa.create({
-            data: {
-                descricao: `Venda Cartão CREDITO (Reparo OS #18)`,
-                valor: 200,
-                tipo_movimentacao: 'ENTRADA',
-                categoria: 'VENDA',
-                dt_movimentacao: new Date(),
-                origem: 'AUTOMATICA',
-                id_conta_bancaria: null // NAO AFETA BANCO AINDA
-            }
-        });
-
-        // 2. Vincular
-        await prisma.pagamentoCliente.update({
-            where: { id_pagamento_cliente: card.id_pagamento_cliente },
-            data: { id_livro_caixa: lc.id_livro_caixa }
-        });
-
-        // 3. Criar Recebíveis (Simulando Stone/Taxa Padrão pois id_operadora estava null)
-        // Vou buscar a operadora 'Stone' ou a primeira disponivel para vincular
-        const operadora = await prisma.operadoraCartao.findFirst();
-        if (operadora) {
-            const parcelas = 3;
-            const valorTotal = 200;
-            const valorParc = valorTotal / parcelas;
-
-            // Taxa Padrao (Simulada)
-            const taxa = Number(operadora.taxa_credito_parc || 3);
-            const taxaAplicada = (valorTotal * taxa) / 100;
-            const valorLiqTotal = valorTotal - taxaAplicada;
-            const valorLiqParc = valorLiqTotal / parcelas;
-            const taxaParc = taxaAplicada / parcelas;
-
-            for (let i = 1; i <= parcelas; i++) {
-                const dt = new Date();
-                dt.setMonth(dt.getMonth() + i);
-
-                await prisma.recebivelCartao.create({
-                    data: {
-                        id_os: 18,
-                        id_operadora: operadora.id_operadora,
-                        num_parcela: i,
-                        total_parcelas: parcelas,
-                        valor_bruto: valorParc,
-                        valor_liquido: valorLiqParc,
-                        taxa_aplicada: taxaParc,
-                        data_venda: new Date(),
-                        data_prevista: dt,
-                        status: 'PENDENTE'
-                    }
-                });
-            }
-            console.log(`   ✅ [CARTÃO] 3 Recebíveis criados na operadora ${operadora.nome}.`);
-
-            // Vincular operadora ao pagamento para corrigir
-            await prisma.pagamentoCliente.update({
-                where: { id_pagamento_cliente: card.id_pagamento_cliente },
-                data: { id_operadora: operadora.id_operadora }
-            });
-        }
-
-        console.log('   ✅ [CARTÃO] Reparado.');
-    }
-}
-
-async function main() {
-    await repairOS17();
-    await repairOS18();
-}
-
-main()
-    .catch(e => console.error(e))
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
-
-
-
-================================================================================
-FILE PATH: server\lc_dump.json
-================================================================================
-
-
-
-================================================================================
-FILE PATH: server\lc_dump_docker.json
-================================================================================
-[{"id_livro_caixa":9,"descricao":"Venda Cart+�o CREDITO (Reparo OS #18)","valor":"200","tipo_movimentacao":"ENTRADA","categoria":"VENDA","dt_movimentacao":"2026-01-13T17:04:02.141Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":null,"id_pagamento_equipe":null,"conta":null},{"id_livro_caixa":8,"descricao":"Venda PIX - OS #18 (Reparo Manual)","valor":"100","tipo_movimentacao":"ENTRADA","categoria":"VENDA","dt_movimentacao":"2026-01-13T17:04:02.133Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":7,"descricao":"Venda PIX - OS #17 (Reparo Manual)","valor":"1000","tipo_movimentacao":"ENTRADA","categoria":"VENDA","dt_movimentacao":"2026-01-13T17:04:02.101Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":6,"descricao":"Rec. Confirmado (Lote) - PagSeguro (OS #18) Parc 1/3 [REC_ID:35]","valor":"62.94","tipo_movimentacao":"ENTRADA","categoria":"CONCILIACAO_CARTAO","dt_movimentacao":"2026-01-13T16:56:37.028Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":5,"descricao":"Rec. Confirmado (Lote) - PagSeguro (OS #14) Parc 1/3 [REC_ID:29]","valor":"178.94","tipo_movimentacao":"ENTRADA","categoria":"CONCILIACAO_CARTAO","dt_movimentacao":"2026-01-13T16:56:37.025Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":4,"descricao":"Rec. Confirmado (Lote) - PagSeguro (OS #13) Parc 1/3 [REC_ID:26]","valor":"251.13","tipo_movimentacao":"ENTRADA","categoria":"CONCILIACAO_CARTAO","dt_movimentacao":"2026-01-13T16:56:37.021Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":3,"descricao":"Rec. Confirmado (Lote) - PagSeguro (OS #14) Parc 3/3 [REC_ID:31]","valor":"178.94","tipo_movimentacao":"ENTRADA","categoria":"CONCILIACAO_CARTAO","dt_movimentacao":"2026-01-13T13:20:34.098Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":2,"descricao":"Pagamento Equipe - Sinomar de Souza Cabral","valor":"600","tipo_movimentacao":"SAIDA","categoria":"EQUIPE","dt_movimentacao":"2026-01-13T10:49:02.851Z","obs":null,"origem":"MANUAL","deleted_at":null,"id_conta_bancaria":null,"id_pagamento_equipe":2,"conta":null},{"id_livro_caixa":1,"descricao":"Pagamento Equipe - Sinomar de Souza Cabral","valor":"250","tipo_movimentacao":"SAIDA","categoria":"EQUIPE","dt_movimentacao":"2026-01-13T10:48:07.785Z","obs":null,"origem":"MANUAL","deleted_at":null,"id_conta_bancaria":null,"id_pagamento_equipe":1,"conta":null}]
-
-
-
-================================================================================
-FILE PATH: server\lc_dump_utf8.json
-================================================================================
-[{"id_livro_caixa":9,"descricao":"Venda Cart+�o CREDITO (Reparo OS #18)","valor":"200","tipo_movimentacao":"ENTRADA","categoria":"VENDA","dt_movimentacao":"2026-01-13T17:04:02.141Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":null,"id_pagamento_equipe":null,"conta":null},{"id_livro_caixa":8,"descricao":"Venda PIX - OS #18 (Reparo Manual)","valor":"100","tipo_movimentacao":"ENTRADA","categoria":"VENDA","dt_movimentacao":"2026-01-13T17:04:02.133Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":7,"descricao":"Venda PIX - OS #17 (Reparo Manual)","valor":"1000","tipo_movimentacao":"ENTRADA","categoria":"VENDA","dt_movimentacao":"2026-01-13T17:04:02.101Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":6,"descricao":"Rec. Confirmado (Lote) - PagSeguro (OS #18) Parc 1/3 [REC_ID:35]","valor":"62.94","tipo_movimentacao":"ENTRADA","categoria":"CONCILIACAO_CARTAO","dt_movimentacao":"2026-01-13T16:56:37.028Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":5,"descricao":"Rec. Confirmado (Lote) - PagSeguro (OS #14) Parc 1/3 [REC_ID:29]","valor":"178.94","tipo_movimentacao":"ENTRADA","categoria":"CONCILIACAO_CARTAO","dt_movimentacao":"2026-01-13T16:56:37.025Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":4,"descricao":"Rec. Confirmado (Lote) - PagSeguro (OS #13) Parc 1/3 [REC_ID:26]","valor":"251.13","tipo_movimentacao":"ENTRADA","categoria":"CONCILIACAO_CARTAO","dt_movimentacao":"2026-01-13T16:56:37.021Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":3,"descricao":"Rec. Confirmado (Lote) - PagSeguro (OS #14) Parc 3/3 [REC_ID:31]","valor":"178.94","tipo_movimentacao":"ENTRADA","categoria":"CONCILIACAO_CARTAO","dt_movimentacao":"2026-01-13T13:20:34.098Z","obs":null,"origem":"AUTOMATICA","deleted_at":null,"id_conta_bancaria":1,"id_pagamento_equipe":null,"conta":{"id_conta":1,"nome":"Nubank","banco":"Oficina","agencia":"0001","conta":"4521369","saldo_atual":"11183.83","ativo":true,"vincular_caixa":false,"dt_cadastro":"2026-01-12T14:21:31.852Z"}},{"id_livro_caixa":2,"descricao":"Pagamento Equipe - Sinomar de Souza Cabral","valor":"600","tipo_movimentacao":"SAIDA","categoria":"EQUIPE","dt_movimentacao":"2026-01-13T10:49:02.851Z","obs":null,"origem":"MANUAL","deleted_at":null,"id_conta_bancaria":null,"id_pagamento_equipe":2,"conta":null},{"id_livro_caixa":1,"descricao":"Pagamento Equipe - Sinomar de Souza Cabral","valor":"250","tipo_movimentacao":"SAIDA","categoria":"EQUIPE","dt_movimentacao":"2026-01-13T10:48:07.785Z","obs":null,"origem":"MANUAL","deleted_at":null,"id_conta_bancaria":null,"id_pagamento_equipe":1,"conta":null}]
-
-
-
-================================================================================
-FILE PATH: server\lc_today.json
-================================================================================
-LIVRO CAIXA HOJE: [
-  {
-    "id_livro_caixa": 3,
-    "descricao": "Rec. Confirmado (Lote) - PagSeguro (OS #14) Parc 3/3 [REC_ID:31]",
-    "valor": "178.94",
-    "tipo_movimentacao": "ENTRADA",
-    "categoria": "CONCILIACAO_CARTAO",
-    "dt_movimentacao": "2026-01-13T13:20:34.098Z",
-    "obs": null,
-    "origem": "AUTOMATICA",
-    "deleted_at": null,
-    "id_conta_bancaria": 1,
-    "id_pagamento_equipe": null
-  },
-  {
-    "id_livro_caixa": 2,
-    "descricao": "Pagamento Equipe - Sinomar de Souza Cabral",
-    "valor": "600",
-    "tipo_movimentacao": "SAIDA",
-    "categoria": "EQUIPE",
-    "dt_movimentacao": "2026-01-13T10:49:02.851Z",
-    "obs": null,
-    "origem": "MANUAL",
-    "deleted_at": null,
-    "id_conta_bancaria": null,
-    "id_pagamento_equipe": 2
-  },
-  {
-    "id_livro_caixa": 1,
-    "descricao": "Pagamento Equipe - Sinomar de Souza Cabral",
-    "valor": "250",
-    "tipo_movimentacao": "SAIDA",
-    "categoria": "EQUIPE",
-    "dt_movimentacao": "2026-01-13T10:48:07.785Z",
-    "obs": null,
-    "origem": "MANUAL",
-    "deleted_at": null,
-    "id_conta_bancaria": null,
-    "id_pagamento_equipe": 1
-  }
-]
-
-
-
-================================================================================
-FILE PATH: server\os14_report.json
-================================================================================
-{
-  "os14": {
-    "id_os": 14,
-    "id_cliente": 4,
-    "id_veiculo": 4,
-    "id_funcionario": null,
-    "dt_abertura": "2026-01-13T13:18:09.297Z",
-    "dt_entrega": "2026-01-13T13:19:37.383Z",
-    "km_entrada": 0,
-    "status": "FINALIZADA",
-    "defeito_relatado": "Troca de Pastilhas e Disco",
-    "diagnostico": "Troca de Pastilhas e Disco",
-    "valor_servico": null,
-    "valor_pecas": "378.6",
-    "valor_final": "678.6",
-    "valor_total_cliente": "678.6",
-    "valor_mao_de_obra": "300",
-    "modo_pagamento": null,
-    "cod_pagamento": null,
-    "parcelas": 1,
-    "obs": null,
-    "obs_final": null,
-    "dt_cadastro": "2026-01-13T13:18:09.297Z",
-    "deleted_at": null,
-    "updated_at": "2026-01-13T13:21:06.073Z",
-    "pagamentos_cliente": [
-      {
-        "id_pagamento_cliente": 19,
-        "id_os": 14,
-        "metodo_pagamento": "PIX",
-        "valor": "110",
-        "data_pagamento": "2026-01-13T13:19:20.230Z",
-        "deleted_at": null,
-        "bandeira_cartao": null,
-        "codigo_transacao": "4985654",
-        "qtd_parcelas": 1,
-        "id_operadora": null,
-        "id_conta_bancaria": 1,
-        "id_livro_caixa": null,
-        "livro_caixa": null
-      },
-      {
-        "id_pagamento_cliente": 20,
-        "id_os": 14,
-        "metodo_pagamento": "CREDITO",
-        "valor": "568.6",
-        "data_pagamento": "2026-01-13T13:19:33.223Z",
-        "deleted_at": null,
-        "bandeira_cartao": "VISA",
-        "codigo_transacao": "79856451",
-        "qtd_parcelas": 3,
-        "id_operadora": null,
-        "id_conta_bancaria": null,
-        "id_livro_caixa": null,
-        "livro_caixa": null
-      }
-    ]
-  },
-  "livro_caixa_all": [
-    {
-      "id_livro_caixa": 3,
-      "descricao": "Rec. Confirmado (Lote) - PagSeguro (OS #14) Parc 3/3 [REC_ID:31]",
-      "valor": "178.94",
-      "tipo_movimentacao": "ENTRADA",
-      "categoria": "CONCILIACAO_CARTAO",
-      "dt_movimentacao": "2026-01-13T13:20:34.098Z",
-      "obs": null,
-      "origem": "AUTOMATICA",
-      "deleted_at": null,
-      "id_conta_bancaria": 1,
-      "id_pagamento_equipe": null
-    }
-  ],
-  "accounts": [
-    {
-      "id_conta": 3,
-      "nome": "Caixa Economica",
-      "banco": "",
-      "agencia": "12589",
-      "conta": "45219863",
-      "saldo_atual": "1400",
-      "ativo": true,
-      "vincular_caixa": false,
-      "dt_cadastro": "2026-01-13T10:39:31.643Z"
-    },
-    {
-      "id_conta": 1,
-      "nome": "Nubank",
-      "banco": "Oficina",
-      "agencia": "0001",
-      "conta": "4521369",
-      "saldo_atual": "9590.82",
-      "ativo": true,
-      "vincular_caixa": false,
-      "dt_cadastro": "2026-01-12T14:21:31.852Z"
-    }
-  ]
-}
 
 
 ================================================================================
@@ -35514,156 +34181,6 @@ FILE PATH: server\package.json
     "seed": "tsx prisma/seed.ts"
   }
 }
-
-
-
-================================================================================
-FILE PATH: server\test_consolidate_os14_v2.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-import { FechamentoFinanceiroRepository } from './src/repositories/fechamentoFinanceiro.repository.js';
-
-const prisma = new PrismaClient();
-const repo = new FechamentoFinanceiroRepository();
-
-async function main() {
-    console.log('--- TEST CONSOLIDATION OS 14 ---');
-
-    // 1. Reset OS 14 status to testing state
-    await prisma.ordemDeServico.update({
-        where: { id_os: 14 },
-        data: { status: 'PRONTO PARA FINANCEIRO' }
-    });
-
-    // 2. Remove any previous fechamento for OS 14 to allow re-consolidation
-    await prisma.fechamentoFinanceiro.deleteMany({
-        where: { id_os: 14 }
-    });
-
-    // 3. Clear LC links from payments
-    await prisma.pagamentoCliente.updateMany({
-        where: { id_os: 14 },
-        data: { id_livro_caixa: null }
-    });
-
-    try {
-        const result = await repo.consolidarOS(14, 0);
-        console.log('CONSOLIDATION SUCCESSFUL:', JSON.stringify(result, null, 2));
-    } catch (err) {
-        console.error('CONSOLIDATION FAILED:', err);
-    }
-}
-
-main().catch(console.error).finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\test_pdfmake.ts
-================================================================================
-import PdfPrinter from "pdfmake";
-
-console.log("Imported PdfPrinter:", PdfPrinter);
-
-const fonts = {
-  Helvetica: {
-    normal: "Helvetica",
-    bold: "Helvetica-Bold",
-    italics: "Helvetica-Oblique",
-    bolditalics: "Helvetica-BoldOblique",
-  },
-};
-
-try {
-  // Try direct constructor
-  const printer = new PdfPrinter(fonts);
-  console.log("PdfPrinter instantiated successfully");
-} catch (error) {
-  console.error("Error with new PdfPrinter:", error);
-  try {
-    // Try verify if it is inside default
-    const P = (PdfPrinter as any).default;
-    const printer2 = new P(fonts);
-    console.log("PdfPrinter.default instantiated successfully");
-  } catch (e) {
-    console.error("Error with PdfPrinter.default:", e);
-  }
-}
-
-
-
-================================================================================
-FILE PATH: server\test_pix_logic.js
-================================================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-
-async function main() {
-    console.log('--- TESTING PIX LOGIC FOR OS 14 ---');
-    const idOs = 14;
-
-    const result = await prisma.$transaction(async (tx) => {
-        // 1. Fetch OS and payments
-        const os = await tx.ordemDeServico.findUnique({
-            where: { id_os: idOs },
-            include: {
-                pagamentos_cliente: {
-                    where: { deleted_at: null }
-                }
-            }
-        });
-
-        if (!os) throw new Error('OS not found');
-        console.log(`Processing OS #${idOs} with ${os.pagamentos_cliente.length} payments`);
-
-        for (const pagamento of os.pagamentos_cliente) {
-            const metodo = pagamento.metodo_pagamento.toUpperCase();
-            console.log(`Payment ID ${pagamento.id_pagamento_cliente}, Method: ${metodo}, Value: ${pagamento.valor}`);
-
-            if (metodo === 'PIX') {
-                console.log(`Creating LivroCaixa for PIX. Account: ${pagamento.id_conta_bancaria}`);
-
-                try {
-                    const libroCaixa = await tx.livroCaixa.create({
-                        data: {
-                            descricao: `Venda PIX - OS #${idOs} (TEST)`,
-                            valor: pagamento.valor,
-                            tipo_movimentacao: 'ENTRADA',
-                            categoria: 'VENDA',
-                            dt_movimentacao: new Date(),
-                            origem: 'AUTOMATICA',
-                            id_conta_bancaria: (pagamento as any).id_conta_bancaria
-                        }
-                    });
-                    console.log(`LivroCaixa created: ID ${libroCaixa.id_livro_caixa}`);
-
-                    await tx.pagamentoCliente.update({
-                        where: { id_pagamento_cliente: pagamento.id_pagamento_cliente },
-                        data: { id_livro_caixa: libroCaixa.id_livro_caixa }
-                    });
-                    console.log(`Payment updated with LC ID`);
-
-                    if (pagamento.id_conta_bancaria) {
-                        await tx.contaBancaria.update({
-                            where: { id_conta: pagamento.id_conta_bancaria },
-                            data: { saldo_atual: { increment: Number(pagamento.valor) } }
-                        });
-                        console.log(`Account ${pagamento.id_conta_bancaria} balance updated (+ ${pagamento.valor})`);
-                    }
-                } catch (e) {
-                    console.error(`Error in PIX block for ID ${pagamento.id_pagamento_cliente}:`, e);
-                    throw e;
-                }
-            }
-        }
-
-        return { success: true };
-    });
-
-    console.log('RESULT:', JSON.stringify(result, null, 2));
-}
-
-main().catch(console.error).finally(() => prisma.$disconnect());
 
 
 
@@ -35873,6 +34390,7 @@ model PecasEstoque {
   valor_custo           Decimal       @db.Decimal(10, 2)
   valor_venda           Decimal       @db.Decimal(10, 2)
   estoque_atual         Int
+  estoque_minimo        Int           @default(0)
   unidade_medida        String?       @db.VarChar(20)
   dt_ultima_compra      DateTime?     @db.Timestamp(6)
   dt_cadastro           DateTime      @default(now()) @db.Timestamp(6)
@@ -35882,6 +34400,7 @@ model PecasEstoque {
 
   @@map("pecas_estoque")
 }
+
 
 model Veiculo {
   id_veiculo        Int              @id @default(autoincrement())
@@ -38842,8 +37361,8 @@ export const deleteConta = async (req: Request, res: Response) => {
 ================================================================================
 FILE PATH: server\src\controllers\dashboard.controller.ts
 ================================================================================
-import { Request, Response } from 'express';
-import { prisma } from '../prisma.js';
+import { Request, Response } from "express";
+import { prisma } from "../prisma.js";
 
 export class DashboardController {
   async getDashboardData(req: Request, res: Response) {
@@ -38857,25 +37376,25 @@ export class DashboardController {
       // 1. Serviços em Aberto
       const osAberta = await prisma.ordemDeServico.count({
         where: {
-          status: { in: ['ABERTA', 'EM_ANDAMENTO'] },
-          deleted_at: null
-        }
+          status: { in: ["ABERTA", "EM_ANDAMENTO"] },
+          deleted_at: null,
+        },
       });
 
       // 2. Contas a Pagar (Geral) -> Status PENDENTE
       const contasPagar = await prisma.contasPagar.count({
         where: {
-          status: 'PENDENTE',
-          deleted_at: null
-        }
+          status: "PENDENTE",
+          deleted_at: null,
+        },
       });
 
       // 3. Livro Caixa Entries (PagamentoCliente Today)
       const livroCaixaEntries = await prisma.pagamentoCliente.count({
         where: {
           data_pagamento: { gte: startOfDay, lte: endOfDay },
-          deleted_at: null
-        }
+          deleted_at: null,
+        },
       });
 
       // 4. Livro Caixa Exits (PagamentoPeca Today - Real Only)
@@ -38883,8 +37402,8 @@ export class DashboardController {
         where: {
           pago_ao_fornecedor: true,
           data_pagamento_fornecedor: { gte: startOfDay, lte: endOfDay },
-          deleted_at: null
-        }
+          deleted_at: null,
+        },
       });
 
       // 5. Auto Peças Pendentes
@@ -38892,50 +37411,65 @@ export class DashboardController {
       const itemsUnpaid = await prisma.itensOs.count({
         where: {
           pagamentos_peca: { none: {} },
-          ordem_de_servico: { status: { not: 'CANCELADA' } },
-          deleted_at: null
-        }
+          ordem_de_servico: { status: { not: "CANCELADA" } },
+          deleted_at: null,
+        },
       });
       // B. Payment records pending
       const paymentsPending = await prisma.pagamentoPeca.count({
         where: {
           pago_ao_fornecedor: false,
-          deleted_at: null
-        }
+          deleted_at: null,
+        },
       });
       const autoPecasPendentes = itemsUnpaid + paymentsPending;
 
       // 6. Consolidação (OS Pronta para Financeiro E SEM Fechamento)
       const consolidacao = await prisma.ordemDeServico.count({
         where: {
-          status: 'PRONTO PARA FINANCEIRO',
+          status: "PRONTO PARA FINANCEIRO",
           fechamento_financeiro: null,
-          deleted_at: null
-        }
+          deleted_at: null,
+        },
       });
 
-      // 7. Recent OSs (Limit to 100 for performance)
+      // 7. Alerta de Estoque (Peças com estoque atual <= estoque mínimo)
+      // Como o Prisma não suporta comparação de colunas diretamente no count de forma simples,
+      // vamos buscar todos os itens e filtrar, ou usar uma query bruta se for muito volumoso.
+      // Para o contexto de um centro automotivo, findMany é aceitável.
+      const pecasComAlerta = await prisma.pecasEstoque.findMany({
+        select: {
+          id_pecas_estoque: true,
+          estoque_atual: true,
+          estoque_minimo: true,
+        },
+      });
+      const alertaEstoque = pecasComAlerta.filter(
+        (p) => Number(p.estoque_atual) <= Number(p.estoque_minimo),
+      ).length;
+
+      // 8. Recent OSs (Limit to 100 for performance)
       const recentOss = await prisma.ordemDeServico.findMany({
         take: 100,
-        orderBy: { updated_at: 'desc' },
+        orderBy: { updated_at: "desc" },
         include: {
           veiculo: true,
           cliente: {
             include: {
               pessoa_fisica: { include: { pessoa: true } },
-              pessoa_juridica: { include: { pessoa: true } }
-            }
+              pessoa_juridica: { include: { pessoa: true } },
+            },
           },
           servicos_mao_de_obra: {
             include: {
               funcionario: {
                 include: {
-                  pessoa_fisica: { include: { pessoa: true } }
-                }
-              }
-            }
-          }
-        }
+                  pessoa_fisica: { include: { pessoa: true } },
+                },
+              },
+            },
+          },
+        },
       });
 
       res.json({
@@ -38945,14 +37479,14 @@ export class DashboardController {
           livroCaixaEntries,
           livroCaixaExits,
           autoPecasPendentes,
-          consolidacao
+          consolidacao,
+          alertaEstoque,
         },
-        recentOss
+        recentOss,
       });
-
     } catch (error) {
-      console.error('Dashboard Error:', error);
-      res.status(500).json({ error: 'Failed to load dashboard data' });
+      console.error("Dashboard Error:", error);
+      res.status(500).json({ error: "Failed to load dashboard data" });
     }
   }
 }
@@ -40605,150 +39139,6 @@ export const getHistorico = async (req: Request, res: Response) => {
 ================================================================================
 FILE PATH: server\src\controllers\pagamentoPeca.controller.ts
 ================================================================================
-import { Request, Response } from "express";
-import { PagamentoPecaRepository } from "../repositories/pagamentoPeca.repository.js";
-
-const repository = new PagamentoPecaRepository();
-
-export class PagamentoPecaController {
-  async create(req: Request, res: Response) {
-    try {
-      const pagamento = await repository.create(req.body);
-      res.status(201).json(pagamento);
-    } catch (error) {
-      res
-        .status(400)
-        .json({ error: "Failed to create Pagamento Peca", details: error });
-    }
-  }
-
-  async findAll(req: Request, res: Response) {
-    try {
-      const pagamentos = await repository.findAll();
-      res.json(pagamentos);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Pagamentos Peca" });
-    }
-  }
-
-  async findById(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const pagamento = await repository.findById(id);
-      if (!pagamento) {
-        return res.status(404).json({ error: "Pagamento Peca not found" });
-      }
-      res.json(pagamento);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Pagamento Peca" });
-    }
-  }
-
-  async update(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const {
-        pago_ao_fornecedor,
-        id_conta_bancaria,
-        data_pagamento_fornecedor,
-      } = req.body;
-
-      // Check if we are UN-PAYING (reversing)
-      // The frontend sends pago_ao_fornecedor: false when unpaying
-      if (pago_ao_fornecedor === false) {
-        try {
-          const result = await repository.reversePayment(id);
-          return res.json(result);
-        } catch (e: any) {
-          // If error is "not paid", maybe it was just a regular update setting false?
-          // Fallback to regular update if specific logic fails or just let it fail?
-          // Let's assume frontend calls this explicitly for unpay action.
-          console.error("Reverse failed, trying regular update", e);
-          // Fallback to regular update
-          const p = await repository.update(id, req.body);
-          return res.json(p);
-        }
-      }
-
-      // Check if we are PAYING (confirming) and have a bank account
-      // Frontend sends pago_ao_fornecedor: true AND id_conta_bancaria
-      if (pago_ao_fornecedor === true && id_conta_bancaria) {
-        try {
-          const date = data_pagamento_fornecedor
-            ? new Date(data_pagamento_fornecedor + "T12:00:00")
-            : new Date();
-          const result = await repository.confirmPayment(
-            id,
-            Number(id_conta_bancaria),
-            date,
-          );
-          return res.json(result);
-        } catch (e: any) {
-          console.error("Confirm failed", e);
-          return res
-            .status(400)
-            .json({ error: e.message || "Failed to confirm payment" });
-        }
-      }
-
-      // Default generic update (e.g. editing cost, date_compra, without changing status)
-      // Note: If frontend sends pago_ao_fornecedor: true BUT NO account, it goes here.
-      // This path updates the record but creates NO financial movement.
-      // This is backward compatible but dangerous if frontend forgets account.
-      // But let's keep it for now.
-      const pagamento = await repository.update(id, req.body);
-      res.json(pagamento);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to update Pagamento Peca" });
-    }
-  }
-
-  async baixa(req: Request, res: Response) {
-    try {
-      const {
-        ids,
-        desconto_total_aplicado,
-        id_conta_bancaria,
-        data_pagamento,
-      } = req.body;
-
-      if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        return res
-          .status(400)
-          .json({ error: "IDs das peças são obrigatórios" });
-      }
-
-      const result = await repository.baixaPecas(
-        ids,
-        Number(desconto_total_aplicado || 0),
-        Number(id_conta_bancaria),
-        data_pagamento ? new Date(data_pagamento + "T12:00:00") : new Date(),
-      );
-
-      res.json(result);
-    } catch (error: any) {
-      console.error("Baixa failed", error);
-      res
-        .status(400)
-        .json({ error: error.message || "Failed to process part payments" });
-    }
-  }
-
-  async delete(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      await repository.delete(id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ error: "Failed to delete Pagamento Peca" });
-    }
-  }
-}
-
-
-
-================================================================================
-FILE PATH: server\src\controllers\pecasEstoque.controller.ts
 ================================================================================
 import { Request, Response } from 'express';
 import { PecasEstoqueRepository } from '../repositories/pecasEstoque.repository.js';
@@ -42315,16 +40705,14 @@ export class OsStateMachine {
     currentStatus: OsStatus,
     nextStatus: OsStatus | undefined,
   ): void {
-    // 1. Bloqueio Total de Imutabilidade
-    if (currentStatus === OsStatus.FINALIZADA) {
-      throw new Error(
-        "A OS está FINALIZADA e não pode sofrer nenhuma alteração.",
-      );
-    }
-
-    // 2. Se não houver mudança de status, permite (pois já passou pelo check de FINALIZADA)
+    // 1. Se não houver mudança de status, permite (mesmo se FINALIZADA, para permitir atualizar outros campos como defeito/diagnostico)
     if (!nextStatus || currentStatus === nextStatus) {
       return;
+    }
+
+    // 2. Bloqueio Total de Imutabilidade para mudanças de status reais
+    if (currentStatus === OsStatus.FINALIZADA) {
+      throw new Error("A OS está FINALIZADA e o status não pode ser alterado.");
     }
 
     // 3. Validação da Transição
@@ -43093,7 +41481,7 @@ export class FechamentoFinanceiroRepository {
         throw new Error("OS não encontrada");
       }
 
-      if (os.status !== "PRONTO PARA FINANCEIRO") {
+      if (os.status !== "FINANCEIRO") {
         throw new Error("OS não está pronta para consolidação financeira");
       }
 
@@ -43120,9 +41508,15 @@ export class FechamentoFinanceiroRepository {
       // "OS Nº {id} - {cliente} | {placa} | {veiculo} | {cor}"
       const descricaoPadrao = `OS Nº ${idOs} - ${nomeCliente} | ${placa} | ${veiculoDesc} | ${cor}`;
 
-      // 2. Criar Fechamento Financeiro
-      const fechamento = await tx.fechamentoFinanceiro.create({
-        data: {
+      // 2. Criar ou Atualizar Fechamento Financeiro
+      const fechamento = await tx.fechamentoFinanceiro.upsert({
+        where: { id_os: idOs },
+        update: {
+          custo_total_pecas_real: custoTotalPecasReal,
+          data_fechamento_financeiro: new Date(),
+          deleted_at: null,
+        },
+        create: {
           id_os: idOs,
           custo_total_pecas_real: custoTotalPecasReal,
           data_fechamento_financeiro: new Date(),
@@ -43571,10 +41965,9 @@ export class FechamentoFinanceiroRepository {
         where: { id_fechamento_financeiro: idFechamento },
       });
 
-      // 3.4 Reverter Status da OS
       await tx.ordemDeServico.update({
         where: { id_os: os.id_os },
-        data: { status: "PRONTO PARA FINANCEIRO" },
+        data: { status: "FINANCEIRO" },
       });
 
       return { success: true, message: "Consolidação revertida com sucesso." };
@@ -44447,6 +42840,7 @@ export class PagamentoPecaRepository {
         // Regra: (valor_peca / valor_total_selecionado) * desconto_total_aplicado
         const valorPeca = Number(p.custo_real);
         const descontoRateado = (valorPeca / valorTotalBruto) * descontoTotal;
+        const custoLiquido = valorPeca - descontoRateado;
 
         await tx.pagamentoPeca.update({
           where: { id_pagamento_peca: p.id_pagamento_peca },
@@ -44454,6 +42848,7 @@ export class PagamentoPecaRepository {
             pago_ao_fornecedor: true,
             data_pagamento_fornecedor: dataPagamento,
             valor_desconto_rateado: descontoRateado,
+            custo_real: custoLiquido, // Sincroniza o custo real com o valor líquido
           },
         });
       }
@@ -44468,10 +42863,40 @@ export class PagamentoPecaRepository {
       });
 
       // 6. Create Livro Caixa Entry (Valor Líquido)
-      // Descrição agregada para o lote
       const idOsUnicos = [
         ...new Set(pagamentos.map((p) => p.item_os.ordem_de_servico.id_os)),
       ];
+
+      // 6.1 Recalcular Fechamento Financeiro para cada OS impactada
+      for (const idOs of idOsUnicos) {
+        const fechamento = await tx.fechamentoFinanceiro.findUnique({
+          where: { id_os: idOs },
+        });
+
+        if (fechamento) {
+          // Soma atualizada de todos os custos reais das peças (já com os impostos/descontos aplicados na baixa)
+          const todasPecasOs = await tx.pagamentoPeca.findMany({
+            where: {
+              item_os: { id_os: idOs },
+              deleted_at: null,
+            },
+            select: { custo_real: true },
+          });
+
+          const novoCustoTotalPecas = todasPecasOs.reduce(
+            (acc, piece) => acc + Number(piece.custo_real),
+            0,
+          );
+
+          await tx.fechamentoFinanceiro.update({
+            where: {
+              id_fechamento_financeiro: fechamento.id_fechamento_financeiro,
+            },
+            data: { custo_total_pecas_real: novoCustoTotalPecas },
+          });
+        }
+      }
+
       const fornecedoresUnicos = [
         ...new Set(
           pagamentos.map(
@@ -44630,6 +43055,7 @@ export class PecasEstoqueRepository {
               estoque_atual: 0, // Will act increment below
               valor_custo: item.valor_custo,
               valor_venda: item.valor_venda,
+              estoque_minimo: item.new_part_data.estoque_minimo || 0,
               custo_unitario_padrao: item.valor_custo, // Init standard cost
               fabricante: item.new_part_data.fabricante || null,
             },
@@ -44726,7 +43152,7 @@ export class PecasEstoqueRepository {
         deleted_at: null,
         ordem_de_servico: {
           status: {
-            notIn: ["FINALIZADA", "PAGA_CLIENTE", "PRONTO PARA FINANCEIRO"],
+            notIn: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"],
           }, // Using active statuses
           deleted_at: null,
         },
@@ -45578,45 +44004,6 @@ export class ServicoMaoDeObraRepository {
 
 
 ================================================================================
-FILE PATH: server\src\repositories\tipo.repository.ts
-================================================================================
-import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma.js';
-
-export class TipoRepository {
-  async create(data: Prisma.TipoCreateInput) {
-    return await prisma.tipo.create({
-      data,
-    });
-  }
-
-  async findAll() {
-    return await prisma.tipo.findMany();
-  }
-
-  async findById(id: number) {
-    return await prisma.tipo.findUnique({
-      where: { id_tipo: id },
-    });
-  }
-
-  async update(id: number, data: Prisma.TipoUpdateInput) {
-    return await prisma.tipo.update({
-      where: { id_tipo: id },
-      data,
-    });
-  }
-
-  async delete(id: number) {
-    return await prisma.tipo.delete({
-      where: { id_tipo: id },
-    });
-  }
-}
-
-
-
-================================================================================
 FILE PATH: server\src\repositories\veiculo.repository.ts
 ================================================================================
 import { Prisma } from "@prisma/client";
@@ -46077,25 +44464,6 @@ export { pecasEstoqueRoutes };
 
 
 ================================================================================
-FILE PATH: server\src\routes\pessoa.routes.ts
-================================================================================
-import { Router } from 'express';
-import { PessoaController } from '../controllers/pessoa.controller.js';
-
-const pessoaRoutes = Router();
-const controller = new PessoaController();
-
-pessoaRoutes.post('/', controller.create);
-pessoaRoutes.get('/', controller.findAll);
-pessoaRoutes.get('/:id', controller.findById);
-pessoaRoutes.put('/:id', controller.update);
-pessoaRoutes.delete('/:id', controller.delete);
-
-export { pessoaRoutes };
-
-
-
-================================================================================
 FILE PATH: server\src\routes\pessoaFisica.routes.ts
 ================================================================================
 import { Router } from 'express';
@@ -46477,78 +44845,6 @@ main()
 
 
 
-================================================================================
-FILE PATH: server\src\scripts\clean_and_migrate.ts
-================================================================================
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
-async function main() {
-  console.log("🧹 Starting cleanup and migration...");
-
-  const fakerDescription = "Barulho estranho no motor e luz de óleo acesa.";
-
-  // Find OS IDs first to delete related records
-  const osToDelete = await prisma.ordemDeServico.findMany({
-    where: { defeito_relatado: fakerDescription },
-    select: { id_os: true },
-  });
-
-  const ids = osToDelete.map((os) => os.id_os);
-  console.log(`🎯 Found ${ids.length} faker OSs to delete.`);
-
-  if (ids.length > 0) {
-    // Delete related FechamentoFinanceiro
-    await prisma.fechamentoFinanceiro.deleteMany({
-      where: { id_os: { in: ids } },
-    });
-    console.log("🗑️ Deleted related FechamentoFinanceiro records.");
-
-    // Delete related ServicoMaoDeObra
-    await prisma.servicoMaoDeObra.deleteMany({
-      where: { id_os: { in: ids } },
-    });
-    console.log("🗑️ Deleted related ServicoMaoDeObra records.");
-
-    // Delete related ItensOs (if any)
-    await prisma.itensOs.deleteMany({
-      where: { id_os: { in: ids } },
-    });
-    console.log("🗑️ Deleted related ItensOs records.");
-
-    // Finally delete OSs
-    const deletedOs = await prisma.ordemDeServico.deleteMany({
-      where: { id_os: { in: ids } },
-    });
-    console.log(`🗑️ Deleted ${deletedOs.count} faker OSs.`);
-  }
-
-  // Migrate Statuses
-  const updatedStatus = await prisma.ordemDeServico.updateMany({
-    where: { status: "PRONTO PARA FINANCEIRO" },
-    data: { status: "FINANCEIRO" },
-  });
-  console.log(
-    `🔄 Migrated ${updatedStatus.count} OSs from 'PRONTO PARA FINANCEIRO' to 'FINANCEIRO'.`,
-  );
-
-  const updatedFinalized = await prisma.ordemDeServico.updateMany({
-    where: { status: "FINALIZADO" },
-    data: { status: "FINALIZADA" },
-  });
-  console.log(
-    `🔄 Migrated ${updatedFinalized.count} OSs from 'FINALIZADO' to 'FINALIZADA'.`,
-  );
-}
-
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
-
-
-
-================================================================================
 FILE PATH: server\src\scripts\clean_test_clients.ts
 ================================================================================
 import { PrismaClient } from "@prisma/client";

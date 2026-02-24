@@ -39,10 +39,10 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-3 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-3 overflow-hidden">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold text-neutral-600 tracking-tight flex items-center gap-2">
-          <CalendarIcon size={16} className="text-purple-500" />
+        <h2 className="text-base font-bold text-purple-700 tracking-tight flex items-center gap-2">
+          <CalendarIcon size={16} className="text-purple-700" />
           Agenda (Próximos 15 dias)
         </h2>
         {/* Simple pagination controls if needed, or just horizontal scroll */}
@@ -66,10 +66,10 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
               key={idx}
               className={`min-w-[140px] flex-1 border rounded-xl p-2 snap-start relative flex flex-col ${
                 isCurrentDay
-                  ? "bg-purple-50/50 border-purple-100"
+                  ? "bg-purple-50/50 border-purple-200"
                   : isWeekend
-                    ? "bg-slate-100 border-slate-200 shadow-inner"
-                    : "bg-neutral-50/50 border-neutral-100"
+                    ? "bg-purple-200 border-slate-200 shadow-inner"
+                    : "bg-neutral-50/50 border-neutral-200"
               }`}
             >
               {/* Header of the Day Card */}
@@ -77,7 +77,7 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
                 className={`flex flex-col mb-3 pb-2 border-b ${isCurrentDay ? "border-purple-200" : "border-neutral-200"}`}
               >
                 <span
-                  className={`text-xs font-bold uppercase tracking-widest ${isCurrentDay ? "text-purple-600" : "text-neutral-400"}`}
+                  className={`text-xs font-bold uppercase tracking-widest ${isCurrentDay ? "text-purple-700" : "text-neutral-400"}`}
                 >
                   {getDayName(day)}
                 </span>
@@ -97,7 +97,7 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
                       onClick={() =>
                         navigate(`/ordem-de-servico?id=${item.id_os}`)
                       }
-                      className="bg-white p-1.5 rounded-lg border border-neutral-200 shadow-sm cursor-pointer hover:border-purple-300 hover:shadow-md transition-all group shrink-0"
+                      className="bg-purple-100 p-1.5 rounded-lg border border-neutral-200 shadow-sm cursor-pointer hover:border-purple-300 hover:shadow-md transition-all group shrink-0"
                     >
                       <div className="flex items-center justify-between gap-1">
                         <p className="text-xs font-bold text-purple-700 line-clamp-1 flex-1">

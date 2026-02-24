@@ -7,9 +7,9 @@ export const getStatusStyle = (status: string) => {
     case "ABERTA":
       return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
     case "ORCAMENTO":
-      return "bg-purple-100 text-purple-700 ring-1 ring-purple-200";
+      return "bg-neutral-100 text-neutral-700 ring-1 ring-neutral-200";
     case "AGENDAMENTO":
-      return "bg-orange-100 text-orange-700 ring-1 ring-orange-200";
+      return "bg-purple-100 text-purple-700 ring-1 ring-purple-200";
     case "CANCELADA":
       return "bg-red-100 text-red-700 ring-1 ring-red-200";
     default:
