@@ -107,7 +107,7 @@ export const Sidebar = () => {
 
   return (
     <aside className="w-64 bg-slate-900 text-primary-100 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-800 shadow-2xl z-50 print:hidden">
-      <div className="border-b border-slate-800 bg-slate-950 flex items-center justify-center h-32 overflow-hidden shrink-0">
+      <div className="border-b border-slate-800 bg-slate-950 flex items-center justify-center h-24 overflow-hidden shrink-0">
         {config?.logoUrl ? (
           <img
             src={`${getLogoUrl(config.logoUrl || "")}?t=${logoVersion}`}
@@ -204,8 +204,8 @@ export const Sidebar = () => {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800 bg-slate-950 shrink-0">
-        <div className="bg-slate-800/50 rounded-lg p-3">
+      <div className="p-2 border-t border-slate-800 bg-slate-950 shrink-0">
+        <div className="bg-slate-800/50 rounded-lg p-2">
           <p className="text-xs text-center text-slate-500">
             &copy; 2026 Centro Automotivo <br /> Guilherme Gebaili <br />{" "}
             https://github.com/GuiGebaili78
