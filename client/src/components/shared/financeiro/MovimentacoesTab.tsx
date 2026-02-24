@@ -6,7 +6,6 @@ import {
   Search,
   ArrowUpCircle,
   ArrowDownCircle,
-  Calendar,
   Trash2,
   Settings,
   Wallet,
