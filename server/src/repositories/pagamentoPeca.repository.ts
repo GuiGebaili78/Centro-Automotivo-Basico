@@ -23,6 +23,7 @@ export class PagamentoPecaRepository {
           data_compra: true,
           data_pagamento_fornecedor: true,
           pago_ao_fornecedor: true,
+          id_livro_caixa: true,
           fornecedor: {
             select: {
               id_fornecedor: true,
@@ -304,7 +305,7 @@ export class PagamentoPecaRepository {
         ),
       ];
 
-      const descricao = `Pg. Peças Lote - OSs: ${idOsUnicos.join(", ")} - Fornecedores: ${fornecedoresUnicos.join(", ")} | Desc. Total: R$ ${descontoTotal.toFixed(2)}`;
+      const descricao = `Pg. Peças em Lote - OS: ${idOsUnicos.join(", ")} - Fornecedores: ${fornecedoresUnicos.join(", ")} | Desc.: R$ ${descontoTotal.toFixed(2)}`;
 
       const lc = await tx.livroCaixa.create({
         data: {

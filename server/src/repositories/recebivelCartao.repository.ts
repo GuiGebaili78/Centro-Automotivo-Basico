@@ -486,7 +486,7 @@ export class RecebivelCartaoRepository {
           // 2. Criar Livro Caixa (Aparece no Extrato)
           const livro = await tx.livroCaixa.create({
             data: {
-              descricao: `Recebimento PIX - OS #${pagamento.id_os} (Confirmado em Rec.)`,
+              descricao: `Recebimento PIX - OS ${pagamento.id_os}`,
               valor: valor,
               tipo_movimentacao: "ENTRADA",
               categoria: "VENDA", // PIX é venda direta

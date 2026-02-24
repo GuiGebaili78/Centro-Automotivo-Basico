@@ -74,7 +74,7 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
   const getFilterButtonClass = (isActive: boolean) =>
     `px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
       isActive
-        ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+        ? "bg-slate-100 text-slate-700 ring-1 ring-slate-200 shadow-sm"
         : "text-neutral-600 hover:text-neutral-700 hover:bg-neutral-100"
     }`;
 

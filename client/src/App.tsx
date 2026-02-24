@@ -18,7 +18,7 @@ import { RelatoriosPage } from "./pages/RelatoriosPage";
 
 import { PecasEstoquePage } from "./pages/PecasEstoquePage";
 import { EntradaEstoquePage } from "./pages/EntradaEstoquePage";
-import { FuncionarioPage } from "./pages/FuncionarioPage";
+import { FuncionarioPage } from "./pages/ColaboradoresPage";
 import { PessoaPage } from "./pages/PessoaPage";
 import { TipoPage } from "./pages/TipoPage";
 import { FechamentoFinanceiroPage } from "./pages/FechamentoFinanceiroPage";

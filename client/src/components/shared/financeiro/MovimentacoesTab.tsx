@@ -54,9 +54,12 @@ export const MovimentacoesTab = () => {
 
   // Filters
   const [cashSearch, setCashSearch] = useState("");
-  const [cashFilterStart, setCashFilterStart] = useState(
-    new Date().toLocaleDateString("en-CA"),
-  );
+  const [cashFilterStart, setCashFilterStart] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString(
+      "en-CA",
+    );
+  });
   const [cashFilterEnd, setCashFilterEnd] = useState(
     new Date().toLocaleDateString("en-CA"),
   );
@@ -66,7 +69,7 @@ export const MovimentacoesTab = () => {
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
   const [activeQuickFilter, setActiveQuickFilter] = useState<
     "TODAY" | "WEEK" | "MONTH"
-  >("TODAY");
+  >("MONTH");
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -118,11 +121,29 @@ export const MovimentacoesTab = () => {
         opMap[op.id_operadora] = op.nome;
       });
 
-      // Build Payment Map (Link LivroCaixa ID -> Payment Data)
+      // Build Payment Maps (Link LivroCaixa ID -> Payment Data)
       const lcPaymentMap: Record<number, any> = {};
       (inflowsRes.data || []).forEach((p: any) => {
         if (p.id_livro_caixa) {
           lcPaymentMap[p.id_livro_caixa] = p;
+        }
+      });
+
+      const lcSupplierMap: Record<number, string> = {};
+      let paymentsData = paymentsRes.data?.data || paymentsRes.data || [];
+      paymentsData.forEach((p: any) => {
+        if (p.id_livro_caixa) {
+          // If multiple parts share same LC (batch), we'll just take the supplier from the record
+          // (Batch entries usually have a generic description anyway, but individual ones will have specific suppliers)
+          const name =
+            p.fornecedor?.nome_fantasia || p.fornecedor?.nome || "Fornecedor";
+          if (!lcSupplierMap[p.id_livro_caixa]) {
+            lcSupplierMap[p.id_livro_caixa] = name;
+          } else if (!lcSupplierMap[p.id_livro_caixa].includes(name)) {
+            // If multiple suppliers in a batch, it gets messy, but usually batch description handles it.
+            // For simplicity, let's keep the first or join them if it's small.
+            lcSupplierMap[p.id_livro_caixa] += `, ${name}`;
+          }
         }
       });
 
@@ -182,13 +203,14 @@ export const MovimentacoesTab = () => {
             deleted_at: e.deleted_at,
             originalData: e,
             conta_bancaria: e.conta ? e.conta.nome : null,
+            supplier: lcSupplierMap[e.id_livro_caixa] || null,
             paymentMethod: methodDisplay, // Enriched info
           };
         });
 
       // 2. Auto Outflows (Payments to Suppliers)
       // BREAKING CHANGE: API now returns { data: [...], pagination: {...} }
-      const paymentsData = paymentsRes.data?.data || paymentsRes.data || [];
+      paymentsData = paymentsRes.data?.data || paymentsRes.data || [];
       const outflows = paymentsData
         .filter(
           (p: any) =>
@@ -291,10 +313,10 @@ export const MovimentacoesTab = () => {
             id: `in-${p.id_pagamento_cliente}`,
             rawId: p.id_pagamento_cliente,
             date: p.data_pagamento,
-            description: `Recebimento: OS Nº ${os?.id_os ?? "?"} - ${veh?.modelo ?? "Veículo"} ${veh?.placa ? `(${veh.placa})` : ""}`,
+            description: `Serviços: OS Nº ${os?.id_os ?? "?"} - ${veh?.modelo ?? "Veículo"} ${veh?.placa ? `(${veh.placa})` : ""}`,
             type: "IN",
             value: Number(p.valor),
-            category: "Receita de Serviços",
+            category: "Receita",
             vehicle: vehicleText,
             client: clientName,
             obs: p.obs || p.observacao || p.livro_caixa?.obs || "",
@@ -503,10 +525,10 @@ export const MovimentacoesTab = () => {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-neutral-800">
+          <h2 className="text-xl font-bold text-neutral-600">
             Histórico de Movimentações
           </h2>
-          <p className="text-neutral-500 text-sm">
+          <p className="text-neutral-600 text-sm">
             Registro completo de entradas e saídas.
           </p>
         </div>
@@ -524,7 +546,7 @@ export const MovimentacoesTab = () => {
         <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex flex-col xl:flex-row justify-between items-end gap-6">
           <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
             {/* Search */}
-            <div className="md:col-span-3">
+            <div className="md:col-span-3 text-sm text-neutral-600">
               <Input
                 label="Buscar"
                 value={cashSearch}
@@ -537,7 +559,7 @@ export const MovimentacoesTab = () => {
             {/* Dates */}
             <div className="md:col-span-4 flex gap-2">
               <div className="flex-1">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+                <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
                   De
                 </label>
                 <input
@@ -555,7 +577,7 @@ export const MovimentacoesTab = () => {
                 />
               </div>
               <div className="flex-1">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+                <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
                   Até
                 </label>
                 <input
@@ -577,7 +599,7 @@ export const MovimentacoesTab = () => {
             {/* Quick Filters */}
             <div className="md:col-span-5 flex items-center justify-end">
               <div className="w-full">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+                <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
                   Período
                 </label>
                 <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 h-[42px] items-center w-full">
@@ -605,7 +627,7 @@ export const MovimentacoesTab = () => {
 
             {/* Source Filter */}
             <div className="md:col-span-2">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+              <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
                 Origem
               </label>
               <div className="relative">
@@ -626,7 +648,7 @@ export const MovimentacoesTab = () => {
 
             {/* Category Filter */}
             <div className="md:col-span-3">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+              <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
                 Categoria
               </label>
               <div className="relative">
@@ -686,7 +708,7 @@ export const MovimentacoesTab = () => {
               <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
                 <ArrowDownCircle size={20} />
               </div>
-              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+              <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">
                 Entradas
               </p>
             </div>
@@ -699,7 +721,7 @@ export const MovimentacoesTab = () => {
               <div className="p-2 bg-red-50 text-red-600 rounded-lg">
                 <ArrowUpCircle size={20} />
               </div>
-              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+              <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">
                 Saídas
               </p>
             </div>
@@ -712,7 +734,7 @@ export const MovimentacoesTab = () => {
               <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
                 <Wallet size={20} />
               </div>
-              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+              <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">
                 Saldo
               </p>
             </div>
@@ -727,7 +749,7 @@ export const MovimentacoesTab = () => {
         {/* TABLE */}
         <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
           <table className="tabela-limpa w-full">
-            <thead className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-semibold">
+            <thead className="bg-neutral-50 border-b border-neutral-200 text-sm uppercase tracking-wider text-neutral-500 font-semibold">
               <tr>
                 <th className="p-4">Data</th>
                 <th className="p-4">Descrição</th>
@@ -760,45 +782,49 @@ export const MovimentacoesTab = () => {
                     className={`hover:bg-neutral-50 transition-colors group ${entry.deleted_at ? "opacity-50" : ""}`}
                   >
                     <td className="p-4">
-                      <div
-                        className={`flex items-center gap-2 font-bold text-xs ${entry.deleted_at ? "line-through text-neutral-400" : "text-neutral-600"}`}
-                      >
-                        <Calendar size={14} />
-                        {new Date(entry.date).toLocaleDateString("pt-BR")}
-                        <span className="text-[10px] text-neutral-400">
-                          {new Date(entry.date).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
+                      <div className="flex flex-col items-start">
+                        <div className="flex flex-col">
+                          <span className="text-base text-neutral-600 font-medium">
+                            {new Date(entry.date).toLocaleDateString()}
+                          </span>
+                          <span className="text-base text-neutral-600 font-medium">
+                            {new Date(entry.date).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
                       </div>
                     </td>
                     <td
                       className={`p-4 font-bold ${entry.deleted_at ? "line-through text-neutral-400" : "text-neutral-900"}`}
                     >
                       <div className="text-sm">{entry.description}</div>
-                      {entry.source === "AUTO" && (
-                        <div className="text-[10px] text-neutral-400 font-medium mt-0.5">
-                          {entry.type === "OUT" ? (
+
+                      {/* Sub-header for AUTO (Clients) or ANY (Suppliers) */}
+                      <div className="text-sm text-neutral-400 font-medium mt-0.5">
+                        {entry.type === "OUT" ? (
+                          entry.supplier && (
                             <span>Pago a: {entry.supplier}</span>
-                          ) : (
-                            <span>
-                              {entry.client}{" "}
-                              {entry.vehicle ? `| ${entry.vehicle}` : ""}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                          )
+                        ) : entry.source === "AUTO" ? (
+                          <span>
+                            {entry.client}{" "}
+                            {entry.vehicle ? `| ${entry.vehicle}` : ""}
+                          </span>
+                        ) : null}
+                      </div>
+
                       {/* Show manual obs if exists */}
                       {entry.source === "MANUAL" && entry.obs && (
-                        <div className="text-[10px] text-neutral-400 font-medium mt-0.5 italic">
+                        <div className="text-sm text-neutral-400 font-medium mt-0.5 italic">
                           {entry.obs}
                         </div>
                       )}
                     </td>
                     <td className="p-4">
                       <span
-                        className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                        className={`px-2 py-1 rounded-md text-sm font-bold uppercase tracking-wider ${
                           entry.deleted_at
                             ? "bg-neutral-100 text-neutral-500 line-through"
                             : entry.type === "IN"
@@ -815,17 +841,17 @@ export const MovimentacoesTab = () => {
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-xs font-bold uppercase tracking-wide">
+                      <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-sm font-bold uppercase tracking-wide">
                         {entry.category}
                       </span>
                     </td>
                     <td className="p-4">
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-neutral-700">
+                        <span className="text-sm font-bold text-neutral-700">
                           {entry.conta_bancaria || "Caixa Geral / Indefinido"}
                         </span>
                         {entry.paymentMethod && (
-                          <span className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">
+                          <span className="text-sm text-neutral-400 font-bold uppercase mt-0.5">
                             {entry.paymentMethod}
                           </span>
                         )}
@@ -846,7 +872,7 @@ export const MovimentacoesTab = () => {
                     <td className="p-4">
                       {entry.obs ? (
                         <span
-                          className="text-xs text-neutral-500 italic truncate max-w-[150px] block"
+                          className="text-sm text-neutral-500 italic truncate max-w-[150px] block"
                           title={entry.obs}
                         >
                           {entry.obs}
@@ -873,7 +899,7 @@ export const MovimentacoesTab = () => {
                         </div>
                       )}
                       {entry.deleted_at && (
-                        <span className="text-[10px] font-bold text-red-300 uppercase">
+                        <span className="text-sm font-bold text-red-300 uppercase">
                           Excluído
                         </span>
                       )}
@@ -1014,7 +1040,7 @@ export const MovimentacoesTab = () => {
                     {formatCurrency(itemToDelete?.value || 0)})
                   </span>
                 </p>
-                <p className="text-xs text-red-600 mt-2">
+                <p className="text-sm text-red-600 mt-2">
                   Essa ação registrará um estorno e não poderá ser desfeita
                   completamente (o registro será mantido como excluído).
                 </p>
