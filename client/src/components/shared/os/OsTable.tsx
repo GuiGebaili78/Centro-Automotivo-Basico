@@ -80,7 +80,7 @@ export const OsTable = ({
                 </td>
                 <td className="p-4">
                   <div className="flex flex-col">
-                    <p className="text-base font-medium text-neutral-600 line-clamp-2 uppercase leading-relaxed">
+                    <p className="text-sm text-neutral-600 line-clamp-2 uppercase leading-relaxed">
                       {os.diagnostico || os.defeito_relatado || (
                         <span className="text-neutral-300 italic">---</span>
                       )}

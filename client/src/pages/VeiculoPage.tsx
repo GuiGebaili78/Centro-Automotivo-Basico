@@ -196,20 +196,20 @@ export const VeiculoPage = () => {
                         <div className="bg-primary-50 p-2 rounded-lg text-primary-600">
                           <Car size={18} />
                         </div>
-                        <div className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
+                        <div className="font-medium text-neutral-700 tracking-tight text-base uppercase">
                           {v.marca} {v.modelo}
                         </div>
                       </div>
                     </td>
-                    <td className="text-sm text-neutral-600 font-medium uppercase">
+                    <td className="text-base text-neutral-600 font-medium uppercase">
                       {v.cor}
                     </td>
-                    <td className="font-mono font-bold text-primary-500 text-sm">
+                    <td className="font-medium text-primary-500 text-base">
                       {v.placa}
                     </td>
                     <td>
                       <div className="flex flex-col">
-                        <span className="font-bold text-neutral-500 text-sm">
+                        <span className="font-medium text-neutral-600 text-base">
                           {(v.cliente as any)?.pessoa_fisica?.pessoa?.nome ||
                             (v.cliente as any)?.pessoa_juridica
                               ?.nome_fantasia ||
@@ -219,12 +219,12 @@ export const VeiculoPage = () => {
                     </td>
                     <td>
                       <div className="flex flex-col gap-1">
-                        <span className="flex items-center gap-2 text-sm text-neutral-700 font-medium">
+                        <span className="flex items-center gap-2 text-base text-neutral-600 font-medium">
                           <Phone size={14} className="text-neutral-400" />
                           {(v.cliente as any)?.telefone_1 || "-"}
                         </span>
                         {(v.cliente as any)?.email && (
-                          <span className="text-xs text-neutral-500 pl-6">
+                          <span className="text-base text-neutral-500 pl-6">
                             {(v.cliente as any)?.email}
                           </span>
                         )}

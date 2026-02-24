@@ -199,7 +199,7 @@ export const EntradaItensForm = ({
     <>
       {/* ITEM INPUT CARD */}
       <Card className="overflow-visible space-y-4">
-        <h3 className="text-sm font-bold text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2 flex items-center gap-2">
+        <h3 className="text-base font-bold text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2 flex items-center gap-2">
           <Package size={16} className="text-primary-500" /> Adicionar Item
         </h3>
 
@@ -390,12 +390,12 @@ export const EntradaItensForm = ({
             <thead>
               <tr>
                 <th className="w-[30%]">Produto</th>
-                <th className="w-[10%] text-center">Qtd</th>
-                <th className="w-[12%] text-right">Custo</th>
-                <th className="w-[10%] text-right">Margem</th>
-                <th className="w-[12%] text-right">Venda</th>
-                <th className="w-[12%] text-right">Subtotal</th>
-                <th className="w-[14%] text-center">Ações</th>
+                <th className="w-[8%] text-center">Qtd</th>
+                <th className="w-[10%] text-right">Custo</th>
+                <th className="w-[8%] text-right">Margem</th>
+                <th className="w-[8%] text-right">Venda</th>
+                <th className="w-[8%] text-right">Subtotal</th>
+                <th className="w-[12%] text-center">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -419,19 +419,19 @@ export const EntradaItensForm = ({
                       )}
                     </div>
                   </td>
-                  <td className="text-center font-bold text-neutral-700">
+                  <td className="text-left font-bold text-neutral-700">
                     {i.quantidade}
                   </td>
-                  <td className="text-right text-neutral-600">
+                  <td className="text-left font-bold text-neutral-600">
                     {formatCurrency(i.valor_custo)}
                   </td>
-                  <td className="text-right text-blue-600 font-medium">
+                  <td className="text-left text-blue-600 font-bold">
                     {i.margem_lucro?.toFixed(1)}%
                   </td>
-                  <td className="text-right font-bold text-neutral-800">
+                  <td className="text-left font-bold text-neutral-800">
                     {formatCurrency(i.valor_venda)}
                   </td>
-                  <td className="text-right text-neutral-500 font-mono">
+                  <td className="text-left font-bold text-neutral-500">
                     {formatCurrency(i.quantidade * i.valor_custo)}
                   </td>
                   <td>

@@ -2,6 +2,7 @@ import { ActionButton } from "../ui/ActionButton";
 import { User, Phone, Edit, Trash2 } from "lucide-react";
 import { Badge } from "../ui/Badge";
 import type { IFuncionario } from "../../types/colaborador.types";
+import { formatPhone } from "../../utils/normalize";
 
 interface ColaboradoresTableProps {
   funcionarios: IFuncionario[];
@@ -37,11 +38,8 @@ export const ColaboradoresTable = ({
                   <User size={18} />
                 </div>
                 <div>
-                  <p className="font-bold text-neutral-900 block">
+                  <p className="text-base font-medium text-neutral-600 block">
                     {f.pessoa_fisica?.pessoa?.nome}
-                  </p>
-                  <p className="text-[10px] font-bold text-neutral-400 uppercase">
-                    CPF: {f.pessoa_fisica?.cpf || "N/A"}
                   </p>
                 </div>
               </div>
@@ -49,17 +47,14 @@ export const ColaboradoresTable = ({
             <td className="py-4">
               <div className="flex flex-col items-start gap-1">
                 <Badge variant="neutral">{f.cargo}</Badge>
-                {f.especialidade && (
-                  <span className="text-[10px] text-neutral-500 font-medium ml-1">
-                    Spec: {f.especialidade}
-                  </span>
-                )}
               </div>
             </td>
             <td className="py-4">
-              <div className="flex items-center gap-2 text-neutral-600 text-sm font-medium">
+              <div className="flex items-center gap-2 text-neutral-600 text-base">
                 <Phone size={14} className="text-neutral-400" />
-                {f.telefone_pessoal || "-"}
+                {formatPhone(f.telefone_pessoal || "-")}
+                <br />
+                {f.logradouro} {f.numero} {f.complemento} {f.bairro} {f.cidade}
               </div>
             </td>
             <td className="py-4">

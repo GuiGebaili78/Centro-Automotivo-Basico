@@ -1,6 +1,7 @@
 import { ActionButton } from "../ui/ActionButton";
 import { User, Building2, MapPin, Phone, Edit, Trash2 } from "lucide-react";
 import type { IFornecedor } from "../../types/fornecedor.types";
+import { formatPhone } from "../../utils/normalize";
 
 interface FornecedoresTableProps {
   fornecedores: IFornecedor[];
@@ -39,11 +40,11 @@ export const FornecedoresTable = ({
                   )}
                 </div>
                 <div>
-                  <p className="font-bold text-neutral-900">
+                  <p className="font-medium text-neutral-600">
                     {f.nome_fantasia || f.nome}
                   </p>
                   {f.nome_fantasia && f.nome_fantasia !== f.nome && (
-                    <p className="text-xs text-neutral-500 font-medium">
+                    <p className="text-base text-neutral-600 font-medium">
                       {f.nome}
                     </p>
                   )}
@@ -51,8 +52,8 @@ export const FornecedoresTable = ({
               </div>
             </td>
             <td className="py-4">
-              <div className="flex items-center gap-2 text-neutral-600 text-sm font-medium">
-                <MapPin size={14} className="text-neutral-400" />
+              <div className="flex items-center gap-2 text-neutral-600 text-base font-medium">
+                <MapPin size={14} className="text-neutral-600" />
                 <span className="uppercase">
                   {f.logradouro ? (
                     <>
@@ -66,7 +67,7 @@ export const FornecedoresTable = ({
                 </span>
               </div>
               {f.cidade && (
-                <div className="pl-6 text-xs text-neutral-400 font-medium uppercase">
+                <div className="pl-6 text-base text-neutral-400 font-medium uppercase">
                   {f.cidade}/{f.uf}
                 </div>
               )}
@@ -74,29 +75,29 @@ export const FornecedoresTable = ({
             <td className="py-4">
               <div className="flex flex-col gap-1 items-start">
                 {f.contato && (
-                  <div className="font-bold text-neutral-700 text-sm flex items-center gap-2 mb-1">
-                    <User size={14} className="text-neutral-400" />
+                  <div className="font-medium text-neutral-600 text-base flex items-center gap-2 mb-1">
+                    <User size={14} className="text-neutral-600" />
                     {f.contato}
                   </div>
                 )}
 
                 <div className="flex flex-wrap gap-2">
                   {f.whatsapp && (
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-md">
+                    <div className="flex items-center gap-1.5 text-base font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-md">
                       <Phone size={12} />
-                      {f.whatsapp}
+                      {formatPhone(f.whatsapp)}
                     </div>
                   )}
                   {f.telefone && f.telefone !== f.whatsapp && (
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
+                    <div className="flex items-center gap-1.5 text-base font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
                       <Phone size={12} />
-                      {f.telefone}
+                      {formatPhone(f.telefone)}
                     </div>
                   )}
                 </div>
 
                 {f.email && (
-                  <span className="text-xs text-neutral-500 mt-1">
+                  <span className="text-base text-neutral-500 mt-1">
                     {f.email}
                   </span>
                 )}

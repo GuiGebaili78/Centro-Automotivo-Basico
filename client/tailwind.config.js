@@ -21,7 +21,7 @@ export default {
                     100: '#dbeafe',
                     200: '#bfdbfe',
                     500: '#3b82f6',
-                    600: '#2563eb', // Azul Principal
+                    600: '#0E2773', // Azul Principal
                     700: '#1d4ed8',
                     800: '#1e40af', // Azul Sidebar/Escuro
                     900: '#1e3a8a',

@@ -75,14 +75,14 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
             <h3 className="text-lg text-neutral-600">
               {stats.contasPagarPending}
             </h3>
-            <p className="text-xs text-neutral-400 uppercase mt-0.5 font-medium">
+            <p className="text-xs text-neutral-400 uppercase mt-0.5">
               Pendente
             </p>
           </div>
           <div className="h-5 w-px bg-neutral-200"></div>
           <div className="flex flex-col items-center">
             <h3 className="text-lg text-red-600">{stats.contasPagarOverdue}</h3>
-            <p className="text-xs text-neutral-400 uppercase mt-0.5 font-medium">
+            <p className="text-xs text-neutral-400 uppercase mt-0.5">
               Atrasada
             </p>
           </div>
