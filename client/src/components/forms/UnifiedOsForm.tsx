@@ -9,7 +9,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { OsService } from "../../services/os.service";
-import { Button } from "../ui/Button";
+import { Button, Input, Select } from "../ui";
 
 interface UnifiedOsFormProps {
   onCancel: () => void;
@@ -184,13 +184,11 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
           </div>
 
           <div className="relative">
-            <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-              Nome Completo *
-            </label>
-            <input
+            <Input
+              label="Nome Completo *"
               value={clientQuery}
               onChange={(e) => handleClientSearch(e.target.value)}
-              className="w-full p-3 rounded-xl border border-neutral-200 font-bold text-neutral-800 outline-none focus:border-primary-500"
+              className="font-bold text-neutral-800"
               placeholder="Buscar ou Digitar Novo..."
             />
             {clientResults.length > 0 && (
@@ -208,26 +206,17 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
               </div>
             )}
           </div>
-          <div>
-            <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-              Telefone / Celular *
-            </label>
-            <div className="relative">
-              <Phone
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                size={14}
-              />
-              <input
-                value={clientData.telefone}
-                onChange={(e) =>
-                  setClientData({ ...clientData, telefone: e.target.value })
-                }
-                disabled={!clientData.isNew}
-                className="w-full pl-9 pr-3 py-3 rounded-xl border border-neutral-200 font-bold text-neutral-800 outline-none focus:border-primary-500 disabled:bg-neutral-100"
-                placeholder="(00) 00000-0000"
-              />
-            </div>
-          </div>
+          <Input
+            label="Telefone / Celular *"
+            value={clientData.telefone}
+            onChange={(e) =>
+              setClientData({ ...clientData, telefone: e.target.value })
+            }
+            disabled={!clientData.isNew}
+            icon={Phone}
+            className="font-bold text-neutral-800"
+            placeholder="(00) 00000-0000"
+          />
 
           {/* Endereço Simplificado */}
           <div className="pt-2 border-t border-neutral-200">
@@ -238,18 +227,18 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
               </span>
             </div>
             <div className="grid grid-cols-3 gap-2 mb-2">
-              <input
+              <Input
                 placeholder="CEP"
-                className="col-span-1 p-2 border rounded-lg text-sm"
+                className="col-span-1 border rounded-lg text-sm"
                 value={clientData.cep}
                 onChange={(e) =>
                   setClientData({ ...clientData, cep: e.target.value })
                 }
                 disabled={!clientData.isNew}
               />
-              <input
+              <Input
                 placeholder="Cidade"
-                className="col-span-2 p-2 border rounded-lg text-sm"
+                className="col-span-2 border rounded-lg text-sm"
                 value={clientData.cidade}
                 onChange={(e) =>
                   setClientData({ ...clientData, cidade: e.target.value })
@@ -258,18 +247,18 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
               />
             </div>
             <div className="grid grid-cols-4 gap-2">
-              <input
+              <Input
                 placeholder="Logradouro"
-                className="col-span-3 p-2 border rounded-lg text-sm"
+                className="col-span-3 border rounded-lg text-sm"
                 value={clientData.logradouro}
                 onChange={(e) =>
                   setClientData({ ...clientData, logradouro: e.target.value })
                 }
                 disabled={!clientData.isNew}
               />
-              <input
+              <Input
                 placeholder="Nº"
-                className="col-span-1 p-2 border rounded-lg text-sm"
+                className="col-span-1 border rounded-lg text-sm"
                 value={clientData.numero}
                 onChange={(e) =>
                   setClientData({ ...clientData, numero: e.target.value })
@@ -291,10 +280,8 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
 
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-                Placa *
-              </label>
-              <input
+              <Input
+                label="Placa *"
                 value={vehicleData.placa}
                 onChange={(e) =>
                   setVehicleData({
@@ -302,72 +289,62 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
                     placa: e.target.value.toUpperCase(),
                   })
                 }
-                className="w-full p-3 rounded-xl border border-neutral-200 font-black text-neutral-800 outline-none focus:border-primary-500 uppercase"
+                className="font-black text-neutral-800 uppercase"
                 placeholder="MER-0000"
                 maxLength={8}
               />
             </div>
             <div className="w-24">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-                Ano
-              </label>
-              <input
+              <Input
+                label="Ano"
                 value={vehicleData.ano}
                 onChange={(e) =>
                   setVehicleData({ ...vehicleData, ano: e.target.value })
                 }
-                className="w-full p-3 rounded-xl border border-neutral-200 font-bold text-neutral-800 outline-none focus:border-primary-500 text-center"
+                className="font-bold text-neutral-800 text-center"
                 placeholder="2024"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-                Marca *
-              </label>
-              <input
+              <Input
+                label="Marca *"
                 value={vehicleData.marca}
                 onChange={(e) =>
                   setVehicleData({ ...vehicleData, marca: e.target.value })
                 }
-                className="w-full p-3 rounded-xl border border-neutral-200 font-bold text-neutral-800 outline-none focus:border-primary-500"
+                className="font-bold text-neutral-800"
                 placeholder="Ex: VW"
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-                Modelo *
-              </label>
-              <input
+              <Input
+                label="Modelo *"
                 value={vehicleData.modelo}
                 onChange={(e) =>
                   setVehicleData({ ...vehicleData, modelo: e.target.value })
                 }
-                className="w-full p-3 rounded-xl border border-neutral-200 font-bold text-neutral-800 outline-none focus:border-primary-500"
+                className="font-bold text-neutral-800"
                 placeholder="Ex: Gol"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-                Cor
-              </label>
-              <input
+              <Input
+                label="Cor"
                 value={vehicleData.cor}
                 onChange={(e) =>
                   setVehicleData({ ...vehicleData, cor: e.target.value })
                 }
-                className="w-full p-3 rounded-xl border border-neutral-200 font-bold text-neutral-800 outline-none focus:border-primary-500"
+                className="font-bold text-neutral-800"
                 placeholder="Ex: Branco"
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-                Combustível *
-              </label>
-              <select
+              <Select
+                label="Combustível *"
                 value={vehicleData.combustivel}
                 onChange={(e) =>
                   setVehicleData({
@@ -375,7 +352,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
                     combustivel: e.target.value,
                   })
                 }
-                className="w-full p-3 rounded-xl border border-neutral-200 font-bold text-neutral-800 outline-none focus:border-primary-500 bg-white"
+                className="font-bold text-neutral-800"
               >
                 <option value="FLEX">Flex</option>
                 <option value="GASOLINA">Gasolina</option>
@@ -383,7 +360,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
                 <option value="DIESEL">Diesel</option>
                 <option value="GNV">GNV</option>
                 <option value="ELETRICO">Elétrico</option>
-              </select>
+              </Select>
             </div>
           </div>
         </div>
@@ -398,29 +375,25 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
         </div>
 
         <div>
-          <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-            KM Entrada *
-          </label>
-          <input
+          <Input
+            label="KM Entrada *"
             type="number"
             value={osData.km_entrada}
             onChange={(e) =>
               setOsData({ ...osData, km_entrada: e.target.value })
             }
-            className="w-full p-3 rounded-xl border border-neutral-200 font-black text-xl text-neutral-900 outline-none focus:border-primary-500"
+            className="font-black text-xl text-neutral-900"
             placeholder="000000"
           />
         </div>
         <div>
-          <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-            Mecânico *
-          </label>
-          <select
+          <Select
+            label="Mecânico *"
             value={osData.id_funcionario}
             onChange={(e) =>
               setOsData({ ...osData, id_funcionario: e.target.value })
             }
-            className="w-full p-3 rounded-xl border border-neutral-200 font-bold text-neutral-800 outline-none focus:border-primary-500 bg-white"
+            className="font-bold text-neutral-800"
           >
             <option value="">Selecione...</option>
             {employees.map((e) => (
@@ -428,16 +401,14 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
                 {e.pessoa_fisica?.pessoa?.nome || "Func"}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
-          <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
-            Defeito (Opcional)
-          </label>
-          <input
+          <Input
+            label="Defeito (Opcional)"
             value={osData.defeito}
             onChange={(e) => setOsData({ ...osData, defeito: e.target.value })}
-            className="w-full p-3 rounded-xl border border-neutral-200 font-medium text-neutral-800 outline-none focus:border-primary-500"
+            className="font-medium text-neutral-800"
             placeholder="Barulho no motor..."
           />
         </div>

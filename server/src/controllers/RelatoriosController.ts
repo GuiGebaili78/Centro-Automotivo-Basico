@@ -12,8 +12,8 @@ export class RelatoriosController {
           .json({ error: "startDate and endDate are required" });
       }
 
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
+      const start = new Date((startDate as string) + "T00:00:00");
+      const end = new Date((endDate as string) + "T23:59:59");
 
       const data = await relatoriosService.getResumoFinanceiro(start, end);
       return res.json(data);
@@ -33,8 +33,8 @@ export class RelatoriosController {
           .json({ error: "startDate and endDate are required" });
       }
 
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
+      const start = new Date((startDate as string) + "T00:00:00");
+      const end = new Date((endDate as string) + "T23:59:59");
 
       const data = await relatoriosService.getPerformanceEquipe(start, end);
       return res.json(data);
@@ -54,8 +54,8 @@ export class RelatoriosController {
           .json({ error: "startDate and endDate are required" });
       }
 
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
+      const start = new Date((startDate as string) + "T00:00:00");
+      const end = new Date((endDate as string) + "T23:59:59");
 
       const data = await relatoriosService.getOperadorasCartao(start, end);
       return res.json(data);
@@ -69,20 +69,14 @@ export class RelatoriosController {
     try {
       const { groupBy, startDate, endDate } = req.query;
 
-      // Datas obrigatórias — fallback para o mês corrente se não informadas
+      // Datas obrigatórias — fallback para o mês corrente
+      const now = new Date();
       const start = startDate
-        ? new Date(startDate as string)
-        : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        ? new Date((startDate as string) + "T00:00:00")
+        : new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
       const end = endDate
-        ? new Date(endDate as string)
-        : new Date(
-            new Date().getFullYear(),
-            new Date().getMonth() + 1,
-            0,
-            23,
-            59,
-            59,
-          );
+        ? new Date((endDate as string) + "T23:59:59")
+        : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
       const data = await relatoriosService.getEvolucaoMensal(
         start,
@@ -105,8 +99,8 @@ export class RelatoriosController {
           .json({ error: "startDate and endDate are required" });
       }
 
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
+      const start = new Date((startDate as string) + "T00:00:00");
+      const end = new Date((endDate as string) + "T23:59:59");
 
       const data = await relatoriosService.getEvolucaoDespesas(start, end);
       return res.json(data);

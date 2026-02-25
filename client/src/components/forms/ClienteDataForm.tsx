@@ -8,7 +8,7 @@ import {
   Building2,
   Hash,
 } from "lucide-react";
-import { Input } from "../ui/Input";
+import { Button, Input } from "../ui";
 
 interface ClienteDataFormProps {
   tipoPessoa: "PF" | "PJ";
@@ -98,31 +98,35 @@ export const ClienteDataForm = memo(
         </div>
 
         {/* Tipo Pessoa Switch */}
-        <div className="flex bg-neutral-100 p-1 rounded-lg w-fit">
-          <button
+        <div className="flex bg-neutral-100 p-1 rounded-lg w-fit gap-1">
+          <Button
             type="button"
             onClick={() => !isEditMode && setTipoPessoa("PF")}
             disabled={isEditMode}
-            className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${
+            variant={tipoPessoa === "PF" ? "secondary" : "ghost"}
+            size="sm"
+            className={
               tipoPessoa === "PF"
-                ? "bg-neutral-25 shadow text-primary-600"
+                ? "!bg-white !text-primary-600 shadow"
                 : "text-neutral-500"
-            } ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
+            }
           >
             Pessoa Física
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => !isEditMode && setTipoPessoa("PJ")}
             disabled={isEditMode}
-            className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${
+            variant={tipoPessoa === "PJ" ? "secondary" : "ghost"}
+            size="sm"
+            className={
               tipoPessoa === "PJ"
-                ? "bg-neutral-25 shadow text-primary-600"
+                ? "!bg-white !text-primary-600 shadow"
                 : "text-neutral-500"
-            } ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
+            }
           >
             Pessoa Jurídica
-          </button>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 gap-4">

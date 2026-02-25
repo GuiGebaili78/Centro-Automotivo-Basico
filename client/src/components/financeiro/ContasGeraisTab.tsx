@@ -1,13 +1,18 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { FinanceiroService } from "../../services/financeiro.service";
-import { Modal } from "../ui/Modal";
-import { ActionButton } from "../ui/ActionButton";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
-import { CategoryManager } from "../shared/financeiro/CategoryManager";
-import { Card } from "../ui/Card";
+import {
+  Modal,
+  ActionButton,
+  Button,
+  Input,
+  Card,
+  Select,
+  Checkbox,
+  FilterButton,
+} from "../ui";
 import { toast } from "react-toastify";
+import { CategoryManager } from "../shared/financeiro/CategoryManager";
 import {
   Plus,
   Calendar,
@@ -20,6 +25,7 @@ import {
   Settings,
   Square,
   CheckSquare,
+  X,
 } from "lucide-react";
 import type { IContasPagar } from "../../types/backend";
 import { ContaPagarModal } from "./ContaPagarModal";
@@ -261,98 +267,117 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
       </div>
 
       {/* FILTERS & SEARCH */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="w-full md:flex-1 relative">
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por Descrição, Credor..."
-            icon={Search}
-            className="w-full"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
-          {/* Quick Filters Group */}
-          <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
-            {["TODAY", "WEEK", "MONTH", "ALL"].map((type) => (
-              <button
-                key={type}
-                onClick={() => applyQuickFilter(type as any)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  activeFilter === type
-                    ? "bg-white text-primary-600 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-700"
-                }`}
-              >
-                {type === "TODAY"
-                  ? "Hoje"
-                  : type === "WEEK"
-                    ? "Semana"
-                    : type === "MONTH"
-                      ? "Mês"
-                      : "Todos"}
-              </button>
-            ))}
-          </div>
-
-          {/* Manual Date Inputs */}
-          <div className="hidden md:flex gap-2 items-center">
-            <input
-              type="date"
-              value={filterStart}
-              onChange={(e) => {
-                setFilterStart(e.target.value);
-                setActiveFilter("CUSTOM");
-              }}
-              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
-                activeFilter === "CUSTOM"
-                  ? "border-primary-300 text-primary-700"
-                  : "border-neutral-200 text-neutral-600"
-              }`}
-            />
-            <span className="text-neutral-400 self-center">-</span>
-            <input
-              type="date"
-              value={filterEnd}
-              onChange={(e) => {
-                setFilterEnd(e.target.value);
-                setActiveFilter("CUSTOM");
-              }}
-              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
-                activeFilter === "CUSTOM"
-                  ? "border-primary-300 text-primary-700"
-                  : "border-neutral-200 text-neutral-600"
-              }`}
+      <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row items-end justify-between gap-4">
+          <div className="w-full md:flex-1">
+            <Input
+              label="Buscar"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por Descrição, Credor..."
+              icon={Search}
+              className="w-full"
             />
           </div>
 
-          {/* Status Type */}
-          <div className="flex bg-neutral-100 p-1.5 rounded-xl h-[42px] items-center ml-2 border border-neutral-200">
-            {["TODOS", "PENDENTE", "PAGO"].map((s) => {
-              let activeClass = "bg-white text-primary-600 shadow-sm";
-              if (filterStatus === s) {
-                if (s === "PENDENTE")
-                  activeClass = "bg-white text-orange-600 shadow-sm";
-                if (s === "PAGO")
-                  activeClass = "bg-white text-emerald-600 shadow-sm";
-              }
-
-              return (
-                <button
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
+              Status da Conta
+            </label>
+            <div className="flex bg-neutral-50 p-1 rounded-xl items-center border border-neutral-200 gap-1">
+              {["TODOS", "PENDENTE", "PAGO"].map((s) => (
+                <FilterButton
                   key={s}
+                  active={filterStatus === s}
                   onClick={() => setFilterStatus(s)}
-                  className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap transition-colors ${
-                    filterStatus === s
-                      ? activeClass
-                      : "text-neutral-400 hover:text-neutral-700"
-                  }`}
                 >
                   {s}
-                </button>
-              );
-            })}
+                </FilterButton>
+              ))}
+            </div>
           </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-end md:items-center gap-4 border-t border-neutral-100 pt-4">
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest min-w-[90px]">
+              Vencimento:
+            </span>
+            <div className="flex bg-neutral-50 p-1 rounded-xl shrink-0 gap-1">
+              <FilterButton
+                active={activeFilter === "TODAY"}
+                onClick={() => applyQuickFilter("TODAY")}
+              >
+                Hoje
+              </FilterButton>
+              <FilterButton
+                active={activeFilter === "WEEK"}
+                onClick={() => applyQuickFilter("WEEK")}
+              >
+                Semana
+              </FilterButton>
+              <FilterButton
+                active={activeFilter === "MONTH"}
+                onClick={() => applyQuickFilter("MONTH")}
+              >
+                Mês
+              </FilterButton>
+              <FilterButton
+                active={activeFilter === "ALL"}
+                onClick={() => applyQuickFilter("ALL")}
+              >
+                Todos
+              </FilterButton>
+            </div>
+
+            <div className="flex gap-2 items-center">
+              <div className="w-32">
+                <Input
+                  type="date"
+                  value={filterStart}
+                  onChange={(e) => {
+                    setFilterStart(e.target.value);
+                    setActiveFilter("CUSTOM");
+                  }}
+                  className={`h-9 font-bold uppercase ${
+                    activeFilter === "CUSTOM"
+                      ? "border-primary-300 text-primary-700"
+                      : ""
+                  }`}
+                />
+              </div>
+              <span className="text-neutral-400 self-center">-</span>
+              <div className="w-32">
+                <Input
+                  type="date"
+                  value={filterEnd}
+                  onChange={(e) => {
+                    setFilterEnd(e.target.value);
+                    setActiveFilter("CUSTOM");
+                  }}
+                  className={`h-9 font-bold uppercase ${
+                    activeFilter === "CUSTOM"
+                      ? "border-primary-300 text-primary-700"
+                      : ""
+                  }`}
+                />
+              </div>
+            </div>
+          </div>
+
+          <Button
+            onClick={() => {
+              setSearchTerm("");
+              setFilterStatus("PENDENTE");
+              applyQuickFilter("ALL");
+            }}
+            variant="outline"
+            size="sm"
+            icon={X}
+            className="md:ml-auto"
+          >
+            Limpar Filtros
+          </Button>
         </div>
       </div>
 
@@ -512,19 +537,14 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
           <div className="space-y-4">
             <p>Tem certeza que deseja excluir esta conta?</p>
             <div className="flex items-center gap-2 mb-4">
-              <input
-                type="checkbox"
+              <Checkbox
+                label="Excluir toda a série (Recorrência)?"
                 id="delSeries"
                 checked={deleteAllRecurrences}
-                onChange={(e) => setDeleteAllRecurrences(e.target.checked)}
-                className="rounded text-red-600 border-neutral-300"
+                onChange={(e) =>
+                  setDeleteAllRecurrences((e.target as any).checked)
+                }
               />
-              <label
-                htmlFor="delSeries"
-                className="text-sm text-neutral-600 font-bold"
-              >
-                Excluir toda a série (Recorrência)?
-              </label>
             </div>
             <div className="flex justify-end gap-2">
               <Button
@@ -572,13 +592,10 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-neutral-500 uppercase block mb-1">
-                Conta Bancária (Opcional)
-              </label>
-              <select
+              <Select
+                label="Conta Bancária (Opcional)"
                 value={selectedBank}
                 onChange={(e) => setSelectedBank(e.target.value)}
-                className="w-full bg-white border border-neutral-200 rounded-lg p-2 text-sm"
               >
                 <option value="">Selecione...</option>
                 {bankAccounts.map((b: any) => (
@@ -586,7 +603,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                     {b.nome_banco} - {b.agencia}/{b.conta}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="ghost" onClick={() => setPayModalOpen(false)}>

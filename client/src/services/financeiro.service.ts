@@ -13,7 +13,10 @@ export class FinanceiroService {
   // --- PEÇAS (Pagamentos a Fornecedores) ---
   static async getPagamentosPeca(): Promise<IPagamentoPeca[]> {
     const response = await api.get("/pagamento-peca");
-    return response.data;
+    // Normalize response: backend returns { data: [], pagination: {} }
+    return Array.isArray(response.data)
+      ? response.data
+      : response.data.data || [];
   }
 
   static async createPagamentoPeca(data: any): Promise<IPagamentoPeca> {

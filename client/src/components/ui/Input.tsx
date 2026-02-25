@@ -1,15 +1,13 @@
 import React, { forwardRef } from "react";
-import type { LucideIcon } from "lucide-react";
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
-  icon?: LucideIcon | React.ElementType;
-  variant?: string;
+  icon?: React.ElementType;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, icon: Icon, variant, className = "", ...props }, ref) => {
+  ({ label, error, icon: Icon, className = "", ...props }, ref) => {
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && (

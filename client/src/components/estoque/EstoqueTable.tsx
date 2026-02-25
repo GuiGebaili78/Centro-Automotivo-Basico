@@ -84,7 +84,7 @@ export const EstoqueTable = ({
               <td className="text-left">
                 <div className="flex flex-col gap-1">
                   <span
-                    className={`px-2 py-0.5 rounded text-base font-bold uppercase tracking-wider inline-block w-fit ${
+                    className={`px-2 py-0.5 rounded text-sm font-bold uppercase tracking-wider inline-block w-fit ${
                       p.estoque_atual > (p.estoque_minimo || 0)
                         ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
                         : p.estoque_atual > 0
@@ -96,12 +96,12 @@ export const EstoqueTable = ({
                   </span>
                   {p.estoque_atual <= (p.estoque_minimo || 0) &&
                     p.estoque_atual > 0 && (
-                      <span className="text-base text-orange-600 font-bold uppercase flex items-center gap-0.5 animate-pulse">
+                      <span className="text-sm text-orange-600 font-bold uppercase flex items-center gap-0.5 animate-pulse">
                         <AlertCircle size={10} /> Estoque Baixo
                       </span>
                     )}
                   {p.estoque_atual === 0 && (
-                    <span className="text-base text-red-600 font-bold uppercase flex items-center gap-0.5">
+                    <span className="text-sm text-red-600 font-bold uppercase flex items-center gap-0.5">
                       <AlertCircle size={10} /> Sem Estoque
                     </span>
                   )}

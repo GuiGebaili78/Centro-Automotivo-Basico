@@ -21,6 +21,8 @@ import {
   User,
   Lock,
   AlertCircle,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 export const ConfiguracaoPage = () => {
@@ -332,20 +334,25 @@ export const ConfiguracaoPage = () => {
                       </>
                     )}
                     <div className="grid grid-cols-2 gap-2">
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
                           if (fileInputRef.current) {
                             fileInputRef.current.value = "";
                             fileInputRef.current.click();
                           }
                         }}
-                        className="py-2 px-3 text-xs font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors border border-primary-200"
+                        className="text-primary-600 hover:bg-primary-50 border border-primary-200"
+                        icon={Plus}
                       >
-                        📷 {isNewUpload ? "Trocar" : "Alterar"}
-                      </button>
-                      <button
+                        {isNewUpload ? "Trocar" : "Alterar"}
+                      </Button>
+                      <Button
                         type="button"
+                        variant="danger"
+                        size="sm"
                         onClick={() => {
                           setLogoPreview(null);
                           setIsNewUpload(false);
@@ -354,10 +361,11 @@ export const ConfiguracaoPage = () => {
                             fileInputRef.current.value = "";
                           }
                         }}
-                        className="py-2 px-3 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
+                        className="border border-red-200"
+                        icon={Trash2}
                       >
-                        🗑️ Remover
-                      </button>
+                        Remover
+                      </Button>
                     </div>
                   </div>
                 )}

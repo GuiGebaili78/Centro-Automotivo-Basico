@@ -27,10 +27,14 @@ import {
 import { PagamentoClienteForm } from "./PagamentoClienteForm";
 import { FornecedorForm } from "./FornecedorForm";
 import { LaborManager } from "../shared/os/LaborManager";
-import { Modal } from "../ui/Modal";
-import { StatusBanner } from "../ui/StatusBanner";
-import { Button } from "../ui/Button";
-import { ActionButton } from "../ui/ActionButton";
+import {
+  Button,
+  Input,
+  Select,
+  ActionButton,
+  Modal,
+  StatusBanner,
+} from "../ui";
 
 interface FechamentoFinanceiroFormProps {
   preSelectedOsId?: number | null;
@@ -469,21 +473,22 @@ export const FechamentoFinanceiroForm = ({
 
         {!preSelectedOsId && (
           <div className="flex gap-2">
-            <input
+            <Input
               type="number"
               value={idOs}
               onChange={(e) => setIdOs(e.target.value)}
-              className="flex-1 border-2 border-gray-100 p-3 rounded-xl focus:border-gray-900 focus:outline-none transition-colors font-bold"
+              className="flex-1 !p-3 !rounded-xl transition-colors font-bold"
               required
               placeholder="Digite o ID da OS..."
             />
-            <button
+            <Button
               type="button"
               onClick={handleSearchOs}
-              className="bg-gray-900 text-white px-6 rounded-xl font-bold hover:bg-gray-800 transition-colors"
+              variant="primary"
+              className="px-6 rounded-xl font-bold"
             >
               Buscar OS
-            </button>
+            </Button>
           </div>
         )}
 
@@ -654,13 +659,16 @@ export const FechamentoFinanceiroForm = ({
                 <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide">
                   Detalhamento de Custos (Peças)
                 </h4>
-                <button
+                <Button
                   type="button"
                   onClick={() => setShowFornecedorModal(true)}
+                  variant="ghost"
+                  size="sm"
+                  icon={Plus}
                   className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
                 >
-                  <Plus size={12} /> Novo Fornecedor
-                </button>
+                  Novo Fornecedor
+                </Button>
               </div>
               <table className="w-full text-left">
                 <thead className="bg-gray-50/50 text-xs font-bold text-gray-400 uppercase">
@@ -706,8 +714,8 @@ export const FechamentoFinanceiroForm = ({
                             <Truck size={14} /> Estoque Próprio
                           </div>
                         ) : (
-                          <select
-                            className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          <Select
+                            className="w-full"
                             value={
                               itemsState[item.id_iten]?.id_fornecedor || ""
                             }
@@ -729,19 +737,17 @@ export const FechamentoFinanceiroForm = ({
                                 {f.nome}
                               </option>
                             ))}
-                          </select>
+                          </Select>
                         )}
                       </td>
                       <td className="p-4">
                         {item.pecas_estoque || item.id_pecas_estoque ? (
                           <div className="relative opacity-50">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">
-                              R$
-                            </span>
-                            <input
+                            <Input
                               disabled
                               value="0.00"
-                              className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-400 bg-gray-50 cursor-not-allowed"
+                              className="font-bold text-gray-400"
+                              prefix="R$"
                             />
                             <div className="text-[9px] text-gray-400 mt-1 text-center font-medium">
                               {item.pecas_estoque
@@ -751,10 +757,7 @@ export const FechamentoFinanceiroForm = ({
                           </div>
                         ) : (
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">
-                              R$
-                            </span>
-                            <input
+                            <Input
                               type="number"
                               step="0.01"
                               value={itemsState[item.id_iten]?.custo_real}
@@ -766,8 +769,9 @@ export const FechamentoFinanceiroForm = ({
                                 )
                               }
                               onBlur={() => handleItemBlur(item.id_iten)}
-                              className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm font-bold text-red-600 focus:ring-2 focus:ring-red-500 outline-none"
+                              className="font-bold text-red-600"
                               placeholder="0.00"
+                              prefix="R$"
                             />
                           </div>
                         )}
@@ -811,13 +815,16 @@ export const FechamentoFinanceiroForm = ({
                 <h4 className="font-bold text-sm text-green-800 uppercase tracking-wide">
                   Recebimentos (Pagamentos do Cliente)
                 </h4>
-                <button
+                <Button
                   type="button"
                   onClick={() => setPaymentModal({ isOpen: true, data: null })}
+                  variant="outline"
+                  size="sm"
+                  icon={Plus}
                   className="text-[10px] font-black uppercase text-green-700 bg-white border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
                 >
-                  <Plus size={12} /> Novo Pagamento
-                </button>
+                  Novo Pagamento
+                </Button>
               </div>
               <table className="w-full text-left text-xs">
                 <thead className="bg-white border-b border-green-100 text-green-400 font-bold uppercase">
@@ -895,26 +902,24 @@ export const FechamentoFinanceiroForm = ({
                           <td className="p-3 text-center">
                             {!isDeleted && (
                               <div className="flex justify-center gap-2">
-                                <button
-                                  type="button"
+                                <ActionButton
+                                  icon={BadgeCheck}
+                                  label="Ver Detalhes"
                                   onClick={() =>
                                     setPaymentModal({ isOpen: true, data: pag })
                                   }
-                                  className="text-gray-400 hover:text-blue-600"
-                                >
-                                  <BadgeCheck size={14} />
-                                </button>
-                                <button
-                                  type="button"
+                                  variant="primary"
+                                />
+                                <ActionButton
+                                  icon={Trash2}
+                                  label="Excluir Pagamento"
                                   onClick={() =>
                                     handleDeletePayment(
                                       pag.id_pagamento_cliente,
                                     )
                                   }
-                                  className="text-gray-400 hover:text-red-600"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                  variant="danger"
+                                />
                               </div>
                             )}
                           </td>
@@ -998,17 +1003,19 @@ export const FechamentoFinanceiroForm = ({
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-gray-100">
-              <button
+              <Button
                 type="button"
                 onClick={onCancel}
+                variant="ghost"
                 className="flex-1 py-4 text-gray-600 font-bold hover:bg-gray-50 rounded-xl transition-colors"
               >
                 Cancelar
-              </button>
+              </Button>
 
               {osData.status === "FINALIZADA" && (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={async () => {
                     if (!osData) return;
                     try {
@@ -1036,7 +1043,7 @@ export const FechamentoFinanceiroForm = ({
                   className="flex-1 py-4 text-orange-600 font-bold hover:bg-orange-50 rounded-xl transition-colors border border-orange-100"
                 >
                   Reabrir OS
-                </button>
+                </Button>
               )}
 
               <Button
@@ -1108,81 +1115,68 @@ export const FechamentoFinanceiroForm = ({
       {editItem && (
         <Modal title="Editar Item da OS" onClose={() => setEditItem(null)}>
           <div className="space-y-4">
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase">
-                Descrição
-              </label>
-              <input
-                value={editItem.descricao}
-                onChange={(e) =>
-                  setEditItem({ ...editItem, descricao: e.target.value })
-                }
-                className="w-full border p-3 rounded-xl font-bold"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase">
-                Ref / Nota
-              </label>
-              <input
-                value={editItem.codigo_referencia || ""}
+            <Input
+              label="Descrição"
+              value={editItem.descricao}
+              onChange={(e) =>
+                setEditItem({ ...editItem, descricao: e.target.value })
+              }
+              className="font-bold"
+            />
+            <Input
+              label="Ref / Nota"
+              value={editItem.codigo_referencia || ""}
+              onChange={(e) =>
+                setEditItem({
+                  ...editItem,
+                  codigo_referencia: e.target.value,
+                })
+              }
+              className="font-bold"
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Quantidade"
+                type="number"
+                value={editItem.quantidade}
                 onChange={(e) =>
                   setEditItem({
                     ...editItem,
-                    codigo_referencia: e.target.value,
+                    quantidade: Number(e.target.value),
                   })
                 }
-                className="w-full border p-3 rounded-xl font-bold"
+                className="font-bold"
+              />
+              <Input
+                label="Valor Unitário (Venda)"
+                type="number"
+                step="0.01"
+                value={(editItem as any).valor_venda_unitario}
+                onChange={(e) =>
+                  setEditItem({
+                    ...editItem,
+                    valor_venda_unitario: e.target.value,
+                  } as any)
+                }
+                className="font-bold"
+                prefix="R$"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase">
-                  Quantidade
-                </label>
-                <input
-                  type="number"
-                  value={editItem.quantidade}
-                  onChange={(e) =>
-                    setEditItem({
-                      ...editItem,
-                      quantidade: Number(e.target.value),
-                    })
-                  }
-                  className="w-full border p-3 rounded-xl font-bold"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase">
-                  Valor Unitário (Venda)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={(editItem as any).valor_venda_unitario}
-                  onChange={(e) =>
-                    setEditItem({
-                      ...editItem,
-                      valor_venda_unitario: e.target.value,
-                    } as any)
-                  }
-                  className="w-full border p-3 rounded-xl font-bold"
-                />
-              </div>
-            </div>
             <div className="flex justify-end gap-2 mt-4">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setEditItem(null)}
-                className="px-4 py-2 text-gray-500 font-bold"
+                className="font-bold"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 onClick={handleSaveItemEdit}
-                className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold"
+                className="px-6 rounded-xl font-bold"
               >
                 Salvar Alterações
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
@@ -1201,22 +1195,24 @@ export const FechamentoFinanceiroForm = ({
               {confirmModal.message}
             </p>
             <div className="flex justify-end gap-3 pt-2">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() =>
                   setConfirmModal((prev) => ({ ...prev, isOpen: false }))
                 }
                 className="px-5 py-2.5 text-neutral-600 font-bold hover:bg-neutral-100 rounded-lg transition-colors"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="danger"
                 onClick={confirmModal.onConfirm}
                 className="px-5 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
               >
                 Confirmar
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>

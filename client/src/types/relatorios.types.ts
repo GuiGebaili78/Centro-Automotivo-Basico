@@ -75,7 +75,7 @@ export interface OperadoraStats {
 }
 
 export interface EvolucaoMensal {
-  mes: string;
+  label: string;
   receita: number;
   despesa: number;
   lucro: number;

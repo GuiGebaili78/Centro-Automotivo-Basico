@@ -14,9 +14,7 @@ import {
 } from "lucide-react";
 import type { IFuncionario } from "../../types/backend";
 
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { Button, Input, Select, TextArea, ConfirmModal } from "../ui";
 
 interface FuncionarioFormProps {
   initialData?: IFuncionario | null;
@@ -373,19 +371,16 @@ export const FuncionarioForm = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                    Gênero
-                  </label>
-                  <select
+                  <Select
+                    label="Gênero"
                     value={formData.genero}
                     onChange={(e) => handleChange("genero", e.target.value)}
-                    className="w-full transition-all outline-none rounded-lg border text-sm disabled:opacity-50 disabled:bg-neutral-100 border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-900 bg-neutral-25 px-4 py-2.5"
                   >
                     <option value="">Selecione...</option>
                     <option value="Masculino">Masculino</option>
                     <option value="Feminino">Feminino</option>
                     <option value="Outro">Outro</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -572,20 +567,17 @@ export const FuncionarioForm = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                    Tipo Pagamento
-                  </label>
-                  <select
+                  <Select
+                    label="Tipo Pagamento"
                     value={formData.tipo_pagamento}
                     onChange={(e) =>
                       handleChange("tipo_pagamento", e.target.value)
                     }
-                    className="w-full transition-all outline-none rounded-lg border text-sm disabled:opacity-50 disabled:bg-neutral-100 border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-900 bg-neutral-25 px-4 py-2.5"
                   >
                     <option value="">Selecione...</option>
                     <option value="HORA">Valor Hora</option>
                     <option value="FIXO_MENSAL">Mensal Fixo</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <Input
@@ -673,15 +665,13 @@ export const FuncionarioForm = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                    Equipamentos / EPIs
-                  </label>
-                  <textarea
+                  <TextArea
+                    label="Equipamentos / EPIs"
                     value={formData.equipamentos_epis}
                     onChange={(e) =>
                       handleChange("equipamentos_epis", e.target.value)
                     }
-                    className="w-full bg-neutral-50 border border-neutral-200 p-4 rounded-xl focus:ring-4 focus:ring-neutral-500/10 focus:border-neutral-500 outline-none font-medium text-neutral-800 text-sm min-h-[80px]"
+                    className="min-h-[80px]"
                   />
                 </div>
               </div>

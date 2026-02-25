@@ -1,6 +1,5 @@
 import { Plus, Calendar, FileText } from "lucide-react";
-import { Card } from "../ui/Card";
-import { Input } from "../ui/Input";
+import { Card, Button, Input, Select } from "../ui";
 import type { IFornecedor } from "../../types/backend";
 
 interface EntradaFornecedorFormProps {
@@ -29,18 +28,20 @@ export const EntradaFornecedorForm = ({
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
         <div className="md:col-span-6 relative">
           <div className="flex justify-between items-baseline mb-1">
-            <label className="block text-xs font-bold text-neutral-400 uppercase">
+            <span className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
               Fornecedor
-            </label>
-            <button
+            </span>
+            <Button
               onClick={onNewSupplier}
-              className="text-[10px] font-bold text-primary-600 hover:text-primary-800 flex items-center gap-1 uppercase bg-primary-50 px-2 py-0.5 rounded cursor-pointer transition-colors"
+              variant="ghost"
+              size="sm"
+              icon={Plus}
+              className="text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100"
             >
-              <Plus size={10} /> Novo Fornecedor
-            </button>
+              Novo Fornecedor
+            </Button>
           </div>
-          <select
-            className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-700 outline-none focus:border-primary-500 transition-all h-[46px]"
+          <Select
             value={selectedSupplierId}
             onChange={(e) => setSelectedSupplierId(e.target.value)}
           >
@@ -50,22 +51,20 @@ export const EntradaFornecedorForm = ({
                 {s.nome_fantasia || s.nome}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="md:col-span-3">
-          <label className="text-xs font-bold text-neutral-400 uppercase mb-1 flex items-center gap-1">
-            <Calendar size={12} /> Data Compra
-          </label>
-          <input
+          <Input
+            label="Data Compra"
             type="date"
-            className="w-full p-3 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-700 outline-none focus:border-primary-500 h-[46px]"
+            icon={Calendar}
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
         </div>
 
-        <div className="md:col-span-3 pb-0.5">
+        <div className="md:col-span-3">
           <Input
             label="Nota Fiscal / Recibo"
             value={invoice}

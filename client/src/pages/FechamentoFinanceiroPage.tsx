@@ -3,12 +3,15 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { getStatusStyle } from "../utils/osUtils";
 import { FinanceiroService } from "../services/financeiro.service";
 import { OsService } from "../services/os.service";
-import { ActionButton } from "../components/ui/ActionButton";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { PageLayout } from "../components/ui/PageLayout";
-import { Card } from "../components/ui/Card";
-import { ConfirmModal } from "../components/ui/ConfirmModal";
+import {
+  ActionButton,
+  FilterButton,
+  Button,
+  Input,
+  PageLayout,
+  Card,
+  ConfirmModal,
+} from "../components/ui";
 import { toast } from "react-toastify";
 import { DocumentoModal } from "../components/shared/DocumentoModal";
 
@@ -341,66 +344,54 @@ export const FechamentoFinanceiroPage = () => {
 
         <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
           {/* Quick Filters Group */}
-          <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0">
-            <button
+          <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0 gap-1">
+            <FilterButton
+              active={activeFilter === "TODAY"}
               onClick={() => applyQuickFilter("TODAY")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                activeFilter === "TODAY"
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
-              }`}
             >
               Hoje
-            </button>
-            <button
+            </FilterButton>
+            <FilterButton
+              active={activeFilter === "WEEK"}
               onClick={() => applyQuickFilter("WEEK")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                activeFilter === "WEEK"
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
-              }`}
             >
               Semana
-            </button>
-            <button
+            </FilterButton>
+            <FilterButton
+              active={activeFilter === "MONTH"}
               onClick={() => applyQuickFilter("MONTH")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                activeFilter === "MONTH"
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-black/5"
-              }`}
             >
               Mês
-            </button>
+            </FilterButton>
           </div>
 
           {/* Manual Date Inputs */}
           <div className="flex gap-2 items-center">
-            <input
+            <Input
               type="date"
               value={filterStart}
               onChange={(e) => {
                 setFilterStart(e.target.value);
                 setActiveFilter("CUSTOM");
               }}
-              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
+              className={`h-10 text-xs font-bold ${
                 activeFilter === "CUSTOM"
                   ? "border-primary-300 text-primary-700"
-                  : "border-neutral-200 text-neutral-600"
+                  : ""
               }`}
             />
             <span className="text-neutral-400 self-center">-</span>
-            <input
+            <Input
               type="date"
               value={filterEnd}
               onChange={(e) => {
                 setFilterEnd(e.target.value);
                 setActiveFilter("CUSTOM");
               }}
-              className={`h-10 px-3 rounded-lg border text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors ${
+              className={`h-10 text-xs font-bold ${
                 activeFilter === "CUSTOM"
                   ? "border-primary-300 text-primary-700"
-                  : "border-neutral-200 text-neutral-600"
+                  : ""
               }`}
             />
           </div>

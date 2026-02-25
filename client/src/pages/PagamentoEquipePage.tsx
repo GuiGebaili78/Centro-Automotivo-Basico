@@ -3,8 +3,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { getStatusStyle } from "../utils/osUtils";
 import { FinanceiroService } from "../services/financeiro.service";
 import { ColaboradorService } from "../services/colaborador.service";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
+import { Button, Input, FilterButton, Select } from "../components/ui";
 import { Plus, Search, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "../components/ui/PageLayout";
@@ -304,10 +303,9 @@ export const PagamentoEquipePage = () => {
             Selecione o Colaborador
           </label>
           <div className="relative max-w-md">
-            <select
+            <Select
               value={selectedFuncId}
               onChange={(e) => setSelectedFuncId(e.target.value)}
-              className="w-full pl-4 pr-10 py-3 bg-white border border-neutral-200 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-colors text-neutral-600"
             >
               <option value="">Selecione um colaborador...</option>
               {funcionarios.map((f: any) => (
@@ -315,7 +313,7 @@ export const PagamentoEquipePage = () => {
                   {f.pessoa_fisica?.pessoa?.nome}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -323,27 +321,19 @@ export const PagamentoEquipePage = () => {
           <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
             {/* ACTION & TABS */}
             <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
-              <div className="flex bg-neutral-50 p-1 rounded-lg w-fit border border-neutral-200">
-                <button
+              <div className="flex bg-neutral-50 p-1 rounded-lg w-fit border border-neutral-200 gap-1">
+                <FilterButton
+                  active={activeTab === "PENDENTE"}
                   onClick={() => setActiveTab("PENDENTE")}
-                  className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
-                    activeTab === "PENDENTE"
-                      ? "bg-blue-100 text-blue-700 shadow-sm"
-                      : "text-neutral-500 hover:text-blue-600 hover:bg-blue-50"
-                  }`}
                 >
                   Visão Geral / Pendências
-                </button>
-                <button
+                </FilterButton>
+                <FilterButton
+                  active={activeTab === "PAGO"}
                   onClick={() => setActiveTab("PAGO")}
-                  className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
-                    activeTab === "PAGO"
-                      ? "bg-blue-100 text-blue-700 shadow-sm"
-                      : "text-neutral-500 hover:text-blue-600 hover:bg-blue-50"
-                  }`}
                 >
                   Histórico (Pagos)
-                </button>
+                </FilterButton>
               </div>
             </div>
 
@@ -523,52 +513,47 @@ export const PagamentoEquipePage = () => {
                   </div>
 
                   <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-                    <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 shrink-0">
+                    <div className="flex bg-neutral-50 p-1 rounded-xl border border-neutral-100 gap-1 shrink-0">
                       {["TODAY", "WEEK", "MONTH"].map((f) => (
-                        <button
+                        <FilterButton
                           key={f}
+                          active={activeFilter === f}
                           onClick={() => applyQuickFilter(f as any)}
-                          className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                            activeFilter === f
-                              ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                              : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100"
-                          }`}
                         >
                           {f === "TODAY"
                             ? "Hoje"
                             : f === "WEEK"
                               ? "Semana"
                               : "Mês"}
-                        </button>
+                        </FilterButton>
                       ))}
                     </div>
 
                     <div className="flex gap-2 items-center px-4 border-l border-neutral-200 ml-2">
-                      {/* Custom Dates - Keep simple for now or componentize later */}
-                      <input
+                      <Input
                         type="date"
                         value={filterHistStart}
                         onChange={(e) => {
                           setFilterHistStart(e.target.value);
                           setActiveFilter("CUSTOM");
                         }}
-                        className={`h-9 px-2 rounded border text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 transition-colors ${
+                        className={`h-9 text-xs ${
                           activeFilter === "CUSTOM"
                             ? "border-blue-300 text-blue-700"
-                            : "border-neutral-200 text-neutral-600"
+                            : ""
                         }`}
                       />
-                      <input
+                      <Input
                         type="date"
                         value={filterHistEnd}
                         onChange={(e) => {
                           setFilterHistEnd(e.target.value);
                           setActiveFilter("CUSTOM");
                         }}
-                        className={`h-9 px-2 rounded border text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 transition-colors ${
+                        className={`h-9 text-xs ${
                           activeFilter === "CUSTOM"
                             ? "border-blue-300 text-blue-700"
-                            : "border-neutral-200 text-neutral-600"
+                            : ""
                         }`}
                       />
                     </div>

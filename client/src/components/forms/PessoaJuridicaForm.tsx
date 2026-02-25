@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { PessoaService } from "../../services/pessoa.service";
+import { Button, Input } from "../ui";
 
 interface PessoaJuridicaFormProps {
   onSuccess: (newItem: any) => void;
@@ -52,82 +53,69 @@ export const PessoaJuridicaForm = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            ID Pessoa *
-          </label>
-          <input
+          <Input
+            label="ID Pessoa *"
             type="number"
             value={idPessoa}
             onChange={(e) => setIdPessoa(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
             placeholder="Ex: 10"
           />
         </div>
 
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Razão Social *
-          </label>
-          <input
+          <Input
+            label="Razão Social *"
             value={razaoSocial}
             onChange={(e) => setRazaoSocial(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
           />
         </div>
 
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Nome Fantasia
-          </label>
-          <input
+          <Input
+            label="Nome Fantasia"
             value={nomeFantasia}
             onChange={(e) => setNomeFantasia(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            CNPJ
-          </label>
-          <input
+          <Input
+            label="CNPJ"
             value={cnpj}
             onChange={(e) => setCnpj(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             maxLength={14}
             placeholder="Somente números"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Inscrição Estadual
-          </label>
-          <input
+          <Input
+            label="Inscrição Estadual"
             value={inscricaoEstadual}
             onChange={(e) => setInscricaoEstadual(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
           />
         </div>
       </div>
 
       <div className="flex gap-2 pt-4">
-        <button
+        <Button
+          variant="outline"
           type="button"
           onClick={onCancel}
-          className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg"
+          className="flex-1"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
           type="submit"
-          disabled={loading}
-          className="flex-1 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:opacity-50"
+          isLoading={loading}
+          className="flex-1"
         >
-          {loading ? "Salvando..." : "Salvar Pessoa Jurídica"}
-        </button>
+          Salvar Pessoa Jurídica
+        </Button>
       </div>
     </form>
   );

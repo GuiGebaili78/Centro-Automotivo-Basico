@@ -1,11 +1,10 @@
 import React, { forwardRef } from "react";
-import type { LucideIcon } from "lucide-react";
 import { ChevronDown } from "lucide-react";
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
-  icon?: LucideIcon | React.ElementType;
+  icon?: React.ElementType;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(

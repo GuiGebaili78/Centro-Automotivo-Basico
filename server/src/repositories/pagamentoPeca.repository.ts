@@ -35,6 +35,7 @@ export class PagamentoPecaRepository {
             select: {
               id_os: true,
               descricao: true,
+              dt_cadastro: true,
               ordem_de_servico: {
                 select: {
                   id_os: true,
@@ -239,8 +240,11 @@ export class PagamentoPecaRepository {
       for (const p of pagamentos) {
         // Regra: (valor_peca / valor_total_selecionado) * desconto_total_aplicado
         const valorPeca = Number(p.custo_real);
-        const descontoRateado = (valorPeca / valorTotalBruto) * descontoTotal;
-        const custoLiquido = valorPeca - descontoRateado;
+        // Garantir precisão de 2 casas decimais para o rateio
+        const descontoRateado = Number(
+          ((valorPeca / valorTotalBruto) * descontoTotal).toFixed(2),
+        );
+        const custoLiquido = Number((valorPeca - descontoRateado).toFixed(2));
 
         await tx.pagamentoPeca.update({
           where: { id_pagamento_peca: p.id_pagamento_peca },
@@ -253,8 +257,10 @@ export class PagamentoPecaRepository {
         });
       }
 
-      // 4. Regra de Caixa: Valor Líquido
-      const valorLiquidoTotal = valorTotalBruto - descontoTotal;
+      // 4. Regra de Caixa: Valor Líquido (Garantir 2 casas)
+      const valorLiquidoTotal = Number(
+        (valorTotalBruto - descontoTotal).toFixed(2),
+      );
 
       // 5. Debit Account (Saldo Líquido)
       await tx.contaBancaria.update({
@@ -283,9 +289,10 @@ export class PagamentoPecaRepository {
             select: { custo_real: true },
           });
 
-          const novoCustoTotalPecas = todasPecasOs.reduce(
-            (acc, piece) => acc + Number(piece.custo_real),
-            0,
+          const novoCustoTotalPecas = Number(
+            todasPecasOs
+              .reduce((acc, piece) => acc + Number(piece.custo_real), 0)
+              .toFixed(2),
           );
 
           await tx.fechamentoFinanceiro.update({

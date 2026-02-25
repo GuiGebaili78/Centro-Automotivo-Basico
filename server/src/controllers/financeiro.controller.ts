@@ -12,8 +12,8 @@ export class FinanceiroController {
 
       if (startDate && endDate) {
         where.dt_movimentacao = {
-          gte: new Date(startDate as string),
-          lte: new Date(endDate as string),
+          gte: new Date((startDate as string) + "T00:00:00"),
+          lte: new Date((endDate as string) + "T23:59:59"),
         };
       }
 
@@ -73,9 +73,11 @@ export class FinanceiroController {
     try {
       const { startDate, endDate } = req.query;
       const start = startDate
-        ? new Date(startDate as string)
+        ? new Date((startDate as string) + "T00:00:00")
         : new Date(new Date().setDate(new Date().getDate() - 30));
-      const end = endDate ? new Date(endDate as string) : new Date();
+      const end = endDate
+        ? new Date((endDate as string) + "T23:59:59")
+        : new Date();
 
       // Sum of all REAL inflows (PagamentoCliente or Manual ENTRADA)
       const totalInflow = await prisma.livroCaixa.aggregate({
@@ -130,16 +132,21 @@ export class FinanceiroController {
   async getEvolution(req: Request, res: Response) {
     try {
       const { startDate, endDate, groupBy = "day" } = req.query;
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
+      const start = new Date((startDate as string) + "T00:00:00");
+      const end = new Date((endDate as string) + "T23:59:59");
 
-      const interval = String(groupBy) === "month" ? "month" : "day";
+      const requestedGroupBy = String(groupBy).toLowerCase();
+      const validIntervals = ["day", "week", "month", "quarter", "year"];
+      const interval = validIntervals.includes(requestedGroupBy)
+        ? requestedGroupBy
+        : "day";
 
       // Aggregation using UNION ALL for high performance
       // source tables: ordem_de_servico (revenue), contas_pagar (expense), pagamento_equipe (expense)
-      const data: any[] = await prisma.$queryRaw`
+      const data: any[] = await prisma.$queryRawUnsafe(
+        `
         SELECT 
-          DATE_TRUNC(${interval}, combined.dt) as date,
+          DATE_TRUNC('${interval}', combined.dt) as date,
           SUM(combined.receita)::FLOAT as receitas,
           SUM(combined.despesa)::FLOAT as despesas
         FROM (
@@ -148,7 +155,7 @@ export class FinanceiroController {
           FROM "ordem_de_servico" 
           WHERE status IN ('FINALIZADA', 'PAGA_CLIENTE', 'FINANCEIRO') 
             AND deleted_at IS NULL
-            AND updated_at BETWEEN ${start} AND ${end}
+            AND updated_at BETWEEN $1 AND $2
 
           UNION ALL
 
@@ -157,7 +164,7 @@ export class FinanceiroController {
           FROM "contas_pagar" 
           WHERE status = 'PAGO' 
             AND deleted_at IS NULL
-            AND dt_pagamento BETWEEN ${start} AND ${end}
+            AND dt_pagamento BETWEEN $1 AND $2
 
           UNION ALL
 
@@ -165,17 +172,20 @@ export class FinanceiroController {
           SELECT dt_pagamento as dt, 0 as receita, CAST(valor_total AS DECIMAL) as despesa 
           FROM "pagamento_equipe" 
           WHERE deleted_at IS NULL
-            AND dt_pagamento BETWEEN ${start} AND ${end}
+            AND dt_pagamento BETWEEN $1 AND $2
         ) as combined
         GROUP BY 1
         ORDER BY 1 ASC
-      `;
+      `,
+        start,
+        end,
+      );
 
       // Simple mapping to match chart expected format (label + values)
       const result = data.map((row) => ({
         date: row.date,
-        Receitas: row.receitas || 0,
-        Despesas: row.despesas || 0,
+        receita: row.receitas || 0,
+        despesa: row.despesas || 0,
         label:
           interval === "month"
             ? new Date(row.date).toLocaleDateString("pt-BR", {

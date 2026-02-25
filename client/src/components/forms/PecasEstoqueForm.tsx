@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { EstoqueService } from "../../services/estoque.service";
+import { Button, Input } from "../ui";
 
 interface PecasEstoqueFormProps {
   onSuccess: (newItem: any) => void;
@@ -56,121 +57,101 @@ export const PecasEstoqueForm = ({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Nome da Peça *
-          </label>
-          <input
+          <Input
+            label="Nome da Peça *"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
           />
         </div>
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Descrição Detalhada *
-          </label>
-          <input
+          <Input
+            label="Descrição Detalhada *"
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Unidade Medida
-          </label>
-          <input
+          <Input
+            label="Unidade Medida"
             value={unidadeMedida}
             onChange={(e) => setUnidadeMedida(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             placeholder="Ex: UN, KG, LT"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Valor Custo (R$) *
-          </label>
-          <input
+          <Input
+            label="Valor Custo (R$) *"
             type="number"
             step="0.01"
             value={valorCusto}
             onChange={(e) => setValorCusto(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Valor Venda (R$) *
-          </label>
-          <input
+          <Input
+            label="Valor Venda (R$) *"
             type="number"
             step="0.01"
             value={valorVenda}
             onChange={(e) => setValorVenda(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Estoque Atual *
-          </label>
-          <input
+          <Input
+            label="Estoque Atual *"
             type="number"
             value={estoqueAtual}
             onChange={(e) => setEstoqueAtual(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-orange-600 uppercase mb-1">
+          <span className="block text-xs font-bold text-orange-600 uppercase mb-1.5 tracking-widest leading-none">
             Aviso de Estoque Baixo *
-          </label>
-          <input
+          </span>
+          <Input
             type="number"
             value={estoqueMinimo}
             onChange={(e) => setEstoqueMinimo(e.target.value)}
-            className="w-full border p-2 rounded border-orange-200"
+            className="border-orange-200"
             required
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Custo Padrão (Ref.)
-          </label>
-
-          <input
+          <Input
+            label="Custo Padrão (Ref.)"
             type="number"
             step="0.01"
             value={custoUnitarioPadrao}
             onChange={(e) => setCustoUnitarioPadrao(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
           />
         </div>
       </div>
 
       <div className="flex gap-2 pt-4">
-        <button
-          type="button"
+        <Button
+          variant="outline"
           onClick={onCancel}
-          className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg"
+          className="flex-1"
+          type="button"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
           type="submit"
-          disabled={loading}
-          className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          isLoading={loading}
+          className="flex-1"
         >
-          {loading ? "Salvando..." : "Salvar Peça"}
-        </button>
+          Salvar Peça
+        </Button>
       </div>
     </form>
   );

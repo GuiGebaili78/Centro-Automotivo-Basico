@@ -3,8 +3,7 @@ import { FinanceiroService } from "../../services/financeiro.service";
 import { CreditCard, DollarSign, CheckCircle, Smartphone } from "lucide-react";
 import type { IOperadoraCartao } from "../../types/backend";
 
-import { Input } from "../ui/Input";
-import { Button } from "../ui/Button";
+import { Button, Input, Select } from "../ui";
 
 interface PagamentoClienteFormProps {
   osId: number;
@@ -189,7 +188,7 @@ export const PagamentoClienteForm = ({
             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-bold text-emerald-600 pointer-events-none">
               R$
             </span>
-            <input
+            <Input
               type="text"
               value={valor}
               onChange={(e) => {
@@ -202,7 +201,7 @@ export const PagamentoClienteForm = ({
                   }),
                 );
               }}
-              className="w-full bg-emerald-50/50 border border-emerald-100 rounded-2xl py-6 pl-16 pr-4 text-4xl font-bold text-emerald-700 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all placeholder:text-emerald-300/50"
+              className="!bg-emerald-50/50 !border-emerald-100 !rounded-2xl !py-6 !pl-16 !pr-4 !text-4xl !font-bold !text-emerald-700 !outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 !transition-all placeholder:text-emerald-300/50"
             />
           </div>
         </div>
@@ -213,90 +212,91 @@ export const PagamentoClienteForm = ({
           </label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {["CREDITO", "DEBITO", "PIX", "DINHEIRO"].map((m) => (
-              <button
+              <Button
                 key={m}
                 type="button"
                 onClick={() => setMetodo(m)}
-                className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${metodo === m ? "bg-green-100 border-green-500 text-green-700 ring-2 ring-green-500/20" : "bg-neutral-25 border-neutral-200 text-neutral-600 hover:bg-neutral-25"}`}
+                variant={metodo === m ? "secondary" : "ghost"}
+                className={`!p-3 !h-auto rounded-xl border flex flex-col items-center gap-2 transition-all ${metodo === m ? "bg-green-100 border-green-500 text-green-700 ring-2 ring-green-500/20" : "bg-neutral-25 border-neutral-200 text-neutral-600 hover:bg-neutral-25"}`}
               >
                 {m === "CREDITO" && <CreditCard size={20} />}
                 {m === "DEBITO" && <CreditCard size={20} />}
                 {m === "PIX" && <Smartphone size={20} />}
                 {m === "DINHEIRO" && <DollarSign size={20} />}
                 <span className="text-[10px] font-bold">{m}</span>
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         {(metodo === "CREDITO" || metodo === "DEBITO") && (
           <>
-            <div>
-              <label className="text-xs font-bold text-neutral-600 uppercase mb-1 block">
-                Bandeira
-              </label>
-              <select
-                value={bandeira}
-                onChange={(e) => setBandeira(e.target.value)}
-                className={`w-full p-3 bg-neutral-25 border border-neutral-200 rounded-xl outline-none focus:border-green-500 font-bold ${bandeira ? "text-neutral-600" : "text-neutral-600"}`}
-              >
-                <option value="">Selecione...</option>
-                <option value="VISA">Visa</option>
-                <option value="MASTER">Mastercard</option>
-                <option value="ELO">Elo</option>
-                <option value="AMEX">Amex</option>
-                <option value="HIPER">Hipercard</option>
-              </select>
-            </div>
+            <Select
+              label="Bandeira"
+              value={bandeira}
+              onChange={(e) => setBandeira(e.target.value)}
+              className="font-bold"
+            >
+              <option value="">Selecione...</option>
+              <option value="VISA">Visa</option>
+              <option value="MASTER">Mastercard</option>
+              <option value="ELO">Elo</option>
+              <option value="AMEX">Amex</option>
+              <option value="HIPER">Hipercard</option>
+            </Select>
+
             {metodo === "CREDITO" && (
               <>
-                <div>
-                  <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
-                    Parcelas
-                  </label>
-                  <select
-                    value={parcelas}
-                    onChange={(e) => setParcelas(e.target.value)}
-                    className="w-full p-3 bg-neutral-25 border border-neutral-200 rounded-xl outline-none focus:border-green-500 font-bold text-neutral-600"
-                  >
-                    {Array.from({ length: 18 }, (_, i) => i + 1).map((p) => (
-                      <option key={p} value={p}>
-                        {p}x
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <Select
+                  label="Parcelas"
+                  value={parcelas}
+                  onChange={(e) => setParcelas(e.target.value)}
+                  className="font-bold text-neutral-600"
+                >
+                  {Array.from({ length: 18 }, (_, i) => i + 1).map((p) => (
+                    <option key={p} value={p}>
+                      {p}x
+                    </option>
+                  ))}
+                </Select>
                 <div>
                   <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
                     Juros / Taxas Assumidas Por:
                   </label>
                   <div className="flex bg-neutral-100 p-1 rounded-xl">
-                    <button
+                    <Button
                       type="button"
+                      variant={
+                        tipoParcelamento === "LOJA" ? "secondary" : "ghost"
+                      }
+                      size="sm"
                       onClick={() => setTipoParcelamento("LOJA")}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${tipoParcelamento === "LOJA" ? "bg-white shadow text-neutral-800" : "text-neutral-500 hover:text-neutral-700"}`}
+                      className={`flex-1 !py-1.5 !rounded-lg text-xs font-bold transition-all ${tipoParcelamento === "LOJA" ? "!bg-white shadow !text-neutral-800" : "!text-neutral-500 hover:!text-neutral-700"}`}
                     >
                       Loja
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant={
+                        tipoParcelamento === "CLIENTE" ? "secondary" : "ghost"
+                      }
+                      size="sm"
                       onClick={() => setTipoParcelamento("CLIENTE")}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${tipoParcelamento === "CLIENTE" ? "bg-white shadow text-neutral-800" : "text-neutral-500 hover:text-neutral-700"}`}
+                      className={`flex-1 !py-1.5 !rounded-lg text-xs font-bold transition-all ${tipoParcelamento === "CLIENTE" ? "!bg-white shadow !text-neutral-800" : "!text-neutral-500 hover:!text-neutral-700"}`}
                     >
                       Cliente
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </>
             )}
+
             <div className="md:col-span-2">
-              <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
-                Maquininha / Operadora
-              </label>
-              <select
+              <Select
+                label="Maquininha / Operadora"
                 value={idOperadora}
                 onChange={(e) => setIdOperadora(Number(e.target.value))}
-                className={`w-full p-3 bg-neutral-25 border border-neutral-200 rounded-xl outline-none focus:border-green-500 font-bold ${idOperadora ? "text-neutral-600" : "text-neutral-400"}`}
+                className={`font-bold ${idOperadora ? "text-neutral-600" : "text-neutral-400"}`}
               >
                 <option value={0}>Selecione a Maquininha...</option>
                 {operadoras.map((op) => (
@@ -304,7 +304,7 @@ export const PagamentoClienteForm = ({
                     {op.nome}
                   </option>
                 ))}
-              </select>
+              </Select>
               <p className="text-[10px] text-neutral-400 mt-1">
                 Necessário para cálculo de taxas e recebíveis.
               </p>
@@ -314,13 +314,11 @@ export const PagamentoClienteForm = ({
 
         {metodo === "PIX" && (
           <div className="md:col-span-2">
-            <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
-              Conta Bancária / Destino
-            </label>
-            <select
+            <Select
+              label="Conta Bancária / Destino"
               value={idContaBancaria}
               onChange={(e) => setIdContaBancaria(Number(e.target.value))}
-              className="w-full p-3 bg-neutral-25 border border-neutral-200 rounded-xl outline-none focus:border-green-500 font-bold text-neutral-600"
+              className="font-bold text-neutral-600"
             >
               <option value={0}>Selecione a Conta...</option>
               {contasBancarias.map((conta) => (
@@ -328,7 +326,7 @@ export const PagamentoClienteForm = ({
                   {conta.nome} {conta.banco ? `- ${conta.banco}` : ""}
                 </option>
               ))}
-            </select>
+            </Select>
             <p className="text-[10px] text-neutral-400 mt-1">
               Conta onde o valor será depositado.
             </p>

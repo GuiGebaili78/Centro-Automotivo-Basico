@@ -3,10 +3,15 @@ import { formatCurrency } from "../../utils/formatCurrency";
 import { getStatusStyle } from "../../utils/osUtils";
 import { FinanceiroService } from "../../services/financeiro.service";
 import { ColaboradorService } from "../../services/colaborador.service";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
-import { Card } from "../ui/Card";
-import { Modal } from "../ui/Modal";
+import {
+  Button,
+  Input,
+  Card,
+  Modal,
+  Select,
+  Checkbox,
+  FilterButton,
+} from "../ui";
 import { toast } from "react-toastify";
 import {
   Plus,
@@ -19,6 +24,7 @@ import {
   CheckSquare,
   Square,
   Save,
+  X,
 } from "lucide-react";
 import type {
   IPagamentoColaborador,
@@ -403,48 +409,40 @@ export const PagamentoColaboradoresTab = ({
       {/* SELECTION CARD */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 flex flex-col md:flex-row gap-6 items-end justify-between">
         <div className="w-full md:max-w-md">
-          <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest block mb-2">
-            Selecione o Colaborador
-          </label>
-          <div className="relative">
-            <select
-              value={selectedFuncId}
-              onChange={(e) => setSelectedFuncId(e.target.value)}
-              className="w-full pl-4 pr-10 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors text-neutral-700"
-            >
-              <option value="">Selecione...</option>
-              {funcionarios.map((f: any) => (
-                <option key={f.id_funcionario} value={f.id_funcionario}>
-                  {f.pessoa_fisica?.pessoa?.nome}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Selecione o Colaborador"
+            value={selectedFuncId}
+            onChange={(e) => setSelectedFuncId(e.target.value)}
+          >
+            <option value="">Selecione...</option>
+            {funcionarios.map((f: any) => (
+              <option key={f.id_funcionario} value={f.id_funcionario}>
+                {f.pessoa_fisica?.pessoa?.nome}
+              </option>
+            ))}
+          </Select>
         </div>
 
         {selectedFuncId && (
-          <div className="flex gap-2">
-            <div className="flex bg-neutral-100 p-1 rounded-xl">
-              <button
-                onClick={() => setActiveTab("PENDENTE")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  activeTab === "PENDENTE"
-                    ? "bg-white text-primary-600 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-700"
-                }`}
-              >
-                Visão Geral
-              </button>
-              <button
-                onClick={() => setActiveTab("PAGO")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  activeTab === "PAGO"
-                    ? "bg-white text-primary-600 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-700"
-                }`}
-              >
-                Histórico
-              </button>
+          <div className="flex flex-col sm:flex-row gap-4 items-end">
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
+                Visualização
+              </label>
+              <div className="flex bg-neutral-100 p-1 rounded-xl gap-1">
+                <FilterButton
+                  active={activeTab === "PENDENTE"}
+                  onClick={() => setActiveTab("PENDENTE")}
+                >
+                  Visão Geral
+                </FilterButton>
+                <FilterButton
+                  active={activeTab === "PAGO"}
+                  onClick={() => setActiveTab("PAGO")}
+                >
+                  Histórico
+                </FilterButton>
+              </div>
             </div>
             <Button
               onClick={handleOpenNewPayment}
@@ -590,29 +588,56 @@ export const PagamentoColaboradoresTab = ({
           {activeTab === "PAGO" && (
             <div className="space-y-4">
               {/* FILTERS */}
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="w-full md:max-w-md relative">
-                  <Search
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                    size={16}
-                  />
-                  <input
+              <div className="flex flex-col md:flex-row gap-4 items-end justify-between border-b border-neutral-100 pb-4 mb-4">
+                <div className="w-full md:max-w-md">
+                  <Input
+                    label="Buscar"
                     value={historySearchTerm}
                     onChange={(e) => setHistorySearchTerm(e.target.value)}
                     placeholder="Buscar no histórico..."
-                    className="w-full pl-10 pr-4 py-2 bg-white border border-neutral-200 rounded-lg text-sm font-bold outline-none focus:border-neutral-400"
+                    icon={Search}
                   />
                 </div>
-                <div className="flex bg-neutral-100 p-1 rounded-lg gap-2 overflow-x-auto">
-                  {["TODAY", "WEEK", "MONTH"].map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => applyQuickFilter(t as any)}
-                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase whitespace-nowrap transition-all ${activeFilter === t ? "bg-white shadow text-primary-600" : "text-neutral-500 hover:text-neutral-700"}`}
-                    >
-                      {t === "TODAY" ? "Hoje" : t === "WEEK" ? "Semana" : "Mês"}
-                    </button>
-                  ))}
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
+                      Período
+                    </label>
+                    <div className="flex bg-neutral-100 p-1 rounded-xl gap-1">
+                      <FilterButton
+                        active={activeFilter === "TODAY"}
+                        onClick={() => applyQuickFilter("TODAY")}
+                      >
+                        Hoje
+                      </FilterButton>
+                      <FilterButton
+                        active={activeFilter === "WEEK"}
+                        onClick={() => applyQuickFilter("WEEK")}
+                      >
+                        Semana
+                      </FilterButton>
+                      <FilterButton
+                        active={activeFilter === "MONTH"}
+                        onClick={() => applyQuickFilter("MONTH")}
+                      >
+                        Mês
+                      </FilterButton>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setHistorySearchTerm("");
+                      setFilterHistStart("");
+                      setFilterHistEnd("");
+                      setActiveFilter("WEEK");
+                      applyQuickFilter("WEEK");
+                    }}
+                    variant="outline"
+                    size="sm"
+                    icon={X}
+                  >
+                    Limpar
+                  </Button>
                 </div>
               </div>
 
@@ -744,19 +769,24 @@ export const PagamentoColaboradoresTab = ({
         >
           <div className="space-y-6 pt-2">
             {/* HEADER: MODE & SUMMARY */}
-            <div className="flex font-bold bg-neutral-100 p-1.5 rounded-xl w-fit">
-              <button
-                onClick={() => setPaymentMode("PAGAMENTO")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${paymentMode === "PAGAMENTO" ? "bg-white text-primary-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
-              >
-                Pagamento (Comissões/Salário)
-              </button>
-              <button
-                onClick={() => setPaymentMode("ADIANTAMENTO")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${paymentMode === "ADIANTAMENTO" ? "bg-white text-primary-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
-              >
-                Adiantamento (Novo Vale)
-              </button>
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
+                Tipo de Lançamento
+              </label>
+              <div className="flex font-bold bg-neutral-100 p-1 rounded-xl w-fit gap-1">
+                <FilterButton
+                  active={paymentMode === "PAGAMENTO"}
+                  onClick={() => setPaymentMode("PAGAMENTO")}
+                >
+                  Pagamento (Comissões/Salário)
+                </FilterButton>
+                <FilterButton
+                  active={paymentMode === "ADIANTAMENTO"}
+                  onClick={() => setPaymentMode("ADIANTAMENTO")}
+                >
+                  Adiantamento (Novo Vale)
+                </FilterButton>
+              </div>
             </div>
 
             {/* BODY */}
@@ -993,29 +1023,26 @@ export const PagamentoColaboradoresTab = ({
                   {paymentMode === "PAGAMENTO" && (
                     <>
                       <div className="mb-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <input
-                            type="checkbox"
+                        <div className="mb-4">
+                          <Checkbox
+                            label="Incluir Salário?"
                             id="chkSal"
                             checked={payIncludeSalary}
                             onChange={(e) =>
-                              setPayIncludeSalary(e.target.checked)
+                              setPayIncludeSalary((e.target as any).checked)
                             }
-                            className="rounded border-neutral-300 text-primary-600"
                           />
-                          <label
-                            htmlFor="chkSal"
-                            className="text-xs font-bold text-neutral-500 uppercase cursor-pointer"
-                          >
-                            Incluir Salário?
-                          </label>
+                          <div className="mt-2">
+                            <Input
+                              disabled={!payIncludeSalary}
+                              value={payValorSalario}
+                              onChange={(e) =>
+                                setPayValorSalario(e.target.value)
+                              }
+                              placeholder="0.00"
+                            />
+                          </div>
                         </div>
-                        <Input
-                          disabled={!payIncludeSalary}
-                          value={payValorSalario}
-                          onChange={(e) => setPayValorSalario(e.target.value)}
-                          placeholder="0.00"
-                        />
                       </div>
                       <div className="mb-4">
                         <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
@@ -1042,18 +1069,15 @@ export const PagamentoColaboradoresTab = ({
                     </>
                   )}
                   <div>
-                    <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
-                      Forma Pagamento
-                    </label>
-                    <select
+                    <Select
+                      label="Forma Pagamento"
                       value={payMethod}
                       onChange={(e) => setPayMethod(e.target.value)}
-                      className="w-full bg-white border border-neutral-200 p-2 rounded-lg text-sm font-bold outline-none focus:border-neutral-400"
                     >
                       <option value="DINHEIRO">Dinheiro</option>
                       <option value="PIX">Pix</option>
                       <option value="TRANSFERENCIA">Transferência</option>
-                    </select>
+                    </Select>
                   </div>
                   <div className="mt-4">
                     <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">

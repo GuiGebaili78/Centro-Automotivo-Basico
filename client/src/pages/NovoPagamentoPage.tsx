@@ -12,10 +12,15 @@ import {
   Save,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Input } from "../components/ui/Input";
-import { Button } from "../components/ui/Button";
-import { PageLayout } from "../components/ui/PageLayout";
-import { Card } from "../components/ui/Card";
+import {
+  Input,
+  Button,
+  PageLayout,
+  Card,
+  FilterButton,
+  Select,
+  Checkbox,
+} from "../components/ui";
 import { toast } from "react-toastify";
 import { ModalPagamentoUnificado } from "../components/shared/financeiro/ModalPagamentoUnificado";
 
@@ -283,14 +288,10 @@ export const NovoPagamentoPage = () => {
               Colaborador
             </label>
             <div className="relative">
-              <User
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                size={18}
-              />
-              <select
+              <Select
                 value={selectedFuncionarioId}
                 onChange={(e) => setSelectedFuncionarioId(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-neutral-300 rounded-md text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors text-neutral-900"
+                icon={User}
               >
                 <option value="">Selecione...</option>
                 {funcionarios.map((f: any) => (
@@ -298,7 +299,7 @@ export const NovoPagamentoPage = () => {
                     {f.pessoa_fisica?.pessoa?.nome}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -306,27 +307,19 @@ export const NovoPagamentoPage = () => {
             <label className="text-sm font-medium text-neutral-700 block mb-1">
               Modo de Lançamento
             </label>
-            <div className="flex bg-neutral-100 p-1 rounded-lg w-fit">
-              <button
+            <div className="flex bg-neutral-100 p-1 rounded-xl w-fit gap-1">
+              <FilterButton
+                active={mode === "PAGAMENTO"}
                 onClick={() => setMode("PAGAMENTO")}
-                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
-                  mode === "PAGAMENTO"
-                    ? "bg-white text-primary-600 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
-                }`}
               >
                 Pagamento (Salário/Comissões)
-              </button>
-              <button
+              </FilterButton>
+              <FilterButton
+                active={mode === "ADIANTAMENTO"}
                 onClick={() => setMode("ADIANTAMENTO")}
-                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
-                  mode === "ADIANTAMENTO"
-                    ? "bg-white text-primary-600 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-700 hover:bg-white/50"
-                }`}
               >
                 Adiantamento (Novo Vale)
-              </button>
+              </FilterButton>
             </div>
           </div>
         </div>
@@ -610,21 +603,14 @@ export const NovoPagamentoPage = () => {
                   <>
                     {/* PAGAMENTO MODE INPUTS */}
                     <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <input
-                          type="checkbox"
-                          id="chkSalary"
-                          checked={includeSalary}
-                          onChange={(e) => setIncludeSalary(e.target.checked)}
-                          className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
-                        />
-                        <label
-                          htmlFor="chkSalary"
-                          className="text-xs font-bold text-neutral-500 uppercase tracking-widest cursor-pointer select-none"
-                        >
-                          Incluir Pagamento de Contrato?
-                        </label>
-                      </div>
+                      <Checkbox
+                        id="chkSalary"
+                        label="Incluir Pagamento de Contrato?"
+                        checked={includeSalary}
+                        onChange={(e) =>
+                          setIncludeSalary((e.target as any).checked)
+                        }
+                      />
                       <Input
                         type="number"
                         disabled={!includeSalary}
@@ -687,18 +673,15 @@ export const NovoPagamentoPage = () => {
                 )}
 
                 <div>
-                  <label className="text-sm font-medium text-neutral-700 block mb-1">
-                    Forma Pagamento
-                  </label>
-                  <select
+                  <Select
+                    label="Forma Pagamento"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-4 py-2 bg-white border border-neutral-300 rounded-md text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
                   >
                     <option value="DINHEIRO">Dinheiro</option>
                     <option value="PIX">Pix</option>
                     <option value="TRANSFERENCIA">Transferência</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div>

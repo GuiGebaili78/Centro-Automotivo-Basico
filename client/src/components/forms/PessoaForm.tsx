@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { PessoaService } from "../../services/pessoa.service";
+import { Button, Input, Select } from "../ui";
 
 interface PessoaFormProps {
   onSuccess: (newItem: any) => void;
@@ -42,73 +43,64 @@ export const PessoaForm = ({ onSuccess, onCancel }: PessoaFormProps) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Nome Completo *
-          </label>
-          <input
+          <Input
+            label="Nome Completo *"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
+            placeholder="Digite o nome completo"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Gênero
-          </label>
-          <select
+          <Select
+            label="Gênero"
             value={genero}
             onChange={(e) => setGenero(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
           >
             <option value="">Selecione...</option>
             <option value="Masculino">Masculino</option>
             <option value="Feminino">Feminino</option>
             <option value="Outro">Outro</option>
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Data Nascimento
-          </label>
-          <input
+          <Input
+            label="Data Nascimento"
             type="date"
             value={dtNascimento}
             onChange={(e) => setDtNascimento(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
           />
         </div>
 
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Observações
-          </label>
-          <textarea
+          <Input
+            label="Observações"
             value={obs}
             onChange={(e) => setObs(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
-            rows={3}
+            placeholder="Observações adicionais..."
           />
         </div>
       </div>
 
       <div className="flex gap-2 pt-4">
-        <button
+        <Button
+          variant="outline"
           type="button"
           onClick={onCancel}
-          className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg"
+          className="flex-1"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
           type="submit"
-          disabled={loading}
-          className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          isLoading={loading}
+          className="flex-1"
         >
-          {loading ? "Salvando..." : "Salvar Pessoa"}
-        </button>
+          Salvar Pessoa
+        </Button>
       </div>
     </form>
   );

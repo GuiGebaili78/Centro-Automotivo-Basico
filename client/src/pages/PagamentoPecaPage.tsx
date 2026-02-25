@@ -3,12 +3,17 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import { FinanceiroService } from "../services/financeiro.service";
 import { FornecedorService } from "../services/fornecedor.service";
-import { ActionButton } from "../components/ui/ActionButton";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { PageLayout } from "../components/ui/PageLayout";
-import { Card } from "../components/ui/Card";
-import { ConfirmModal } from "../components/ui/ConfirmModal";
+import {
+  ActionButton,
+  Button,
+  Input,
+  PageLayout,
+  Card,
+  ConfirmModal,
+  Modal,
+  FilterButton,
+  Select,
+} from "../components/ui";
 import { toast } from "react-toastify";
 import {
   Search,
@@ -23,7 +28,7 @@ import {
   X,
   Plus,
 } from "lucide-react";
-import { Modal } from "../components/ui/Modal";
+
 import { ModalPagamentoUnificado } from "../components/shared/financeiro/ModalPagamentoUnificado";
 
 export const PagamentoPecaPage = () => {
@@ -440,33 +445,32 @@ export const PagamentoPecaPage = () => {
               <label className="text-[10px] font-bold text-neutral-400 uppercase mb-2 block">
                 Status
               </label>
-              <div className="flex bg-neutral-50 p-1 rounded-lg w-full border border-neutral-200">
-                {["PENDING", "PAID", "ALL"].map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setFilterStatus(st as any)}
-                    className={`flex-1 px-2 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
-                      filterStatus === st
-                        ? "bg-blue-100 text-blue-700 shadow-sm"
-                        : "text-neutral-500 hover:text-blue-600 hover:bg-blue-50"
-                    }`}
-                  >
-                    {st === "PENDING"
-                      ? "Pendentes"
-                      : st === "PAID"
-                        ? "Pagas"
-                        : "Todas"}
-                  </button>
-                ))}
+              <div className="flex bg-neutral-50 p-1 rounded-lg w-full border border-neutral-200 gap-1">
+                <FilterButton
+                  active={filterStatus === "PENDING"}
+                  onClick={() => setFilterStatus("PENDING")}
+                >
+                  Pendentes
+                </FilterButton>
+                <FilterButton
+                  active={filterStatus === "PAID"}
+                  onClick={() => setFilterStatus("PAID")}
+                >
+                  Pagas
+                </FilterButton>
+                <FilterButton
+                  active={filterStatus === "ALL"}
+                  onClick={() => setFilterStatus("ALL")}
+                >
+                  Todas
+                </FilterButton>
               </div>
             </div>
 
             {/* Search */}
             <div className="lg:col-span-2">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-2 block">
-                Buscar
-              </label>
               <Input
+                label="Buscar"
                 value={filterPlate}
                 onChange={(e) => setFilterPlate(e.target.value)}
                 placeholder="Placa, OS, Fornecedor..."
@@ -476,13 +480,10 @@ export const PagamentoPecaPage = () => {
 
             {/* Supplier */}
             <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-2 block">
-                Fornecedor
-              </label>
-              <select
+              <Select
+                label="Fornecedor"
                 value={filterSupplier}
                 onChange={(e) => setFilterSupplier(e.target.value)}
-                className="w-full h-10 px-3 bg-white border border-neutral-200 rounded-lg font-bold text-xs text-neutral-600 outline-none focus:border-primary-500 transition-colors"
               >
                 <option value="">Todos</option>
                 {fornecedores.map((f) => (
@@ -490,7 +491,7 @@ export const PagamentoPecaPage = () => {
                     {f.nome_fantasia || f.nome}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -502,37 +503,25 @@ export const PagamentoPecaPage = () => {
                 Finalização OS:
               </span>
 
-              <div className="flex bg-neutral-50 p-1 rounded-lg w-fit border border-neutral-200">
-                <button
+              <div className="flex bg-neutral-50 p-1 rounded-lg w-fit border border-neutral-200 gap-1">
+                <FilterButton
+                  active={activeFilter === "TODAY"}
                   onClick={() => applyQuickFilter("TODAY")}
-                  className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
-                    activeFilter === "TODAY"
-                      ? "bg-blue-100 text-blue-700 shadow-sm"
-                      : "text-neutral-500 hover:text-blue-600 hover:bg-blue-50"
-                  }`}
                 >
                   Hoje
-                </button>
-                <button
+                </FilterButton>
+                <FilterButton
+                  active={activeFilter === "WEEK"}
                   onClick={() => applyQuickFilter("WEEK")}
-                  className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
-                    activeFilter === "WEEK"
-                      ? "bg-blue-100 text-blue-700 shadow-sm"
-                      : "text-neutral-500 hover:text-blue-600 hover:bg-blue-50"
-                  }`}
                 >
                   Semana
-                </button>
-                <button
+                </FilterButton>
+                <FilterButton
+                  active={activeFilter === "MONTH"}
                   onClick={() => applyQuickFilter("MONTH")}
-                  className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
-                    activeFilter === "MONTH"
-                      ? "bg-blue-100 text-blue-700 shadow-sm"
-                      : "text-neutral-500 hover:text-blue-600 hover:bg-blue-50"
-                  }`}
                 >
                   Mês
-                </button>
+                </FilterButton>
               </div>
 
               <div className="flex gap-2 items-center">
@@ -690,24 +679,27 @@ export const PagamentoPecaPage = () => {
                       className={`group hover:bg-neutral-50 transition-colors ${p.pago_ao_fornecedor ? "bg-neutral-50/50" : ""}`}
                     >
                       <td className="p-5">
-                        <div className="flex items-center gap-2 font-bold text-neutral-600 text-xs">
-                          <Calendar size={14} className="text-neutral-400" />
-                          {p.item_os?.dt_cadastro
-                            ? new Date(
-                                p.item_os.dt_cadastro,
-                              ).toLocaleDateString()
-                            : "N/A"}
-                          {/* Time below date if available */}
-                          {/* Assuming dt_cadastro is a robust date/time string, we can verify */}
-                          <div className="text-[10px] font-normal text-neutral-400 block w-full mt-0.5 ml-6">
-                            {p.item_os?.dt_cadastro
-                              ? new Date(
-                                  p.item_os.dt_cadastro,
-                                ).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : ""}
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2 font-bold text-neutral-600 text-xs">
+                            <Calendar size={14} className="text-neutral-400" />
+                            <span>
+                              {p.data_compra
+                                ? new Date(p.data_compra).toLocaleDateString()
+                                : p.item_os?.dt_cadastro
+                                  ? new Date(
+                                      p.item_os.dt_cadastro,
+                                    ).toLocaleDateString()
+                                  : "N/A"}
+                            </span>
+                          </div>
+                          <div className="text-[10px] font-medium text-neutral-400 ml-6">
+                            {(p.data_compra || p.item_os?.dt_cadastro) &&
+                              new Date(
+                                p.data_compra || p.item_os.dt_cadastro,
+                              ).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                           </div>
                         </div>
                       </td>
@@ -793,22 +785,24 @@ export const PagamentoPecaPage = () => {
                       <td className="p-5 text-center">
                         <div className="flex justify-center">
                           {p.pago_ao_fornecedor ? (
-                            <button
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleUnpay(p.id_pagamento_peca)}
-                              className="hover:scale-110 transition-transform active:scale-95 text-neutral-400 hover:text-green-600"
                               title={`Pago em: ${p.data_pagamento_fornecedor ? new Date(p.data_pagamento_fornecedor).toLocaleDateString() : "N/A"} (Clique para desfazer)`}
                             >
                               <CheckSquare
                                 size={24}
                                 className="text-emerald-500 fill-emerald-500/20"
                               />
-                            </button>
+                            </Button>
                           ) : (
-                            <button
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() =>
                                 toggleSelection(p.id_pagamento_peca)
                               }
-                              className="hover:scale-110 transition-transform active:scale-95 text-neutral-300 hover:text-blue-600"
                             >
                               {selectedIds.includes(p.id_pagamento_peca) ? (
                                 <CheckSquare
@@ -816,9 +810,12 @@ export const PagamentoPecaPage = () => {
                                   className="text-blue-600"
                                 />
                               ) : (
-                                <Square size={24} />
+                                <Square
+                                  size={24}
+                                  className="text-neutral-300"
+                                />
                               )}
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -896,10 +893,8 @@ export const PagamentoPecaPage = () => {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-neutral-700">
-                Fornecedor
-              </label>
-              <select
+              <Select
+                label="Fornecedor"
                 value={editPayment.id_fornecedor}
                 onChange={(e) =>
                   setEditPayment({
@@ -907,14 +902,13 @@ export const PagamentoPecaPage = () => {
                     id_fornecedor: e.target.value,
                   })
                 }
-                className="w-full h-10 px-3 bg-white border border-neutral-300 rounded-lg text-sm"
               >
                 {fornecedores.map((f) => (
                   <option key={f.id_fornecedor} value={f.id_fornecedor}>
                     {f.nome_fantasia || f.nome}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-neutral-100">

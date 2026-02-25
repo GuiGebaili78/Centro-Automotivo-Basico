@@ -45,6 +45,7 @@ import {
   BarChart2,
   Filter,
 } from "lucide-react";
+import { FilterButton } from "../components/ui";
 
 // ─── Tipos locais ──────────────────────────────────────────────────────────────
 type GroupByOption = "month" | "quarter" | "semester" | "year";
@@ -394,20 +395,16 @@ export const RelatoriosPage = () => {
                   </h3>
 
                   {/* GroupBy pills */}
-                  <div className="flex bg-neutral-100 p-1 rounded-lg">
+                  <div className="flex bg-neutral-100 p-1 rounded-lg gap-1">
                     {(Object.keys(GROUP_BY_LABELS) as GroupByOption[]).map(
                       (key) => (
-                        <button
+                        <FilterButton
                           key={key}
+                          active={evolGroupBy === key}
                           onClick={() => handleEvolucaoPreset(key)}
-                          className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                            evolGroupBy === key
-                              ? "bg-white text-neutral-800 shadow-sm"
-                              : "text-neutral-500 hover:text-neutral-700"
-                          }`}
                         >
                           {GROUP_BY_LABELS[key]}
-                        </button>
+                        </FilterButton>
                       ),
                     )}
                   </div>

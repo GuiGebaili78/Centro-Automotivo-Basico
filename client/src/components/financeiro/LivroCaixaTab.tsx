@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
+import { Button, Input, FilterButton } from "../ui";
 import {
   Search,
   Calendar,
@@ -7,6 +8,7 @@ import {
   ArrowDownCircle,
   Wallet,
   Plus,
+  X,
 } from "lucide-react";
 import type {
   ICashBookEntry,
@@ -18,11 +20,48 @@ interface LivroCaixaTabProps {
 }
 
 export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
-  const [filters, setFilters] = useState<ICashBookFilters>({
+  const initialState: ICashBookFilters = {
     startDate: "",
     endDate: "",
     search: "",
-  });
+  };
+
+  const [filters, setFilters] = useState<ICashBookFilters>(initialState);
+  const [activeFilter, setActiveFilter] = useState<string>("");
+
+  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
+    setActiveFilter(type);
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("en-CA");
+
+    if (type === "TODAY") {
+      setFilters((prev) => ({
+        ...prev,
+        startDate: todayStr,
+        endDate: todayStr,
+      }));
+    } else if (type === "WEEK") {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      setFilters((prev) => ({
+        ...prev,
+        startDate: weekAgo.toLocaleDateString("en-CA"),
+        endDate: todayStr,
+      }));
+    } else if (type === "MONTH") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFilters((prev) => ({
+        ...prev,
+        startDate: firstDay.toLocaleDateString("en-CA"),
+        endDate: todayStr,
+      }));
+    }
+  };
+
+  const clearFilters = () => {
+    setFilters(initialState);
+    setActiveFilter("");
+  };
 
   // Filter Logic
   const filteredEntries = entries.filter((entry) => {
@@ -57,66 +96,98 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Manual Entry & Filters */}
-      <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col md:flex-row justify-between items-end gap-4">
-        <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-              Buscar Detalhes
-            </label>
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                size={16}
-              />
-              <input
+      {/* Filters & Actions Row */}
+      <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row justify-between items-end gap-4 font-bold">
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+            <div>
+              <Input
+                label="Buscar Detalhes"
                 value={filters.search}
                 onChange={(e) =>
                   setFilters({ ...filters, search: e.target.value })
                 }
                 placeholder="Ex: OS 123, Pix..."
-                className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors"
+                icon={Search}
               />
             </div>
+            <div className="md:col-span-2 flex flex-col sm:flex-row items-end gap-2">
+              <div className="w-full">
+                <Input
+                  label="Data Início"
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) => {
+                    setFilters({ ...filters, startDate: e.target.value });
+                    setActiveFilter("CUSTOM");
+                  }}
+                  className={`font-bold uppercase ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
+                />
+              </div>
+              <div className="w-full">
+                <Input
+                  label="Data Fim"
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => {
+                    setFilters({ ...filters, endDate: e.target.value });
+                    setActiveFilter("CUSTOM");
+                  }}
+                  className={`font-bold uppercase ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
+                />
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-              De
-            </label>
-            <input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) =>
-                setFilters({ ...filters, startDate: e.target.value })
-              }
-              className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors uppercase"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-              Até
-            </label>
-            <input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) =>
-                setFilters({ ...filters, endDate: e.target.value })
-              }
-              className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors uppercase"
-            />
-          </div>
+          <Button
+            variant="dark"
+            icon={Plus}
+            onClick={() =>
+              alert(
+                "Funcionalidade de Lançamento Manual será implementada em breve.",
+              )
+            }
+            className="w-full md:w-auto mt-2 md:mt-0"
+          >
+            Novo Lançamento
+          </Button>
         </div>
-        <button
-          className="bg-neutral-900 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 whitespace-nowrap shadow-lg hover:bg-neutral-800 transition-transform hover:-translate-y-0.5"
-          onClick={() =>
-            alert(
-              "Funcionalidade de Lançamento Manual será implementada em breve.",
-            )
-          }
-        >
-          <Plus size={18} />
-          Novo Lançamento
-        </button>
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-neutral-100 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest min-w-[90px]">
+              Períodos Rápidos:
+            </span>
+            <div className="flex bg-neutral-100 p-1 rounded-xl gap-1">
+              <FilterButton
+                active={activeFilter === "TODAY"}
+                onClick={() => applyQuickFilter("TODAY")}
+              >
+                Hoje
+              </FilterButton>
+              <FilterButton
+                active={activeFilter === "WEEK"}
+                onClick={() => applyQuickFilter("WEEK")}
+              >
+                Semana
+              </FilterButton>
+              <FilterButton
+                active={activeFilter === "MONTH"}
+                onClick={() => applyQuickFilter("MONTH")}
+              >
+                Mês
+              </FilterButton>
+            </div>
+          </div>
+          <Button
+            onClick={clearFilters}
+            variant="outline"
+            size="sm"
+            icon={X}
+            className="w-full sm:w-auto"
+          >
+            Limpar Filtros
+          </Button>
+        </div>
       </div>
 
       {/* SUMMARY CARDS */}

@@ -5,8 +5,7 @@ import { ClienteService } from "../../services/cliente.service";
 import { normalizePlate } from "../../utils/normalize";
 import { toast } from "react-toastify";
 import { Car, Search, User, Check, X, Save } from "lucide-react";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
+import { Button, Input, Select, ActionButton } from "../ui";
 
 interface VeiculoFormProps {
   clientId?: number | null;
@@ -80,7 +79,6 @@ export const VeiculoForm = memo(
         setCor(initialData.cor || "");
         setAnoModelo(initialData.ano_modelo || "");
         setCombustivel(initialData.combustivel || "Flex");
-        setChassi(initialData.chassi || "");
         setChassi(initialData.chassi || "");
       }
     }, [initialData]);
@@ -225,7 +223,7 @@ export const VeiculoForm = memo(
 
                 {/* Results Dropdown */}
                 {clientResults.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-neutral-25 border border-neutral-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                     {clientResults.map((client, idx) => {
                       const name =
                         client.pessoa_fisica?.pessoa?.nome ||
@@ -234,19 +232,22 @@ export const VeiculoForm = memo(
                       const contact =
                         client.telefone_1 || client.email || "Sem Contato";
                       return (
-                        <button
+                        <Button
                           key={client.id_cliente}
                           type="button"
+                          variant="ghost"
                           onClick={() => selectClient(client)}
-                          className={`w-full text-left p-3 hover:bg-primary-50 transition-colors border-b border-neutral-100 last:border-0 ${idx === clientActiveIndex ? "bg-primary-100" : ""}`}
+                          className={`w-full !justify-start !text-left p-3 !h-auto !rounded-none border-b border-neutral-100 last:border-0 ${idx === clientActiveIndex ? "bg-primary-50" : ""}`}
                         >
-                          <div className="font-bold text-sm text-neutral-500">
-                            {name}
+                          <div>
+                            <div className="font-bold text-sm text-neutral-700 normal-case">
+                              {name}
+                            </div>
+                            <div className="text-xs text-neutral-400 normal-case">
+                              {contact}
+                            </div>
                           </div>
-                          <div className="text-xs text-neutral-500">
-                            {contact}
-                          </div>
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
@@ -259,40 +260,40 @@ export const VeiculoForm = memo(
                         Nenhum cliente encontrado.
                       </p>
                       {onCreateClient && (
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={onCreateClient}
-                          className="text-sm text-primary-600 font-bold hover:underline"
+                          className="!text-primary-600 font-bold"
                         >
                           + Cadastrar Novo Cliente
-                        </button>
+                        </Button>
                       )}
                     </div>
                   )}
               </div>
             ) : (
-              <div className="flex items-center justify-between bg-primary-50 p-3 rounded-lg border border-primary-100">
+              <div className="flex items-center justify-between bg-primary-50 p-3 rounded-xl border border-primary-100">
                 <div className="flex items-center gap-3">
-                  <div className="bg-primary-600 text-neutral-25 p-2 rounded-full">
+                  <div className="bg-primary-600 text-white p-2 rounded-full">
                     <Check size={16} />
                   </div>
                   <div>
-                    <p className="text-xs text-primary-600 font-bold uppercase">
+                    <p className="text-[10px] text-primary-600 font-bold uppercase tracking-widest">
                       Cliente Selecionado
                     </p>
-                    <p className="font-bold text-primary-900">
+                    <p className="font-bold text-primary-900 leading-tight">
                       {selectedOwner.name}
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
+                <ActionButton
+                  icon={X}
+                  label="Alterar Cliente"
                   onClick={() => setSelectedOwner(null)}
-                  className="p-2 text-primary-600 hover:bg-primary-100 rounded-lg transition-colors"
-                  title="Alterar Cliente"
-                >
-                  <X size={18} />
-                </button>
+                  variant="primary"
+                />
               </div>
             )}
           </div>
@@ -326,7 +327,7 @@ export const VeiculoForm = memo(
                 maxLength={7}
                 placeholder="ABC1234"
                 required
-                className="bg-neutral-25 font-mono uppercase tracking-wider"
+                className="font-mono uppercase tracking-wider"
               />
             </div>
             <div>
@@ -335,7 +336,6 @@ export const VeiculoForm = memo(
                 value={marca}
                 onChange={(e) => setMarca(e.target.value)}
                 required
-                className="bg-neutral-25"
               />
             </div>
             <div>
@@ -344,7 +344,6 @@ export const VeiculoForm = memo(
                 value={modelo}
                 onChange={(e) => setModelo(e.target.value)}
                 required
-                className="bg-neutral-25"
               />
             </div>
             <div>
@@ -353,7 +352,6 @@ export const VeiculoForm = memo(
                 value={cor}
                 onChange={(e) => setCor(e.target.value)}
                 required
-                className="bg-neutral-25"
                 placeholder="Ex: Prata, Branco..."
               />
             </div>
@@ -363,17 +361,13 @@ export const VeiculoForm = memo(
                 type="number"
                 value={anoModelo}
                 onChange={(e) => setAnoModelo(e.target.value)}
-                className="bg-neutral-25"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                Combustível
-              </label>
-              <select
+              <Select
+                label="Combustível"
                 value={combustivel}
                 onChange={(e) => setCombustivel(e.target.value)}
-                className="w-full transition-all outline-none rounded-lg border text-sm border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 px-4 py-2.5 bg-neutral-25 text-neutral-900"
               >
                 <option value="Flex">Flex</option>
                 <option value="Gasolina">Gasolina</option>
@@ -381,14 +375,13 @@ export const VeiculoForm = memo(
                 <option value="Diesel">Diesel</option>
                 <option value="GNV">GNV</option>
                 <option value="Elétrico">Elétrico</option>
-              </select>
+              </Select>
             </div>
             <div className="col-span-2">
               <Input
                 label="Chassi"
                 value={chassi}
                 onChange={(e) => setChassi(e.target.value)}
-                className="bg-neutral-25"
               />
             </div>
           </div>
@@ -397,7 +390,7 @@ export const VeiculoForm = memo(
         <div className="flex gap-2 pt-4 border-t border-neutral-100">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             onClick={onCancel}
             className="flex-1"
           >
@@ -409,12 +402,9 @@ export const VeiculoForm = memo(
             disabled={loading || (!clientId && !selectedOwner && !vehicleId)}
             className="flex-1"
             icon={Save}
+            isLoading={loading}
           >
-            {loading
-              ? "Salvando..."
-              : vehicleId
-                ? "Salvar Alterações"
-                : "Salvar Veículo"}
+            {vehicleId ? "Salvar Alterações" : "Salvar Veículo"}
           </Button>
         </div>
       </form>

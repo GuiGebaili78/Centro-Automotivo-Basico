@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { PessoaService } from "../../services/pessoa.service";
+import { Button, Input } from "../ui";
 
 interface TipoFormProps {
   onSuccess: (newItem: any) => void;
@@ -35,13 +36,10 @@ export const TipoForm = ({ onSuccess, onCancel }: TipoFormProps) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-          Função / Tipo
-        </label>
-        <input
+        <Input
+          label="Função / Tipo"
           value={funcao}
           onChange={(e) => setFuncao(e.target.value)}
-          className="w-full border p-2 rounded border-gray-300"
           placeholder="Ex: Cliente, Fornecedor, Parceiro..."
         />
         <p className="text-xs text-gray-500 mt-1">
@@ -50,20 +48,22 @@ export const TipoForm = ({ onSuccess, onCancel }: TipoFormProps) => {
       </div>
 
       <div className="flex gap-2 pt-4">
-        <button
+        <Button
+          variant="outline"
           type="button"
           onClick={onCancel}
-          className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg"
+          className="flex-1"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
           type="submit"
-          disabled={loading}
-          className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          isLoading={loading}
+          className="flex-1"
         >
-          {loading ? "Salvando..." : "Salvar Tipo"}
-        </button>
+          Salvar Tipo
+        </Button>
       </div>
     </form>
   );

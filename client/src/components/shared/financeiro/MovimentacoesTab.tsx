@@ -13,12 +13,16 @@ import {
   AlertTriangle,
   FilterX,
 } from "lucide-react";
-import { ActionButton } from "../../ui/ActionButton";
+import {
+  ActionButton,
+  Button,
+  Input,
+  Modal,
+  FilterRadio,
+  Select,
+} from "../../ui";
 import { CategoryManager } from "./CategoryManager";
 import { CategorySelector } from "./CategorySelector";
-import { Button } from "../../ui/Button";
-import { Input } from "../../ui/Input";
-import { Modal } from "../../ui/Modal";
 import { toast } from "react-toastify";
 
 interface CashBookEntry {
@@ -532,13 +536,6 @@ export const MovimentacoesTab = () => {
     }
   };
 
-  const getQuickFilterClass = (type: "TODAY" | "WEEK" | "MONTH") =>
-    `flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
-      activeQuickFilter === type
-        ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-        : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
-    }`;
-
   return (
     <div className="p-6 space-y-6 animate-in fade-in duration-500 relative">
       <CategoryManager
@@ -585,37 +582,33 @@ export const MovimentacoesTab = () => {
             {/* Dates */}
             <div className="md:col-span-4 flex gap-2">
               <div className="flex-1">
-                <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
-                  De
-                </label>
-                <input
+                <Input
+                  label="De"
                   type="date"
                   value={cashFilterStart}
                   onChange={(e) => {
                     setCashFilterStart(e.target.value);
                     setActiveQuickFilter(null as any); // Clear quick filter
                   }}
-                  className={`w-full h-[42px] px-3 rounded-lg border text-sm font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors uppercase ${
+                  className={`h-[42px] font-bold uppercase ${
                     activeQuickFilter
-                      ? "border-neutral-200 text-neutral-600"
+                      ? ""
                       : "border-primary-300 text-primary-700"
                   }`}
                 />
               </div>
               <div className="flex-1">
-                <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
-                  Até
-                </label>
-                <input
+                <Input
+                  label="Até"
                   type="date"
                   value={cashFilterEnd}
                   onChange={(e) => {
                     setCashFilterEnd(e.target.value);
                     setActiveQuickFilter(null as any);
                   }}
-                  className={`w-full h-[42px] px-3 rounded-lg border text-sm font-bold bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 transition-colors uppercase ${
+                  className={`h-[42px] font-bold uppercase ${
                     activeQuickFilter
-                      ? "border-neutral-200 text-neutral-600"
+                      ? ""
                       : "border-primary-300 text-primary-700"
                   }`}
                 />
@@ -629,71 +622,55 @@ export const MovimentacoesTab = () => {
                   Período
                 </label>
                 <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 h-[42px] items-center w-full">
-                  <button
+                  <FilterRadio
+                    active={activeQuickFilter === "TODAY"}
                     onClick={() => applyQuickFilter("TODAY")}
-                    className={getQuickFilterClass("TODAY")}
                   >
                     Hoje
-                  </button>
-                  <button
+                  </FilterRadio>
+                  <FilterRadio
+                    active={activeQuickFilter === "WEEK"}
                     onClick={() => applyQuickFilter("WEEK")}
-                    className={getQuickFilterClass("WEEK")}
                   >
                     Semana
-                  </button>
-                  <button
+                  </FilterRadio>
+                  <FilterRadio
+                    active={activeQuickFilter === "MONTH"}
                     onClick={() => applyQuickFilter("MONTH")}
-                    className={getQuickFilterClass("MONTH")}
                   >
                     Mês
-                  </button>
+                  </FilterRadio>
                 </div>
               </div>
             </div>
 
-            {/* Source Filter */}
             <div className="md:col-span-2">
-              <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
-                Origem
-              </label>
-              <div className="relative">
-                <select
-                  value={filterSource}
-                  onChange={(e) => setFilterSource(e.target.value as any)}
-                  className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-                >
-                  <option value="ALL">Todas</option>
-                  <option value="MANUAL">Manual</option>
-                  <option value="AUTO">Automática</option>
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                  <ArrowDownCircle size={14} />
-                </div>
-              </div>
+              <Select
+                label="Origem"
+                value={filterSource}
+                onChange={(e) => setFilterSource(e.target.value as any)}
+                className="h-[42px] font-bold"
+              >
+                <option value="ALL">Todas</option>
+                <option value="MANUAL">Manual</option>
+                <option value="AUTO">Automática</option>
+              </Select>
             </div>
 
-            {/* Category Filter */}
             <div className="md:col-span-3">
-              <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
-                Categoria
-              </label>
-              <div className="relative">
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-                >
-                  <option value="ALL">Todas</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id_categoria} value={cat.nome}>
-                      {cat.nome}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                  <ArrowDownCircle size={14} />
-                </div>
-              </div>
+              <Select
+                label="Categoria"
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="h-[42px] font-bold"
+              >
+                <option value="ALL">Todas</option>
+                {categories.map((cat) => (
+                  <option key={cat.id_categoria} value={cat.nome}>
+                    {cat.nome}
+                  </option>
+                ))}
+              </Select>
             </div>
 
             <div className="md:col-span-2 flex gap-2">

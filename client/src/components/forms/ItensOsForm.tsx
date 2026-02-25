@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { OsItemsService } from "../../services/osItems.service";
+import { Button, Input } from "../ui";
 
 interface ItensOsFormProps {
   osId: number;
@@ -71,69 +72,55 @@ export const ItensOsForm = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            ID Peça Estoque (Opcional)
-          </label>
-          <input
+          <Input
+            label="ID Peça Estoque (Opcional)"
             type="number"
             value={idPecasEstoque}
             onChange={(e) => setIdPecasEstoque(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             placeholder="Deixe vazio para serviço"
           />
         </div>
 
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Descrição *
-          </label>
-          <input
+          <Input
+            label="Descrição *"
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
             placeholder="Ex: Troca de óleo, Filtro de ar..."
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Quantidade *
-          </label>
-          <input
+          <Input
+            label="Quantidade *"
             type="number"
             min="1"
             value={quantidade}
             onChange={(e) => handleQuantidadeChange(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Valor Unitário (R$) *
-          </label>
-          <input
+          <Input
+            label="Valor Unitário (R$) *"
             type="number"
             step="0.01"
             value={valorVenda}
             onChange={(e) => handleValorVendaChange(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
           />
         </div>
 
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            Valor Total (R$)
-          </label>
-          <input
+          <Input
+            label="Valor Total (R$)"
             type="number"
             step="0.01"
             value={valorTotal}
             onChange={(e) => setValorTotal(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300 bg-gray-50 font-bold text-lg"
+            className="font-bold text-lg"
             required
             readOnly
           />
@@ -141,20 +128,22 @@ export const ItensOsForm = ({
       </div>
 
       <div className="flex gap-2 pt-4">
-        <button
+        <Button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg"
+          variant="outline"
+          className="flex-1"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
-          disabled={loading}
-          className="flex-1 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50"
+          isLoading={loading}
+          variant="primary"
+          className="flex-1"
         >
-          {loading ? "Adicionando..." : "Adicionar Item"}
-        </button>
+          Adicionar Item
+        </Button>
       </div>
     </form>
   );

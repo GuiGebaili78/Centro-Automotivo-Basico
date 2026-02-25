@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
+import { Button, Input } from "../ui";
 import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
 import { FileText, Mail, Send, AlertTriangle } from "lucide-react";
 import { api } from "../../services/api";
 import { toast } from "react-toastify";
@@ -107,10 +107,11 @@ export const DocumentoModal = ({
           </label>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button
+            <Button
               type="button"
               onClick={() => setSendOption("download")}
-              className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+              variant={sendOption === "download" ? "secondary" : "ghost"}
+              className={`!flex !flex-col !items-center !justify-center !p-4 !h-auto !rounded-xl border-2 !transition-all ${
                 sendOption === "download"
                   ? "border-blue-500 bg-blue-50 text-blue-700"
                   : "border-gray-100 hover:border-gray-200 text-gray-500 hover:bg-gray-50"
@@ -118,12 +119,13 @@ export const DocumentoModal = ({
             >
               <FileText size={24} className="mb-2" />
               <span className="text-xs font-bold uppercase">Baixar PDF</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
               onClick={() => setSendOption("email")}
-              className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+              variant={sendOption === "email" ? "secondary" : "ghost"}
+              className={`!flex !flex-col !items-center !justify-center !p-4 !h-auto !rounded-xl border-2 !transition-all ${
                 sendOption === "email"
                   ? "border-blue-500 bg-blue-50 text-blue-700"
                   : "border-gray-100 hover:border-gray-200 text-gray-500 hover:bg-gray-50"
@@ -131,12 +133,13 @@ export const DocumentoModal = ({
             >
               <Mail size={24} className="mb-2" />
               <span className="text-xs font-bold uppercase">Enviar E-mail</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
               onClick={() => setSendOption("telegram")}
-              className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+              variant={sendOption === "telegram" ? "secondary" : "ghost"}
+              className={`!flex !flex-col !items-center !justify-center !p-4 !h-auto !rounded-xl border-2 !transition-all ${
                 sendOption === "telegram"
                   ? "border-blue-500 bg-blue-50 text-blue-700"
                   : "border-gray-100 hover:border-gray-200 text-gray-500 hover:bg-gray-50"
@@ -144,20 +147,17 @@ export const DocumentoModal = ({
             >
               <Send size={24} className="mb-2" />
               <span className="text-xs font-bold uppercase">Telegram</span>
-            </button>
+            </Button>
           </div>
         </div>
 
         {sendOption === "email" && (
           <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2 animate-fadeIn">
-            <label className="block text-xs font-bold text-gray-500 uppercase">
-              E-mail do Cliente
-            </label>
-            <input
+            <Input
+              label="E-mail do Cliente"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="exemplo@email.com"
             />
             <p className="text-[10px] text-gray-400">

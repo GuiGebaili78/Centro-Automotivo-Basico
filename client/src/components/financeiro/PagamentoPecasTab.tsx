@@ -9,15 +9,22 @@ import {
   CheckSquare,
   Square,
   Edit,
-  Filter,
   Trash2,
+  X,
 } from "lucide-react";
+import {
+  ActionButton,
+  Button,
+  Input,
+  Modal,
+  FilterButton,
+  Select,
+} from "../ui";
 import type { IPagamentoPeca, IFornecedor } from "../../types/backend";
 import type {
   IFinanceiroStatusMsg,
   IPaymentFilters,
 } from "../../types/financeiro.types";
-import { Modal } from "../ui/Modal";
 
 interface PagamentoPecasTabProps {
   payments: IPagamentoPeca[];
@@ -42,6 +49,9 @@ export const PagamentoPecasTab = ({
     startDate: "",
     endDate: "",
   });
+  const [activeFilter, setActiveFilter] = useState<
+    "TODAY" | "WEEK" | "MONTH" | "CUSTOM" | "ALL"
+  >("ALL");
 
   const [editPayment, setEditPayment] = useState<any | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -92,6 +102,39 @@ export const PagamentoPecasTab = ({
   const totalPaid = filteredPayments
     .filter((p) => p.pago_ao_fornecedor)
     .reduce((acc, p) => acc + Number(p.custo_real), 0);
+
+  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH" | "ALL") => {
+    setActiveFilter(type);
+    if (type === "ALL") {
+      setFilters((prev) => ({ ...prev, startDate: "", endDate: "" }));
+      return;
+    }
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("en-CA");
+
+    if (type === "TODAY") {
+      setFilters((prev) => ({
+        ...prev,
+        startDate: todayStr,
+        endDate: todayStr,
+      }));
+    } else if (type === "WEEK") {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      setFilters((prev) => ({
+        ...prev,
+        startDate: weekAgo.toLocaleDateString("en-CA"),
+        endDate: todayStr,
+      }));
+    } else if (type === "MONTH") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFilters((prev) => ({
+        ...prev,
+        startDate: firstDay.toLocaleDateString("en-CA"),
+        endDate: todayStr,
+      }));
+    }
+  };
 
   // Actions
   const handleTogglePayment = async (
@@ -200,103 +243,134 @@ export const PagamentoPecasTab = ({
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Filters */}
-      <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-        <div>
-          <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-            Status
-          </label>
-          <div className="flex bg-neutral-100 rounded-xl p-1 gap-2">
-            <button
-              onClick={() => setFilters({ ...filters, status: "PENDING" })}
-              className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${filters.status === "PENDING" ? "bg-white shadow text-neutral-900" : "text-neutral-400 hover:text-neutral-600"}`}
-            >
-              PENDENTES
-            </button>
-            <button
-              onClick={() => setFilters({ ...filters, status: "PAID" })}
-              className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${filters.status === "PAID" ? "bg-white shadow text-green-600" : "text-neutral-400 hover:text-neutral-600"}`}
-            >
-              PAGAS
-            </button>
-            <button
-              onClick={() => setFilters({ ...filters, status: "ALL" })}
-              className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${filters.status === "ALL" ? "bg-white shadow text-neutral-900" : "text-neutral-400 hover:text-neutral-600"}`}
-            >
-              TODAS
-            </button>
+      <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div>
+            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block tracking-widest">
+              Status Pagamento
+            </label>
+            <div className="flex bg-neutral-100 rounded-xl p-1 gap-1">
+              <FilterButton
+                active={filters.status === "PENDING"}
+                onClick={() => setFilters({ ...filters, status: "PENDING" })}
+              >
+                PENDENTES
+              </FilterButton>
+              <FilterButton
+                active={filters.status === "PAID"}
+                onClick={() => setFilters({ ...filters, status: "PAID" })}
+              >
+                PAGAS
+              </FilterButton>
+              <FilterButton
+                active={filters.status === "ALL"}
+                onClick={() => setFilters({ ...filters, status: "ALL" })}
+              >
+                TODAS
+              </FilterButton>
+            </div>
           </div>
-        </div>
-        <div>
-          <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-            Fornecedor
-          </label>
-          <select
-            value={filters.supplier}
-            onChange={(e) =>
-              setFilters({ ...filters, supplier: e.target.value })
-            }
-            className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors"
-          >
-            <option value="">Todos</option>
-            {fornecedores.map((f) => (
-              <option key={f.id_fornecedor} value={f.id_fornecedor}>
-                {f.nome}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="md:col-span-2">
-          <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-            Buscar por Placa
-          </label>
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-              size={16}
-            />
-            <input
+          <div>
+            <Select
+              label="Fornecedor"
+              value={filters.supplier}
+              onChange={(e) =>
+                setFilters({ ...filters, supplier: e.target.value })
+              }
+            >
+              <option value="">Todos</option>
+              {fornecedores.map((f) => (
+                <option key={f.id_fornecedor} value={f.id_fornecedor}>
+                  {f.nome}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="md:col-span-2">
+            <Input
+              label="Buscar por Placa"
               value={filters.plate}
               onChange={(e) =>
                 setFilters({ ...filters, plate: e.target.value })
               }
               placeholder="Digite a placa do veículo da OS..."
-              className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-sm outline-none focus:border-neutral-400 transition-colors uppercase"
+              icon={Search}
             />
           </div>
         </div>
-        <div className="md:col-span-4 grid grid-cols-2 gap-4 bg-neutral-50 p-4 rounded-xl border border-neutral-200">
-          <div className="col-span-2 flex items-center gap-2 mb-2">
-            <Filter size={16} className="text-neutral-500" />
-            <span className="text-xs font-black text-neutral-500 uppercase">
-              Filtrar por Período de Compra
+
+        <div className="flex flex-col md:flex-row items-end md:items-center gap-4 border-t border-neutral-100 pt-4">
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <span className="text-[10px] font-bold text-neutral-400 uppercase whitespace-nowrap min-w-[90px] tracking-widest">
+              Data Compra:
             </span>
+
+            <div className="flex bg-neutral-50 p-1 rounded-lg w-fit border border-neutral-200 gap-1">
+              <FilterButton
+                active={activeFilter === "TODAY"}
+                onClick={() => applyQuickFilter("TODAY")}
+              >
+                Hoje
+              </FilterButton>
+              <FilterButton
+                active={activeFilter === "WEEK"}
+                onClick={() => applyQuickFilter("WEEK")}
+              >
+                Semana
+              </FilterButton>
+              <FilterButton
+                active={activeFilter === "MONTH"}
+                onClick={() => applyQuickFilter("MONTH")}
+              >
+                Mês
+              </FilterButton>
+            </div>
+
+            <div className="flex gap-2 items-center">
+              <div className="w-32">
+                <Input
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) => {
+                    setFilters({ ...filters, startDate: e.target.value });
+                    setActiveFilter("CUSTOM");
+                  }}
+                  className={`h-9 px-2 text-[10px] uppercase font-bold ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
+                />
+              </div>
+              <span className="text-neutral-400">-</span>
+              <div className="w-32">
+                <Input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => {
+                    setFilters({ ...filters, endDate: e.target.value });
+                    setActiveFilter("CUSTOM");
+                  }}
+                  className={`h-9 px-2 text-[10px] uppercase font-bold ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
+                />
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1 block">
-              De
-            </label>
-            <input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) =>
-                setFilters({ ...filters, startDate: e.target.value })
-              }
-              className="w-full bg-white border border-neutral-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-neutral-400 transition-colors uppercase"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1 block">
-              Até
-            </label>
-            <input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) =>
-                setFilters({ ...filters, endDate: e.target.value })
-              }
-              className="w-full bg-white border border-neutral-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-neutral-400 transition-colors uppercase"
-            />
-          </div>
+
+          <Button
+            onClick={() => {
+              setFilters({
+                status: "PENDING",
+                supplier: "",
+                plate: "",
+                startDate: "",
+                endDate: "",
+              });
+              setActiveFilter("ALL");
+            }}
+            variant="outline"
+            size="sm"
+            icon={X}
+            className="md:ml-auto"
+          >
+            Limpar Filtros
+          </Button>
         </div>
       </div>
 
@@ -430,20 +504,18 @@ export const PagamentoPecasTab = ({
                   </td>
                   <td className="p-5 text-center">
                     <div className="flex justify-center gap-2">
-                      <button
+                      <ActionButton
                         onClick={() => openEditModal(p)}
-                        className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Editar Detalhes"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
+                        icon={Edit}
+                        label="Editar"
+                        variant="accent"
+                      />
+                      <ActionButton
                         onClick={() => handleDeletePayment(p.id_pagamento_peca)}
-                        className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Excluir Pagamento"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                        icon={Trash2}
+                        label="Excluir"
+                        variant="danger"
+                      />
                     </div>
                   </td>
                 </tr>
@@ -468,15 +540,12 @@ export const PagamentoPecasTab = ({
                 {editPayment.item_os?.descricao}
               </p>
               <div className="mt-2">
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-1 block">
-                  Ref / Nota
-                </label>
-                <input
+                <Input
+                  label="Ref / Nota"
                   value={editPayment.ref_nota || ""}
                   onChange={(e) =>
                     setEditPayment({ ...editPayment, ref_nota: e.target.value })
                   }
-                  className="w-full bg-white border border-neutral-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-neutral-400"
                   placeholder="Número da Nota / Referência"
                 />
               </div>
@@ -484,10 +553,8 @@ export const PagamentoPecasTab = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                  Data Compra
-                </label>
-                <input
+                <Input
+                  label="Data Compra"
                   type="date"
                   value={editPayment.data_compra}
                   onChange={(e) =>
@@ -496,14 +563,11 @@ export const PagamentoPecasTab = ({
                       data_compra: e.target.value,
                     })
                   }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                  Data Pagamento
-                </label>
-                <input
+                <Input
+                  label="Data Pagamento"
                   type="date"
                   value={editPayment.data_pagamento_fornecedor || ""}
                   onChange={(e) =>
@@ -512,17 +576,14 @@ export const PagamentoPecasTab = ({
                       data_pagamento_fornecedor: e.target.value,
                     })
                   }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                  Custo Real (R$)
-                </label>
-                <input
+                <Input
+                  label="Custo Real (R$)"
                   type="number"
                   step="0.01"
                   value={editPayment.custo_real}
@@ -532,14 +593,11 @@ export const PagamentoPecasTab = ({
                       custo_real: e.target.value,
                     })
                   }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block">
-                  Fornecedor
-                </label>
-                <select
+                <Select
+                  label="Fornecedor"
                   value={editPayment.id_fornecedor}
                   onChange={(e) =>
                     setEditPayment({
@@ -547,30 +605,31 @@ export const PagamentoPecasTab = ({
                       id_fornecedor: e.target.value,
                     })
                   }
-                  className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-neutral-400"
                 >
                   {fornecedores.map((f) => (
                     <option key={f.id_fornecedor} value={f.id_fornecedor}>
                       {f.nome}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-neutral-100">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 py-3 text-neutral-500 font-bold hover:bg-neutral-50 rounded-xl transition-colors"
+                className="flex-1"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="dark"
                 onClick={handleUpdatePayment}
-                className="flex-1 py-3 bg-neutral-900 text-white font-bold rounded-xl hover:bg-neutral-800 transition-colors shadow-lg"
+                className="flex-1"
               >
                 Salvar Alterações
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
@@ -589,22 +648,17 @@ export const PagamentoPecasTab = ({
               {confirmModal.message}
             </p>
             <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={() =>
                   setConfirmModal((prev) => ({ ...prev, isOpen: false }))
                 }
-                className="px-5 py-2.5 text-neutral-600 font-bold hover:bg-neutral-100 rounded-lg transition-colors"
               >
                 Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={confirmModal.onConfirm}
-                className="px-5 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
-              >
+              </Button>
+              <Button variant="danger" onClick={confirmModal.onConfirm}>
                 Confirmar Exclusão
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
