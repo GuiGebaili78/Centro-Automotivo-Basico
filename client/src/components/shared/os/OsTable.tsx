@@ -20,7 +20,6 @@ export const OsTable = ({
   onRowClick,
   renderActions,
   emptyMessage = "Nenhum registro encontrado.",
-  isDashboard = false,
 }: OsTableProps) => {
   const [loadingEmail, setLoadingEmail] = useState<number | null>(null);
 

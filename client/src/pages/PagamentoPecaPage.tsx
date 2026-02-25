@@ -106,7 +106,7 @@ export const PagamentoPecaPage = () => {
         FinanceiroService.getContasBancarias(),
       ]);
 
-      setPayments(paymentsData.data || paymentsData || []);
+      setPayments(paymentsData || []);
       setFornecedores(suppliersData);
       setAccounts(accountsData.filter((a: any) => a.ativo));
     } catch (error) {

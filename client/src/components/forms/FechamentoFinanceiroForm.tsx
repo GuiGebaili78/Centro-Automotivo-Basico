@@ -143,7 +143,7 @@ export const FechamentoFinanceiroForm = ({
       setOsData(os as any);
 
       const initialItemsState: Record<number, ItemFinanceiroState> = {};
-      os.itens_os.forEach((item: IItemOsDetalhado) => {
+      (os.itens_os ?? []).forEach((item: IItemOsDetalhado) => {
         const existingPayment =
           item.pagamentos_peca && item.pagamentos_peca.length > 0
             ? item.pagamentos_peca[0]
