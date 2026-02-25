@@ -109,7 +109,6 @@ export const PecasEstoquePage = () => {
         {/* BUSCA UNIFICADA */}
         <div className="relative">
           <Input
-            variant="default"
             icon={Search}
             placeholder="Buscar por nome, fabricante, descrição ou ID..."
             value={searchTerm}

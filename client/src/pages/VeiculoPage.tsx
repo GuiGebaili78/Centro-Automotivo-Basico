@@ -159,7 +159,6 @@ export const VeiculoPage = () => {
         {/* Barra de Filtros */}
         <div className="mb-0">
           <Input
-            variant="default"
             ref={searchInputRef}
             icon={Search}
             placeholder="Buscar por fabricante, modelo ou placa"

@@ -120,7 +120,6 @@ export const FuncionarioPage = () => {
       <div className="mb-6">
         <Input
           ref={searchInputRef}
-          variant="default"
           icon={Search}
           placeholder="Buscar por nome, CPF ou cargo..."
           value={searchTerm}

@@ -282,7 +282,6 @@ export const OrdemDeServicoPage = () => {
           <div className="flex-1 w-full relative">
             <Input
               ref={searchInputRef}
-              variant="default"
               icon={Search}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

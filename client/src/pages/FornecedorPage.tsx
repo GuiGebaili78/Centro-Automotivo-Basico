@@ -128,7 +128,6 @@ export const FornecedorPage = () => {
       <div className="mb-6">
         <Input
           ref={searchInputRef}
-          variant="default"
           value={searchTerm}
           icon={Search}
           onChange={(e) => setSearchTerm(e.target.value)}

@@ -10,3 +10,4 @@ export * from "./Checkbox";
 export * from "./FilterRadio";
 export * from "./FilterButton";
 export * from "./TextArea";
+export * from "./StatusBanner";
