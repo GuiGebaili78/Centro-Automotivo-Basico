@@ -16,6 +16,11 @@ import {
   Mail,
   FileText,
   MapPin,
+  Server,
+  Hash,
+  User,
+  Lock,
+  AlertCircle,
 } from "lucide-react";
 
 export const ConfiguracaoPage = () => {
@@ -29,6 +34,10 @@ export const ConfiguracaoPage = () => {
     telefone: "",
     email: "",
     logoUrl: "",
+    smtpHost: "",
+    smtpPort: 587,
+    smtpUser: "",
+    smtpPass: "",
   });
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoZoom, setLogoZoom] = useState(100);
@@ -138,6 +147,30 @@ export const ConfiguracaoPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validação SMTP: Se preencher um, obriga preencher todos (Host, Port, User, Pass)
+    const smtpFields = [
+      formData.smtpHost,
+      formData.smtpPort,
+      formData.smtpUser,
+      formData.smtpPass,
+    ];
+    const anySmtpFilled = smtpFields.some(
+      (field) =>
+        field !== undefined && String(field).trim() !== "" && field !== 0,
+    );
+    const allSmtpFilled = smtpFields.every(
+      (field) =>
+        field !== undefined && String(field).trim() !== "" && field !== 0,
+    );
+
+    if (anySmtpFilled && !allSmtpFilled) {
+      toast.error(
+        "Para configurar o e-mail, todos os campos SMTP (Servidor, Porta, Usuário e Senha) devem ser preenchidos.",
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -149,6 +182,10 @@ export const ConfiguracaoPage = () => {
       data.append("endereco", formData.endereco || "");
       data.append("telefone", formData.telefone || "");
       data.append("email", formData.email || "");
+      data.append("smtpHost", formData.smtpHost || "");
+      data.append("smtpPort", String(formData.smtpPort || ""));
+      data.append("smtpUser", formData.smtpUser || "");
+      data.append("smtpPass", formData.smtpPass || "");
 
       // Generate processed logo if there's a preview
       if (logoPreview) {
@@ -430,6 +467,71 @@ export const ConfiguracaoPage = () => {
                     placeholder="Rua Exemplo, 123 - Bairro - Cidade/UF"
                     icon={MapPin}
                   />
+                </div>
+              </div>
+            </Card>
+
+            <Card
+              title="Configurações de E-mail (SMTP)"
+              description="Configurações para envio automático de OS e orçamentos"
+            >
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl flex items-center gap-3 bg-amber-50 text-amber-800 border border-amber-200">
+                  <AlertCircle size={20} className="shrink-0" />
+                  <div className="text-xs">
+                    <p className="font-bold uppercase tracking-wider mb-0.5">
+                      Atenção para usuários Gmail
+                    </p>
+                    <p>
+                      É OBRIGATÓRIO gerar uma "Senha de Aplicativo" nas
+                      configurações do Google. Sua senha comum não funcionará.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="md:col-span-3">
+                    <Input
+                      label="Servidor SMTP"
+                      name="smtpHost"
+                      value={formData.smtpHost || ""}
+                      onChange={handleChange}
+                      placeholder="Ex: smtp.gmail.com"
+                      icon={Server}
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <Input
+                      label="Porta"
+                      name="smtpPort"
+                      type="number"
+                      value={formData.smtpPort || ""}
+                      onChange={handleChange}
+                      placeholder="587"
+                      icon={Hash}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Input
+                      label="Usuário / E-mail do SMTP"
+                      name="smtpUser"
+                      value={formData.smtpUser || ""}
+                      onChange={handleChange}
+                      placeholder="Ex: oficina@gmail.com"
+                      icon={User}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Input
+                      label="Senha de Aplicativo / SMTP"
+                      name="smtpPass"
+                      type="password"
+                      value={formData.smtpPass || ""}
+                      onChange={handleChange}
+                      placeholder="••••••••••••••••"
+                      icon={Lock}
+                    />
+                  </div>
                 </div>
               </div>
             </Card>

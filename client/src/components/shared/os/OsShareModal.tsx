@@ -3,7 +3,7 @@ import { Modal } from "../../ui/Modal";
 import { Button } from "../../ui/Button";
 import { Printer, Mail, Send } from "lucide-react";
 import { toast } from "react-toastify";
-import { api } from "../../../services/api";
+import { OsService } from "../../../services/os.service";
 
 interface OsShareModalProps {
   osId: number | string;
@@ -39,10 +39,7 @@ export const OsShareModal = ({
 
     setLoading(true);
     try {
-      await api.post(`/ordem-de-servico/${osId}/enviar`, {
-        method: mode,
-        target,
-      });
+      await OsService.shareOs(osId, mode, target);
       toast.success(`Enviado com sucesso para ${target}`);
       onClose();
     } catch (error) {

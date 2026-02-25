@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
+import { FinanceiroService } from "../services/financeiro.service";
+import { FornecedorService } from "../services/fornecedor.service";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -98,15 +100,15 @@ export const PagamentoPecaPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [paymentsRes, fornecedoresRes, accountsRes] = await Promise.all([
-        api.get("/pagamento-peca"),
-        api.get("/fornecedor"),
-        api.get("/conta-bancaria"),
+      const [paymentsData, suppliersData, accountsData] = await Promise.all([
+        FinanceiroService.getPagamentosPeca(),
+        FornecedorService.getAll(),
+        FinanceiroService.getContasBancarias(),
       ]);
-      // BREAKING CHANGE: API now returns { data: [...], pagination: {...} }
-      setPayments(paymentsRes.data?.data || paymentsRes.data || []);
-      setFornecedores(fornecedoresRes.data);
-      setAccounts(accountsRes.data.filter((a: any) => a.ativo));
+
+      setPayments(paymentsData.data || paymentsData || []);
+      setFornecedores(suppliersData);
+      setAccounts(accountsData.filter((a: any) => a.ativo));
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados financeiros.");
@@ -157,7 +159,7 @@ export const PagamentoPecaPage = () => {
     if (!undoModal.id) return;
     try {
       setLoading(true);
-      await api.put(`/pagamento-peca/${undoModal.id}`, {
+      await FinanceiroService.updatePagamentoPeca(undoModal.id, {
         pago_ao_fornecedor: false,
       });
       toast.success("Pagamento estornado com sucesso!");
@@ -191,7 +193,7 @@ export const PagamentoPecaPage = () => {
     try {
       setLoading(true);
 
-      await api.post("/pagamento-peca/baixa", {
+      await FinanceiroService.baixaPagamentoPeca({
         ids: selectedIds,
         desconto_total_aplicado: data.discountValue,
         id_conta_bancaria: data.accountId,
@@ -220,7 +222,7 @@ export const PagamentoPecaPage = () => {
     if (!confirmDeleteId) return;
     try {
       setLoading(true);
-      await api.delete(`/pagamento-peca/${confirmDeleteId}`);
+      await FinanceiroService.deletePagamentoPeca(confirmDeleteId);
       toast.success("Pagamento excluído com sucesso!");
       loadData();
     } catch (error) {
@@ -235,17 +237,26 @@ export const PagamentoPecaPage = () => {
     if (!editPayment) return;
     try {
       setLoading(true);
-      await api.put(`/pagamento-peca/${editPayment.id_pagamento_peca}`, {
-        custo_real: Number(editPayment.custo_real),
-        id_fornecedor: Number(editPayment.id_fornecedor),
-        // Keep data_compra managed if needed, but for now we focus on payment date
-        data_compra: new Date(editPayment.data_compra),
-        data_pagamento_fornecedor: editPayment.data_pagamento_fornecedor
-          ? new Date(editPayment.data_pagamento_fornecedor)
-          : null,
-        pago_ao_fornecedor: editPayment.pago_ao_fornecedor,
-      });
+      await FinanceiroService.updatePagamentoPeca(
+        editPayment.id_pagamento_peca,
+        {
+          custo_real: Number(editPayment.custo_real),
+          id_fornecedor: Number(editPayment.id_fornecedor),
+          // Keep data_compra managed if needed, but for now we focus on payment date
+          data_compra: String(new Date(editPayment.data_compra).toISOString()),
+          data_pagamento_fornecedor: editPayment.data_pagamento_fornecedor
+            ? String(
+                new Date(editPayment.data_pagamento_fornecedor).toISOString(),
+              )
+            : null,
+          pago_ao_fornecedor: editPayment.pago_ao_fornecedor,
+        },
+      );
 
+      // We still use api for specific item update if service method missing or complex
+      // but let's check if OsService has something. Actually, let's keep it consistent.
+      // If there's no service for this specifically, maybe we should add it.
+      // For now, let's use the current pattern but maybe move this to OsItemsService.
       if (editPayment.item_os && editPayment.ref_nota) {
         await api.put(`/itens-os/${editPayment.item_os.id_iten}`, {
           codigo_referencia: editPayment.ref_nota,

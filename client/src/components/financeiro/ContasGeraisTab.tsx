@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
-import { api } from "../../services/api"; // Keep for categories/banks for now or move to service
 import { FinanceiroService } from "../../services/financeiro.service";
 import { Modal } from "../ui/Modal";
 import { ActionButton } from "../ui/ActionButton";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { CategoryManager } from "../shared/financeiro/CategoryManager";
-import { CategorySelector } from "../shared/financeiro/CategorySelector";
 import { Card } from "../ui/Card";
 import { toast } from "react-toastify";
 import {
@@ -18,26 +16,23 @@ import {
   Trash2,
   Edit,
   FileText,
-  Upload,
   User,
   Settings,
   Square,
   CheckSquare,
 } from "lucide-react";
-import type { IContaPagar } from "../../types/financeiro.types";
-import type { IRecurrenceInfo } from "../../types/backend";
+import type { IContasPagar } from "../../types/backend";
+import { ContaPagarModal } from "./ContaPagarModal";
 
 interface ContasGeraisTabProps {
   onUpdate: () => void;
-  // If we want to lift state up we can, but for now filtering is local to this tab
 }
 
 export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
-  const [contas, setContas] = useState<IContaPagar[]>([]);
+  const [contas, setContas] = useState<IContasPagar[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Categories
-  const [categories, setCategories] = useState<any[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Filters
@@ -54,21 +49,6 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
   // Modal & Form
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    descricao: "",
-    credor: "",
-    categoria: "OUTROS",
-    id_categoria: undefined as number | undefined,
-    valor: "",
-    dt_emissao: "",
-    dt_vencimento: "",
-    num_documento: "",
-    status: "PENDENTE",
-    dt_pagamento: "",
-    url_anexo: "",
-    obs: "",
-    repetir_parcelas: 0,
-  });
 
   // Payment Confirmation Modal
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -82,31 +62,15 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [deleteAllRecurrences, setDeleteAllRecurrences] = useState(false);
 
-  // Recurrence Management
-  const [recurrenceInfo, setRecurrenceInfo] = useState<IRecurrenceInfo | null>(
-    null,
-  );
-  const [applyToAllRecurrences, setApplyToAllRecurrences] = useState(false);
-
   useEffect(() => {
     loadContas();
     loadAccounts();
-    loadCategories();
   }, []);
-
-  const loadCategories = async () => {
-    try {
-      const res = await api.get("/categoria-financeira");
-      setCategories(res.data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const loadAccounts = async () => {
     try {
-      const res = await api.get("/conta-bancaria");
-      setBankAccounts(res.data);
+      const data = await FinanceiroService.getContasBancarias();
+      setBankAccounts(data);
     } catch (e) {
       console.error(e);
     }
@@ -121,47 +85,6 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
       toast.error("Erro ao carregar contas.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const payload: any = {
-        ...formData,
-        valor: Number(formData.valor),
-        applyToAllRecurrences, // Add flag for series update
-        // Enforce NULL payment date if status is not PAGO
-        dt_pagamento:
-          formData.status === "PAGO"
-            ? formData.dt_pagamento
-              ? new Date(formData.dt_pagamento).toISOString()
-              : new Date().toISOString()
-            : null,
-        dt_vencimento: new Date(formData.dt_vencimento).toISOString(),
-        dt_emissao: formData.dt_emissao
-          ? new Date(formData.dt_emissao).toISOString()
-          : null,
-      };
-
-      if (editingId) {
-        await FinanceiroService.updateContaPagar(editingId, payload);
-        toast.success(
-          applyToAllRecurrences
-            ? "Série de contas atualizada com sucesso!"
-            : "Conta atualizada com sucesso!",
-        );
-      } else {
-        await FinanceiroService.createContaPagar(payload);
-        toast.success("Conta lançada com sucesso!");
-      }
-      setModalOpen(false);
-      resetForm();
-      loadContas();
-      onUpdate();
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro ao salvar conta.");
     }
   };
 
@@ -199,9 +122,6 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
         status: "PAGO",
         valor: Number(paymentValue),
         dt_pagamento: new Date(paymentDate).toISOString(),
-        // id_conta_bancaria: selectedBank || null, // Ensure backend supports this field if added to interface
-        // Note: IContaPagar interface might strictly not have id_conta_bancaria unless added,
-        // but backend likely accepts it. We'll cast to any if needed or update interface.
       } as any);
 
       toast.success("Conta marcada como PAGA.");
@@ -213,63 +133,13 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
     }
   };
 
-  const handleEdit = async (conta: IContaPagar) => {
+  const handleEdit = (conta: IContasPagar) => {
     setEditingId(conta.id_conta_pagar);
-
-    // Load recurrence information
-    try {
-      const info = await FinanceiroService.getRecurrenceInfo(
-        conta.id_conta_pagar,
-      );
-      setRecurrenceInfo(info);
-    } catch (error) {
-      setRecurrenceInfo(null);
-    }
-
-    setFormData({
-      descricao: conta.descricao,
-      credor: conta.credor || "",
-      categoria: conta.categoria || "OUTROS",
-      id_categoria: conta.id_categoria || undefined,
-      valor: Number(conta.valor).toFixed(2),
-      dt_emissao: conta.dt_emissao
-        ? new Date(conta.dt_emissao).toISOString().split("T")[0]
-        : "",
-      dt_vencimento: new Date(conta.dt_vencimento).toISOString().split("T")[0],
-      num_documento: conta.num_documento || "",
-      status: conta.status,
-      dt_pagamento: conta.dt_pagamento
-        ? new Date(conta.dt_pagamento).toISOString().split("T")[0]
-        : "",
-      url_anexo: conta.url_anexo || "",
-      obs: conta.obs || "",
-      repetir_parcelas: 0,
-    });
-    setApplyToAllRecurrences(false);
     setModalOpen(true);
   };
 
-  const resetForm = () => {
-    setEditingId(null);
-    setFormData({
-      descricao: "",
-      credor: "",
-      categoria: "OUTROS",
-      id_categoria: undefined,
-      valor: "",
-      dt_emissao: new Date().toISOString().split("T")[0],
-      dt_vencimento: new Date().toISOString().split("T")[0], // Default today
-      num_documento: "",
-      status: "PENDENTE",
-      dt_pagamento: "",
-      url_anexo: "",
-      obs: "",
-      repetir_parcelas: 0,
-    });
-  };
-
   const openNewModal = () => {
-    resetForm();
+    setEditingId(null);
     setModalOpen(true);
   };
 
@@ -336,7 +206,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
         onUpdate={() => {
-          loadCategories();
+          onUpdate();
         }}
       />
 
@@ -550,7 +420,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                   <td className="p-4">
                     <div className="font-bold text-neutral-900">
                       {conta.descricao}
-                      {conta.id_recorrencia && (
+                      {conta.id_grupo_recorrencia && (
                         <span className="ml-2 text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
                           Recorrente
                         </span>
@@ -730,194 +600,15 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
         </Modal>
       )}
 
-      {/* EDIT/NEW MODAL */}
-      {modalOpen && (
-        <Modal
-          title={editingId ? "Editar Conta" : "Nova Conta a Pagar"}
-          onClose={() => setModalOpen(false)}
-          className="max-w-2xl"
-        >
-          <form onSubmit={handleSave} className="space-y-6 pt-4">
-            {/* 1. Descrição & Credor */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Descrição / Título"
-                required
-                value={formData.descricao}
-                onChange={(e) =>
-                  setFormData({ ...formData, descricao: e.target.value })
-                }
-                placeholder="Ex: Compra Material Limpeza"
-              />
-              <Input
-                label="Credor"
-                value={formData.credor}
-                onChange={(e) =>
-                  setFormData({ ...formData, credor: e.target.value })
-                }
-                placeholder="Ex: Fornecedor X"
-              />
-            </div>
-
-            {/* 2. Categoria & Valor & Repetição */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="md:col-span-12 lg:col-span-5">
-                <CategorySelector
-                  categories={categories}
-                  value={formData.id_categoria}
-                  onChange={(id, nome) => {
-                    // Find the category object to check for parent
-                    const cat = categories.find((c) => c.id_categoria === id);
-                    let fullCategoryName = nome;
-
-                    if (cat && cat.parentId) {
-                      const parent = categories.find(
-                        (c) => c.id_categoria === cat.parentId,
-                      );
-                      if (parent) {
-                        fullCategoryName = `${parent.nome} - ${nome}`;
-                      }
-                    }
-
-                    setFormData({
-                      ...formData,
-                      id_categoria: id,
-                      categoria: fullCategoryName,
-                    });
-                  }}
-                  type="AMBOS"
-                  required
-                />
-              </div>
-
-              <div className="md:col-span-6 lg:col-span-3">
-                <Input
-                  label="Repetir (Meses)"
-                  type="number"
-                  min={0}
-                  max={60}
-                  value={formData.repetir_parcelas}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      repetir_parcelas: Number(e.target.value),
-                    })
-                  }
-                  placeholder="0"
-                  title="Cria cópias desta conta para os próximos meses"
-                />
-              </div>
-
-              <div className="md:col-span-6 lg:col-span-4">
-                <Input
-                  label="Valor do Título (R$)"
-                  type="number"
-                  step="0.01"
-                  required
-                  value={formData.valor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, valor: e.target.value })
-                  }
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            {/* 3. Datas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Data de Emissão"
-                type="date"
-                value={formData.dt_emissao}
-                onChange={(e) =>
-                  setFormData({ ...formData, dt_emissao: e.target.value })
-                }
-              />
-              <Input
-                label="Data de Vencimento"
-                type="date"
-                required
-                value={formData.dt_vencimento}
-                onChange={(e) =>
-                  setFormData({ ...formData, dt_vencimento: e.target.value })
-                }
-              />
-            </div>
-
-            {/* 4. Documento & Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Número do Documento"
-                value={formData.num_documento}
-                onChange={(e) =>
-                  setFormData({ ...formData, num_documento: e.target.value })
-                }
-                placeholder="Nota Fiscal / Boleto"
-              />
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-                  Status
-                </label>
-                <select
-                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value })
-                  }
-                >
-                  <option value="PENDENTE">Pendente</option>
-                  <option value="PAGO">Pago</option>
-                </select>
-              </div>
-            </div>
-
-            {/* 5. Anexos Only */}
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-              <Input
-                label="Arquivos / Anexos (URL)"
-                icon={Upload}
-                value={formData.url_anexo}
-                onChange={(e) =>
-                  setFormData({ ...formData, url_anexo: e.target.value })
-                }
-                placeholder="https://..."
-              />
-            </div>
-
-            {/* 6. Recurrence Update Option */}
-            {editingId && recurrenceInfo && (
-              <div className="bg-blue-50 p-3 rounded-lg flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="editSeries"
-                  checked={applyToAllRecurrences}
-                  onChange={(e) => setApplyToAllRecurrences(e.target.checked)}
-                  className="rounded border-blue-400 text-blue-600 focus:ring-blue-500"
-                />
-                <label
-                  htmlFor="editSeries"
-                  className="text-sm font-bold text-blue-800"
-                >
-                  Aplicar alterações para toda a série (Recorrência)?
-                </label>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 mt-6">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setModalOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" variant="primary">
-                Salvar Conta
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      <ContaPagarModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={() => {
+          loadContas();
+          onUpdate();
+        }}
+        editingId={editingId}
+      />
     </div>
   );
 };

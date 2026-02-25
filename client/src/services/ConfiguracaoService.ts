@@ -12,6 +12,10 @@ export type Configuracao = {
   telefone?: string;
   email?: string;
   logoUrl?: string; // URL from backend
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
 };
 
 export const ConfiguracaoService = {

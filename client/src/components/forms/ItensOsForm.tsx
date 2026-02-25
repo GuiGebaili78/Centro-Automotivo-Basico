@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { api } from "../../services/api";
+import { OsItemsService } from "../../services/osItems.service";
 
 interface ItensOsFormProps {
   osId: number;
@@ -52,9 +52,9 @@ export const ItensOsForm = ({
         valor_total: Number(valorTotal),
       };
 
-      const response = await api.post("/itens-os", payload);
+      const newItem = await OsItemsService.create(payload);
       alert("Item adicionado à OS com sucesso!");
-      onSuccess(response.data);
+      onSuccess(newItem);
     } catch (error) {
       console.error(error);
       alert("Erro ao adicionar item à OS.");

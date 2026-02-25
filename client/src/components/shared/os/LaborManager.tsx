@@ -16,6 +16,9 @@ interface LaborManagerProps {
   employees: any[];
   readOnly?: boolean;
   onTotalChange?: (total: number) => void;
+  onAddLabor?: (data: any) => Promise<boolean>;
+  onUpdateLabor?: (id: number | string, data: any) => Promise<boolean>;
+  onDeleteLabor?: (id: number | string) => Promise<boolean>;
 }
 
 export const LaborManager: React.FC<LaborManagerProps> = ({
@@ -26,6 +29,9 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
   employees,
   readOnly = false,
   onTotalChange,
+  onAddLabor,
+  onUpdateLabor,
+  onDeleteLabor,
 }) => {
   const [laborServices, setLaborServices] =
     useState<ILaborService[]>(initialData);
@@ -127,7 +133,11 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             descricao: newItem.descricao,
             categoria: newItem.categoria,
           };
-          await OsService.updateLabor(editingLaborId, payload);
+          if (onUpdateLabor) {
+            await onUpdateLabor(editingLaborId, payload);
+          } else {
+            await OsService.updateLabor(editingLaborId as number, payload);
+          }
           setStatusMsg({ type: "success", text: "Mão de obra atualizada!" });
         } else {
           const payload = {
@@ -137,7 +147,11 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             descricao: newItem.descricao,
             categoria: newItem.categoria,
           };
-          await OsService.addLabor(payload);
+          if (onAddLabor) {
+            await onAddLabor(payload);
+          } else {
+            await OsService.addLabor(payload);
+          }
           setStatusMsg({ type: "success", text: "Mão de obra adicionada!" });
         }
 
@@ -200,9 +214,13 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
   const handleDeleteLabor = async (id: number | string) => {
     if (mode === "api") {
       // In API mode, we expect a real numeric ID
-      if (!id || typeof id !== "number") return;
+      if (!id) return;
       try {
-        await OsService.deleteLabor(id);
+        if (onDeleteLabor) {
+          await onDeleteLabor(id);
+        } else {
+          await OsService.deleteLabor(Number(id));
+        }
         setStatusMsg({ type: "success", text: "Removido!" });
         if (onChange) onChange([]); // Trigger parent reload
         setTimeout(() => setStatusMsg({ type: null, text: "" }), 1500);

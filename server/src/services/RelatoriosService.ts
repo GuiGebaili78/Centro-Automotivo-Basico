@@ -79,57 +79,76 @@ export class RelatoriosService {
     // Calcular diferença em meses para médias (mínimo 1)
     const diffMeses = Math.max(1, differenceInMonths(endDate, startDate));
 
-    // 1. Fetch OS Finalizadas
-    const osList = await prisma.ordemDeServico.findMany({
+    // 1. Receita e MO (OS)
+    const osAgg = await prisma.ordemDeServico.aggregate({
       where: {
         status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
         updated_at: { gte: start, lte: end },
+        deleted_at: null,
       },
-      include: {
-        itens_os: {
-          include: {
-            pecas_estoque: true,
-            pagamentos_peca: true,
-          },
-        },
-        servicos_mao_de_obra: true,
-        fechamento_financeiro: true,
+      _sum: {
+        valor_total_cliente: true,
+        valor_mao_de_obra: true,
       },
     });
 
-    let receitaTotal = 0;
-    let receitaMaoDeObra = 0;
-    let receitaPecasEstoque = 0;
-    let receitaPecasTerceiros = 0;
+    const receitaTotal = Number(osAgg._sum?.valor_total_cliente || 0);
+    const receitaMaoDeObra = Number(osAgg._sum?.valor_mao_de_obra || 0);
 
-    let custoPecasEstoque = 0;
-    let custoPecasTerceiros = 0;
+    // 2. Custos e Receita de Peças de Terceiros (Itens com PagamentoPeca)
+    // Custo: Soma de PagamentoPeca.custo_real
+    const custoTerceirosAgg = await prisma.pagamentoPeca.aggregate({
+      where: {
+        deleted_at: null,
+        item_os: {
+          ordem_de_servico: {
+            status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
+            updated_at: { gte: start, lte: end },
+          },
+        },
+      },
+      _sum: { custo_real: true },
+    });
 
-    // Cálculo detalhado OS a OS
-    for (const os of osList) {
-      receitaTotal += Number(os.valor_total_cliente || 0);
-      receitaMaoDeObra += Number(os.valor_mao_de_obra || 0);
+    const custoPecasTerceiros = Number(custoTerceirosAgg._sum?.custo_real || 0);
 
-      for (const item of os.itens_os) {
-        const valorVendaItem = Number(item.valor_total || 0);
+    // Receita Terceiros: Soma de ItensOs.valor_total onde existe pagamento_peca
+    const receitaTerceirosAgg = await prisma.itensOs.aggregate({
+      where: {
+        deleted_at: null,
+        pagamentos_peca: { some: {} },
+        ordem_de_servico: {
+          status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
+          updated_at: { gte: start, lte: end },
+        },
+      },
+      _sum: { valor_total: true },
+    });
+    const receitaPecasTerceiros = Number(
+      receitaTerceirosAgg._sum?.valor_total || 0,
+    );
 
-        // Peças de terceiros = tem pagamento_peca vinculado (comprado fora)
-        if (item.pagamentos_peca && item.pagamentos_peca.length > 0) {
-          receitaPecasTerceiros += valorVendaItem;
-          const custoReal = item.pagamentos_peca.reduce(
-            (c, pp) => c + Number(pp.custo_real || 0),
-            0,
-          );
-          custoPecasTerceiros += custoReal;
-        } else {
-          // Peças de estoque
-          receitaPecasEstoque += valorVendaItem;
-          const custoUnit = Number(item.pecas_estoque?.valor_custo || 0);
-          const quantidade = Number(item.quantidade || 0);
-          custoPecasEstoque += custoUnit * quantidade;
-        }
-      }
-    }
+    // 3. Peças de Estoque (Diferença)
+    // Receita Estoque = Receita Total - Receita MO - Receita Terceiros
+    const receitaPecasEstoque = Math.max(
+      0,
+      receitaTotal - receitaMaoDeObra - receitaPecasTerceiros,
+    );
+
+    // Custo Estoque: Query bruta para (A * B)
+    // Note: Usando nomes de tabelas em snake_case conforme mapeado no schema.prisma (@map)
+    const custoEstoqueQuery: any[] = await prisma.$queryRaw`
+      SELECT SUM(CAST(i.quantidade AS DECIMAL) * CAST(p.valor_custo AS DECIMAL)) as total_custo
+      FROM "itens_os" i
+      JOIN "ordem_de_servico" o ON i.id_os = o.id_os
+      JOIN "pecas_estoque" p ON i.id_pecas_estoque = p.id_pecas_estoque
+      LEFT JOIN "pagamento_peca" pp ON pp.id_item_os = i.id_iten
+      WHERE o.status IN ('FINALIZADA', 'PAGA_CLIENTE', 'FINANCEIRO')
+        AND o.updated_at BETWEEN ${start} AND ${end}
+        AND i.deleted_at IS NULL
+        AND pp.id_pagamento_peca IS NULL
+    `;
+    const custoPecasEstoque = Number(custoEstoqueQuery[0]?.total_custo || 0);
 
     // 2. Despesas (Contas Pagar + Equipe)
     const despesasContas = await prisma.contasPagar.findMany({
@@ -578,153 +597,69 @@ export class RelatoriosService {
     const start = startOfDay(startDate);
     const end = endOfDay(endDate);
 
-    const allOs = await prisma.ordemDeServico.findMany({
-      where: {
-        status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
-        updated_at: { gte: start, lte: end },
-      },
-      select: { updated_at: true, valor_total_cliente: true },
+    let interval = "day";
+    if (groupBy === "month") interval = "month";
+    else if (groupBy === "quarter") interval = "quarter";
+    else if (groupBy === "year") interval = "year";
+    // SQL for semester is tricky, but let's handle month and group manually if needed
+    // or just use month for base and group in JS (which is small enough)
+    // Actually, SQL for year/quarter/month is supported by DATE_TRUNC.
+
+    // Using UNION ALL for direct database aggregation
+    const data: any[] = await prisma.$queryRaw`
+      SELECT 
+        DATE_TRUNC(${interval}, combined.dt) as date,
+        SUM(combined.receita)::FLOAT as receita,
+        SUM(combined.despesa)::FLOAT as despesa
+      FROM (
+        SELECT updated_at as dt, CAST(valor_total_cliente AS DECIMAL) as receita, 0 as despesa 
+        FROM "ordem_de_servico" 
+        WHERE status IN ('FINALIZADA', 'PAGA_CLIENTE', 'FINANCEIRO') 
+          AND deleted_at IS NULL
+          AND updated_at BETWEEN ${start} AND ${end}
+
+        UNION ALL
+
+        SELECT dt_pagamento as dt, 0 as receita, CAST(valor AS DECIMAL) as despesa 
+        FROM "contas_pagar" 
+        WHERE status = 'PAGO' 
+          AND deleted_at IS NULL
+          AND dt_pagamento BETWEEN ${start} AND ${end}
+
+        UNION ALL
+
+        SELECT dt_pagamento as dt, 0 as receita, CAST(valor_total AS DECIMAL) as despesa 
+        FROM "pagamento_equipe" 
+        WHERE deleted_at IS NULL
+          AND dt_pagamento BETWEEN ${start} AND ${end}
+      ) as combined
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `;
+
+    return data.map((row) => {
+      const d = new Date(row.date);
+      let label = "";
+
+      if (groupBy === "month") {
+        label = format(d, "MMM/yy", { locale: ptBR });
+      } else if (groupBy === "quarter") {
+        const q = Math.floor(d.getMonth() / 3) + 1;
+        label = `${q}º Tri/${d.getFullYear()}`;
+      } else if (groupBy === "year") {
+        label = `${d.getFullYear()}`;
+      } else {
+        label = format(d, "dd/MM");
+      }
+
+      return {
+        label,
+        receita: row.receita || 0,
+        despesa: row.despesa || 0,
+        lucro: (row.receita || 0) - (row.despesa || 0),
+        sortKey: row.date,
+      };
     });
-
-    const despesas = await prisma.contasPagar.findMany({
-      where: {
-        status: "PAGO",
-        dt_pagamento: { gte: start, lte: end },
-      },
-      select: { dt_pagamento: true, valor: true },
-    });
-
-    const equipe = await prisma.pagamentoEquipe.findMany({
-      where: { dt_pagamento: { gte: start, lte: end } },
-      select: { dt_pagamento: true, valor_total: true },
-    });
-
-    const map = new Map<
-      string,
-      {
-        label: string;
-        receita: number;
-        despesa: number;
-        lucro: number;
-        sortKey: string;
-      }
-    >();
-
-    // ── Inicializa buckets de acordo com o agrupamento ──────────────────────
-    if (groupBy === "month") {
-      // Itera mês a mês no intervalo
-      let cursor = startOfMonth(start);
-      while (cursor <= end) {
-        const key = format(cursor, "yyyy-MM");
-        map.set(key, {
-          label: format(cursor, "MMM/yy", { locale: ptBR }),
-          receita: 0,
-          despesa: 0,
-          lucro: 0,
-          sortKey: key,
-        });
-        cursor = addMonths(cursor, 1);
-      }
-    } else if (groupBy === "quarter") {
-      let cursor = startOfQuarter(start);
-      while (cursor <= end) {
-        const q = getQuarter(cursor);
-        const y = cursor.getFullYear();
-        const key = `${y}-Q${q}`;
-        if (!map.has(key)) {
-          map.set(key, {
-            label: `${q}º Tri/${y}`,
-            receita: 0,
-            despesa: 0,
-            lucro: 0,
-            sortKey: key,
-          });
-        }
-        cursor = addMonths(cursor, 3);
-      }
-    } else if (groupBy === "semester") {
-      // Semestre: S1 = Jan-Jun, S2 = Jul-Dez
-      let cursor = startOfMonth(start);
-      while (cursor <= end) {
-        const m = cursor.getMonth(); // 0-indexed
-        const s = m < 6 ? 1 : 2;
-        const y = cursor.getFullYear();
-        const key = `${y}-S${s}`;
-        if (!map.has(key)) {
-          map.set(key, {
-            label: `${s}º Sem/${y}`,
-            receita: 0,
-            despesa: 0,
-            lucro: 0,
-            sortKey: key,
-          });
-        }
-        cursor = addMonths(cursor, 1);
-      }
-    } else {
-      // year
-      let cursor = startOfMonth(start);
-      while (cursor <= end) {
-        const y = cursor.getFullYear();
-        const key = `${y}`;
-        if (!map.has(key)) {
-          map.set(key, {
-            label: `${y}`,
-            receita: 0,
-            despesa: 0,
-            lucro: 0,
-            sortKey: key,
-          });
-        }
-        cursor = addMonths(cursor, 1);
-      }
-    }
-
-    // ── Função de chave por data ─────────────────────────────────────────────
-    const getKey = (date: Date): string | null => {
-      if (!date) return null;
-      if (groupBy === "month") return format(date, "yyyy-MM");
-      if (groupBy === "quarter") {
-        return `${date.getFullYear()}-Q${getQuarter(date)}`;
-      }
-      if (groupBy === "semester") {
-        const s = date.getMonth() < 6 ? 1 : 2;
-        return `${date.getFullYear()}-S${s}`;
-      }
-      // year
-      return `${date.getFullYear()}`;
-    };
-
-    const processItem = (
-      item: any,
-      dateField: string,
-      type: "receita" | "despesa",
-      valField: string,
-    ) => {
-      const d = item[dateField];
-      if (!d) return;
-      const key = getKey(new Date(d));
-      if (key && map.has(key)) {
-        const entry = map.get(key)!;
-        entry[type] += Number(item[valField] || 0);
-      }
-    };
-
-    allOs.forEach((i) =>
-      processItem(i, "updated_at", "receita", "valor_total_cliente"),
-    );
-    despesas.forEach((i) => processItem(i, "dt_pagamento", "despesa", "valor"));
-    equipe.forEach((i) =>
-      processItem(i, "dt_pagamento", "despesa", "valor_total"),
-    );
-
-    Array.from(map.values()).forEach((val) => {
-      val.lucro = val.receita - val.despesa;
-    });
-
-    return Array.from(map.values()).sort((a, b) =>
-      a.sortKey.localeCompare(b.sortKey),
-    );
   }
 }
 

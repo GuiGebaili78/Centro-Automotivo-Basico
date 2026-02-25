@@ -2,7 +2,11 @@ import { useState, useEffect, type FormEvent } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { getStatusStyle } from "../../utils/osUtils";
 import { useNavigate } from "react-router-dom";
-import { api } from "../../services/api";
+import { FinanceiroService } from "../../services/financeiro.service";
+import { FornecedorService } from "../../services/fornecedor.service";
+import { ColaboradorService } from "../../services/colaborador.service";
+import { OsService } from "../../services/os.service";
+import { OsItemsService } from "../../services/osItems.service";
 import type {
   IOrdemDeServicoDetalhada,
   IItemOsDetalhado,
@@ -82,7 +86,7 @@ export const FechamentoFinanceiroForm = ({
       message: "Tem certeza que deseja excluir este pagamento?",
       onConfirm: async () => {
         try {
-          await api.delete(`/pagamento-cliente/${id}`);
+          await FinanceiroService.deletePagamentoCliente(id);
           setStatusMsg({ type: "success", text: "Pagamento removido!" });
           if (osData) fetchOsData(osData.id_os);
         } catch (error) {
@@ -114,8 +118,8 @@ export const FechamentoFinanceiroForm = ({
 
   const loadFornecedores = async () => {
     try {
-      const response = await api.get("/fornecedor");
-      setFornecedores(response.data);
+      const data = await FornecedorService.getAll();
+      setFornecedores(data);
     } catch (error) {
       console.error("Erro ao carregar fornecedores");
     }
@@ -123,9 +127,9 @@ export const FechamentoFinanceiroForm = ({
 
   const loadEmployees = async () => {
     try {
-      const response = await api.get("/funcionario");
+      const data = await ColaboradorService.getAll();
       // Ensure we map to the format expected by select options or LaborManager
-      setEmployees(response.data);
+      setEmployees(data);
     } catch (error) {
       console.error("Erro ao carregar funcionários");
     }
@@ -135,9 +139,8 @@ export const FechamentoFinanceiroForm = ({
     setFetchingOs(true);
     setStatusMsg({ type: null, text: "" });
     try {
-      const response = await api.get(`/ordem-de-servico/${id}`);
-      const os: IOrdemDeServicoDetalhada = response.data;
-      setOsData(os);
+      const os = await OsService.getById(id);
+      setOsData(os as any);
 
       const initialItemsState: Record<number, ItemFinanceiroState> = {};
       os.itens_os.forEach((item: IItemOsDetalhado) => {
@@ -202,18 +205,18 @@ export const FechamentoFinanceiroForm = ({
       };
 
       if (partialState.id_pagamento_peca) {
-        await api.put(
-          `/pagamento-peca/${partialState.id_pagamento_peca}`,
+        await FinanceiroService.updatePagamentoPeca(
+          partialState.id_pagamento_peca,
           payload,
         );
       } else {
-        const res = await api.post("/pagamento-peca", payload);
+        const data = await FinanceiroService.createPagamentoPeca(payload);
         // Update the state with the new ID to avoid duplicates on next save
         setItemsState((prev) => ({
           ...prev,
           [id_iten]: {
             ...prev[id_iten],
-            id_pagamento_peca: res.data.id_pagamento_peca,
+            id_pagamento_peca: data.id_pagamento_peca,
           },
         }));
       }
@@ -267,7 +270,7 @@ export const FechamentoFinanceiroForm = ({
         Number(editItem.quantidade) *
         Number((editItem as any).valor_venda_unitario);
 
-      await api.put(`/itens-os/${editItem.id_iten}`, {
+      await OsItemsService.update(editItem.id_iten, {
         descricao: editItem.descricao,
         quantidade: Number(editItem.quantidade),
         valor_venda: Number((editItem as any).valor_venda_unitario),
@@ -292,7 +295,7 @@ export const FechamentoFinanceiroForm = ({
       message: "Tem certeza que deseja remover este item da OS?",
       onConfirm: async () => {
         try {
-          await api.delete(`/itens-os/${id}`);
+          await OsItemsService.delete(id);
           setStatusMsg({ type: "success", text: "Item removido com sucesso!" });
           if (osData) fetchOsData(osData.id_os);
         } catch (error) {
@@ -350,9 +353,9 @@ export const FechamentoFinanceiroForm = ({
         return;
       }
 
-      // 1. Processar Pagamentos (Upsert)
-      const pagamentoPromises = osData.itens_os.map(
-        async (item: IItemOsDetalhado) => {
+      // 1. Preparar Itens de Peças (UPSET no Backend via Consolidação)
+      const itemsPecas = osData.itens_os
+        .map((item: IItemOsDetalhado) => {
           const st = itemsState[item.id_iten];
 
           // Validação de preenchimento dos custos (Ignorar se for peça de estoque)
@@ -368,35 +371,23 @@ export const FechamentoFinanceiroForm = ({
             );
           }
 
-          // Salvar apenas se NÃO for peca de estoque
           if (
             st &&
             st.id_fornecedor &&
             Number(st.custo_real) > 0 &&
             !item.pecas_estoque
           ) {
-            const payload = {
+            return {
+              id_pagamento_peca: st.id_pagamento_peca,
               id_item_os: item.id_iten,
               id_fornecedor: Number(st.id_fornecedor),
               custo_real: Number(st.custo_real),
-              data_compra: new Date().toISOString(),
               pago_ao_fornecedor: st.pago_fornecedor,
             };
-
-            if (st.id_pagamento_peca) {
-              return api.put(
-                `/pagamento-peca/${st.id_pagamento_peca}`,
-                payload,
-              );
-            } else {
-              return api.post("/pagamento-peca", payload);
-            }
           }
           return null;
-        },
-      );
-
-      await Promise.all(pagamentoPromises);
+        })
+        .filter(Boolean);
 
       // 2. Atualizar status da OS para PRONTO PARA FINANCEIRO (ANTES de consolidar)
       if (
@@ -404,7 +395,7 @@ export const FechamentoFinanceiroForm = ({
         osData.status !== "PRONTO PARA FINANCEIRO"
       ) {
         try {
-          await api.put(`/ordem-de-servico/${idOs}`, {
+          await OsService.update(Number(idOs), {
             status: "PRONTO PARA FINANCEIRO",
             valor_final: totalReceita,
             valor_pecas: totalItemsRevenue,
@@ -418,27 +409,27 @@ export const FechamentoFinanceiroForm = ({
       const consolidarPayload = {
         idOs: Number(idOs),
         custoTotalPecasReal: totalCusto,
+        itemsPecas, // Enviando tudo de uma vez
       };
 
-      let response;
+      let result;
       if (osData.fechamento_financeiro) {
         // Se já existe fechamento, apenas atualiza os custos
-        response = await api.put(
-          `/fechamento-financeiro/${osData.fechamento_financeiro.id_fechamento_financeiro}`,
+        result = await FinanceiroService.updateFechamento(
+          osData.fechamento_financeiro.id_fechamento_financeiro,
           {
             id_os: Number(idOs),
             custo_total_pecas_real: totalCusto,
+            itemsPecas,
           },
         );
       } else {
         // Se não existe, CONSOLIDA (cria fechamento + lançamentos no caixa + atualiza saldos + cria recebíveis)
-        response = await api.post(
-          "/fechamento-financeiro/consolidar",
-          consolidarPayload,
-        );
+        result =
+          await FinanceiroService.consolidarFechamento(consolidarPayload);
       }
 
-      onSuccess(response.data);
+      onSuccess(result);
       navigate("/");
     } catch (error: any) {
       console.error(error);
@@ -1022,13 +1013,13 @@ export const FechamentoFinanceiroForm = ({
                     if (!osData) return;
                     try {
                       if (osData.fechamento_financeiro) {
-                        await api.delete(
-                          `/fechamento-financeiro/${osData.fechamento_financeiro.id_fechamento_financeiro}`,
+                        await FinanceiroService.deleteFechamento(
+                          osData.fechamento_financeiro.id_fechamento_financeiro,
                         );
                       }
-                      await api.put(`/ordem-de-servico/${osData.id_os}`, {
+                      await OsService.update(osData.id_os, {
                         status: "ABERTA",
-                        valor_mao_de_obra: osData.valor_mao_de_obra,
+                        valor_mao_de_obra: Number(osData.valor_mao_de_obra),
                       });
                       setStatusMsg({
                         type: "success",

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { api } from "../services/api";
+import { FinanceiroService } from "../services/financeiro.service";
 import { CategoryManager } from "../components/shared/financeiro/CategoryManager";
 import {
   ArrowLeft,
@@ -66,8 +66,8 @@ export const ExtratoBancarioPage = () => {
 
   const loadCategories = async () => {
     try {
-      const res = await api.get("/categoria-financeira");
-      setCategories(res.data);
+      const data = await FinanceiroService.getCategoriasFinanceiras();
+      setCategories(data);
     } catch (error) {
       console.error("Erro ao carregar categorias:", error);
     }
@@ -76,18 +76,18 @@ export const ExtratoBancarioPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [contaRes, movRes] = await Promise.all([
-        api.get("/conta-bancaria"),
-        api.get("/livro-caixa"),
+      const [contas, movs] = await Promise.all([
+        FinanceiroService.getContasBancarias(),
+        FinanceiroService.getLivroCaixa(),
       ]);
 
-      const contaFound = contaRes.data.find(
+      const contaFound = contas.find(
         (c: any) => c.id_conta === Number(idConta),
       );
       setConta(contaFound || null);
 
       // 1. Livro Caixa (Manuais ou Automáticos que geraram registro) - FONTE ÚNICA
-      const entriesLivro = movRes.data
+      const entriesLivro = movs
         .filter((m: any) => m.id_conta_bancaria === Number(idConta))
         .map((m: any) => ({
           id: `cx-${m.id_livro_caixa}`,
@@ -584,7 +584,7 @@ export const ExtratoBancarioPage = () => {
               e.preventDefault();
               try {
                 setFormLoading(true);
-                await api.post("/livro-caixa", {
+                await FinanceiroService.createLivroCaixa({
                   ...formData,
                   id_conta_bancaria: Number(idConta),
                   origem: "MANUAL",

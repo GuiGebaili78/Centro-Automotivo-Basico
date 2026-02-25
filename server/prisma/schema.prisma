@@ -547,6 +547,10 @@ model Configuracao {
   telefone        String?  @db.VarChar(20)
   email           String?  @db.VarChar(100)
   logoUrl         String?  @db.VarChar(500) // URL/Path to the uploaded logo
+  smtpHost        String?  @db.VarChar(100)
+  smtpPort        Int?
+  smtpUser        String?  @db.VarChar(100)
+  smtpPass        String?  @db.VarChar(100)
   createdAt       DateTime @default(now()) @db.Timestamp(6)
   updatedAt       DateTime @updatedAt @db.Timestamp(6)
 

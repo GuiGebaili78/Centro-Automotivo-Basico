@@ -7,6 +7,8 @@ interface ActionButtonProps {
   onClick: (e: React.MouseEvent) => void;
   variant?: "primary" | "danger" | "accent" | "neutral";
   className?: string;
+  disabled?: boolean;
+  isLoading?: boolean;
 }
 
 export const ActionButton = ({
@@ -15,6 +17,8 @@ export const ActionButton = ({
   onClick,
   variant = "neutral",
   className = "",
+  disabled = false,
+  isLoading = false,
 }: ActionButtonProps) => {
   const variants = {
     primary: "text-primary-600 hover:bg-primary-50 hover:text-primary-700",
@@ -23,19 +27,22 @@ export const ActionButton = ({
     neutral: "text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600",
   };
 
+  const isBtnDisabled = disabled || isLoading;
+
   return (
     <div
-      className={`group/action relative inline-flex items-center justify-center ${className}`}
+      className={`group/action relative inline-flex items-center justify-center ${className} ${isBtnDisabled ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`}
     >
       <button
         type="button"
+        disabled={isBtnDisabled}
         onClick={(e) => {
           e.stopPropagation();
           onClick(e);
         }}
         className={`p-2 rounded-lg transition-all duration-200 ${variants[variant]}`}
       >
-        <Icon size={18} />
+        <Icon size={18} className={isLoading ? "animate-spin" : ""} />
       </button>
 
       {/* TOOLTIP: Otimizado */}

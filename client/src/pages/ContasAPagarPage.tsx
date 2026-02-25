@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
-import { api } from "../services/api";
-import { Modal } from "../components/ui/Modal";
+import { FinanceiroService } from "../services/financeiro.service";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { CategoryManager } from "../components/shared/financeiro/CategoryManager";
-import { CategorySelector } from "../components/shared/financeiro/CategorySelector";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
@@ -20,19 +18,18 @@ import {
   Trash2,
   Edit,
   FileText,
-  Upload,
   User,
   Link,
   Settings,
 } from "lucide-react";
-import type { IContasPagar, IRecurrenceInfo } from "../types/backend";
+import type { IContasPagar } from "../types/backend";
+import { ContaPagarModal } from "../components/financeiro/ContaPagarModal";
 
 export const ContasAPagarPage = () => {
   const [contas, setContas] = useState<IContasPagar[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Categories
-  const [categories, setCategories] = useState<any[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Filters
@@ -49,21 +46,6 @@ export const ContasAPagarPage = () => {
   // Modal & Form
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    descricao: "",
-    credor: "",
-    categoria: "OUTROS",
-    id_categoria: undefined as number | undefined,
-    valor: "",
-    dt_emissao: "",
-    dt_vencimento: "",
-    num_documento: "",
-    status: "PENDENTE",
-    dt_pagamento: "",
-    url_anexo: "",
-    obs: "",
-    repetir_parcelas: 0,
-  });
 
   // Payment Confirmation Modal
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -72,33 +54,17 @@ export const ContasAPagarPage = () => {
 
   // Confirm Delete Modal
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-
-  // Recurrence Management
-  const [recurrenceInfo, setRecurrenceInfo] = useState<IRecurrenceInfo | null>(
-    null,
-  );
-  const [applyToAllRecurrences, setApplyToAllRecurrences] = useState(false);
   const [deleteAllRecurrences, setDeleteAllRecurrences] = useState(false);
 
   useEffect(() => {
     loadContas();
     loadAccounts();
-    loadCategories();
   }, []);
-
-  const loadCategories = async () => {
-    try {
-      const res = await api.get("/categoria-financeira");
-      setCategories(res.data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const loadAccounts = async () => {
     try {
-      const res = await api.get("/conta-bancaria");
-      setBankAccounts(res.data);
+      const data = await FinanceiroService.getContasBancarias();
+      setBankAccounts(data);
     } catch (e) {
       console.error(e);
     }
@@ -107,8 +73,8 @@ export const ContasAPagarPage = () => {
   const loadContas = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/contas-pagar");
-      setContas(res.data);
+      const data = await FinanceiroService.getContasPagar();
+      setContas(data);
     } catch (error) {
       toast.error("Erro ao carregar contas.");
     } finally {
@@ -116,51 +82,12 @@ export const ContasAPagarPage = () => {
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const payload: any = {
-        ...formData,
-        valor: Number(formData.valor),
-        applyToAllRecurrences, // Add flag for series update
-        // Enforce NULL payment date if status is not PAGO
-        dt_pagamento:
-          formData.status === "PAGO"
-            ? formData.dt_pagamento
-              ? new Date(formData.dt_pagamento).toISOString()
-              : new Date().toISOString()
-            : null,
-        dt_vencimento: new Date(formData.dt_vencimento).toISOString(),
-        dt_emissao: formData.dt_emissao
-          ? new Date(formData.dt_emissao).toISOString()
-          : null,
-      };
-
-      if (editingId) {
-        await api.put(`/contas-pagar/${editingId}`, payload);
-        toast.success(
-          applyToAllRecurrences
-            ? "Série de contas atualizada com sucesso!"
-            : "Conta atualizada com sucesso!",
-        );
-      } else {
-        await api.post("/contas-pagar", payload);
-        toast.success("Conta lançada com sucesso!");
-      }
-      setModalOpen(false);
-      resetForm();
-      loadContas();
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro ao salvar conta.");
-    }
-  };
-
   const handleDelete = async () => {
     if (!confirmDeleteId) return;
     try {
-      await api.delete(
-        `/contas-pagar/${confirmDeleteId}${deleteAllRecurrences ? "?deleteAllRecurrences=true" : ""}`,
+      await FinanceiroService.deleteContaPagar(
+        confirmDeleteId,
+        deleteAllRecurrences,
       );
       toast.success(
         deleteAllRecurrences ? "Série de contas excluída." : "Conta excluída.",
@@ -188,7 +115,7 @@ export const ContasAPagarPage = () => {
       // O valor final pago é o valor da conta menos o desconto
       const valorFinal = Number(selectedConta.valor) - data.discountValue;
 
-      await api.put(`/contas-pagar/${selectedConta.id_conta_pagar}`, {
+      await FinanceiroService.updateContaPagar(selectedConta.id_conta_pagar, {
         status: "PAGO",
         valor: valorFinal,
         dt_pagamento: new Date(data.date).toISOString(),
@@ -202,63 +129,13 @@ export const ContasAPagarPage = () => {
     }
   };
 
-  const handleEdit = async (conta: IContasPagar) => {
+  const handleEdit = (conta: IContasPagar) => {
     setEditingId(conta.id_conta_pagar);
-
-    // Load recurrence information
-    try {
-      const res = await api.get(
-        `/contas-pagar/${conta.id_conta_pagar}/recurrence-info`,
-      );
-      setRecurrenceInfo(res.data);
-    } catch (error) {
-      setRecurrenceInfo(null);
-    }
-
-    setFormData({
-      descricao: conta.descricao,
-      credor: conta.credor || "",
-      categoria: conta.categoria || "OUTROS",
-      id_categoria: conta.id_categoria || undefined,
-      valor: Number(conta.valor).toFixed(2),
-      dt_emissao: conta.dt_emissao
-        ? new Date(conta.dt_emissao).toISOString().split("T")[0]
-        : "",
-      dt_vencimento: new Date(conta.dt_vencimento).toISOString().split("T")[0],
-      num_documento: conta.num_documento || "",
-      status: conta.status,
-      dt_pagamento: conta.dt_pagamento
-        ? new Date(conta.dt_pagamento).toISOString().split("T")[0]
-        : "",
-      url_anexo: conta.url_anexo || "",
-      obs: conta.obs || "",
-      repetir_parcelas: 0,
-    });
-    setApplyToAllRecurrences(false);
     setModalOpen(true);
   };
 
-  const resetForm = () => {
-    setEditingId(null);
-    setFormData({
-      descricao: "",
-      credor: "",
-      categoria: "OUTROS",
-      id_categoria: undefined,
-      valor: "",
-      dt_emissao: new Date().toISOString().split("T")[0],
-      dt_vencimento: new Date().toISOString().split("T")[0], // Default today
-      num_documento: "",
-      status: "PENDENTE",
-      dt_pagamento: "",
-      url_anexo: "",
-      obs: "",
-      repetir_parcelas: 0,
-    });
-  };
-
   const openNewModal = () => {
-    resetForm();
+    setEditingId(null);
     setModalOpen(true);
   };
 
@@ -342,7 +219,7 @@ export const ContasAPagarPage = () => {
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
         onUpdate={() => {
-          loadCategories();
+          loadContas();
         }}
       />
 
@@ -645,235 +522,12 @@ export const ContasAPagarPage = () => {
         </table>
       </Card>
 
-      {/* MODAL */}
-      {modalOpen && (
-        <Modal
-          title={editingId ? "Editar Conta" : "Nova Conta a Pagar"}
-          onClose={() => setModalOpen(false)}
-          className="max-w-2xl"
-        >
-          <form onSubmit={handleSave} className="space-y-6 pt-4">
-            {/* 1. Descrição & Credor */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Descrição / Título"
-                required
-                value={formData.descricao}
-                onChange={(e) =>
-                  setFormData({ ...formData, descricao: e.target.value })
-                }
-                placeholder="Ex: Compra Material Limpeza"
-              />
-              <Input
-                label="Credor"
-                value={formData.credor}
-                onChange={(e) =>
-                  setFormData({ ...formData, credor: e.target.value })
-                }
-                placeholder="Ex: Fornecedor X"
-              />
-            </div>
-
-            {/* 2. Categoria & Valor & Repetição */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="md:col-span-12 lg:col-span-5">
-                <CategorySelector
-                  categories={categories}
-                  value={formData.id_categoria}
-                  onChange={(id, nome) => {
-                    // Find the category object to check for parent
-                    const cat = categories.find((c) => c.id_categoria === id);
-                    let fullCategoryName = nome;
-
-                    if (cat && cat.parentId) {
-                      const parent = categories.find(
-                        (c) => c.id_categoria === cat.parentId,
-                      );
-                      if (parent) {
-                        fullCategoryName = `${parent.nome} - ${nome}`;
-                      }
-                    }
-
-                    setFormData({
-                      ...formData,
-                      id_categoria: id,
-                      categoria: fullCategoryName,
-                    });
-                  }}
-                  type="AMBOS"
-                  required
-                />
-              </div>
-
-              <div className="md:col-span-6 lg:col-span-3">
-                <Input
-                  label="Repetir (Meses)"
-                  type="number"
-                  min={0}
-                  max={60}
-                  value={formData.repetir_parcelas}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      repetir_parcelas: Number(e.target.value),
-                    })
-                  }
-                  placeholder="0"
-                  title="Cria cópias desta conta para os próximos meses"
-                />
-              </div>
-
-              <div className="md:col-span-6 lg:col-span-4">
-                <Input
-                  label="Valor do Título (R$)"
-                  type="number"
-                  step="0.01"
-                  required
-                  value={formData.valor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, valor: e.target.value })
-                  }
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            {/* 3. Datas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Data de Emissão"
-                type="date"
-                value={formData.dt_emissao}
-                onChange={(e) =>
-                  setFormData({ ...formData, dt_emissao: e.target.value })
-                }
-              />
-              <Input
-                label="Data de Vencimento"
-                type="date"
-                required
-                value={formData.dt_vencimento}
-                onChange={(e) =>
-                  setFormData({ ...formData, dt_vencimento: e.target.value })
-                }
-              />
-            </div>
-
-            {/* 4. Documento & Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Número do Documento"
-                value={formData.num_documento}
-                onChange={(e) =>
-                  setFormData({ ...formData, num_documento: e.target.value })
-                }
-                placeholder="Nota Fiscal / Boleto"
-              />
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-                  Status
-                </label>
-                <select
-                  className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value })
-                  }
-                >
-                  <option value="PENDENTE">Pendente</option>
-                  <option value="PAGO">Pago</option>
-                </select>
-              </div>
-            </div>
-
-            {/* 5. Anexos Only (Removed Forma Pagto) */}
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-              <Input
-                label="Arquivos / Anexos (URL)"
-                icon={Upload}
-                value={formData.url_anexo}
-                onChange={(e) =>
-                  setFormData({ ...formData, url_anexo: e.target.value })
-                }
-                placeholder="https://..."
-              />
-            </div>
-
-            {/* 6. Obs */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-                Observações
-              </label>
-              <textarea
-                className="w-full px-4 py-3 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm outline-none bg-white h-24 resize-none transition-all"
-                value={formData.obs}
-                onChange={(e) =>
-                  setFormData({ ...formData, obs: e.target.value })
-                }
-                placeholder="Detalhes adicionais..."
-              />
-            </div>
-
-            {/* Recurrence Info */}
-            {editingId && recurrenceInfo && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <div className="bg-blue-100 p-2 rounded-lg">
-                    <Calendar className="text-blue-600" size={20} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-blue-900 text-sm mb-1">
-                      Conta Recorrente
-                    </h4>
-                    <p className="text-xs text-blue-700 mb-3">
-                      Esta conta faz parte de uma série de{" "}
-                      {recurrenceInfo.total_parcelas} parcelas (parcela{" "}
-                      {recurrenceInfo.numero_parcela} de{" "}
-                      {recurrenceInfo.total_parcelas})
-                    </p>
-
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={applyToAllRecurrences}
-                        onChange={(e) =>
-                          setApplyToAllRecurrences(e.target.checked)
-                        }
-                        className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-blue-900">
-                        Aplicar alterações a todas as parcelas
-                      </span>
-                    </label>
-
-                    {applyToAllRecurrences && (
-                      <div className="mt-2 text-xs text-blue-600 bg-blue-100 p-2 rounded">
-                        ⚠️ As datas de vencimento serão mantidas conforme a
-                        série original, mas valor, categoria e status serão
-                        atualizados.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Actions Footer */}
-            <div className="flex justify-end gap-2 border-t pt-6">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setModalOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" variant="primary">
-                Salvar
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      <ContaPagarModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={loadContas}
+        editingId={editingId}
+      />
 
       {/* Modal de Pagamento Unificado */}
       <ModalPagamentoUnificado

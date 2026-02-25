@@ -1,14 +1,18 @@
-import { Phone, Wrench } from "lucide-react";
+import { useState } from "react";
+import { Phone, Wrench, Mail } from "lucide-react";
 import { getStatusStyle } from "../../../utils/osUtils";
 import { formatPhone } from "../../../utils/normalize";
 import { ActionButton } from "../../ui/ActionButton";
 import type { IOrdemDeServico } from "../../../types/backend";
+import { OsService } from "../../../services/os.service";
+import { toast } from "react-toastify";
 
 interface OsTableProps {
   oss: IOrdemDeServico[];
   onRowClick: (os: IOrdemDeServico) => void;
   renderActions?: (os: IOrdemDeServico) => React.ReactNode;
   emptyMessage?: string;
+  isDashboard?: boolean;
 }
 
 export const OsTable = ({
@@ -16,7 +20,21 @@ export const OsTable = ({
   onRowClick,
   renderActions,
   emptyMessage = "Nenhum registro encontrado.",
+  isDashboard = false,
 }: OsTableProps) => {
+  const [loadingEmail, setLoadingEmail] = useState<number | null>(null);
+
+  const handleSendEmail = async (osId: number) => {
+    setLoadingEmail(osId);
+    try {
+      await OsService.sendEmail(osId);
+      toast.success("E-mail enviado com sucesso!");
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Erro ao enviar e-mail.");
+    } finally {
+      setLoadingEmail(null);
+    }
+  };
   return (
     <div className="overflow-x-auto">
       <table className="tabela-limpa w-full">
@@ -111,7 +129,9 @@ export const OsTable = ({
                             </span>
                           ));
                         return (
-                          <span className="text-neutral-300 text-xs">---</span>
+                          <span className="text-neutral-300 text-xs text-center ml-2">
+                            ---
+                          </span>
                         );
                       })()}
                     </div>
@@ -151,16 +171,27 @@ export const OsTable = ({
                   className="p-4 text-center"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {renderActions ? (
-                    renderActions(os)
-                  ) : (
+                  <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <ActionButton
-                      onClick={() => onRowClick(os)}
-                      variant="primary"
-                      icon={Wrench}
-                      label="Gerenciar"
+                      onClick={() => handleSendEmail(os.id_os)}
+                      icon={Mail}
+                      label="E-mail"
+                      variant="neutral"
+                      isLoading={loadingEmail === os.id_os}
+                      disabled={loadingEmail !== null}
                     />
-                  )}
+
+                    {renderActions ? (
+                      renderActions(os)
+                    ) : (
+                      <ActionButton
+                        onClick={() => onRowClick(os)}
+                        variant="primary"
+                        icon={Wrench}
+                        label="Gerenciar"
+                      />
+                    )}
+                  </div>
                 </td>
               </tr>
             ))

@@ -5,6 +5,7 @@ interface ConfirmState {
   title: string;
   message: string;
   onConfirm: () => void;
+  variant?: "danger" | "primary";
 }
 
 export const useConfirm = () => {
@@ -13,18 +14,21 @@ export const useConfirm = () => {
     title: "",
     message: "",
     onConfirm: () => {},
+    variant: "primary",
   });
 
   const requestConfirm = (
     title: string,
     message: string,
     onConfirm: () => void,
+    variant: "danger" | "primary" = "primary",
   ) => {
     setConfirmState({
       isOpen: true,
       title,
       message,
-      onConfirm, // Dependendo do caso, pode ser interessante envolver em useCallback no consumidor
+      onConfirm,
+      variant,
     });
   };
 

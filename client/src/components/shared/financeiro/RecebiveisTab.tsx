@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { formatCurrency } from "../../../utils/formatCurrency";
-import { api } from "../../../services/api";
+import { FinanceiroService } from "../../../services/financeiro.service";
 import {
   Calendar,
   CheckCircle,
@@ -42,8 +42,8 @@ export const RecebiveisTab = () => {
 
   const loadOperadoras = async () => {
     try {
-      const res = await api.get("/operadora-cartao");
-      setOperadoras(res.data);
+      const data = await FinanceiroService.getOperadorasCartao();
+      setOperadoras(data);
     } catch (error) {
       console.error("Erro ao carregar operadoras:", error);
     }
@@ -51,18 +51,17 @@ export const RecebiveisTab = () => {
 
   const loadData = async (start?: string, end?: string) => {
     try {
-      const params: any = {};
-      if (start) params.dataInicio = start;
-      if (end) params.dataFim = end;
-
-      const res = await api.get(
-        start || end ? "/recebivel-cartao/date-range" : "/recebivel-cartao",
-        {
-          params,
-        },
-      );
-      setOriginalData(res.data);
-      applyFilters(res.data, filterStatus, searchTerm, selectedOperadoraId);
+      let data;
+      if (start || end) {
+        data = await FinanceiroService.getRecebiveisCartaoByDateRange(
+          start || "",
+          end || "",
+        );
+      } else {
+        data = await FinanceiroService.getRecebiveisCartao();
+      }
+      setOriginalData(data);
+      applyFilters(data, filterStatus, searchTerm, selectedOperadoraId);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar recebíveis.");
@@ -202,7 +201,7 @@ export const RecebiveisTab = () => {
 
   const executeConciliacao = async () => {
     try {
-      await api.post("/recebivel-cartao/confirmar", { ids: selectedIds });
+      await FinanceiroService.confirmarRecebiveis(selectedIds);
       toast.success("Recebimentos confirmados e conciliados!");
       setSelectedIds([]);
       loadData(dateRange.start, dateRange.end);

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock } from "lucide-react";
 import { Card } from "../ui/Card";
+import { Button } from "../ui/Button";
 import { OsStatus } from "../../types/os.types";
 import { OsTable } from "../shared/os/OsTable";
 import type { FilterPeriod } from "../../types/dashboard.types";
@@ -71,13 +72,6 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
 
   const filteredServices = getFilteredRecentServices();
 
-  const getFilterButtonClass = (isActive: boolean) =>
-    `px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-      isActive
-        ? "bg-slate-100 text-slate-700 ring-1 ring-slate-200 shadow-sm"
-        : "text-neutral-600 hover:text-neutral-700 hover:bg-neutral-100"
-    }`;
-
   return (
     <Card className="p-0 overflow-hidden">
       <div className="p-2 border-b border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white">
@@ -86,22 +80,24 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
           Atividade Recente (OS)
         </h2>
 
-        {/* Date Tabs */}
-        <div className="flex bg-neutral-100 p-1 rounded-lg">
+        <div className="flex bg-neutral-100 p-1 rounded-lg gap-1">
           {["HOJE", "SEMANA", "MES", "STATUS"].map((p) => (
-            <button
+            <Button
               key={p}
+              size="sm"
+              variant={filterPeriod === p ? "primary" : "ghost"}
+              className={`text-[10px] h-7 px-3 ${filterPeriod === p ? "shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
               onClick={() => setFilterPeriod(p as any)}
-              className={getFilterButtonClass(filterPeriod === p)}
             >
               {p === "MES" ? "Mês" : p}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       <OsTable
         oss={filteredServices}
+        isDashboard={true}
         onRowClick={(os) =>
           navigate(
             os.status === "PRONTO PARA FINANCEIRO"

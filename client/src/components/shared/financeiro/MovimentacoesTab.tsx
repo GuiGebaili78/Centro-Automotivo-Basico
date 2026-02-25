@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../../../utils/formatCurrency";
-import { api } from "../../../services/api";
+import { FinanceiroService } from "../../../services/financeiro.service";
 import {
   Plus,
   Search,
@@ -91,6 +91,37 @@ export const MovimentacoesTab = () => {
     obs: "",
   });
 
+  const [summaries, setSummaries] = useState({
+    totalInflow: 0,
+    totalOutflow: 0,
+    balance: 0,
+  });
+
+  useEffect(() => {
+    fetchSummary();
+  }, [
+    cashFilterStart,
+    cashFilterEnd,
+    filterSource,
+    filterCategory,
+    cashSearch,
+  ]);
+
+  const fetchSummary = async () => {
+    try {
+      const summary = await FinanceiroService.getSummary({
+        startDate: cashFilterStart,
+        endDate: cashFilterEnd,
+        source: filterSource,
+        category: filterCategory,
+        search: cashSearch,
+      });
+      setSummaries(summary);
+    } catch (error) {
+      console.error("Erro ao buscar resumo financeiro", error);
+    }
+  };
+
   useEffect(() => {
     loadData();
     loadCategories();
@@ -98,8 +129,8 @@ export const MovimentacoesTab = () => {
 
   const loadCategories = async () => {
     try {
-      const res = await api.get("/categoria-financeira");
-      setCategories(res.data);
+      const data = await FinanceiroService.getCategoriasFinanceiras();
+      setCategories(data);
     } catch (error) {
       console.error(error);
     }
@@ -107,29 +138,29 @@ export const MovimentacoesTab = () => {
 
   const loadData = async () => {
     try {
-      const [manualRes, paymentsRes, inflowsRes, opsRes] = await Promise.all([
-        api.get("/livro-caixa"),
-        api.get("/pagamento-peca"),
-        api.get("/pagamento-cliente"),
-        api.get("/operadora-cartao"),
+      const [manual, payments, inflows, ops] = await Promise.all([
+        FinanceiroService.getLivroCaixa(),
+        FinanceiroService.getPagamentosPeca(),
+        FinanceiroService.getPagamentosCliente(),
+        FinanceiroService.getOperadorasCartao(),
       ]);
 
       // Build Operators Map
       const opMap: Record<number, string> = {};
-      (opsRes.data || []).forEach((op: any) => {
+      (ops || []).forEach((op: any) => {
         opMap[op.id_operadora] = op.nome;
       });
 
       // Build Payment Maps (Link LivroCaixa ID -> Payment Data)
       const lcPaymentMap: Record<number, any> = {};
-      (inflowsRes.data || []).forEach((p: any) => {
+      (inflows || []).forEach((p: any) => {
         if (p.id_livro_caixa) {
           lcPaymentMap[p.id_livro_caixa] = p;
         }
       });
 
       const lcSupplierMap: Record<number, string> = {};
-      let paymentsData = paymentsRes.data?.data || paymentsRes.data || [];
+      let paymentsData = (payments as any)?.data || payments || [];
       paymentsData.forEach((p: any) => {
         if (p.id_livro_caixa) {
           // If multiple parts share same LC (batch), we'll just take the supplier from the record
@@ -148,7 +179,7 @@ export const MovimentacoesTab = () => {
 
       // 1. Manual Entries (from Libro Caixa)
       // Enrich with values from Linked Payment if available
-      const manual = manualRes.data
+      const manualEntries = manual
         .filter((e: any) => e.categoria !== "CONCILIACAO_CARTAO")
         .map((e: any) => {
           const linkedP = lcPaymentMap[e.id_livro_caixa];
@@ -209,7 +240,7 @@ export const MovimentacoesTab = () => {
 
       // 2. Auto Outflows (Payments to Suppliers)
       // BREAKING CHANGE: API now returns { data: [...], pagination: {...} }
-      paymentsData = paymentsRes.data?.data || paymentsRes.data || [];
+      paymentsData = (payments as any)?.data || payments || [];
       const outflows = paymentsData
         .filter(
           (p: any) =>
@@ -254,7 +285,7 @@ export const MovimentacoesTab = () => {
       // 3. Auto Inflows (Payments from Clients)
       // ONLY show payments that have are NOT consolidated/linked to prevent duplication
       // (The consolidated entry comes from manualRes/LivroCaixa)
-      const inflows = (inflowsRes.data || [])
+      const outflowsInflows = (inflows || [])
         .filter((p: any) => !p.livro_caixa && !p.id_livro_caixa) // Check if relation exists
         .map((p: any) => {
           const os = p.ordem_de_servico;
@@ -328,7 +359,7 @@ export const MovimentacoesTab = () => {
           };
         });
 
-      const combined = [...manual, ...outflows, ...inflows].sort(
+      const combined = [...manualEntries, ...outflows, ...outflowsInflows].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
       setCashBookEntries(combined);
@@ -383,13 +414,7 @@ export const MovimentacoesTab = () => {
     return true;
   });
 
-  const totalInflow = filteredCashBook
-    .filter((e) => e.type === "IN" && !e.deleted_at)
-    .reduce((acc, e) => acc + e.value, 0);
-  const totalOutflow = filteredCashBook
-    .filter((e) => e.type === "OUT" && !e.deleted_at)
-    .reduce((acc, e) => acc + e.value, 0);
-  const balance = totalInflow - totalOutflow;
+  const { totalInflow, totalOutflow, balance } = summaries;
 
   const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
     setActiveQuickFilter(type);
@@ -458,21 +483,25 @@ export const MovimentacoesTab = () => {
     try {
       if (editingItem) {
         if (editingItem.id.startsWith("man-")) {
-          await api.put(`/livro-caixa/${editingItem.rawId}`, formData);
+          await FinanceiroService.updateLivroCaixa(editingItem.rawId, formData);
         } else if (editingItem.id.startsWith("in-")) {
           // Allow editing observation for Client Payments
-          await api.put(`/pagamento-cliente/${editingItem.rawId}`, {
-            valor: formData.valor,
+          await FinanceiroService.updatePagamentoCliente(editingItem.rawId, {
+            valor: Number(formData.valor),
             observacao: formData.obs,
           });
         } else if (editingItem.id.startsWith("out-")) {
-          await api.put(`/pagamento-peca/${editingItem.rawId}`, {
-            custo_real: formData.valor,
+          await FinanceiroService.updatePagamentoPeca(editingItem.rawId, {
+            custo_real: Number(formData.valor),
           });
         }
         toast.success("Lançamento atualizado!");
       } else {
-        await api.post("/livro-caixa", { ...formData, origem: "MANUAL" });
+        await FinanceiroService.createLivroCaixa({
+          ...formData,
+          valor: Number(formData.valor),
+          origem: "MANUAL",
+        });
         toast.success("Lançamento criado!");
       }
       setIsModalOpen(false);
@@ -487,13 +516,11 @@ export const MovimentacoesTab = () => {
     if (!itemToDelete) return;
     try {
       if (itemToDelete.id.startsWith("man-")) {
-        await api.delete(`/livro-caixa/${itemToDelete.rawId}`, {
-          data: { obs: deleteObs },
-        });
+        await FinanceiroService.deleteLivroCaixa(itemToDelete.rawId, deleteObs);
       } else if (itemToDelete.id.startsWith("in-")) {
-        await api.delete(`/pagamento-cliente/${itemToDelete.rawId}`);
+        await FinanceiroService.deletePagamentoCliente(itemToDelete.rawId);
       } else if (itemToDelete.id.startsWith("out-")) {
-        await api.delete(`/pagamento-peca/${itemToDelete.rawId}`);
+        await FinanceiroService.deletePagamentoPeca(itemToDelete.rawId);
       }
 
       toast.success("Lançamento deletado (estornado).");
@@ -946,9 +973,7 @@ export const MovimentacoesTab = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                  Tipo
-                </label>
+                <label>Tipo</label>
                 <div className="relative">
                   <select
                     value={formData.tipo_movimentacao}
@@ -959,7 +984,7 @@ export const MovimentacoesTab = () => {
                       })
                     }
                     disabled={!!editingItem} // Usually can't change type after creation easily without messes, or enable it. Let's disable for safety or matching legacy.
-                    className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer disabled:opacity-50"
+                    className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer disabled:opacity-50"
                   >
                     <option value="ENTRADA">Entrada (+)</option>
                     <option value="SAIDA">Saída (-)</option>
@@ -986,9 +1011,7 @@ export const MovimentacoesTab = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                Observação (Opcional)
-              </label>
+              <label>Observação (Opcional)</label>
               <textarea
                 rows={3}
                 value={formData.obs}

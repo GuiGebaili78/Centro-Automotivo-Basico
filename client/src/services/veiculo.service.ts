@@ -26,6 +26,11 @@ export const VeiculoService = {
     await api.delete(`/veiculo/${id}`);
   },
 
+  search: async (term: string) => {
+    const response = await api.get<IVeiculo[]>(`/veiculo/search?q=${term}`);
+    return response.data;
+  },
+
   getByClienteId: async (_clienteId: number) => {
     // Assuming backend supports filtering or we misuse getAll for now
     return [];

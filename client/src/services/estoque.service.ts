@@ -31,4 +31,9 @@ export const EstoqueService = {
     const response = await api.post("/pecas-estoque/entry", data);
     return response.data;
   },
+
+  create: async (data: any) => {
+    const response = await api.post<IPecasEstoque>("/pecas-estoque", data);
+    return response.data;
+  },
 };

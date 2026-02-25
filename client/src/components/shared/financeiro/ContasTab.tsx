@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { useNavigate } from "react-router-dom";
-import { api } from "../../../services/api";
+import { FinanceiroService } from "../../../services/financeiro.service";
 import { Plus, Landmark, Eye, EyeOff, FileText, Edit } from "lucide-react";
 import type { IContaBancaria } from "../../../types/backend";
 import { Button } from "../../ui/Button";
-import { Input } from "../../ui/Input";
-import { Modal } from "../../ui/Modal";
 import { ActionButton } from "../../ui/ActionButton";
 import { ConfirmModal } from "../../ui/ConfirmModal";
 import { toast } from "react-toastify";
+import { ContaBancariaModal } from "./ContaBancariaModal";
 
 export const ContasTab = () => {
   const navigate = useNavigate();
@@ -18,14 +17,6 @@ export const ContasTab = () => {
   const [editingAccount, setEditingAccount] = useState<IContaBancaria | null>(
     null,
   );
-  const [formData, setFormData] = useState<Partial<IContaBancaria>>({
-    nome: "",
-    banco: "",
-    agencia: "",
-    conta: "",
-    saldo_atual: 0,
-    ativo: true,
-  });
 
   const [showBalance, setShowBalance] = useState<Record<number, boolean>>({});
 
@@ -41,8 +32,8 @@ export const ContasTab = () => {
 
   const loadAccounts = async () => {
     try {
-      const res = await api.get("/conta-bancaria");
-      setAccounts(res.data);
+      const data = await FinanceiroService.getContasBancarias();
+      setAccounts(data);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar contas bancárias.");
@@ -51,49 +42,16 @@ export const ContasTab = () => {
 
   const handleOpenCreate = () => {
     setEditingAccount(null);
-    setFormData({
-      nome: "",
-      banco: "",
-      agencia: "",
-      conta: "",
-      saldo_atual: 0,
-      ativo: true,
-    });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (acc: IContaBancaria) => {
     setEditingAccount(acc);
-    setFormData({
-      nome: acc.nome,
-      banco: acc.banco || "",
-      agencia: acc.agencia || "",
-      conta: acc.conta || "",
-      saldo_atual: Number(acc.saldo_atual),
-      ativo: acc.ativo,
-    });
     setIsModalOpen(true);
   };
 
   const handleOpenStatement = (acc: IContaBancaria) => {
     navigate(`/financeiro/extrato/${acc.id_conta}`);
-  };
-
-  const handleSubmit = async () => {
-    try {
-      if (editingAccount) {
-        await api.put(`/conta-bancaria/${editingAccount.id_conta}`, formData);
-        toast.success("Conta atualizada com sucesso!");
-      } else {
-        await api.post("/conta-bancaria", formData);
-        toast.success("Conta criada com sucesso!");
-      }
-      setIsModalOpen(false);
-      loadAccounts();
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro ao salvar conta.");
-    }
   };
 
   const handleToggleClick = (acc: IContaBancaria) => {
@@ -104,7 +62,7 @@ export const ContasTab = () => {
   const confirmToggle = async () => {
     if (!accountToToggle) return;
     try {
-      await api.put(`/conta-bancaria/${accountToToggle.id_conta}`, {
+      await FinanceiroService.updateContaBancaria(accountToToggle.id_conta, {
         ativo: !accountToToggle.ativo,
       });
       loadAccounts();
@@ -232,100 +190,12 @@ export const ContasTab = () => {
         </button>
       </div>
 
-      {/* MODAL EDIT/CREATE */}
-      {isModalOpen && (
-        <Modal
-          title={editingAccount ? "Editar Conta" : "Nova Conta"}
-          onClose={() => setIsModalOpen(false)}
-        >
-          <div className="space-y-4">
-            <div>
-              <Input
-                label="Nome / Apelido"
-                required
-                value={formData.nome}
-                onChange={(e) =>
-                  setFormData({ ...formData, nome: e.target.value })
-                }
-                placeholder="Ex: Nubank, Caixa Gaveta..."
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Input
-                  label="Banco (Opcional)"
-                  value={formData.banco || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, banco: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Input
-                  label="Saldo Inicial (R$)"
-                  type="number"
-                  step="0.01"
-                  disabled={!!editingAccount}
-                  value={formData.saldo_atual}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      saldo_atual: Number(e.target.value),
-                    })
-                  }
-                />
-                {editingAccount && (
-                  <p className="text-[10px] text-neutral-400 mt-1">
-                    Ajuste via Movimentações.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Input
-                  label="Agência"
-                  value={formData.agencia || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, agencia: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Input
-                  label="Conta"
-                  value={formData.conta || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, conta: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            {!editingAccount && (
-              <div className="p-4 bg-yellow-50 text-yellow-800 text-xs rounded-xl font-medium">
-                Atenção: O saldo inicial será registrado como primeira
-                movimentação se for maior que zero.
-              </div>
-            )}
-
-            <div className="pt-4 flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                variant="primary"
-                className="shadow-lg shadow-primary-500/20"
-              >
-                {editingAccount ? "Salvar" : "Criar Conta"}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <ContaBancariaModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={loadAccounts}
+        editingAccount={editingAccount}
+      />
 
       <ConfirmModal
         isOpen={isConfirmOpen}

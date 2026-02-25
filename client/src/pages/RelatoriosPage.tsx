@@ -18,6 +18,7 @@ import type {
   EvolucaoDespesaTemporal,
 } from "../types/relatorios.types";
 import { RelatoriosService } from "../services/relatorios.service";
+import { FinanceiroService } from "../services/financeiro.service";
 import { formatCurrency } from "../utils/formatCurrency";
 import {
   BarChart,
@@ -109,11 +110,11 @@ export const RelatoriosPage = () => {
     const fetchEvolucao = async () => {
       setEvolLoading(true);
       try {
-        const data = await RelatoriosService.getEvolucaoMensal(
-          evolStart,
-          evolEnd,
-          evolGroupBy as "month" | "quarter" | "semester" | "year",
-        );
+        const data = await FinanceiroService.getEvolution({
+          startDate: evolStart,
+          endDate: evolEnd,
+          groupBy: evolGroupBy as "day" | "month",
+        });
         setEvolucao(data);
       } catch (error) {
         console.error(error);

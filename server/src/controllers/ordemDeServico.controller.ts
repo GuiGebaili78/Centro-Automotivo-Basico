@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { OrdemDeServicoService } from "../services/OrdemDeServicoService.js";
 import { MensageriaService } from "../services/MensageriaService.js";
+import { EmailService } from "../services/email.service.js";
 
 const service = new OrdemDeServicoService();
 const mensageria = new MensageriaService();
@@ -151,6 +152,30 @@ export class OrdemDeServicoController {
       res
         .status(500)
         .json({ error: error.message || "Failed to send document" });
+    }
+  }
+
+  async enviarEmail(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const { remetenteEmail } = req.body;
+
+      const os = await service.findById(id);
+      if (!os) {
+        return res.status(404).json({ error: "OS not found" });
+      }
+
+      const emailInfo = await EmailService.sendOsEmail(os, remetenteEmail);
+      res.json({
+        success: true,
+        message: "Email enviado com sucesso",
+        info: emailInfo,
+      });
+    } catch (error: any) {
+      console.error("Erro ao enviar email da OS:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Falha ao enviar o email" });
     }
   }
 }

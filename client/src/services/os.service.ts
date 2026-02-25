@@ -56,4 +56,33 @@ export const OsService = {
   deleteFinancialClosure: async (id: number) => {
     await api.delete(`/fechamento-financeiro/${id}`);
   },
+
+  sendEmail: async (id: number, remetenteEmail?: string) => {
+    const response = await api.post(`/ordem-de-servico/${id}/enviar-email`, {
+      remetenteEmail,
+    });
+    return response.data;
+  },
+
+  shareOs: async (
+    id: number | string,
+    method: "EMAIL" | "TELEGRAM",
+    target: string,
+  ) => {
+    const response = await api.post(`/ordem-de-servico/${id}/enviar`, {
+      method,
+      target,
+    });
+    return response.data;
+  },
+
+  searchClientes: async (query: string) => {
+    const response = await api.get(`/cliente/search?q=${query}`);
+    return response.data;
+  },
+
+  createUnified: async (payload: any) => {
+    const response = await api.post("/ordem-de-servico/unified", payload);
+    return response.data;
+  },
 };

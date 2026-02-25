@@ -36,6 +36,7 @@ import { ExtratoBancarioPage } from "./pages/ExtratoBancarioPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ConfiguracaoPage } from "./pages/ConfiguracaoPage";
 import { CategoriasPage } from "./pages/CategoriasPage";
+import { OperadoraCartaoPage } from "./pages/financeiro/OperadoraCartaoPage";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -81,6 +82,7 @@ const router = createBrowserRouter(
         path="/financeiro/extrato/:idConta"
         element={<ExtratoBancarioPage />}
       />
+      <Route path="/financeiro/operadoras" element={<OperadoraCartaoPage />} />
       <Route path="/financeiro/equipe" element={<PagamentoEquipePage />} />{" "}
       {/* Nova Rota */}
       <Route path="/pagamento-equipe" element={<PagamentoEquipePage />} />

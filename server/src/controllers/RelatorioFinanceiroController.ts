@@ -54,30 +54,19 @@ export class RelatorioFinanceiroController {
       const ticketMedio = totalOS > 0 ? receitaTotal / totalOS : 0;
 
       // --- B. FLUXO DE CAIXA (GRÁFICO) ---
-      // Agrupamento manual simulado para garantir formato do Tremor
-      // Em produção, usaríamos $queryRaw para agrupar por dia.
-      const fluxo_caixa = [
-        {
-          date: "01/01",
-          Receitas: receitaTotal * 0.1,
-          Despesas: despesaTotal * 0.2,
-        },
-        {
-          date: "08/01",
-          Receitas: receitaTotal * 0.3,
-          Despesas: despesaTotal * 0.1,
-        },
-        {
-          date: "15/01",
-          Receitas: receitaTotal * 0.2,
-          Despesas: despesaTotal * 0.4,
-        },
-        {
-          date: "22/01",
-          Receitas: receitaTotal * 0.4,
-          Despesas: despesaTotal * 0.3,
-        },
-      ];
+      // Agrupamento real por dia no banco de dados para alta performance
+      const fluxo_caixa: any[] = await prisma.$queryRaw`
+        SELECT 
+          TO_CHAR(dt_movimentacao, 'DD/MM') as date,
+          SUM(CASE WHEN tipo_movimentacao = 'ENTRADA' THEN valor ELSE 0 END)::FLOAT as "Receitas",
+          SUM(CASE WHEN tipo_movimentacao = 'SAIDA' THEN valor ELSE 0 END)::FLOAT as "Despesas"
+        FROM "livro_caixa"
+        WHERE dt_movimentacao BETWEEN ${startDate} AND ${endDate}
+          AND deleted_at IS NULL
+          AND NOT (categoria IN ('CONCILIACAO_CARTAO', 'TRANSFERENCIA', 'AJUSTE_SALDO'))
+        GROUP BY DATE_TRUNC('day', dt_movimentacao), TO_CHAR(dt_movimentacao, 'DD/MM')
+        ORDER BY DATE_TRUNC('day', dt_movimentacao) ASC
+      `;
 
       // --- C. CATEGORIAS DE DESPESA (DONUT) ---
       const despesasPorCategoria = await prisma.livroCaixa.groupBy({

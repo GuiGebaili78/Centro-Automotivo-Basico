@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { PageLayout } from "../components/ui/PageLayout";
 import { CategoryManager } from "../components/shared/financeiro/CategoryManager";
 import { Button } from "../components/ui/Button";
-import { api } from "../services/api";
+import { FinanceiroService } from "../services/financeiro.service";
 import { toast } from "react-toastify";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Plus, Pencil, Shield, Tag, ChevronRight } from "lucide-react";
@@ -48,8 +48,8 @@ export const CategoriasPage = () => {
   const fetchCategorias = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get("/categoria-financeira");
-      setCategorias(res.data);
+      const data = await FinanceiroService.getCategoriasFinanceiras();
+      setCategorias(data);
     } catch {
       toast.error("Erro ao carregar categorias.");
     } finally {

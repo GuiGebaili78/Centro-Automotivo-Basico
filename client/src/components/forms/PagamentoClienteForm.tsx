@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { api } from "../../services/api";
+import { FinanceiroService } from "../../services/financeiro.service";
 import { CreditCard, DollarSign, CheckCircle, Smartphone } from "lucide-react";
 import type { IOperadoraCartao } from "../../types/backend";
 
@@ -69,14 +69,14 @@ export const PagamentoClienteForm = ({
 
   const loadOperadoras = async () => {
     try {
-      const res = await api.get("/operadora-cartao");
-      setOperadoras(res.data);
+      const data = await FinanceiroService.getOperadorasCartao();
+      setOperadoras(data);
 
       // Priority: 1. Initial Data (Edit), 2. Single Operator Auto-Select
       if (initialData?.id_operadora) {
         setIdOperadora(Number(initialData.id_operadora));
-      } else if (res.data.length === 1) {
-        setIdOperadora(res.data[0].id_operadora);
+      } else if (data.length === 1) {
+        setIdOperadora(data[0].id_operadora);
       }
     } catch (error) {
       console.error("Erro ao carregar operadoras");
@@ -85,11 +85,11 @@ export const PagamentoClienteForm = ({
 
   const loadContasBancarias = async () => {
     try {
-      const res = await api.get("/conta-bancaria");
-      setContasBancarias(res.data.filter((c: any) => c.ativo));
+      const data = await FinanceiroService.getContasBancarias();
+      setContasBancarias(data.filter((c: any) => c.ativo));
       // Se houver apenas uma conta, seleciona automaticamente
-      if (res.data.length === 1) {
-        setIdContaBancaria(res.data[0].id_conta);
+      if (data.length === 1) {
+        setIdContaBancaria(data[0].id_conta);
       }
     } catch (error) {
       console.error("Erro ao carregar contas bancárias");
@@ -141,17 +141,17 @@ export const PagamentoClienteForm = ({
         tipo_parcelamento: metodo === "CREDITO" ? tipoParcelamento : "LOJA",
       };
 
-      let response;
+      let result;
       if (initialData?.id_pagamento_cliente) {
-        response = await api.put(
-          `/pagamento-cliente/${initialData.id_pagamento_cliente}`,
+        result = await FinanceiroService.updatePagamentoCliente(
+          initialData.id_pagamento_cliente,
           payload,
         );
       } else {
-        response = await api.post("/pagamento-cliente", payload);
+        result = await FinanceiroService.createPagamentoCliente(payload);
       }
 
-      onSuccess(response.data);
+      onSuccess(result);
     } catch (error) {
       console.error(error);
       setError("Erro ao salvar pagamento. Verifique os dados.");

@@ -290,19 +290,17 @@ export const OrdemDeServicoPage = () => {
             />
           </div>
 
-          <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 shrink-0">
+          <div className="flex bg-neutral-100 p-1 rounded-lg border border-neutral-100 gap-1 shrink-0">
             {["ALL", "HOJE", "SEMANA", "MES"].map((f) => (
-              <button
+              <Button
                 key={f}
+                size="sm"
+                variant={dateFilter === f ? "primary" : "ghost"}
+                className={`text-[10px] h-8 px-4 ${dateFilter === f ? "shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
                 onClick={() => setDateFilter(f as any)}
-                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                  dateFilter === f
-                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100"
-                }`}
               >
                 {f === "ALL" ? "Todos" : f === "MES" ? "Mês" : f}
-              </button>
+              </Button>
             ))}
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { api } from "../../../services/api";
+import { FinanceiroService } from "../../../services/financeiro.service";
 import {
   Trash2,
   Plus,
@@ -64,8 +64,8 @@ export const CategoryManager = ({
 
   const loadCategories = async () => {
     try {
-      const res = await api.get("/categoria-financeira");
-      setCategories(res.data);
+      const data = await FinanceiroService.getCategoriasFinanceiras();
+      setCategories(data);
     } catch (error) {
       console.error(error);
     }
@@ -89,7 +89,7 @@ export const CategoryManager = ({
     e.preventDefault();
     try {
       setLoading(true);
-      await api.post("/categoria-financeira", {
+      await FinanceiroService.createCategoriaFinanceira({
         nome: newCatName,
         tipo: newCatType,
         parentId: newCatParentId === "" ? null : newCatParentId,
@@ -107,8 +107,8 @@ export const CategoryManager = ({
 
   const handleDelete = async (id: number, replacement?: string) => {
     try {
-      await api.delete(`/categoria-financeira/${id}`, {
-        data: { replacementCategory: replacement },
+      await FinanceiroService.deleteCategoriaFinanceira(id, {
+        replacementCategory: replacement,
       });
 
       setConflictData(null);
@@ -148,7 +148,7 @@ export const CategoryManager = ({
 
   const handleEdit = async (id: number) => {
     try {
-      await api.put(`/categoria-financeira/${id}`, {
+      await FinanceiroService.updateCategoriaFinanceira(id, {
         nome: editName,
         tipo: editType,
         parentId: editParentId === "" ? null : editParentId,

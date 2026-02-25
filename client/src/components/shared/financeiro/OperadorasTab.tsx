@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api } from "../../../services/api";
+import { FinanceiroService } from "../../../services/financeiro.service";
 import { Plus, CreditCard, Trash2, Edit } from "lucide-react";
 import type {
   IOperadoraCartao,
@@ -12,6 +12,8 @@ import { Input } from "../../ui/Input";
 import { Modal } from "../../ui/Modal";
 import { ActionButton } from "../../ui/ActionButton";
 import { ConfirmModal } from "../../ui/ConfirmModal";
+import { Select } from "../../ui/Select";
+import { Checkbox } from "../../ui/Checkbox";
 import { toast } from "react-toastify";
 
 export const OperadorasTab = () => {
@@ -42,12 +44,12 @@ export const OperadorasTab = () => {
 
   const loadData = async () => {
     try {
-      const [opRes, accRes] = await Promise.all([
-        api.get("/operadora-cartao"),
-        api.get("/conta-bancaria"),
+      const [operadoras, contas] = await Promise.all([
+        FinanceiroService.getOperadorasCartao(),
+        FinanceiroService.getContasBancarias(),
       ]);
-      setOperadoras(opRes.data);
-      setContas(accRes.data.filter((c: IContaBancaria) => c.ativo));
+      setOperadoras(operadoras);
+      setContas(contas.filter((c: IContaBancaria) => c.ativo));
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados.");
@@ -118,10 +120,13 @@ export const OperadorasTab = () => {
 
     try {
       if (editingOp) {
-        await api.put(`/operadora-cartao/${editingOp.id_operadora}`, formData);
+        await FinanceiroService.updateOperadoraCartao(
+          editingOp.id_operadora,
+          formData,
+        );
         toast.success("Operadora atualizada!");
       } else {
-        await api.post("/operadora-cartao", formData);
+        await FinanceiroService.createOperadoraCartao(formData);
         toast.success("Operadora cadastrada!");
       }
       setIsModalOpen(false);
@@ -136,7 +141,7 @@ export const OperadorasTab = () => {
   const handleDelete = async () => {
     if (!opToDelete) return;
     try {
-      await api.delete(`/operadora-cartao/${opToDelete.id_operadora}`);
+      await FinanceiroService.deleteOperadoraCartao(opToDelete.id_operadora);
       toast.success("Operadora removida.");
       setIsDeleteModalOpen(false);
       loadData();
@@ -145,10 +150,6 @@ export const OperadorasTab = () => {
       toast.error("Erro ao excluir operadora (possui vínculo?).");
     }
   };
-
-  // Helper for custom input styling to match theme
-  const inputClass =
-    "w-full rounded-xl border border-neutral-200 text-sm font-bold bg-white focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all";
 
   return (
     <div className="p-6">
@@ -274,10 +275,8 @@ export const OperadorasTab = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                  Conta Bancária de Destino
-                </label>
-                <select
+                <Select
+                  label="Conta Bancária de Destino"
                   required
                   value={formData.id_conta_destino}
                   onChange={(e) =>
@@ -286,7 +285,6 @@ export const OperadorasTab = () => {
                       id_conta_destino: Number(e.target.value),
                     })
                   }
-                  className={`${inputClass} px-3 py-2.5`}
                 >
                   <option value={0} disabled>
                     Selecione uma conta...
@@ -296,7 +294,7 @@ export const OperadorasTab = () => {
                       {c.nome} - {c.banco}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 
@@ -324,7 +322,7 @@ export const OperadorasTab = () => {
                   </span>
                 </div>
                 <div className="col-span-3">
-                  <input
+                  <Input
                     type="number"
                     step="0.01"
                     placeholder="0.00"
@@ -335,7 +333,7 @@ export const OperadorasTab = () => {
                         taxa_debito: Number(e.target.value),
                       })
                     }
-                    className="w-full h-8 px-2 rounded-lg border border-neutral-200 text-sm font-bold text-center focus:border-primary-500 outline-none"
+                    className="h-9 text-center"
                   />
                 </div>
                 <div className="col-span-3 opacity-50 text-center text-xs">
@@ -354,7 +352,7 @@ export const OperadorasTab = () => {
                   </span>
                 </div>
                 <div className="col-span-3">
-                  <input
+                  <Input
                     type="number"
                     step="0.01"
                     placeholder="0.00"
@@ -365,11 +363,11 @@ export const OperadorasTab = () => {
                         taxa_credito_vista: Number(e.target.value),
                       })
                     }
-                    className="w-full h-8 px-2 rounded-lg border border-neutral-200 text-sm font-bold text-center focus:border-primary-500 outline-none"
+                    className="h-9 text-center"
                   />
                 </div>
                 <div className="col-span-3 text-center">
-                  <input
+                  <Input
                     type="number"
                     step="0.01"
                     placeholder="0.00"
@@ -380,7 +378,7 @@ export const OperadorasTab = () => {
                         taxa_antecipacao: Number(e.target.value),
                       })
                     }
-                    className="w-full h-8 px-2 rounded-lg border border-neutral-200 text-sm font-bold text-center focus:border-primary-500 outline-none"
+                    className="h-9 text-center"
                   />
                 </div>
               </div>
@@ -406,7 +404,7 @@ export const OperadorasTab = () => {
                       </span>
                     </div>
                     <div className="col-span-3">
-                      <input
+                      <Input
                         type="number"
                         step="0.01"
                         placeholder="0.00"
@@ -435,11 +433,11 @@ export const OperadorasTab = () => {
                           }
                           handleChange({ ...formData, taxas_cartao: newTaxas });
                         }}
-                        className="w-full h-8 px-2 rounded-lg border border-neutral-200 text-sm font-bold text-center focus:border-primary-500 outline-none hover:bg-white bg-neutral-50 focus:bg-white transition-colors"
+                        className="h-8 text-center bg-neutral-50 focus:bg-white"
                       />
                     </div>
                     <div className="col-span-3">
-                      <input
+                      <Input
                         type="number"
                         step="0.01"
                         placeholder="0.00" // Antecipacao rate
@@ -468,7 +466,7 @@ export const OperadorasTab = () => {
                           }
                           handleChange({ ...formData, taxas_cartao: newTaxas });
                         }}
-                        className="w-full h-8 px-2 rounded-lg border border-neutral-200 text-sm font-bold text-center focus:border-primary-500 outline-none hover:bg-white bg-neutral-50 focus:bg-white transition-colors"
+                        className="h-8 text-center bg-neutral-50 focus:bg-white"
                       />
                     </div>
                   </div>
@@ -476,33 +474,26 @@ export const OperadorasTab = () => {
               })}
             </div>
 
-            <div className="flex items-center gap-4 bg-blue-50 p-4 rounded-xl">
-              <input
-                type="checkbox"
+            <div className="bg-blue-50 p-4 rounded-xl">
+              <Checkbox
+                label="Antecipação Automática"
                 id="auto_antecipa"
                 checked={formData.antecipacao_auto}
                 onChange={(e) =>
                   handleChange({
                     ...formData,
-                    antecipacao_auto: e.target.checked,
+                    antecipacao_auto: (e.target as HTMLInputElement).checked,
                   })
                 }
-                className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
               />
-              <div className="flex-1">
-                <label
-                  htmlFor="auto_antecipa"
-                  className="block text-sm font-bold text-neutral-900 cursor-pointer"
-                >
-                  Antecipação Automática
-                </label>
+              <div className="ml-8">
                 <p className="text-xs text-neutral-500">
                   O dinheiro cai no dia seguinte (com taxa extra).
                 </p>
               </div>
               {formData.antecipacao_auto && (
                 <div className="w-24 relative">
-                  <input
+                  <Input
                     type="number"
                     step="0.01"
                     value={formData.taxa_antecipacao}
@@ -512,9 +503,9 @@ export const OperadorasTab = () => {
                         taxa_antecipacao: Number(e.target.value),
                       })
                     }
-                    className={`${inputClass} pl-2 pr-6 py-1 h-8`}
+                    className="h-8 pr-6"
                   />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs font-bold">
                     %
                   </span>
                 </div>

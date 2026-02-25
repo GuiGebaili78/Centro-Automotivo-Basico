@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { api } from "../../services/api";
+import { EstoqueService } from "../../services/estoque.service";
 
 interface PecasEstoqueFormProps {
   onSuccess: (newItem: any) => void;
@@ -41,9 +41,9 @@ export const PecasEstoqueForm = ({
           : 0,
       };
 
-      const response = await api.post("/pecas-estoque", payload);
+      const newItem = await EstoqueService.create(payload);
       alert("Peça cadastrada com sucesso!");
-      onSuccess(response.data);
+      onSuccess(newItem);
     } catch (error) {
       console.error(error);
       alert("Erro ao cadastrar peça.");

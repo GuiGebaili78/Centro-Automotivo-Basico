@@ -101,15 +101,13 @@ export const CategorySelector = ({
     <div className={`space-y-3 ${className}`}>
       {/* Parent Selector */}
       <div>
-        <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-          Categoria
-        </label>
+        <label>Categoria</label>
         <div className="relative">
           <select
             value={selectedParentId}
             onChange={handleParentChange}
             required={required}
-            className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
+            className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
           >
             <option value="">Selecione a Categoria...</option>
             {parents.map((p) => (

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getStatusStyle } from "../utils/osUtils";
-import { api } from "../services/api";
+import { FinanceiroService } from "../services/financeiro.service";
+import { ColaboradorService } from "../services/colaborador.service";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Plus, Search, AlertCircle } from "lucide-react";
@@ -57,8 +58,8 @@ export const PagamentoEquipePage = () => {
   // --- LOADERS ---
   const loadFuncionarios = async () => {
     try {
-      const res = await api.get("/funcionario");
-      setFuncionarios(res.data);
+      const data = await ColaboradorService.getAll();
+      setFuncionarios(data);
     } catch (e) {
       console.error(e);
       toast.error("Erro ao carregar colaboradores.");
@@ -67,8 +68,8 @@ export const PagamentoEquipePage = () => {
 
   const loadPendentes = async (id: string) => {
     try {
-      const res = await api.get(`/pagamento-equipe/pendentes/${id}`);
-      setPendentes(res.data);
+      const data = await FinanceiroService.getPendenciasColaborador(id);
+      setPendentes(data);
     } catch (e) {
       console.error(e);
       toast.error("Erro ao carregar pendências.");
@@ -77,8 +78,8 @@ export const PagamentoEquipePage = () => {
 
   const loadVales = async (id: string) => {
     try {
-      const res = await api.get(`/pagamento-equipe/vales/${id}`);
-      setValesPendentes(res.data);
+      const data = await FinanceiroService.getValesPendentes(id);
+      setValesPendentes(data);
     } catch (e) {
       console.error(e);
     }
@@ -86,11 +87,10 @@ export const PagamentoEquipePage = () => {
 
   const loadHistorico = async (id: string) => {
     try {
-      const res = await api.get("/pagamento-equipe");
-      const filtered = res.data.filter(
-        (h: any) => String(h.id_funcionario) === String(id),
-      );
-      setHistorico(filtered);
+      const data = await FinanceiroService.getPagamentosColaborador({
+        id_funcionario: id,
+      });
+      setHistorico(data);
     } catch (e) {
       console.error(e);
       toast.error("Erro ao carregar histórico.");

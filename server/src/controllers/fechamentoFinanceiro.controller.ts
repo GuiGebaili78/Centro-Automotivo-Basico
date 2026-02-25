@@ -9,12 +9,10 @@ export class FechamentoFinanceiroController {
       const fechamento = await repository.create(req.body);
       res.status(201).json(fechamento);
     } catch (error) {
-      res
-        .status(400)
-        .json({
-          error: "Failed to create Fechamento Financeiro",
-          details: error,
-        });
+      res.status(400).json({
+        error: "Failed to create Fechamento Financeiro",
+        details: error,
+      });
     }
   }
 
@@ -66,7 +64,7 @@ export class FechamentoFinanceiroController {
 
   async consolidarOS(req: Request, res: Response) {
     try {
-      const { idOs, custoTotalPecasReal } = req.body;
+      const { idOs, custoTotalPecasReal, itemsPecas } = req.body;
 
       if (!idOs) {
         return res.status(400).json({ error: "ID da OS é obrigatório" });
@@ -75,6 +73,7 @@ export class FechamentoFinanceiroController {
       const fechamento = await repository.consolidarOS(
         Number(idOs),
         Number(custoTotalPecasReal) || 0,
+        itemsPecas,
       );
 
       res.status(201).json(fechamento);

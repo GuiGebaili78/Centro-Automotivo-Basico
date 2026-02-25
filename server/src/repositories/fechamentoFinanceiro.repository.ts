@@ -41,10 +41,51 @@ export class FechamentoFinanceiroRepository {
     });
   }
 
-  async update(id: number, data: Prisma.FechamentoFinanceiroUpdateInput) {
-    return await prisma.fechamentoFinanceiro.update({
-      where: { id_fechamento_financeiro: id },
-      data,
+  async update(id: number, data: any) {
+    const { itemsPecas, ...fechamentoData } = data;
+
+    return await prisma.$transaction(async (tx) => {
+      // 1. Atualizar Fechamento
+      const fechamento = await tx.fechamentoFinanceiro.update({
+        where: { id_fechamento_financeiro: id },
+        data: fechamentoData,
+      });
+
+      // 2. Processar Pagamentos de Peças (UPSET em lote)
+      if (itemsPecas && itemsPecas.length > 0) {
+        for (const itemPeca of itemsPecas) {
+          const {
+            id_pagamento_peca,
+            id_item_os,
+            id_fornecedor,
+            custo_real,
+            pago_ao_fornecedor,
+          } = itemPeca;
+
+          if (id_pagamento_peca) {
+            await tx.pagamentoPeca.update({
+              where: { id_pagamento_peca },
+              data: {
+                id_fornecedor: Number(id_fornecedor),
+                custo_real: Number(custo_real),
+                pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+              },
+            });
+          } else {
+            await tx.pagamentoPeca.create({
+              data: {
+                id_item_os: Number(id_item_os),
+                id_fornecedor: Number(id_fornecedor),
+                custo_real: Number(custo_real),
+                pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+                data_compra: new Date(),
+              },
+            });
+          }
+        }
+      }
+
+      return fechamento;
     });
   }
 
@@ -56,13 +97,52 @@ export class FechamentoFinanceiroRepository {
 
   /**
    * Consolida uma OS financeiramente
+   * - Salva/Atualiza pagamentos de peças (PagamentoPeca)
    * - Cria lançamentos no Livro Caixa para TODOS os pagamentos
    * - PIX: Atualiza saldo bancário imediatamente
    * - Dinheiro: Apenas lançamento no caixa
    * - Débito/Crédito: Lançamento no caixa + cria recebível (NÃO atualiza saldo ainda)
    */
-  async consolidarOS(idOs: number, custoTotalPecasReal: number) {
+  async consolidarOS(
+    idOs: number,
+    custoTotalPecasReal: number,
+    itemsPecas?: any[],
+  ) {
     return await prisma.$transaction(async (tx) => {
+      // 0. Processar Pagamentos de Peças (UPSET em lote dentro da transação)
+      if (itemsPecas && itemsPecas.length > 0) {
+        for (const itemPeca of itemsPecas) {
+          const {
+            id_pagamento_peca,
+            id_item_os,
+            id_fornecedor,
+            custo_real,
+            pago_ao_fornecedor,
+          } = itemPeca;
+
+          if (id_pagamento_peca) {
+            await tx.pagamentoPeca.update({
+              where: { id_pagamento_peca },
+              data: {
+                id_fornecedor: Number(id_fornecedor),
+                custo_real: Number(custo_real),
+                pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+              },
+            });
+          } else {
+            await tx.pagamentoPeca.create({
+              data: {
+                id_item_os: Number(id_item_os),
+                id_fornecedor: Number(id_fornecedor),
+                custo_real: Number(custo_real),
+                pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+                data_compra: new Date(),
+              },
+            });
+          }
+        }
+      }
+
       // 1. Buscar OS com todos os pagamentos e detalhes para descrição
       const os = await tx.ordemDeServico.findUnique({
         where: { id_os: idOs },
