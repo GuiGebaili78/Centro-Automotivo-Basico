@@ -4,7 +4,7 @@ import {
   createRoutesFromElements,
   Route,
 } from "react-router-dom";
-import { MainLayout } from "./components/shared/layouts/MainLayout";
+import { MainLayout } from "./components/ui/Layouts/MainLayout";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ClientePage } from "./pages/ClientePage";
 
@@ -36,7 +36,7 @@ import { ExtratoBancarioPage } from "./pages/ExtratoBancarioPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ConfiguracaoPage } from "./pages/ConfiguracaoPage";
 import { CategoriasPage } from "./pages/CategoriasPage";
-import { OperadoraCartaoPage } from "./pages/financeiro/OperadoraCartaoPage";
+import { OperadoraCartaoPage } from "./pages/OperadoraCartaoPage";
 
 const router = createBrowserRouter(
   createRoutesFromElements(

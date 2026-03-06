@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { TabGroup, TabList, Tab, TabPanels, TabPanel } from "@tremor/react";
 
 // Hooks
 import { useOrdemServico } from "../hooks/useOrdemServico";
@@ -10,20 +9,19 @@ import { useConfirm } from "../hooks/useConfirm";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
-import { LaborManager } from "../components/shared/os/LaborManager";
-import { OsShareModal } from "../components/shared/os/OsShareModal";
-import { EditItemOsModal } from "../components/shared/os/EditItemOsModal";
-import { PaymentOsModal } from "../components/shared/os/PaymentOsModal";
+import { LaborManager } from "../components/os/LaborManager";
+import { OsShareModal } from "../components/os/OsShareModal";
+import { OsItemEditModal } from "../components/os/OsItemEditModal";
+import { PaymentOsModal } from "../components/os/PaymentOsModal";
+import { OsHeaderCard } from "../components/os/OsHeaderCard";
 
 // Subcomponents
-import { OsHeader } from "../components/shared/os/OsHeader";
-import { OsInfoCard } from "../components/shared/os/OsInfoCard";
-import { OsDiagnosis } from "../components/shared/os/OsDiagnosis";
-import { OsItemsSection } from "../components/shared/os/OsItemsSection";
-import { OsTotalsSection } from "../components/shared/os/OsTotalsSection";
+import { OsDiagnosis } from "../components/os/OsDiagnosis";
+import { OsItemsSection } from "../components/os/OsItemsSection";
+import { OsTotalsSection } from "../components/os/OsTotalsSection";
 
 // Icons
-import { Wrench, Package, ListChecks, DollarSign } from "lucide-react";
+import { Wrench } from "lucide-react";
 
 export const OrdemDeServicoDetalhePage = () => {
   const { id } = useParams();
@@ -67,7 +65,6 @@ export const OrdemDeServicoDetalhePage = () => {
 
   const { confirmState, requestConfirm, closeConfirm } = useConfirm();
   const [showDateEdit, setShowDateEdit] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
 
   // --- HANDLERS ---
   const handleBack = () => navigate("/");
@@ -130,15 +127,8 @@ export const OrdemDeServicoDetalhePage = () => {
 
   return (
     <PageLayout
-      title={
-        <OsHeader
-          os={os}
-          onBack={handleBack}
-          onPrint={() => setShareModalOpen(true)}
-          onOpenOsNow={openOsNow}
-        />
-      }
-      subtitle="Gerencie os detalhes, peças e serviços desta Ordem de Serviço."
+      title=""
+      subtitle=""
     >
       {/* MODALS */}
       <OsShareModal
@@ -149,7 +139,7 @@ export const OrdemDeServicoDetalhePage = () => {
         clientPhone={os.cliente?.telefone_1}
       />
 
-      <EditItemOsModal
+      <OsItemEditModal
         isOpen={editItemModalOpen}
         onClose={() => setEditItemModalOpen(false)}
         itemData={editingItemData}
@@ -178,93 +168,81 @@ export const OrdemDeServicoDetalhePage = () => {
         variant={confirmState.variant as "danger" | "primary"}
       />
 
-      {/* MAIN CONTENT WITH TABS */}
-      <TabGroup index={activeTab} onIndexChange={setActiveTab} className="mt-4">
-        <TabList variant="line" className="mb-6">
-          <Tab icon={ListChecks}>Geral</Tab>
-          <Tab icon={Wrench}>Mão de Obra</Tab>
-          <Tab icon={Package}>Peças</Tab>
-          <Tab icon={DollarSign}>Financeiro</Tab>
-        </TabList>
+      {/* HEADER CARD: OS Info (Unified) */}
+      <OsHeaderCard 
+        os={os}
+        onBack={handleBack}
+        onPrint={() => setShareModalOpen(true)}
+        onOpenOsNow={openOsNow}
+        showDateEdit={showDateEdit}
+        setShowDateEdit={setShowDateEdit}
+        updateOSField={updateOSField}
+      />
 
-        <TabPanels>
-          {/* TAB 1: GERAL */}
-          <TabPanel>
-            <div className="space-y-6">
-              <OsInfoCard
-                os={os}
-                showDateEdit={showDateEdit}
-                setShowDateEdit={setShowDateEdit}
-                updateOSField={updateOSField}
-              />
-              <OsDiagnosis
-                defeitoRelatado={os.defeito_relatado}
-                diagnostico={os.diagnostico}
-                onChangeDefeito={(val) =>
-                  updateOSField("defeito_relatado", val)
-                }
-                onBlurDefeito={(val) => updateOSField("defeito_relatado", val)}
-                onChangeDiagnostico={(val) => updateOSField("diagnostico", val)}
-                onBlurDiagnostico={(val) => updateOSField("diagnostico", val)}
-              />
+      {/* MID SECTION: Diagnosis Left, Labor Right (Responsive Grid) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch mb-6">
+        <div className="h-full lg:col-span-1">
+          <OsDiagnosis
+            defeitoRelatado={os.defeito_relatado}
+            diagnostico={os.diagnostico}
+            onChangeDefeito={(val) => updateOSField("defeito_relatado", val)}
+            onBlurDefeito={(val) => updateOSField("defeito_relatado", val)}
+            onChangeDiagnostico={(val) => updateOSField("diagnostico", val)}
+            onBlurDiagnostico={(val) => updateOSField("diagnostico", val)}
+          />
+        </div>
+        
+        <Card className="p-6 h-full flex flex-col lg:col-span-2">
+          <h3 className="text-sm font-medium text-gray-600 uppercase tracking-widest flex items-center gap-3 pb-4 border-b border-neutral-100 mb-4">
+            <div className="p-1.5 bg-primary-100 rounded-lg text-primary-600">
+              <Wrench size={18} />
             </div>
-          </TabPanel>
-
-          {/* TAB 2: MÃO DE OBRA */}
-          <TabPanel>
-            <Card className="p-6">
-              <h3 className="text-sm font-bold text-neutral-600 uppercase tracking-widest flex items-center gap-3 pb-4 border-b border-neutral-100 mb-4">
-                <div className="p-1.5 bg-primary-100 rounded-lg text-primary-600">
-                  <Wrench size={16} />
-                </div>
-                Serviços Executados
-              </h3>
-              <LaborManager
-                mode="api"
-                osId={os.id_os}
-                initialData={os.servicos_mao_de_obra || []}
-                employees={employees}
-                onChange={refetch}
-                readOnly={isLocked}
-                onAddLabor={addLabor}
-                onUpdateLabor={updateLabor}
-                onDeleteLabor={deleteLabor}
-              />
-            </Card>
-          </TabPanel>
-
-          {/* TAB 3: PEÇAS */}
-          <TabPanel>
-            <Card className="p-6">
-              <OsItemsSection
-                items={items}
-                isLocked={isLocked}
-                onAdd={addItem}
-                onEdit={handleEditItem}
-                onDelete={handleDeleteItem}
-                onSearch={searchParts}
-                searchResults={partSearchResults}
-                setSearchResults={setPartSearchResults}
-                checkAvailability={checkStockAvailability}
-              />
-            </Card>
-          </TabPanel>
-
-          {/* TAB 4: FINANCEIRO */}
-          <TabPanel>
-            <OsTotalsSection
-              totalParts={totals.parts}
-              totalLabor={totals.labor}
-              totalGeneral={totals.general}
-              payments={os.pagamentos_cliente || []}
-              osStatus={os.status}
-              onManagePayments={() => setPaymentModalOpen(true)}
-              onFinish={handleFinish}
-              onReopen={handleReopen}
+            Serviços Executados (Mão de Obra)
+          </h3>
+          <div className="flex-1">
+            <LaborManager
+              mode="api"
+              osId={os.id_os}
+              initialData={os.servicos_mao_de_obra || []}
+              employees={employees}
+              onChange={refetch}
+              readOnly={isLocked}
+              onAddLabor={addLabor}
+              onUpdateLabor={updateLabor}
+              onDeleteLabor={deleteLabor}
             />
-          </TabPanel>
-        </TabPanels>
-      </TabGroup>
+          </div>
+        </Card>
+      </div>
+
+      {/* PARTS */}
+      <Card className="p-6 mb-6">
+        <OsItemsSection
+          items={items}
+          isLocked={isLocked}
+          onAdd={addItem}
+          onEdit={handleEditItem}
+          onDelete={handleDeleteItem}
+          onSearch={searchParts}
+          searchResults={partSearchResults}
+          setSearchResults={setPartSearchResults}
+          checkAvailability={checkStockAvailability}
+        />
+      </Card>
+
+      {/* TOTALS & FINANCE */}
+      <Card className="p-6 overflow-hidden">
+        <OsTotalsSection
+          totalParts={totals.parts}
+          totalLabor={totals.labor}
+          totalGeneral={totals.general}
+          payments={os.pagamentos_cliente || []}
+          osStatus={os.status}
+          onManagePayments={() => setPaymentModalOpen(true)}
+          onFinish={handleFinish}
+          onReopen={handleReopen}
+        />
+      </Card>
     </PageLayout>
   );
 };

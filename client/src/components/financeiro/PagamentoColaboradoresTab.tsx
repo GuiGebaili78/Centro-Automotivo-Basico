@@ -426,7 +426,7 @@ export const PagamentoColaboradoresTab = ({
         {selectedFuncId && (
           <div className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
+              <label className="text-sm font-medium text-gray-600 mb-2 block">
                 Visualização
               </label>
               <div className="flex bg-neutral-100 p-1 rounded-xl gap-1">
@@ -464,28 +464,28 @@ export const PagamentoColaboradoresTab = ({
                 <div className="border-b border-neutral-100">
                   <div className="px-6 py-4 bg-amber-50 flex items-center gap-2">
                     <AlertCircle size={16} className="text-amber-600" />
-                    <h3 className="text-xs font-bold text-amber-800 uppercase tracking-widest">
-                      Adiantamentos (Vales) em Aberto
-                    </h3>
+                    <h3 className="text-sm font-medium text-amber-800 uppercase">
+                    Adiantamentos (Vales) em Aberto
+                  </h3>
                   </div>
                   <table className="tabela-limpa w-full">
                     <thead>
-                      <tr>
-                        <th>Data</th>
-                        <th>Descrição</th>
-                        <th className="text-right">Valor</th>
+                      <tr className="bg-amber-50/50 text-sm font-medium text-amber-900">
+                        <th className="p-4 text-left">Data</th>
+                        <th className="p-4 text-left">Descrição</th>
+                        <th className="p-4 text-right">Valor</th>
                       </tr>
                     </thead>
                     <tbody>
                       {valesPendentes.map((v, i) => (
-                        <tr key={i} className="hover:bg-amber-50/30">
-                          <td className="font-bold text-neutral-600">
+                        <tr key={i} className="hover:bg-amber-100/30">
+                          <td className="p-4 text-sm font-medium text-amber-900">
                             {new Date(v.dt_pagamento).toLocaleDateString()}
                           </td>
-                          <td className="text-neutral-600">
+                          <td className="p-4 text-sm text-amber-800">
                             {v.obs || "Vale"}
                           </td>
-                          <td className="text-right font-bold text-red-500">
+                          <td className="p-4 text-right text-base font-medium text-red-600">
                             - {formatCurrency(Number(v.valor_total))}
                           </td>
                         </tr>
@@ -497,7 +497,7 @@ export const PagamentoColaboradoresTab = ({
 
               {/* COMISSOES TITLE */}
               <div className="px-6 py-4 bg-neutral-50 border-b border-neutral-100">
-                <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                <h3 className="text-sm font-medium text-gray-600 uppercase">
                   Comissões Pendentes
                 </h3>
               </div>
@@ -506,13 +506,13 @@ export const PagamentoColaboradoresTab = ({
               <div className="overflow-x-auto">
                 <table className="tabela-limpa w-full">
                   <thead>
-                    <tr>
-                      <th>OS / Data</th>
-                      <th>Veículo / Cliente</th>
-                      <th className="text-right">Valor Serviço</th>
-                      <th className="text-center">%</th>
-                      <th className="text-right">A Receber</th>
-                      <th className="text-center">Status OS</th>
+                    <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
+                      <th className="p-4 text-left">OS / Data</th>
+                      <th className="p-4 text-left">Veículo / Cliente</th>
+                      <th className="p-4 text-right">Valor Serviço</th>
+                      <th className="p-4 text-center">%</th>
+                      <th className="p-4 text-right">A Receber</th>
+                      <th className="p-4 text-center">Status OS</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -533,35 +533,37 @@ export const PagamentoColaboradoresTab = ({
                         );
                         return (
                           <tr key={idx} className="group hover:bg-neutral-50">
-                            <td>
-                              <div className="font-bold text-neutral-600">
-                                #{item.id_os}
+                            <td className="p-4">
+                              <div className="text-sm font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md w-fit mb-1">
+                                OS | {item.id_os}
                               </div>
-                              <div className="text-[10px] text-neutral-400">
+                              <div className="text-xs text-gray-500">
                                 {new Date(
                                   item.ordem_de_servico?.dt_abertura,
                                 ).toLocaleDateString()}
                               </div>
                             </td>
-                            <td>
-                              <div className="text-xs font-bold text-neutral-600">
-                                {item.ordem_de_servico?.veiculo?.modelo}
-                              </div>
-                              <div className="text-[10px] text-neutral-400">
-                                {item.ordem_de_servico?.cliente?.pessoa_fisica
-                                  ?.pessoa?.nome || "Cliente"}
+                            <td className="p-4">
+                              <div className="flex flex-col">
+                                <span className="text-base font-medium uppercase text-gray-900 leading-tight">
+                                  {item.ordem_de_servico?.veiculo?.modelo || "S/M"} • {item.ordem_de_servico?.veiculo?.cor || "S/C"}
+                                </span>
+                                <span className="text-sm font-medium text-gray-600">
+                                  {item.ordem_de_servico?.cliente?.pessoa_fisica
+                                    ?.pessoa?.nome || item.ordem_de_servico?.cliente?.pessoa_juridica?.razao_social || "Cliente identificado"}
+                                </span>
                               </div>
                             </td>
-                            <td className="text-right text-xs font-bold text-neutral-400">
+                            <td className="p-4 text-right text-sm text-gray-500">
                               {formatCurrency(Number(item.valor))}
                             </td>
-                            <td className="text-center">
-                              <span className="text-xs font-bold bg-neutral-100 px-2 py-1 rounded text-neutral-500">
+                            <td className="p-4 text-center">
+                              <span className="text-sm font-medium bg-neutral-100 px-2 py-1 rounded text-gray-600">
                                 {porcentagem}%
                               </span>
                             </td>
-                            <td className="text-right">
-                              <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                            <td className="p-4 text-right">
+                              <span className="text-base font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
                                 {formatCurrency(valorComissao)}
                               </span>
                             </td>
@@ -600,7 +602,7 @@ export const PagamentoColaboradoresTab = ({
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-4">
                   <div className="flex flex-col gap-2">
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
+                    <label className="text-sm font-medium text-gray-600 pl-1 mb-2 block">
                       Período
                     </label>
                     <div className="flex bg-neutral-100 p-1 rounded-xl gap-1">
@@ -643,26 +645,26 @@ export const PagamentoColaboradoresTab = ({
 
               <Card className="p-0 overflow-hidden">
                 <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex justify-between items-center">
-                  <span className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+                  <span className="text-sm font-medium uppercase text-gray-600">
                     Histórico de Pagamentos
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold text-neutral-400">
+                    <span className="text-xs uppercase font-medium text-gray-400">
                       Total Pago:
                     </span>
-                    <span className="text-lg font-black text-neutral-800 bg-white px-3 py-1 rounded border border-neutral-200 shadow-sm">
+                    <span className="text-xl font-bold text-gray-900 bg-white px-3 py-1 rounded border border-neutral-200 shadow-sm">
                       {formatCurrency(totalHistorico)}
                     </span>
                   </div>
                 </div>
                 <table className="tabela-limpa w-full">
                   <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th>Tipo</th>
-                      <th>OS / Detalhe</th>
-                      <th>Cliente/Veículo</th>
-                      <th className="text-right">Valor</th>
+                    <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
+                      <th className="p-4 text-left">Data</th>
+                      <th className="p-4 text-left">Tipo</th>
+                      <th className="p-4 text-left">OS / Detalhe</th>
+                      <th className="p-4 text-left">Cliente/Veículo</th>
+                      <th className="p-4 text-right">Valor</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -678,9 +680,9 @@ export const PagamentoColaboradoresTab = ({
                     ) : (
                       flattenedHistorico.map((h, i) => (
                         <tr key={i} className="hover:bg-neutral-50">
-                          <td className="text-xs font-bold text-neutral-600">
+                          <td className="p-4 text-sm font-medium text-gray-900">
                             {new Date(h.date).toLocaleDateString()}
-                            <div className="text-[10px] font-normal text-neutral-400">
+                            <div className="text-xs font-normal text-gray-500">
                               {new Date(h.date).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
@@ -694,44 +696,43 @@ export const PagamentoColaboradoresTab = ({
                               {h.type}
                             </span>
                           </td>
-                          <td className="text-xs">
+                          <td className="p-4">
                             {h.type === "COMISSAO" ? (
-                              <>
-                                <span className="font-bold text-neutral-700">
-                                  OS #{h.os?.id_os}
-                                </span>
-                              </>
+                              <div className="text-sm font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md w-fit">
+                                OS | {h.os?.id_os}
+                              </div>
                             ) : (
-                              <span className="font-medium text-neutral-600">
+                              <span className="text-sm font-medium text-gray-700">
                                 {h.description}
                               </span>
                             )}
                           </td>
-                          <td className="text-xs text-neutral-500">
+                          <td className="p-4 text-sm text-gray-500">
                             {h.type === "COMISSAO" ? (
-                              <>
-                                <div>
-                                  {h.os?.veiculo?.modelo} (
-                                  {h.os?.veiculo?.placa})
-                                </div>
-                                <div className="text-[9px]">
+                              <div className="flex flex-col">
+                                <span className="text-gray-900 font-medium">
+                                  {h.os?.veiculo?.modelo} ({h.os?.veiculo?.placa})
+                                </span>
+                                <span className="text-xs">
                                   {h.os?.cliente?.pessoa_fisica?.pessoa?.nome ||
                                     h.os?.cliente?.pessoa_juridica
                                       ?.razao_social}
-                                </div>
-                              </>
+                                </span>
+                              </div>
                             ) : (
-                              <span className="text-neutral-300">---</span>
+                              <span className="text-gray-300">---</span>
                             )}
                           </td>
-                          <td className="text-right font-bold text-neutral-600">
-                            {formatCurrency(
-                              h.type === "COMISSAO"
-                                ? h.commissionValue
-                                : h.value,
-                            )}
+                          <td className="p-4 text-right">
+                            <span className="text-base font-medium text-gray-900">
+                              {formatCurrency(
+                                h.type === "COMISSAO"
+                                  ? h.commissionValue
+                                  : h.value,
+                              )}
+                            </span>
                             {h.type === "COMISSAO" && (
-                              <div className="text-[9px] text-neutral-400">
+                              <div className="text-xs text-gray-400">
                                 ({h.percentage}%)
                               </div>
                             )}

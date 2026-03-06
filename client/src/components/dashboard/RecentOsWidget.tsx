@@ -4,7 +4,7 @@ import { Clock } from "lucide-react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { OsStatus } from "../../types/os.types";
-import { OsTable } from "../shared/os/OsTable";
+import { OsTable } from "../os/OsTable";
 import type { FilterPeriod } from "../../types/dashboard.types";
 
 interface RecentOsWidgetProps {
@@ -98,7 +98,7 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
       <OsTable
         oss={filteredServices}
         isDashboard={true}
-        onRowClick={(os) =>
+        onRowClick={(os: any) =>
           navigate(
             os.status === "PRONTO PARA FINANCEIRO"
               ? `/fechamento-financeiro?id_os=${os.id_os}`

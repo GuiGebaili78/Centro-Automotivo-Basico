@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 
 import { OsStatus } from "../types/os.types";
-import { UnifiedSearch } from "../components/shared/dashboard/UnifiedSearch";
-import { OsCreationModal } from "../components/shared/os/OsCreationModal";
-import { DashboardCalendar } from "../components/shared/dashboard/DashboardCalendar";
+import { UnifiedSearch } from "../components/dashboard/UnifiedSearch";
+import { OsCreationModal } from "../components/os/OsCreationModal";
+import { DashboardCalendar } from "../components/dashboard/DashboardCalendar";
 
 import { DashboardService } from "../services/dashboard.service";
 import { DashboardMetrics } from "../components/dashboard/DashboardMetrics";

@@ -10,10 +10,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Badge } from "../ui/Badge";
-import { ActionButton } from "../ui/ActionButton";
-import { Button } from "../ui/Button";
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { Badge, ActionButton, Button, ConfirmModal } from "../ui";
 import { formatPhone } from "../../utils/normalize";
 import type { ICliente } from "../../types/cliente.types";
 

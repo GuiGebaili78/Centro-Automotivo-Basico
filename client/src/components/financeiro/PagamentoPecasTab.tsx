@@ -246,7 +246,7 @@ export const PagamentoPecasTab = ({
       <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col gap-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div>
-            <label className="text-[10px] font-black text-neutral-400 uppercase mb-2 block tracking-widest">
+            <label className="text-sm font-medium text-gray-600 mb-2 block">
               Status Pagamento
             </label>
             <div className="flex bg-neutral-100 rounded-xl p-1 gap-1">
@@ -301,7 +301,7 @@ export const PagamentoPecasTab = ({
 
         <div className="flex flex-col md:flex-row items-end md:items-center gap-4 border-t border-neutral-100 pt-4">
           <div className="flex flex-col sm:flex-row items-center gap-2">
-            <span className="text-[10px] font-bold text-neutral-400 uppercase whitespace-nowrap min-w-[90px] tracking-widest">
+            <span className="text-sm font-medium text-gray-600 whitespace-nowrap min-w-[90px]">
               Data Compra:
             </span>
 
@@ -381,7 +381,7 @@ export const PagamentoPecasTab = ({
             <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">
               Total Pendente (Selecionado)
             </p>
-            <p className="text-2xl font-black text-red-600">
+            <p className="text-2xl font-bold text-red-600">
               {formatCurrency(totalPending)}
             </p>
           </div>
@@ -394,7 +394,7 @@ export const PagamentoPecasTab = ({
             <p className="text-[10px] font-black text-green-400 uppercase tracking-widest">
               Total Pago (Selecionado)
             </p>
-            <p className="text-2xl font-black text-green-600">
+            <p className="text-2xl font-bold text-green-600">
               {formatCurrency(totalPaid)}
             </p>
           </div>
@@ -408,7 +408,7 @@ export const PagamentoPecasTab = ({
       <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden w-full">
         <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>
-            <tr className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+            <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
               <th className="p-5">Data Compra</th>
               <th className="p-5">Ref / Nota</th>
               <th className="p-5">Peça</th>
@@ -438,40 +438,45 @@ export const PagamentoPecasTab = ({
                   }`}
                 >
                   <td className="p-5">
-                    <div className="flex items-center gap-2 font-bold text-neutral-600 text-xs">
-                      <Calendar size={14} />
+                    <div className="flex items-center gap-2 text-base text-gray-900 font-medium">
+                      <Calendar size={14} className="text-gray-400" />
                       {new Date(p.data_compra).toLocaleDateString()}
                     </div>
                   </td>
                   <td className="p-5">
-                    <span className="font-mono text-xs font-black text-neutral-600 bg-neutral-100 px-2 py-1 rounded w-fit">
+                    <span className="font-mono text-sm text-gray-600 bg-neutral-100 px-2 py-1 rounded border border-neutral-200 w-fit">
                       {p.item_os?.codigo_referencia || "---"}
                     </span>
                   </td>
                   <td className="p-5">
-                    <p className="font-bold text-neutral-900 text-sm">
+                    <p className="text-base text-gray-900 font-medium">
                       {p.item_os?.descricao}
                     </p>
                   </td>
                   <td className="p-5">
                     <div className="flex items-center gap-2">
                       <Truck size={14} className="text-orange-500" />
-                      <span className="font-bold text-neutral-700 text-xs uppercase">
+                      <span className="text-base text-gray-900 font-medium">
                         {p.fornecedor?.nome}
                       </span>
                     </div>
                   </td>
                   <td className="p-5">
-                    <div>
-                      <p className="font-black text-neutral-800 text-xs uppercase tracking-widest bg-neutral-100 px-2 py-1 rounded w-fit">
-                        {p.item_os?.ordem_de_servico?.veiculo?.placa || "N/A"}
-                      </p>
-                      <p className="text-[10px] text-neutral-400 font-bold mt-1">
-                        OS Nº {String(p.item_os?.id_os).padStart(4, "0")}
+                    <div className="flex flex-col">
+                      <div className="flex flex-col">
+                        <span className="text-base font-medium uppercase text-gray-900 leading-tight">
+                          {p.item_os?.ordem_de_servico?.veiculo?.modelo || "S/M"} • {p.item_os?.ordem_de_servico?.veiculo?.cor || "S/C"}
+                        </span>
+                        <span className="text-base uppercase text-primary-600 leading-tight">
+                          {p.item_os?.ordem_de_servico?.veiculo?.placa || "S/P"}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md w-fit mt-1">
+                        OS | {p.item_os?.id_os}
                       </p>
                     </div>
                   </td>
-                  <td className="p-5 text-right font-black text-neutral-900">
+                  <td className="p-5 text-right text-base text-gray-900 font-medium">
                     {formatCurrency(Number(p.custo_real))}
                   </td>
                   <td className="p-5 text-center">

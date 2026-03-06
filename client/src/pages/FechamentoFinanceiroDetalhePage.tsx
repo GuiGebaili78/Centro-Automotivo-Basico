@@ -14,9 +14,9 @@ import {
   Truck,
   Phone,
 } from "lucide-react";
-import { PagamentoClienteForm } from "../components/forms/PagamentoClienteForm";
-import { FornecedorForm } from "../components/forms/FornecedorForm";
-import { LaborManager } from "../components/shared/os/LaborManager";
+import { PagamentoClienteForm } from "../components/financeiro/Forms/PagamentoClienteForm";
+import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
+import { LaborManager } from "../components/os/LaborManager";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
 import { ActionButton } from "../components/ui/ActionButton";

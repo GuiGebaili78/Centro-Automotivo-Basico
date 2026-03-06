@@ -3,7 +3,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { FinanceiroService } from "../services/financeiro.service";
-import { CategoryManager } from "../components/shared/financeiro/CategoryManager";
+import { CategoryManager } from "../components/financeiro/CategoryManager";
 import {
   ArrowLeft,
   ArrowUpCircle,
@@ -17,9 +17,7 @@ import {
   FilterX,
 } from "lucide-react";
 import type { IContaBancaria } from "../types/backend";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { Modal } from "../components/ui/Modal";
+import { Button, Input, Modal } from "../components/ui";
 
 export const ExtratoBancarioPage = () => {
   const { idConta } = useParams();

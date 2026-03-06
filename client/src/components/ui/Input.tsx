@@ -11,7 +11,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
+          <label className="text-sm font-medium text-gray-600">
             {label}
           </label>
         )}
@@ -25,7 +25,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {...props}
             ref={ref}
             className={`
-              w-full bg-white border rounded-xl py-2.5 text-[0.875rem] transition-all outline-none
+              w-full bg-white border rounded-xl py-2.5 text-base text-gray-900 transition-all outline-none placeholder:text-gray-400
               ${Icon ? "pl-10 pr-4" : "px-4"}
               ${error ? "border-red-500 focus:ring-red-100" : "border-slate-200 focus:ring-primary-100 focus:border-primary-600"}
               ${className}

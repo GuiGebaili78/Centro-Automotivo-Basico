@@ -12,7 +12,7 @@ import {
   FilterButton,
 } from "../ui";
 import { toast } from "react-toastify";
-import { CategoryManager } from "../shared/financeiro/CategoryManager";
+import { CategoryManager } from "./CategoryManager";
 import {
   Plus,
   Calendar,
@@ -219,12 +219,12 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
       {/* HEADER ACTIONS */}
       <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-neutral-100 shadow-sm">
         <div className="flex flex-col">
-          <h2 className="text-sm font-bold text-neutral-700">
-            Contas e Despesas
-          </h2>
-          <p className="text-xs text-neutral-400">
-            Gerencie contas a pagar e despesas gerais
-          </p>
+            <h2 className="text-base font-bold text-gray-900">
+              Contas e Despesas
+            </h2>
+            <p className="text-sm text-gray-500">
+              Gerencie contas a pagar e despesas gerais
+            </p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -243,7 +243,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-red-50 border border-red-100 p-6 rounded-2xl">
-          <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">
+          <p className="text-sm font-medium text-red-600 uppercase mb-1">
             Total Pendente (Filtro)
           </p>
           <div className="flex items-center gap-2">
@@ -254,7 +254,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
           </div>
         </div>
         <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-2xl">
-          <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">
+          <p className="text-sm font-medium text-emerald-600 uppercase mb-1">
             Total Pago (Filtro)
           </p>
           <div className="flex items-center gap-2">
@@ -281,7 +281,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
+            <label className="text-sm font-medium text-gray-600 pl-1 mb-2 block">
               Status da Conta
             </label>
             <div className="flex bg-neutral-50 p-1 rounded-xl items-center border border-neutral-200 gap-1">
@@ -300,7 +300,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
 
         <div className="flex flex-col md:flex-row items-end md:items-center gap-4 border-t border-neutral-100 pt-4">
           <div className="flex flex-col sm:flex-row items-center gap-2">
-            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest min-w-[90px]">
+            <span className="text-sm font-medium text-gray-600 min-w-[90px]">
               Vencimento:
             </span>
             <div className="flex bg-neutral-50 p-1 rounded-xl shrink-0 gap-1">
@@ -385,13 +385,13 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
       <Card className="p-0 overflow-hidden">
         <table className="tabela-limpa w-full">
           <thead>
-            <tr>
-              <th>Vencimento</th>
-              <th>Descrição</th>
-              <th>Credor / Docs</th>
-              <th className="text-right">Valor</th>
-              <th className="text-center">Status</th>
-              <th className="text-right">Ações</th>
+            <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
+              <th className="p-4 text-left">Vencimento</th>
+              <th className="p-4 text-left">Descrição</th>
+              <th className="p-4 text-left">Credor / Docs</th>
+              <th className="p-4 text-right">Valor</th>
+              <th className="p-4 text-center">Status</th>
+              <th className="p-4 text-right">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -417,8 +417,8 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                   className="hover:bg-neutral-50 transition-colors group"
                 >
                   <td className="p-4">
-                    <div className="font-bold text-neutral-700 text-sm flex items-center gap-2">
-                      <Calendar size={14} className="text-neutral-400" />
+                    <div className="text-base text-gray-900 font-medium flex items-center gap-2">
+                      <Calendar size={14} className="text-gray-400" />
                       {new Date(conta.dt_vencimento)
                         .getUTCDate()
                         .toString()
@@ -443,15 +443,15 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                     )}
                   </td>
                   <td className="p-4">
-                    <div className="font-bold text-neutral-900">
+                    <div className="text-base text-gray-900 font-bold">
                       {conta.descricao}
                       {conta.id_grupo_recorrencia && (
-                        <span className="ml-2 text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                        <span className="ml-2 text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">
                           Recorrente
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] font-bold text-neutral-400 uppercase bg-neutral-100 px-2 py-0.5 rounded w-fit mt-1">
+                    <div className="text-[10px] font-bold text-gray-500 uppercase bg-neutral-100 px-2 py-0.5 rounded w-fit mt-1 border border-neutral-200">
                       {conta.categoria}
                     </div>
                     {conta.obs && (
@@ -462,8 +462,8 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                   </td>
                   <td className="p-4">
                     {conta.credor && (
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-700 mb-1">
-                        <User size={12} className="text-neutral-400" />{" "}
+                      <div className="flex items-center gap-1.5 text-sm font-medium text-gray-600 mb-1">
+                        <User size={12} className="text-gray-400" />{" "}
                         {conta.credor}
                       </div>
                     )}
@@ -474,7 +474,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                       </div>
                     )}
                   </td>
-                  <td className="p-4 text-right font-bold text-neutral-600">
+                  <td className="p-4 text-right text-base text-gray-900 font-bold">
                     {formatCurrency(Number(conta.valor))}
                   </td>
                   <td className="p-4 text-center">

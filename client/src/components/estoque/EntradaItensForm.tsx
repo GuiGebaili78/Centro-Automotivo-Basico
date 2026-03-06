@@ -199,14 +199,14 @@ export const EntradaItensForm = ({
     <>
       {/* ITEM INPUT CARD */}
       <Card className="overflow-visible space-y-4">
-        <h3 className="text-base font-bold text-neutral-600 uppercase tracking-widest border-b border-neutral-100 pb-2 flex items-center gap-2">
+        <h3 className="text-sm font-medium text-gray-600 uppercase border-b border-neutral-100 pb-2 flex items-center gap-2">
           <Package size={16} className="text-primary-500" /> Adicionar Item
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Part Search / New Part Toggle */}
           <div className="relative z-20">
-            <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Buscar Peça ou Cadastrar Nova
             </label>
             <div className="relative">
@@ -285,7 +285,7 @@ export const EntradaItensForm = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
                   Unidade
                 </label>
                 <select
@@ -377,7 +377,7 @@ export const EntradaItensForm = ({
       {/* CART LIST */}
       <Card className="p-0 overflow-hidden border-neutral-200">
         <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex justify-between items-center">
-          <h3 className="text-sm font-bold text-neutral-600 uppercase tracking-widest">
+          <h3 className="text-sm font-medium text-gray-600 uppercase">
             Itens na Lista
           </h3>
           <span className="text-xs font-bold text-neutral-400">
@@ -388,15 +388,17 @@ export const EntradaItensForm = ({
         <div className="overflow-x-auto">
           <table className="tabela-limpa w-full">
             <thead>
-              <tr>
-                <th className="w-[30%]">Produto</th>
-                <th className="w-[8%] text-center">Qtd</th>
-                <th className="w-[10%] text-right">Custo</th>
-                <th className="w-[8%] text-right">Margem</th>
-                <th className="w-[8%] text-right">Venda</th>
-                <th className="w-[8%] text-right">Subtotal</th>
-                <th className="w-[12%] text-center">Ações</th>
+            <thead>
+              <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
+                <th className="w-[30%] p-4 text-left">Produto</th>
+                <th className="w-[8%] p-4 text-center">Qtd</th>
+                <th className="w-[10%] p-4 text-right">Custo</th>
+                <th className="w-[8%] p-4 text-right">Margem</th>
+                <th className="w-[8%] p-4 text-right">Venda</th>
+                <th className="w-[8%] p-4 text-right">Subtotal</th>
+                <th className="w-[12%] p-4 text-center">Ações</th>
               </tr>
+            </thead>
             </thead>
             <tbody>
               {items.map((i) => (
@@ -404,12 +406,12 @@ export const EntradaItensForm = ({
                   key={i.tempId}
                   className="hover:bg-neutral-50 transition-colors group"
                 >
-                  <td>
+                  <td className="p-4">
                     <div className="flex flex-col">
-                      <span className="font-bold text-neutral-800">
+                      <span className="text-base text-gray-900 font-medium">
                         {i.displayName}
                       </span>
-                      <span className="text-xs text-neutral-400">
+                      <span className="text-xs text-gray-500">
                         {i.ref_cod}
                       </span>
                       {i.new_part_data && (
@@ -419,19 +421,19 @@ export const EntradaItensForm = ({
                       )}
                     </div>
                   </td>
-                  <td className="text-left font-bold text-neutral-700">
+                  <td className="p-4 text-center text-base text-gray-900 font-medium">
                     {i.quantidade}
                   </td>
-                  <td className="text-left font-bold text-neutral-600">
+                  <td className="p-4 text-right text-base text-gray-900 font-medium">
                     {formatCurrency(i.valor_custo)}
                   </td>
-                  <td className="text-left text-blue-600 font-bold">
+                  <td className="p-4 text-right text-base text-primary-600 font-medium">
                     {i.margem_lucro?.toFixed(1)}%
                   </td>
-                  <td className="text-left font-bold text-neutral-800">
+                  <td className="p-4 text-right text-base text-gray-900 font-bold">
                     {formatCurrency(i.valor_venda)}
                   </td>
-                  <td className="text-left font-bold text-neutral-500">
+                  <td className="p-4 text-right text-base text-gray-500 font-medium">
                     {formatCurrency(i.quantidade * i.valor_custo)}
                   </td>
                   <td>
@@ -469,7 +471,7 @@ export const EntradaItensForm = ({
         {items.length > 0 && (
           <div className="p-6 bg-neutral-100 flex justify-end items-center gap-8 border-t border-neutral-200">
             <div className="text-right">
-              <p className="text-xs font-bold text-neutral-500 uppercase">
+              <p className="text-sm font-medium text-gray-600 uppercase">
                 Total da Compra
               </p>
               <p className="text-3xl font-black text-neutral-800 tracking-tight">

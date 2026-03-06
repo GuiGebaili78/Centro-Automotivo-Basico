@@ -11,3 +11,4 @@ export * from "./FilterRadio";
 export * from "./FilterButton";
 export * from "./TextArea";
 export * from "./StatusBanner";
+export * from "./Badge";

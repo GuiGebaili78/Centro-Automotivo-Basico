@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { PageLayout } from "../components/ui/PageLayout";
-import { CategoryManager } from "../components/shared/financeiro/CategoryManager";
-import { Button } from "../components/ui/Button";
+import { PageLayout, Button, ActionButton } from "../components/ui";
+import { CategoryManager } from "../components/financeiro/CategoryManager";
 import { FinanceiroService } from "../services/financeiro.service";
 import { toast } from "react-toastify";
-import { ActionButton } from "../components/ui/ActionButton";
 import { Plus, Pencil, Shield, Tag, ChevronRight } from "lucide-react";
 
 // ─── Categorias protegidas do sistema ─────────────────────────────────────────

@@ -11,8 +11,8 @@ import {
   FilterButton,
   Checkbox,
 } from "../components/ui";
-import { CategoryManager } from "../components/shared/financeiro/CategoryManager";
-import { ModalPagamentoUnificado } from "../components/shared/financeiro/ModalPagamentoUnificado";
+import { CategoryManager } from "../components/financeiro/CategoryManager";
+import { ModalPagamentoUnificado } from "../components/financeiro/ModalPagamentoUnificado";
 import { toast } from "react-toastify";
 import {
   Plus,

@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import type { IItensOs } from "../types/backend";
-import { ItensOsForm } from "../components/forms/ItensOsForm";
-import { Modal } from "../components/ui/Modal";
+import { ItensOsForm } from "../components/os/Forms/ItensOsForm";
+import { Modal } from "../components/ui";
 import { Plus, Search, Trash2, Edit, Package } from "lucide-react";
 
 export const ItensOsPage = () => {

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { IPessoa } from '../types/backend';
-import { PessoaForm } from '../components/forms/PessoaForm';
-import { Modal } from '../components/ui/Modal';
+import { PessoaForm } from '../components/pessoa/Forms/PessoaForm';
+import { Modal } from '../components/ui';
 import { Plus, Search, Trash2, Edit, User } from 'lucide-react';
 
 export const PessoaPage = () => {

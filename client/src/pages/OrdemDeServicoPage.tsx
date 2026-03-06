@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import type { IOrdemDeServico } from "../types/backend";
 import { Search, Plus, Phone, CheckCircle, Wrench } from "lucide-react";
-import { OsTable } from "../components/shared/os/OsTable";
+import { OsTable } from "../components/os/OsTable";
 
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
@@ -12,7 +12,7 @@ import { Modal } from "../components/ui/Modal";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { toast } from "react-toastify";
-import { OsCreationModal } from "../components/shared/os/OsCreationModal";
+import { OsCreationModal } from "../components/os/OsCreationModal";
 import { OsStatus } from "../types/os.types";
 import { OsService } from "../services/os.service";
 import { ClienteService } from "../services/cliente.service";

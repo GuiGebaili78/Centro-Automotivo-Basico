@@ -1,15 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { FornecedorService } from "../services/fornecedor.service";
 import type { IFornecedor } from "../types/fornecedor.types";
-import { FornecedorForm } from "../components/forms/FornecedorForm";
+import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
 import { FornecedoresTable } from "../components/fornecedores/FornecedoresTable";
-import { Button } from "../components/ui/Button";
+import { Button, Input, ConfirmModal, PageLayout, Card } from "../components/ui";
 import { Plus, Search, Truck } from "lucide-react";
-import { Input } from "../components/ui/Input";
-import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { toast } from "react-toastify";
-import { PageLayout } from "../components/ui/PageLayout";
-import { Card } from "../components/ui/Card";
 
 export const FornecedorPage = () => {
   const [view, setView] = useState<"list" | "form">("list");

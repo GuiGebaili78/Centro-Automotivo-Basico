@@ -1,15 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { ColaboradorService } from "../services/colaborador.service";
-import { Button } from "../components/ui/Button";
-import { FuncionarioForm } from "../components/forms/FuncionarioForm";
+import { Button, Input, ConfirmModal, PageLayout, Card } from "../components/ui";
+import { FuncionarioForm } from "../components/colaboradores/Forms/FuncionarioForm";
 import { ColaboradoresTable } from "../components/colaboradores/ColaboradoresTable";
-import { Input } from "../components/ui/Input";
 import { Plus, Search, Users } from "lucide-react";
 import type { IFuncionario } from "../types/colaborador.types";
-import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { toast } from "react-toastify";
-import { PageLayout } from "../components/ui/PageLayout";
-import { Card } from "../components/ui/Card";
 
 export const FuncionarioPage = () => {
   const [view, setView] = useState<"list" | "form">("list");

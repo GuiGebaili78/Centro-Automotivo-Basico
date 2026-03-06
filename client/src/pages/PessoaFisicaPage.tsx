@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { IPessoaFisica } from '../types/backend';
-import { PessoaFisicaForm } from '../components/forms/PessoaFisicaForm';
-import { Modal } from '../components/ui/Modal';
+import { PessoaFisicaForm } from '../components/pessoa/Forms/PessoaFisicaForm';
+import { Modal } from '../components/ui';
 import { Plus, Search, Trash2, Edit, UserCheck } from 'lucide-react';
 
 export const PessoaFisicaPage = () => {

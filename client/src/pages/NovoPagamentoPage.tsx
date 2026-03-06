@@ -22,7 +22,7 @@ import {
   Checkbox,
 } from "../components/ui";
 import { toast } from "react-toastify";
-import { ModalPagamentoUnificado } from "../components/shared/financeiro/ModalPagamentoUnificado";
+import { ModalPagamentoUnificado } from "../components/financeiro/ModalPagamentoUnificado";
 
 export const NovoPagamentoPage = () => {
   const navigate = useNavigate();

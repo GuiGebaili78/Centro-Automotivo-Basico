@@ -251,7 +251,6 @@ export const useOrdemServico = (id: string | number | undefined) => {
   };
 
   // --- MODAL / UI STATE ---
-  const [activeTab, setActiveTab] = useState("items");
   const [editingItemData, setEditingItemData] = useState<any>(null);
   const [editItemModalOpen, setEditItemModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -369,8 +368,6 @@ export const useOrdemServico = (id: string | number | undefined) => {
     updateLabor,
     deleteLabor,
     // UI state
-    activeTab,
-    setActiveTab,
     editingItemData,
     setEditingItemData,
     editItemModalOpen,

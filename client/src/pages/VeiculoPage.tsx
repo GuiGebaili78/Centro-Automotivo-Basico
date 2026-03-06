@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import type { IVeiculo } from "../types/backend";
-import { ClienteForm } from "../components/forms/ClienteForm";
-import { VeiculoForm } from "../components/forms/VeiculoForm";
+import { ClienteForm } from "../components/clientes/Forms/ClienteForm";
+import { VeiculoForm } from "../components/veiculos/Forms/VeiculoForm";
 import { Modal } from "../components/ui/Modal";
 import { Plus, Search, Trash2, Edit, Car, Wrench, Phone } from "lucide-react";
 import { ActionButton } from "../components/ui/ActionButton";
@@ -13,7 +13,7 @@ import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { toast } from "react-toastify";
-import { OsCreationModal } from "../components/shared/os/OsCreationModal";
+import { OsCreationModal } from "../components/os/OsCreationModal";
 
 export const VeiculoPage = () => {
   const navigate = useNavigate();

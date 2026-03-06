@@ -26,22 +26,22 @@ import {
 import { OsStatus } from "../types/os.types";
 import { Modal } from "../components/ui/Modal";
 import { ActionButton } from "../components/ui/ActionButton";
-import { VeiculoForm } from "../components/forms/VeiculoForm";
+import { VeiculoForm } from "../components/veiculos/Forms/VeiculoForm";
 import type { FormEvent } from "react";
 import { Button } from "../components/ui/Button";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
-import { OsCreationModal } from "../components/shared/os/OsCreationModal";
+import { OsCreationModal } from "../components/os/OsCreationModal";
 
 // ─── Novos componentes auto-gerenciados ───────────────────────────────────────
 import {
   ClienteFormSection,
   type ClienteFormSectionRef,
   type ClienteFormData,
-} from "../components/forms/ClienteFormSection";
+} from "../components/clientes/Forms/ClienteFormSection";
 import {
   VeiculoFormSection,
   type VeiculoFormSectionRef,
-} from "../components/forms/VeiculoFormSection";
+} from "../components/veiculos/Forms/VeiculoFormSection";
 
 import { ClienteService } from "../services/cliente.service";
 import { VeiculoService } from "../services/veiculo.service";

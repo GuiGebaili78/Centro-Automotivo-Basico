@@ -154,7 +154,7 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-neutral-100 pt-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest min-w-[90px]">
+            <span className="text-sm font-medium text-gray-600 min-w-[90px]">
               Períodos Rápidos:
             </span>
             <div className="flex bg-neutral-100 p-1 rounded-xl gap-1">
@@ -197,7 +197,7 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
             <div className="p-2 bg-success-50 text-success-600 rounded-lg">
               <ArrowDownCircle size={20} />
             </div>
-            <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+            <p className="text-sm font-medium text-gray-600 uppercase">
               Entradas
             </p>
           </div>
@@ -210,7 +210,7 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
             <div className="p-2 bg-red-50 text-red-600 rounded-lg">
               <ArrowUpCircle size={20} />
             </div>
-            <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+            <p className="text-sm font-medium text-gray-600 uppercase">
               Saídas
             </p>
           </div>
@@ -223,7 +223,7 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
             <div className="p-2 bg-neutral-800 text-neutral-400 rounded-lg">
               <Wallet size={20} />
             </div>
-            <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+            <p className="text-sm font-medium text-gray-400 uppercase">
               Saldo
             </p>
           </div>
@@ -241,7 +241,7 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
       <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden w-full">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+            <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
               <th className="p-5">Data</th>
               <th className="p-5">Descrição</th>
               <th className="p-5">Detalhes</th>
@@ -266,18 +266,18 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
                   className="hover:bg-neutral-25 transition-colors"
                 >
                   <td className="p-5">
-                    <div className="flex items-center gap-2 font-bold text-neutral-600 text-xs">
-                      <Calendar size={14} />
+                    <div className="flex items-center gap-2 text-base text-gray-900 font-medium">
+                      <Calendar size={14} className="text-gray-400" />
                       {new Date(entry.date).toLocaleDateString()}
                     </div>
                   </td>
-                  <td className="p-5 font-bold text-neutral-900">
+                  <td className="p-5 text-base text-gray-900 font-medium">
                     {entry.description}
                   </td>
                   <td className="p-5 text-xs font-medium text-neutral-500">
                     {entry.details}
                   </td>
-                  <td className="p-5 text-right font-black text-neutral-900">
+                  <td className="p-5 text-right text-base text-gray-900 font-medium">
                     {formatCurrency(entry.value)}
                   </td>
                   <td className="p-5 text-center">

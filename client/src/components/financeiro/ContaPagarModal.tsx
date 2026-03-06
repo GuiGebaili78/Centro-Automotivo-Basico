@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FinanceiroService } from "../../services/financeiro.service";
-import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
-import { CategorySelector } from "../shared/financeiro/CategorySelector";
+import { Modal, Button, Input } from "../ui";
+import { CategorySelector } from "./CategorySelector";
 import { toast } from "react-toastify";
 import { Upload } from "lucide-react";
 import type { IContasPagar, IRecurrenceInfo } from "../../types/backend";

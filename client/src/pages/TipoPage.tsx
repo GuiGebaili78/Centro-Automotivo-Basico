@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { ITipo } from '../types/backend';
-import { TipoForm } from '../components/forms/TipoForm';
-import { Modal } from '../components/ui/Modal';
+import { TipoForm } from '../components/os/Forms/TipoForm';
+import { Modal } from '../components/ui';
 import { Plus, Search, Trash2, Edit, Tag } from 'lucide-react';
 
 export const TipoPage = () => {

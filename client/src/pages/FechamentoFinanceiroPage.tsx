@@ -13,7 +13,7 @@ import {
   ConfirmModal,
 } from "../components/ui";
 import { toast } from "react-toastify";
-import { DocumentoModal } from "../components/shared/DocumentoModal";
+import { DocumentoModal } from "../components/ui/Modals/DocumentoModal";
 
 import { Search, Trash2, Edit, CheckCircle, Printer } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";

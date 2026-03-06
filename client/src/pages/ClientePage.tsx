@@ -6,7 +6,7 @@ import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { OsCreationModal } from "../components/shared/os/OsCreationModal";
+import { OsCreationModal } from "../components/os/OsCreationModal";
 
 import { ClienteService } from "../services/cliente.service";
 import { ClientesTable } from "../components/clientes/ClientesTable";

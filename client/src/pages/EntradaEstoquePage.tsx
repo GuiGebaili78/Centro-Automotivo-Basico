@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { PageLayout } from "../components/ui/PageLayout";
-import { Modal } from "../components/ui/Modal";
-import { FornecedorForm } from "../components/forms/FornecedorForm";
+import { PageLayout, Modal, Button, Input } from "../components/ui";
+import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
 import { EntradaFornecedorForm } from "../components/estoque/EntradaFornecedorForm";
 import { EntradaItensForm } from "../components/estoque/EntradaItensForm";
 import { api } from "../services/api";
@@ -11,8 +10,6 @@ import type {
   IItemEntrada,
   IEntradaEstoquePayload,
 } from "../types/estoque.types";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
 import { CheckCircle, FileText } from "lucide-react";
 
 export const EntradaEstoquePage = () => {
@@ -269,7 +266,7 @@ export const EntradaEstoquePage = () => {
             className="max-w-5xl"
           >
             <FornecedorForm
-              onSuccess={(newSupplier) => {
+              onSuccess={(newSupplier: any) => {
                 if (newSupplier) {
                   setSuppliers((prev) => [...prev, newSupplier]);
                   setSelectedSupplierId(String(newSupplier.id_fornecedor));
