@@ -50,7 +50,7 @@ export const Badge = ({
     <span
       className={`
       inline-flex items-center px-2.5 py-0.5 
-      rounded-full text-[10px] font-bold uppercase tracking-wider 
+      rounded-full text-sm font-bold uppercase tracking-wider 
       border ${variants[variant]} ${className}
     `}
     >

@@ -295,7 +295,7 @@ export const OrdemDeServicoPage = () => {
                 key={f}
                 size="sm"
                 variant={dateFilter === f ? "primary" : "ghost"}
-                className={`text-[10px] h-8 px-4 ${dateFilter === f ? "shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
+                className={`text-sm h-8 px-4 ${dateFilter === f ? "shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
                 onClick={() => setDateFilter(f as any)}
               >
                 {f === "ALL" ? "Todos" : f === "MES" ? "Mês" : f}
@@ -415,7 +415,7 @@ export const OrdemDeServicoPage = () => {
                 <Phone size={16} />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-primary-400 uppercase">
+                <p className="text-sm font-bold text-primary-400 uppercase">
                   Cliente Selecionado
                 </p>
                 <p className="font-bold text-primary-900 text-sm">
@@ -501,7 +501,7 @@ export const OrdemDeServicoPage = () => {
             <div className="bg-primary-50 p-6 rounded-xl border border-primary-100 space-y-4">
               <div className="flex justify-between items-start border-b border-primary-100 pb-4">
                 <div>
-                  <p className="text-[10px] font-bold text-primary-400 uppercase mb-1">
+                  <p className="text-sm font-bold text-primary-400 uppercase mb-1">
                     Cliente
                   </p>
                   <p className="font-bold text-primary-900 text-lg leading-tight">
@@ -519,7 +519,7 @@ export const OrdemDeServicoPage = () => {
 
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <p className="text-[10px] font-bold text-primary-400 uppercase mb-1">
+                  <p className="text-sm font-bold text-primary-400 uppercase mb-1">
                     Veículo
                   </p>
                   <div className="flex items-center gap-3">

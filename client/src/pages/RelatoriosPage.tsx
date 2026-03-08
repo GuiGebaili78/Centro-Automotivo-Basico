@@ -270,7 +270,7 @@ export const RelatoriosPage = () => {
                       >
                         {formatCurrency(resumo.indicadores.lucroLiquido)}
                       </h3>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 mt-1 inline-block">
+                      <span className="text-sm font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 mt-1 inline-block">
                         {(
                           (resumo.indicadores.lucroLiquido /
                             (resumo.bruta.total || 1)) *
@@ -352,7 +352,7 @@ export const RelatoriosPage = () => {
                       <h3 className="text-2xl font-bold text-violet-600 mt-1">
                         {formatCurrency(resumo.medias.receitaBruta)}
                       </h3>
-                      <span className="text-[10px] text-neutral-400">
+                      <span className="text-sm text-neutral-400">
                         receita/mês
                       </span>
                     </div>

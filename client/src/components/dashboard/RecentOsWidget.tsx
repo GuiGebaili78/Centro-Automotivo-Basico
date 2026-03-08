@@ -86,7 +86,7 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
               key={p}
               size="sm"
               variant={filterPeriod === p ? "primary" : "ghost"}
-              className={`text-[10px] h-7 px-3 ${filterPeriod === p ? "shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
+              className={`text-sm h-7 px-3 ${filterPeriod === p ? "shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
               onClick={() => setFilterPeriod(p as any)}
             >
               {p === "MES" ? "Mês" : p}

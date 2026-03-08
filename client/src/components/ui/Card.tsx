@@ -21,7 +21,7 @@ export const Card = ({
       {(title || description) && (
         <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50">
           {title && (
-            <h2 className="text-[1.125rem] font-bold text-slate-800 leading-none">
+            <h2 className="text-base font-bold text-slate-800 leading-none">
               {title}
             </h2>
           )}

@@ -246,7 +246,7 @@ export const PagamentoPecasTab = ({
       <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col gap-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div>
-            <label className="text-sm font-medium text-gray-600 mb-2 block">
+            <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
               Status Pagamento
             </label>
             <div className="flex bg-neutral-100 rounded-xl p-1 gap-1">
@@ -271,12 +271,15 @@ export const PagamentoPecasTab = ({
             </div>
           </div>
           <div>
-            <Select
-              label="Fornecedor"
+            <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+              Fornecedor
+            </label>
+            <select
               value={filters.supplier}
               onChange={(e) =>
                 setFilters({ ...filters, supplier: e.target.value })
               }
+              className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
             >
               <option value="">Todos</option>
               {fornecedores.map((f) => (
@@ -284,24 +287,33 @@ export const PagamentoPecasTab = ({
                   {f.nome}
                 </option>
               ))}
-            </Select>
+            </select>
           </div>
           <div className="md:col-span-2">
-            <Input
-              label="Buscar por Placa"
-              value={filters.plate}
-              onChange={(e) =>
-                setFilters({ ...filters, plate: e.target.value })
-              }
-              placeholder="Digite a placa do veículo da OS..."
-              icon={Search}
-            />
+            <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+              Buscar por Placa
+            </label>
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                size={18}
+              />
+              <input
+                type="text"
+                value={filters.plate}
+                onChange={(e) =>
+                  setFilters({ ...filters, plate: e.target.value })
+                }
+                placeholder="Digite a placa do veículo da OS..."
+                className="w-full h-10 pl-10 pr-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
+              />
+            </div>
           </div>
         </div>
 
         <div className="flex flex-col md:flex-row items-end md:items-center gap-4 border-t border-neutral-100 pt-4">
           <div className="flex flex-col sm:flex-row items-center gap-2">
-            <span className="text-sm font-medium text-gray-600 whitespace-nowrap min-w-[90px]">
+            <span className="text-sm font-bold text-neutral-500 uppercase tracking-widest whitespace-nowrap min-w-[90px]">
               Data Compra:
             </span>
 
@@ -328,26 +340,26 @@ export const PagamentoPecasTab = ({
 
             <div className="flex gap-2 items-center">
               <div className="w-32">
-                <Input
+                <input
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => {
                     setFilters({ ...filters, startDate: e.target.value });
                     setActiveFilter("CUSTOM");
                   }}
-                  className={`h-9 px-2 text-[10px] uppercase font-bold ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
+                  className={`w-full h-10 px-3 bg-neutral-50 border rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-bold uppercase ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : "border-neutral-200"}`}
                 />
               </div>
               <span className="text-neutral-400">-</span>
               <div className="w-32">
-                <Input
+                <input
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => {
                     setFilters({ ...filters, endDate: e.target.value });
                     setActiveFilter("CUSTOM");
                   }}
-                  className={`h-9 px-2 text-[10px] uppercase font-bold ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
+                  className={`w-full h-10 px-3 bg-neutral-50 border rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-bold uppercase ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : "border-neutral-200"}`}
                 />
               </div>
             </div>
@@ -378,7 +390,7 @@ export const PagamentoPecasTab = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-red-50 p-6 rounded-2xl border border-red-100 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">
+            <p className="text-sm font-black text-red-400 uppercase tracking-widest">
               Total Pendente (Selecionado)
             </p>
             <p className="text-2xl font-bold text-red-600">
@@ -391,7 +403,7 @@ export const PagamentoPecasTab = ({
         </div>
         <div className="bg-green-50 p-6 rounded-2xl border border-green-100 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black text-green-400 uppercase tracking-widest">
+            <p className="text-sm font-black text-green-400 uppercase tracking-widest">
               Total Pago (Selecionado)
             </p>
             <p className="text-2xl font-bold text-green-600">
@@ -408,22 +420,22 @@ export const PagamentoPecasTab = ({
       <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden w-full">
         <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>
-            <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
-              <th className="p-5">Data Compra</th>
-              <th className="p-5">Ref / Nota</th>
-              <th className="p-5">Peça</th>
-              <th className="p-5">Fornecedor</th>
-              <th className="p-5">Veículo / OS</th>
-              <th className="p-5 text-right w-32">Valor Custo</th>
-              <th className="p-5 text-center w-24">Pago?</th>
-              <th className="p-5 text-center w-16">Editar</th>
+            <tr className="bg-neutral-50 text-neutral-400 text-sm uppercase tracking-wider font-bold">
+              <th className="p-4 rounded-tl-xl text-left">Data Compra</th>
+              <th className="p-4 text-left">Ref / Nota</th>
+              <th className="p-4 text-left">Peça</th>
+              <th className="p-4 text-left">Fornecedor</th>
+              <th className="p-4 text-left">Veículo / OS</th>
+              <th className="p-4 text-right w-32">Valor Custo</th>
+              <th className="p-4 text-center w-24">Pago?</th>
+              <th className="p-4 text-center w-16 rounded-tr-xl">Editar</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-50">
+          <tbody className="">
             {filteredPayments.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="p-10 text-center text-neutral-400 italic font-medium"
                 >
                   Nenhum registro encontrado.
@@ -433,53 +445,55 @@ export const PagamentoPecasTab = ({
               filteredPayments.map((p) => (
                 <tr
                   key={p.id_pagamento_peca}
-                  className={`hover:bg-neutral-25 transition-colors ${
+                  className={`hover:bg-neutral-50 text-sm text-neutral-600 border-b border-neutral-100 transition-colors ${
                     p.pago_ao_fornecedor ? "opacity-75" : ""
                   }`}
                 >
-                  <td className="p-5">
-                    <div className="flex items-center gap-2 text-base text-gray-900 font-medium">
-                      <Calendar size={14} className="text-gray-400" />
+                  <td className="p-4">
+                    <div className="flex items-center gap-2 font-medium">
+                      <Calendar size={14} className="text-neutral-400" />
                       {new Date(p.data_compra).toLocaleDateString()}
                     </div>
                   </td>
-                  <td className="p-5">
-                    <span className="font-mono text-sm text-gray-600 bg-neutral-100 px-2 py-1 rounded border border-neutral-200 w-fit">
+                  <td className="p-4">
+                    <span className="font-mono text-sm text-neutral-600 bg-neutral-100 px-2 py-1 rounded border border-neutral-200 w-fit">
                       {p.item_os?.codigo_referencia || "---"}
                     </span>
                   </td>
-                  <td className="p-5">
-                    <p className="text-base text-gray-900 font-medium">
+                  <td className="p-4">
+                    <p className="font-bold text-neutral-800">
                       {p.item_os?.descricao}
                     </p>
                   </td>
-                  <td className="p-5">
+                  <td className="p-4">
                     <div className="flex items-center gap-2">
                       <Truck size={14} className="text-orange-500" />
-                      <span className="text-base text-gray-900 font-medium">
+                      <span className="font-bold text-neutral-800">
                         {p.fornecedor?.nome}
                       </span>
                     </div>
                   </td>
-                  <td className="p-5">
+                  <td className="p-4">
                     <div className="flex flex-col">
                       <div className="flex flex-col">
-                        <span className="text-base font-medium uppercase text-gray-900 leading-tight">
-                          {p.item_os?.ordem_de_servico?.veiculo?.modelo || "S/M"} • {p.item_os?.ordem_de_servico?.veiculo?.cor || "S/C"}
+                        <span className="font-bold uppercase text-neutral-800 leading-tight">
+                          {p.item_os?.ordem_de_servico?.veiculo?.modelo ||
+                            "S/M"}{" "}
+                          • {p.item_os?.ordem_de_servico?.veiculo?.cor || "S/C"}
                         </span>
-                        <span className="text-base uppercase text-primary-600 leading-tight">
+                        <span className="text-xs font-bold uppercase text-primary-600 leading-tight mt-0.5">
                           {p.item_os?.ordem_de_servico?.veiculo?.placa || "S/P"}
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md w-fit mt-1">
+                      <p className="text-sm font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded w-fit mt-1">
                         OS | {p.item_os?.id_os}
                       </p>
                     </div>
                   </td>
-                  <td className="p-5 text-right text-base text-gray-900 font-medium">
+                  <td className="p-4 text-right font-bold text-neutral-800">
                     {formatCurrency(Number(p.custo_real))}
                   </td>
-                  <td className="p-5 text-center">
+                  <td className="p-4 text-center">
                     <button
                       onClick={() =>
                         handleTogglePayment(
@@ -507,7 +521,7 @@ export const PagamentoPecasTab = ({
                       )}
                     </button>
                   </td>
-                  <td className="p-5 text-center">
+                  <td className="p-4 text-center">
                     <div className="flex justify-center gap-2">
                       <ActionButton
                         onClick={() => openEditModal(p)}

@@ -234,12 +234,12 @@ export const FechamentoFinanceiroPage = () => {
                       {/* Show both Date and Time if available */}
                       {os.dt_abertura && (
                         <div className="flex flex-col mt-1">
-                          <span className="text-[10px] font-bold text-neutral-500">
+                          <span className="text-sm font-bold text-neutral-500">
                             {new Date(os.dt_abertura).toLocaleDateString(
                               "pt-BR",
                             )}
                           </span>
-                          <span className="text-[10px] text-neutral-400">
+                          <span className="text-sm text-neutral-400">
                             {new Date(os.dt_abertura).toLocaleTimeString(
                               "pt-BR",
                               { hour: "2-digit", minute: "2-digit" },
@@ -252,7 +252,7 @@ export const FechamentoFinanceiroPage = () => {
                       <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
                         {getClientName(os)}
                       </div>
-                      <div className="text-[12px] text-neutral-400 font-medium">
+                      <div className="text-sm text-neutral-400 font-medium">
                         {os.cliente?.telefone_1 || "Sem telefone"}
                       </div>
                     </td>
@@ -262,7 +262,7 @@ export const FechamentoFinanceiroPage = () => {
                           {os.veiculo?.marca} {os.veiculo?.modelo} -{" "}
                           {os.veiculo?.cor}
                         </span>
-                        <span className="text-[14px] text-primary-500 font-bold uppercase">
+                        <span className="text-sm text-primary-500 font-bold uppercase">
                           {os.veiculo?.placa || "Placa N/I"}
                         </span>
                       </div>
@@ -270,7 +270,7 @@ export const FechamentoFinanceiroPage = () => {
                     <td className="p-4">
                       <div className="flex flex-col gap-2 max-w-xs transition-opacity opacity-80 group-hover:opacity-100">
                         <div className="leading-tight">
-                          <span className="text-[10px] font-bold text-neutral-600 uppercase block">
+                          <span className="text-sm font-bold text-neutral-600 uppercase block">
                             Defeito
                           </span>
                           <span
@@ -281,7 +281,7 @@ export const FechamentoFinanceiroPage = () => {
                           </span>
                         </div>
                         <div className="leading-tight">
-                          <span className="text-[10px] font-bold text-neutral-600 uppercase block">
+                          <span className="text-sm font-bold text-neutral-600 uppercase block">
                             Diagnóstico
                           </span>
                           <span
@@ -295,7 +295,7 @@ export const FechamentoFinanceiroPage = () => {
                     </td>
                     <td className="p-4 text-center">
                       <span
-                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(
+                        className={`px-3 py-1 rounded-md text-sm font-bold uppercase whitespace-nowrap ${getStatusStyle(
                           os.status,
                         )}`}
                       >
@@ -440,7 +440,7 @@ export const FechamentoFinanceiroPage = () => {
                       <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
                         {getClientName(fech.ordem_de_servico)}
                       </div>
-                      <div className="text-[12px] text-neutral-400 font-medium">
+                      <div className="text-sm text-neutral-400 font-medium">
                         {fech.ordem_de_servico?.cliente?.telefone_1 ||
                           "Sem telefone"}
                       </div>
@@ -452,7 +452,7 @@ export const FechamentoFinanceiroPage = () => {
                           {fech.ordem_de_servico?.veiculo?.modelo} -{" "}
                           {fech.ordem_de_servico?.veiculo?.cor}
                         </span>
-                        <span className="text-[14px] text-primary-500 font-bold uppercase">
+                        <span className="text-sm text-primary-500 font-bold uppercase">
                           {fech.ordem_de_servico?.veiculo?.placa || "Placa N/I"}
                         </span>
                       </div>
@@ -499,12 +499,12 @@ export const FechamentoFinanceiroPage = () => {
                     </td>
                     <td className="p-4 text-sm font-medium text-neutral-500">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-neutral-600">
+                        <span className="text-sm font-bold text-neutral-600">
                           {new Date(
                             fech.data_fechamento_financeiro,
                           ).toLocaleDateString("pt-BR")}
                         </span>
-                        <span className="text-[10px] text-neutral-400">
+                        <span className="text-sm text-neutral-400">
                           {new Date(
                             fech.data_fechamento_financeiro,
                           ).toLocaleTimeString("pt-BR", {

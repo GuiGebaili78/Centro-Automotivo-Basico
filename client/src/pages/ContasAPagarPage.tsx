@@ -384,7 +384,7 @@ export const ContasAPagarPage = () => {
                       /{new Date(conta.dt_vencimento).getUTCFullYear()}
                     </div>
                     {conta.dt_vencimento && conta.dt_cadastro && (
-                      <div className="text-[10px] text-neutral-400 mt-0.5 ml-6">
+                      <div className="text-sm text-neutral-400 mt-0.5 ml-6">
                         {new Date(conta.dt_cadastro).toLocaleTimeString(
                           "pt-BR",
                           { hour: "2-digit", minute: "2-digit" },
@@ -392,7 +392,7 @@ export const ContasAPagarPage = () => {
                       </div>
                     )}
                     {conta.dt_pagamento && conta.status === "PAGO" && (
-                      <div className="text-[10px] text-emerald-600 font-bold mt-1 ml-6">
+                      <div className="text-sm text-emerald-600 font-bold mt-1 ml-6">
                         Pago em:{" "}
                         {new Date(conta.dt_pagamento)
                           .getUTCDate()
@@ -409,11 +409,11 @@ export const ContasAPagarPage = () => {
                     <div className="font-bold text-neutral-900">
                       {conta.descricao}
                     </div>
-                    <div className="text-[10px] font-bold text-neutral-400 uppercase bg-neutral-100 px-2 py-0.5 rounded w-fit mt-1">
+                    <div className="text-sm font-bold text-neutral-400 uppercase bg-neutral-100 px-2 py-0.5 rounded w-fit mt-1">
                       {conta.categoria}
                     </div>
                     {conta.obs && (
-                      <div className="text-[14px] text-neutral-500 mt-1 italic max-w-[200px] truncate">
+                      <div className="text-sm text-neutral-500 mt-1 italic max-w-[200px] truncate">
                         {conta.obs}
                       </div>
                     )}
@@ -426,7 +426,7 @@ export const ContasAPagarPage = () => {
                       </div>
                     )}
                     {conta.num_documento && (
-                      <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 font-bold">
+                      <div className="flex items-center gap-1.5 text-sm text-neutral-500 font-bold">
                         <FileText size={12} className="text-neutral-400" /> Doc:{" "}
                         {conta.num_documento}
                       </div>
@@ -436,7 +436,7 @@ export const ContasAPagarPage = () => {
                         href={conta.url_anexo}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-[10px] text-blue-500 font-bold hover:underline mt-1"
+                        className="flex items-center gap-1.5 text-sm text-blue-500 font-bold hover:underline mt-1"
                       >
                         <Link size={12} /> Ver Anexo
                       </a>
@@ -447,7 +447,7 @@ export const ContasAPagarPage = () => {
                   </td>
                   <td className="p-4 text-center">
                     <span
-                      className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                      className={`px-2 py-1 rounded-md text-sm font-bold uppercase ${
                         conta.status === "PAGO"
                           ? "bg-emerald-100 text-emerald-700"
                           : // Check overdue

@@ -83,7 +83,7 @@ export const OsTotalsSection = ({
                     Pagamentos Recebidos
                   </p>
                   <span
-                    className={`px-4 py-2 rounded text-[11px] font-black uppercase tracking-wider shadow-lg ${
+                    className={`px-6 py-3 rounded text-sm font-black uppercase tracking-wider shadow-lg ${
                       isPaid
                         ? "bg-emerald-500 text-white shadow-emerald-500/40"
                         : "bg-red-500 text-white shadow-red-500/40 animate-pulse"

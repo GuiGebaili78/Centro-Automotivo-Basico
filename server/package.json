@@ -37,6 +37,7 @@
     "@types/nodemailer": "^7.0.9",
     "@types/pdfmake": "^0.3.1",
     "prisma": "^5.22.0",
+    "ts-morph": "^27.0.2",
     "tsx": "^4.21.0"
   },
   "prisma": {

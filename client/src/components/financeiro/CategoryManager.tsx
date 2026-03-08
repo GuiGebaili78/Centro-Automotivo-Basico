@@ -175,7 +175,7 @@ export const CategoryManager = ({
 
           {!conflictData.message.includes("subcategorias") && (
             <>
-              <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+              <label className="block text-sm font-bold text-neutral-400 uppercase mb-1">
                 Substituir por:
               </label>
               <select
@@ -340,7 +340,7 @@ export const CategoryManager = ({
                         <span className="font-bold text-neutral-800">
                           {parent.nome}
                         </span>
-                        <span className="text-[10px] bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded font-bold">
+                        <span className="text-sm bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded font-bold">
                           {parent.tipo}
                         </span>
                       </div>

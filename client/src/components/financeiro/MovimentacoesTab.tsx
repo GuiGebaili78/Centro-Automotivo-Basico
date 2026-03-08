@@ -13,14 +13,7 @@ import {
   AlertTriangle,
   FilterX,
 } from "lucide-react";
-import {
-  ActionButton,
-  Button,
-  Input,
-  Modal,
-  FilterRadio,
-  Select,
-} from "../ui";
+import { ActionButton, Button, Input, Modal, FilterRadio, Select } from "../ui";
 import { CategoryManager } from "./CategoryManager";
 import { CategorySelector } from "./CategorySelector";
 import { toast } from "react-toastify";
@@ -618,7 +611,7 @@ export const MovimentacoesTab = () => {
             {/* Quick Filters */}
             <div className="md:col-span-5 flex items-center justify-end">
               <div className="w-full">
-                <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest">
+                <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">
                   Período
                 </label>
                 <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 h-[42px] items-center w-full">
@@ -806,15 +799,27 @@ export const MovimentacoesTab = () => {
                       <div className="mt-1">
                         {entry.type === "OUT" ? (
                           entry.supplier && (
-                            <span className="text-sm font-medium text-gray-600">Pago a: {entry.supplier}</span>
+                            <span className="text-sm font-medium text-gray-600">
+                              Pago a: {entry.supplier}
+                            </span>
                           )
                         ) : entry.source === "AUTO" ? (
                           <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-600">{entry.client}</span>
+                            <span className="text-sm font-medium text-gray-600">
+                              {entry.client}
+                            </span>
                             {entry.vehicle && (
                               <div className="flex flex-col mt-0.5">
                                 <span className="text-base font-medium uppercase text-gray-900">
-                                  {entry.vehicle.split(" - ")[1]?.split(" (")[0]} • {entry.vehicle.split("(")[1]?.replace(")", "")}
+                                  {
+                                    entry.vehicle
+                                      .split(" - ")[1]
+                                      ?.split(" (")[0]
+                                  }{" "}
+                                  •{" "}
+                                  {entry.vehicle
+                                    .split("(")[1]
+                                    ?.replace(")", "")}
                                 </span>
                                 <span className="text-base uppercase text-primary-600">
                                   {entry.vehicle.split(" - ")[0]}

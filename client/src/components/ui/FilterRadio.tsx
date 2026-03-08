@@ -17,7 +17,7 @@ export const FilterRadio: React.FC<FilterRadioProps> = ({
     <button
       onClick={onClick}
       className={`
-        flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all
+        flex-1 px-2 py-1.5 rounded-lg text-sm font-bold uppercase transition-all
         ${
           active
             ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"

@@ -151,11 +151,11 @@ export const OperadoraModal: React.FC<OperadoraModalProps> = ({
         </div>
 
         <div className="bg-neutral-50 p-6 rounded-2xl border border-neutral-100 space-y-4">
-          <h3 className="text-[10px] font-black text-neutral-400 uppercase tracking-widest border-b border-neutral-200 pb-2 mb-4">
+          <h3 className="text-sm font-black text-neutral-400 uppercase tracking-widest border-b border-neutral-200 pb-2 mb-4">
             Configuração de Taxas e Prazos
           </h3>
 
-          <div className="grid grid-cols-12 gap-4 text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-2 text-center">
+          <div className="grid grid-cols-12 gap-4 text-sm font-black text-neutral-400 uppercase tracking-wider mb-2 text-center">
             <div className="col-span-3 text-left">Modalidade</div>
             <div className="col-span-3">Taxa (%)</div>
             <div className="col-span-3">Prazo (Dias)</div>
@@ -164,7 +164,7 @@ export const OperadoraModal: React.FC<OperadoraModalProps> = ({
 
           <div className="grid grid-cols-12 gap-4 items-center">
             <div className="col-span-3 text-xs font-bold text-neutral-700">
-              <span className="bg-blue-100 text-blue-600 px-2 py-1 rounded-md text-[9px] uppercase tracking-wider mr-2">
+              <span className="bg-blue-100 text-blue-600 px-2 py-1 rounded-md text-sm uppercase tracking-wider mr-2">
                 DÉB
               </span>
               Débito
@@ -201,7 +201,7 @@ export const OperadoraModal: React.FC<OperadoraModalProps> = ({
 
           <div className="grid grid-cols-12 gap-4 items-center">
             <div className="col-span-3 text-xs font-bold text-neutral-700">
-              <span className="bg-emerald-100 text-emerald-600 px-2 py-1 rounded-md text-[9px] uppercase tracking-wider mr-2">
+              <span className="bg-emerald-100 text-emerald-600 px-2 py-1 rounded-md text-sm uppercase tracking-wider mr-2">
                 CRÉ
               </span>
               Crédito 1x
@@ -251,7 +251,7 @@ export const OperadoraModal: React.FC<OperadoraModalProps> = ({
 
           <div className="grid grid-cols-12 gap-4 items-center">
             <div className="col-span-3 text-xs font-bold text-neutral-700">
-              <span className="bg-violet-100 text-violet-600 px-2 py-1 rounded-md text-[9px] uppercase tracking-wider mr-2">
+              <span className="bg-violet-100 text-violet-600 px-2 py-1 rounded-md text-sm uppercase tracking-wider mr-2">
                 PAR
               </span>
               Parcelado

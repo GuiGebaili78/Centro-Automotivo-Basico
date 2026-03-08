@@ -3,15 +3,7 @@ import { formatCurrency } from "../../utils/formatCurrency";
 import { getStatusStyle } from "../../utils/osUtils";
 import { FinanceiroService } from "../../services/financeiro.service";
 import { ColaboradorService } from "../../services/colaborador.service";
-import {
-  Button,
-  Input,
-  Card,
-  Modal,
-  Select,
-  Checkbox,
-  FilterButton,
-} from "../ui";
+import { Button, Card, Checkbox, Modal, Select, FilterButton } from "../ui";
 import { toast } from "react-toastify";
 import {
   Plus,
@@ -426,7 +418,7 @@ export const PagamentoColaboradoresTab = ({
         {selectedFuncId && (
           <div className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-gray-600 mb-2 block">
+              <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
                 Visualização
               </label>
               <div className="flex bg-neutral-100 p-1 rounded-xl gap-1">
@@ -444,13 +436,12 @@ export const PagamentoColaboradoresTab = ({
                 </FilterButton>
               </div>
             </div>
-            <Button
+            <button
               onClick={handleOpenNewPayment}
-              variant="primary"
-              icon={Plus}
+              className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2"
             >
-              Novo Pagamento
-            </Button>
+              <Plus size={18} /> Novo Pagamento
+            </button>
           </div>
         )}
       </div>
@@ -464,28 +455,31 @@ export const PagamentoColaboradoresTab = ({
                 <div className="border-b border-neutral-100">
                   <div className="px-6 py-4 bg-amber-50 flex items-center gap-2">
                     <AlertCircle size={16} className="text-amber-600" />
-                    <h3 className="text-sm font-medium text-amber-800 uppercase">
-                    Adiantamentos (Vales) em Aberto
-                  </h3>
+                    <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
+                      Adiantamentos (Vales) em Aberto
+                    </h3>
                   </div>
                   <table className="tabela-limpa w-full">
                     <thead>
-                      <tr className="bg-amber-50/50 text-sm font-medium text-amber-900">
-                        <th className="p-4 text-left">Data</th>
+                      <tr className="bg-neutral-50 text-neutral-400 text-sm uppercase tracking-wider font-bold">
+                        <th className="p-4 text-left rounded-tl-xl">Data</th>
                         <th className="p-4 text-left">Descrição</th>
-                        <th className="p-4 text-right">Valor</th>
+                        <th className="p-4 text-right rounded-tr-xl">Valor</th>
                       </tr>
                     </thead>
                     <tbody>
                       {valesPendentes.map((v, i) => (
-                        <tr key={i} className="hover:bg-amber-100/30">
-                          <td className="p-4 text-sm font-medium text-amber-900">
+                        <tr
+                          key={i}
+                          className="hover:bg-neutral-50 text-sm text-neutral-600 border-b border-neutral-100 transition-colors"
+                        >
+                          <td className="p-4 font-medium text-amber-900">
                             {new Date(v.dt_pagamento).toLocaleDateString()}
                           </td>
-                          <td className="p-4 text-sm text-amber-800">
+                          <td className="p-4 text-amber-800">
                             {v.obs || "Vale"}
                           </td>
-                          <td className="p-4 text-right text-base font-medium text-red-600">
+                          <td className="p-4 text-right font-bold text-red-600">
                             - {formatCurrency(Number(v.valor_total))}
                           </td>
                         </tr>
@@ -497,7 +491,7 @@ export const PagamentoColaboradoresTab = ({
 
               {/* COMISSOES TITLE */}
               <div className="px-6 py-4 bg-neutral-50 border-b border-neutral-100">
-                <h3 className="text-sm font-medium text-gray-600 uppercase">
+                <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
                   Comissões Pendentes
                 </h3>
               </div>
@@ -506,13 +500,15 @@ export const PagamentoColaboradoresTab = ({
               <div className="overflow-x-auto">
                 <table className="tabela-limpa w-full">
                   <thead>
-                    <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
-                      <th className="p-4 text-left">OS / Data</th>
+                    <tr className="bg-neutral-50 text-neutral-400 text-sm uppercase tracking-wider font-bold">
+                      <th className="p-4 text-left rounded-tl-xl">OS / Data</th>
                       <th className="p-4 text-left">Veículo / Cliente</th>
                       <th className="p-4 text-right">Valor Serviço</th>
                       <th className="p-4 text-center">%</th>
                       <th className="p-4 text-right">A Receber</th>
-                      <th className="p-4 text-center">Status OS</th>
+                      <th className="p-4 text-center rounded-tr-xl">
+                        Status OS
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -532,12 +528,15 @@ export const PagamentoColaboradoresTab = ({
                           Number(item.valor),
                         );
                         return (
-                          <tr key={idx} className="group hover:bg-neutral-50">
+                          <tr
+                            key={idx}
+                            className="hover:bg-neutral-50 text-sm text-neutral-600 border-b border-neutral-100 transition-colors"
+                          >
                             <td className="p-4">
-                              <div className="text-sm font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md w-fit mb-1">
+                              <div className="font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded w-fit mb-1 text-sm">
                                 OS | {item.id_os}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-sm text-neutral-500 uppercase font-bold">
                                 {new Date(
                                   item.ordem_de_servico?.dt_abertura,
                                 ).toLocaleDateString()}
@@ -545,31 +544,37 @@ export const PagamentoColaboradoresTab = ({
                             </td>
                             <td className="p-4">
                               <div className="flex flex-col">
-                                <span className="text-base font-medium uppercase text-gray-900 leading-tight">
-                                  {item.ordem_de_servico?.veiculo?.modelo || "S/M"} • {item.ordem_de_servico?.veiculo?.cor || "S/C"}
+                                <span className="font-bold uppercase text-neutral-800 leading-tight">
+                                  {item.ordem_de_servico?.veiculo?.modelo ||
+                                    "S/M"}{" "}
+                                  •{" "}
+                                  {item.ordem_de_servico?.veiculo?.cor || "S/C"}
                                 </span>
-                                <span className="text-sm font-medium text-gray-600">
+                                <span className="font-bold text-neutral-600 text-xs mt-0.5">
                                   {item.ordem_de_servico?.cliente?.pessoa_fisica
-                                    ?.pessoa?.nome || item.ordem_de_servico?.cliente?.pessoa_juridica?.razao_social || "Cliente identificado"}
+                                    ?.pessoa?.nome ||
+                                    item.ordem_de_servico?.cliente
+                                      ?.pessoa_juridica?.razao_social ||
+                                    "Cliente identificado"}
                                 </span>
                               </div>
                             </td>
-                            <td className="p-4 text-right text-sm text-gray-500">
+                            <td className="p-4 text-right font-medium text-neutral-500">
                               {formatCurrency(Number(item.valor))}
                             </td>
                             <td className="p-4 text-center">
-                              <span className="text-sm font-medium bg-neutral-100 px-2 py-1 rounded text-gray-600">
+                              <span className="font-bold bg-neutral-100 px-2 py-1 rounded text-neutral-600 text-xs">
                                 {porcentagem}%
                               </span>
                             </td>
                             <td className="p-4 text-right">
-                              <span className="text-base font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                              <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
                                 {formatCurrency(valorComissao)}
                               </span>
                             </td>
-                            <td className="text-center">
+                            <td className="text-center p-4">
                               <span
-                                className={`px-2 py-1 rounded text-[9px] font-bold uppercase ${getStatusStyle(item.ordem_de_servico?.status || "")}`}
+                                className={`px-2 py-1 rounded text-sm font-bold uppercase ${getStatusStyle(item.ordem_de_servico?.status || "")}`}
                               >
                                 {item.ordem_de_servico?.status?.replace(
                                   /_/g,
@@ -592,17 +597,26 @@ export const PagamentoColaboradoresTab = ({
               {/* FILTERS */}
               <div className="flex flex-col md:flex-row gap-4 items-end justify-between border-b border-neutral-100 pb-4 mb-4">
                 <div className="w-full md:max-w-md">
-                  <Input
-                    label="Buscar"
-                    value={historySearchTerm}
-                    onChange={(e) => setHistorySearchTerm(e.target.value)}
-                    placeholder="Buscar no histórico..."
-                    icon={Search}
-                  />
+                  <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+                    Buscar
+                  </label>
+                  <div className="relative">
+                    <Search
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                      size={18}
+                    />
+                    <input
+                      type="text"
+                      value={historySearchTerm}
+                      onChange={(e) => setHistorySearchTerm(e.target.value)}
+                      placeholder="Buscar no histórico..."
+                      className="w-full h-10 pl-10 pr-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-4">
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-600 pl-1 mb-2 block">
+                    <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
                       Período
                     </label>
                     <div className="flex bg-neutral-100 p-1 rounded-xl gap-1">
@@ -645,9 +659,9 @@ export const PagamentoColaboradoresTab = ({
 
               <Card className="p-0 overflow-hidden">
                 <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex justify-between items-center">
-                  <span className="text-sm font-medium uppercase text-gray-600">
+                  <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
                     Histórico de Pagamentos
-                  </span>
+                  </h3>
                   <div className="flex items-center gap-2">
                     <span className="text-xs uppercase font-medium text-gray-400">
                       Total Pago:
@@ -659,15 +673,15 @@ export const PagamentoColaboradoresTab = ({
                 </div>
                 <table className="tabela-limpa w-full">
                   <thead>
-                    <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
-                      <th className="p-4 text-left">Data</th>
+                    <tr className="bg-neutral-50 text-neutral-400 text-sm uppercase tracking-wider font-bold">
+                      <th className="p-4 text-left rounded-tl-xl">Data</th>
                       <th className="p-4 text-left">Tipo</th>
                       <th className="p-4 text-left">OS / Detalhe</th>
                       <th className="p-4 text-left">Cliente/Veículo</th>
-                      <th className="p-4 text-right">Valor</th>
+                      <th className="p-4 text-right rounded-tr-xl">Valor</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="">
                     {flattenedHistorico.length === 0 ? (
                       <tr>
                         <td
@@ -691,7 +705,7 @@ export const PagamentoColaboradoresTab = ({
                           </td>
                           <td>
                             <span
-                              className={`px-2 py-1 rounded text-[9px] font-bold uppercase ${h.type === "COMISSAO" ? "bg-emerald-50 text-emerald-600" : h.type === "VALE" ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"}`}
+                              className={`px-2 py-1 rounded text-sm font-bold uppercase ${h.type === "COMISSAO" ? "bg-emerald-50 text-emerald-600" : h.type === "VALE" ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"}`}
                             >
                               {h.type}
                             </span>
@@ -711,7 +725,8 @@ export const PagamentoColaboradoresTab = ({
                             {h.type === "COMISSAO" ? (
                               <div className="flex flex-col">
                                 <span className="text-gray-900 font-medium">
-                                  {h.os?.veiculo?.modelo} ({h.os?.veiculo?.placa})
+                                  {h.os?.veiculo?.modelo} (
+                                  {h.os?.veiculo?.placa})
                                 </span>
                                 <span className="text-xs">
                                   {h.os?.cliente?.pessoa_fisica?.pessoa?.nome ||
@@ -771,7 +786,7 @@ export const PagamentoColaboradoresTab = ({
           <div className="space-y-6 pt-2">
             {/* HEADER: MODE & SUMMARY */}
             <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
+              <label className="text-sm font-bold text-neutral-400 uppercase tracking-widest pl-1">
                 Tipo de Lançamento
               </label>
               <div className="flex font-bold bg-neutral-100 p-1 rounded-xl w-fit gap-1">
@@ -821,7 +836,7 @@ export const PagamentoColaboradoresTab = ({
                                   ),
                                 );
                             }}
-                            className="text-[10px] font-bold text-primary-600 uppercase tracking-widest hover:underline"
+                            className="text-sm font-bold text-primary-600 uppercase tracking-widest hover:underline"
                           >
                             Alternar Todos
                           </button>
@@ -882,7 +897,7 @@ export const PagamentoColaboradoresTab = ({
                                       {formatCurrency(valorComissao)}
                                     </div>
                                   </div>
-                                  <div className="text-[10px] text-neutral-500 mt-0.5">
+                                  <div className="text-sm text-neutral-500 mt-0.5">
                                     {item.ordem_de_servico?.veiculo?.modelo} -{" "}
                                     {item.ordem_de_servico?.status?.replace(
                                       /_/g,
@@ -923,7 +938,7 @@ export const PagamentoColaboradoresTab = ({
                                   ),
                                 );
                             }}
-                            className="text-[10px] font-bold text-amber-700 uppercase tracking-widest hover:underline"
+                            className="text-sm font-bold text-amber-700 uppercase tracking-widest hover:underline"
                           >
                             Alternar Todos
                           </button>
@@ -992,24 +1007,36 @@ export const PagamentoColaboradoresTab = ({
                   // ADIANTAMENTO MODE
                   <div className="space-y-4">
                     <div>
-                      <Input
-                        label="Valor do Adiantamento (R$)"
-                        type="number"
-                        value={payValorAdiantamento}
-                        onChange={(e) =>
-                          setPayValorAdiantamento(e.target.value)
-                        }
-                        placeholder="0.00"
-                        autoFocus
-                      />
+                      <div>
+                        <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+                          Valor do Adiantamento (R$)
+                        </label>
+                        <input
+                          type="number"
+                          value={payValorAdiantamento}
+                          onChange={(e) =>
+                            setPayValorAdiantamento(e.target.value)
+                          }
+                          placeholder="0.00"
+                          autoFocus
+                          className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
+                        />
+                      </div>
                     </div>
                     <div>
-                      <Input
-                        label="Data Lançamento"
-                        type="date"
-                        value={payDataAdiantamento}
-                        onChange={(e) => setPayDataAdiantamento(e.target.value)}
-                      />
+                      <div>
+                        <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+                          Data Lançamento
+                        </label>
+                        <input
+                          type="date"
+                          value={payDataAdiantamento}
+                          onChange={(e) =>
+                            setPayDataAdiantamento(e.target.value)
+                          }
+                          className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1034,54 +1061,62 @@ export const PagamentoColaboradoresTab = ({
                             }
                           />
                           <div className="mt-2">
-                            <Input
+                            <input
                               disabled={!payIncludeSalary}
                               value={payValorSalario}
                               onChange={(e) =>
                                 setPayValorSalario(e.target.value)
                               }
                               placeholder="0.00"
+                              className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400 disabled:opacity-50"
                             />
                           </div>
                         </div>
                       </div>
                       <div className="mb-4">
-                        <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
+                        <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
                           Prêmio / Bônus
                         </label>
-                        <Input
+                        <input
                           value={payValorPremio}
                           onChange={(e) => setPayValorPremio(e.target.value)}
                           placeholder="0.00"
+                          className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
                         />
                       </div>
                       {payValorPremio && (
                         <div className="mb-4">
-                          <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
+                          <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
                             Motivo Prêmio
                           </label>
-                          <Input
+                          <input
                             value={payObsExtra}
                             onChange={(e) => setPayObsExtra(e.target.value)}
                             placeholder="Ex: Meta Batida"
+                            className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
                           />
                         </div>
                       )}
                     </>
                   )}
                   <div>
-                    <Select
-                      label="Forma Pagamento"
-                      value={payMethod}
-                      onChange={(e) => setPayMethod(e.target.value)}
-                    >
-                      <option value="DINHEIRO">Dinheiro</option>
-                      <option value="PIX">Pix</option>
-                      <option value="TRANSFERENCIA">Transferência</option>
-                    </Select>
+                    <div>
+                      <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+                        Forma Pagamento
+                      </label>
+                      <select
+                        value={payMethod}
+                        onChange={(e) => setPayMethod(e.target.value)}
+                        className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                      >
+                        <option value="DINHEIRO">Dinheiro</option>
+                        <option value="PIX">Pix</option>
+                        <option value="TRANSFERENCIA">Transferência</option>
+                      </select>
+                    </div>
                   </div>
                   <div className="mt-4">
-                    <label className="text-xs font-bold text-neutral-500 uppercase mb-1 block">
+                    <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
                       Observações
                     </label>
                     <textarea
@@ -1171,15 +1206,15 @@ export const PagamentoColaboradoresTab = ({
               >
                 Cancelar
               </Button>
-              <Button
-                variant="primary"
-                icon={Save}
+              <button
                 onClick={handleExecutePayment}
+                className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2"
               >
+                <Save size={18} />
                 {paymentMode === "PAGAMENTO"
                   ? "Realizar Pagamento"
                   : "Lançar Adiantamento"}
-              </Button>
+              </button>
             </div>
           </div>
         </Modal>

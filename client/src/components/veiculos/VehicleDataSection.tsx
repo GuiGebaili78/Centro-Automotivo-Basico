@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Hash, Palette, Calendar } from "lucide-react";
-import { Input } from "../../ui";
+import { Input } from "../ui/Input";
 
 interface VehicleDataSectionProps {
   placa: string;

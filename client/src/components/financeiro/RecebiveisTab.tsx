@@ -339,7 +339,7 @@ export const RecebiveisTab = () => {
                   type="date"
                   value={dateRange.start}
                   onChange={(e) => handleDateChange("start", e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-xl font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all shadow-inner uppercase"
+                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all shadow-inner uppercase"
                 />
               </div>
               <div className="flex-1 relative">
@@ -347,7 +347,7 @@ export const RecebiveisTab = () => {
                   type="date"
                   value={dateRange.end}
                   onChange={(e) => handleDateChange("end", e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-xl font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all shadow-inner uppercase"
+                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all shadow-inner uppercase"
                 />
               </div>
             </div>
@@ -404,14 +404,14 @@ export const RecebiveisTab = () => {
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle size={14} className="text-primary-400" />
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
                 Previsão no Período (Filtrado)
               </p>
             </div>
             <p className="text-3xl font-black text-blue-600 tracking-tighter">
               {formatCurrency(totalPrevisto)}
             </p>
-            <p className="text-[10px] text-neutral-400 mt-2 font-bold uppercase tracking-wider italic">
+            <p className="text-xs text-neutral-400 mt-2 font-bold uppercase tracking-wider italic">
               * Soma total dos itens visíveis abaixo
             </p>
           </div>
@@ -425,7 +425,7 @@ export const RecebiveisTab = () => {
                 <CheckCircle size={28} />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">
+                <p className="text-sm font-bold text-primary-500 uppercase tracking-widest">
                   Confirmar Depósito
                 </p>
                 <p className="text-3xl font-black text-neutral-900 tracking-tighter">
@@ -516,9 +516,7 @@ export const RecebiveisTab = () => {
                             "pt-BR",
                           )}
                         </span>
-                        <span className="text-xs text-gray-500">
-                          Estimado
-                        </span>
+                        <span className="text-xs text-gray-500">Estimado</span>
                       </div>
                     </td>
                     <td className="p-4">
@@ -528,7 +526,7 @@ export const RecebiveisTab = () => {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-black text-[10px]">
+                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-black text-sm">
                           {(r as any).operadora?.nome?.substring(0, 1) || "O"}
                         </div>
                         <span className="text-base text-gray-900 font-medium">
@@ -540,10 +538,14 @@ export const RecebiveisTab = () => {
                       <div className="flex flex-col">
                         <div className="flex flex-col">
                           <span className="text-base font-medium uppercase text-gray-900">
-                            {(r as any).ordem_de_servico?.veiculo?.modelo || "S/M"} • {(r as any).ordem_de_servico?.veiculo?.cor || "S/C"}
+                            {(r as any).ordem_de_servico?.veiculo?.modelo ||
+                              "S/M"}{" "}
+                            •{" "}
+                            {(r as any).ordem_de_servico?.veiculo?.cor || "S/C"}
                           </span>
                           <span className="text-base uppercase text-primary-600">
-                            {(r as any).ordem_de_servico?.veiculo?.placa || "S/P"}
+                            {(r as any).ordem_de_servico?.veiculo?.placa ||
+                              "S/P"}
                           </span>
                         </div>
                         <span className="text-sm font-medium text-gray-600 mt-1">
@@ -586,11 +588,11 @@ export const RecebiveisTab = () => {
                     <td className="p-4 text-center">
                       {r.status === "RECEBIDO" ? (
                         <div className="flex flex-col items-center">
-                          <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
                             <CheckCircle size={12} /> Recebido
                           </span>
                           {r.data_recebimento && (
-                            <span className="text-[9px] text-neutral-400 font-bold mt-1">
+                            <span className="text-sm text-neutral-400 font-bold mt-1">
                               {new Date(r.data_recebimento).toLocaleDateString(
                                 "pt-BR",
                               )}
@@ -598,7 +600,7 @@ export const RecebiveisTab = () => {
                           )}
                         </div>
                       ) : (
-                        <span className="bg-primary-50 text-primary-600 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-primary-100">
+                        <span className="bg-primary-50 text-primary-600 px-3 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider flex items-center gap-1.5 border border-primary-100">
                           <Clock size={12} /> Aberto
                         </span>
                       )}

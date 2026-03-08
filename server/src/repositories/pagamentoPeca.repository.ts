@@ -275,7 +275,7 @@ export class PagamentoPecaRepository {
 
       // 6.1 Recalcular Fechamento Financeiro para cada OS impactada
       for (const idOs of idOsUnicos) {
-        const fechamento = await tx.fechamentoFinanceiro.findUnique({
+        const fechamento = await tx.fechamentoFinanceiro.findFirst({
           where: { id_os: idOs },
         });
 

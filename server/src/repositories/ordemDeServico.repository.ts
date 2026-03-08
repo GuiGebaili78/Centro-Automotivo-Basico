@@ -77,7 +77,7 @@ export class OrdemDeServicoRepository {
         let finalVehicleId = data.vehicle.id_veiculo;
         if (!finalVehicleId) {
              // Check if vehicle exists by Plate to avoid duplicates
-             const existingVehicle = await tx.veiculo.findUnique({
+             const existingVehicle = await tx.veiculo.findFirst({
                  where: { placa: data.vehicle.placa }
              });
 
@@ -143,7 +143,9 @@ export class OrdemDeServicoRepository {
           }
         },
         veiculo: true,
-        funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } },
+        funcionario: { 
+          include: { pessoa_fisica: { include: { pessoa: true } } } 
+        },
         servicos_mao_de_obra: {
             select: {
                 funcionario: {
@@ -163,7 +165,7 @@ export class OrdemDeServicoRepository {
     });
   }
 
-  async findById(id: number) {
+  async findById(id: number, includeInternal: boolean = false) {
     return await prisma.ordemDeServico.findUnique({
       where: { id_os: id },
       include: {
@@ -174,9 +176,14 @@ export class OrdemDeServicoRepository {
           }
         },
         veiculo: true,
-        funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } },
+        funcionario: {
+          include: { pessoa_fisica: { include: { pessoa: true } } } 
+        },
         itens_os: {
-          where: { deleted_at: null },
+          where: { 
+            deleted_at: null,
+            ...(includeInternal ? {} : { is_interno: false })
+          },
           include: {
             pagamentos_peca: true,
             pecas_estoque: true
@@ -191,8 +198,8 @@ export class OrdemDeServicoRepository {
           } as any
         },
         servicos_mao_de_obra: {
-            where: { deleted_at: null },
-            include: { funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } } }
+          where: { deleted_at: null },
+          include: { funcionario: { include: { pessoa_fisica: { include: { pessoa: true } } } } }
         }
       }
     });
@@ -297,7 +304,7 @@ export class OrdemDeServicoRepository {
 
   async recalculateTotals(id_os: number) {
     const items = await prisma.itensOs.aggregate({
-        where: { id_os, deleted_at: null },
+        where: { id_os, deleted_at: null, is_interno: false },
         _sum: { valor_total: true }
     });
     
@@ -305,13 +312,13 @@ export class OrdemDeServicoRepository {
         where: { id_os, deleted_at: null },
         _sum: { valor: true }
     });
-
+ 
     const valor_pecas = items._sum?.valor_total || new Prisma.Decimal(0);
     const valor_mao_de_obra = labor._sum?.valor || new Prisma.Decimal(0);
     
     // Ensure accurate decimal addition
     const valor_total_cliente = new Prisma.Decimal(valor_pecas).plus(new Prisma.Decimal(valor_mao_de_obra));
-
+ 
     await prisma.ordemDeServico.update({
         where: { id_os },
         data: {
@@ -320,7 +327,7 @@ export class OrdemDeServicoRepository {
             valor_total_cliente
         }
     });
-
+ 
     return { valor_pecas, valor_mao_de_obra, valor_total_cliente };
   }
 

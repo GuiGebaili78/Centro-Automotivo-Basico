@@ -442,7 +442,7 @@ export const PagamentoPecaPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Status Tabs */}
             <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-2 block">
+              <label className="text-sm font-bold text-neutral-400 uppercase mb-2 block">
                 Status
               </label>
               <div className="flex bg-neutral-50 p-1 rounded-lg w-full border border-neutral-200 gap-1">
@@ -499,7 +499,7 @@ export const PagamentoPecaPage = () => {
           <div className="flex flex-col lg:flex-row items-end lg:items-center gap-4 border-t border-neutral-100 pt-4">
             {/* Start OS Date */}
             <div className="flex flex-col sm:flex-row items-center gap-2">
-              <span className="text-[10px] filter-label font-bold text-neutral-400 uppercase whitespace-nowrap min-w-[90px]">
+              <span className="text-sm filter-label font-bold text-neutral-400 uppercase whitespace-nowrap min-w-[90px]">
                 Finalização OS:
               </span>
 
@@ -533,7 +533,7 @@ export const PagamentoPecaPage = () => {
                       setFilterOSStart(e.target.value);
                       setActiveFilter("CUSTOM");
                     }}
-                    className={`h-8 px-2 text-[10px] uppercase font-bold ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
+                    className={`h-8 px-2 text-sm uppercase font-bold ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
                   />
                 </div>
                 <span className="text-neutral-400">-</span>
@@ -545,7 +545,7 @@ export const PagamentoPecaPage = () => {
                       setFilterOSEnd(e.target.value);
                       setActiveFilter("CUSTOM");
                     }}
-                    className={`h-8 px-2 text-[10px] uppercase font-bold ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
+                    className={`h-8 px-2 text-sm uppercase font-bold ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
                   />
                 </div>
               </div>
@@ -553,7 +553,7 @@ export const PagamentoPecaPage = () => {
 
             {/* Payment Date */}
             <div className="flex flex-col sm:flex-row items-center gap-2 lg:ml-auto">
-              <span className="text-[10px] font-bold text-neutral-400 uppercase whitespace-nowrap">
+              <span className="text-sm font-bold text-neutral-400 uppercase whitespace-nowrap">
                 Pgto Fornec:
               </span>
               <div className="flex gap-2 items-center">
@@ -562,7 +562,7 @@ export const PagamentoPecaPage = () => {
                     type="date"
                     value={filterPayStart}
                     onChange={(e) => setFilterPayStart(e.target.value)}
-                    className="h-8 px-2 text-[10px] uppercase font-bold"
+                    className="h-8 px-2 text-sm uppercase font-bold"
                   />
                 </div>
                 <span className="text-neutral-400">-</span>
@@ -571,7 +571,7 @@ export const PagamentoPecaPage = () => {
                     type="date"
                     value={filterPayEnd}
                     onChange={(e) => setFilterPayEnd(e.target.value)}
-                    className="h-8 px-2 text-[10px] uppercase font-bold"
+                    className="h-8 px-2 text-sm uppercase font-bold"
                   />
                 </div>
               </div>
@@ -595,7 +595,7 @@ export const PagamentoPecaPage = () => {
           {selectedIds.length > 0 ? (
             <div className="bg-blue-50 p-6 rounded-xl flex items-center justify-between border border-blue-200 shadow-sm animate-in zoom-in duration-300">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-blue-400">
+                <p className="text-sm font-black uppercase tracking-widest mb-1 text-blue-400">
                   Selecionado para Baixa ({selectedIds.length})
                 </p>
                 <p className="text-3xl font-black tracking-tighter text-blue-700">
@@ -616,7 +616,7 @@ export const PagamentoPecaPage = () => {
             // Display Total Filtered
             <Card className="flex items-center justify-between p-6">
               <div>
-                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">
                   Total Listado (Status Atual)
                 </p>
                 <p className="text-3xl font-bold text-neutral-600">
@@ -632,7 +632,7 @@ export const PagamentoPecaPage = () => {
           {/* CARD 2: Total Geral (Todos) */}
           <Card className="flex items-center justify-between p-6">
             <div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+              <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">
                 Total Geral (Todos Pendentes)
               </p>
               <p className="text-3xl font-bold text-neutral-800">
@@ -650,7 +650,7 @@ export const PagamentoPecaPage = () => {
           <div className="overflow-x-auto">
             <table className="tabela-limpa w-full">
               <thead>
-                <tr className="bg-neutral-50 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+                <tr className="bg-neutral-50 text-sm font-bold text-neutral-500 uppercase tracking-widest">
                   <th className="p-5">Data</th>
                   <th className="p-5">Ref / Nota</th>
                   <th className="p-5">Peça</th>
@@ -692,7 +692,7 @@ export const PagamentoPecaPage = () => {
                                   : "N/A"}
                             </span>
                           </div>
-                          <div className="text-[10px] font-medium text-neutral-400 ml-6">
+                          <div className="text-sm font-medium text-neutral-400 ml-6">
                             {(p.data_compra || p.item_os?.dt_cadastro) &&
                               new Date(
                                 p.data_compra || p.item_os.dt_cadastro,
@@ -727,7 +727,7 @@ export const PagamentoPecaPage = () => {
                             {p.item_os?.ordem_de_servico?.veiculo?.placa ||
                               "---"}
                           </p>
-                          <p className="text-[10px] text-neutral-500 font-bold mt-1 uppercase">
+                          <p className="text-sm text-neutral-500 font-bold mt-1 uppercase">
                             {p.item_os?.ordem_de_servico?.veiculo?.modelo ||
                               "N/A"}{" "}
                             {p.item_os?.ordem_de_servico?.veiculo?.cor
@@ -735,11 +735,11 @@ export const PagamentoPecaPage = () => {
                               : ""}
                           </p>
 
-                          <p className="text-[10px] text-neutral-400 font-bold mt-0.5">
+                          <p className="text-sm text-neutral-400 font-bold mt-0.5">
                             OS Nº {p.item_os?.id_os}
                           </p>
                           {p.item_os?.ordem_de_servico?.dt_entrega && (
-                            <p className="text-[9px] text-green-600 font-bold mt-1">
+                            <p className="text-sm text-green-600 font-bold mt-1">
                               Fim OS:{" "}
                               {new Date(
                                 p.item_os.ordem_de_servico.dt_entrega,
@@ -770,7 +770,7 @@ export const PagamentoPecaPage = () => {
 
                           return (
                             <span
-                              className={`px-3 py-1 rounded-md text-[10px] font-black uppercase ring-1 whitespace-nowrap ${style}`}
+                              className={`px-3 py-1 rounded-md text-sm font-black uppercase ring-1 whitespace-nowrap ${style}`}
                             >
                               {st === "PRONTO PARA FINANCEIRO"
                                 ? "FINANCEIRO"

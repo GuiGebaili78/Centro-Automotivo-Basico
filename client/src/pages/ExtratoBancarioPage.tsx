@@ -322,7 +322,7 @@ export const ExtratoBancarioPage = () => {
           </div>
           <div className="w-full xl:w-auto flex gap-2">
             <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+              <label className="text-sm font-bold text-neutral-400 uppercase mb-1.5 block">
                 De
               </label>
               <input
@@ -332,11 +332,11 @@ export const ExtratoBancarioPage = () => {
                   setDateRange({ ...dateRange, start: e.target.value });
                   setActiveShortcut(null);
                 }}
-                className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
+                className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+              <label className="text-sm font-bold text-neutral-400 uppercase mb-1.5 block">
                 Até
               </label>
               <input
@@ -346,12 +346,12 @@ export const ExtratoBancarioPage = () => {
                   setDateRange({ ...dateRange, end: e.target.value });
                   setActiveShortcut(null);
                 }}
-                className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-[11px] outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
+                className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
               />
             </div>
           </div>
           <div className="w-full xl:w-48">
-            <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+            <label className="text-sm font-bold text-neutral-400 uppercase mb-1.5 block">
               Tipo
             </label>
             <div className="relative">
@@ -370,7 +370,7 @@ export const ExtratoBancarioPage = () => {
             </div>
           </div>
           <div className="w-full xl:w-56">
-            <label className="text-[10px] font-bold text-neutral-400 uppercase mb-1.5 block">
+            <label className="text-sm font-bold text-neutral-400 uppercase mb-1.5 block">
               Categoria
             </label>
             <div className="relative">
@@ -418,7 +418,7 @@ export const ExtratoBancarioPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+              <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-1">
                 Entradas
               </p>
               <p className="text-2xl font-black text-emerald-600">
@@ -431,7 +431,7 @@ export const ExtratoBancarioPage = () => {
           </div>
           <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+              <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-1">
                 Saídas
               </p>
               <p className="text-2xl font-black text-red-600">
@@ -444,7 +444,7 @@ export const ExtratoBancarioPage = () => {
           </div>
           <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
+              <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-1">
                 Resultado
               </p>
               <p
@@ -499,7 +499,7 @@ export const ExtratoBancarioPage = () => {
                           <Calendar size={14} className="text-neutral-400" />
                           {new Date(mov.dt_movimentacao).toLocaleDateString()}
                         </div>
-                        <span className="text-[10px] font-bold text-neutral-400 pl-5">
+                        <span className="text-sm font-bold text-neutral-400 pl-5">
                           {new Date(mov.dt_movimentacao).toLocaleTimeString(
                             [],
                             {
@@ -526,13 +526,13 @@ export const ExtratoBancarioPage = () => {
                     </td>
                     <td className="p-4">
                       <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-neutral-100 ${!mov.paymentMethod || mov.paymentMethod === "MANUAL" ? "text-neutral-500" : "text-primary-600 bg-primary-50"}`}
+                        className={`text-sm font-bold uppercase tracking-wider px-2 py-1 rounded bg-neutral-100 ${!mov.paymentMethod || mov.paymentMethod === "MANUAL" ? "text-neutral-500" : "text-primary-600 bg-primary-50"}`}
                       >
                         {mov.paymentMethod || "MANUAL"}
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border border-neutral-200">
+                      <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-sm font-bold uppercase tracking-wide border border-neutral-200">
                         {mov.categoria === "CONCILIACAO_CARTAO"
                           ? "Recebimento (Cartão)"
                           : mov.categoria === "VENDA"

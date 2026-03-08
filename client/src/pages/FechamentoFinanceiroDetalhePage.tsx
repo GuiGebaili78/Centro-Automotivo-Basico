@@ -31,6 +31,7 @@ interface ItemOS {
   descricao: string;
   quantidade: number;
   codigo_referencia?: string;
+  is_interno?: boolean;
   pecas_estoque?: {
     valor_custo: number;
     nome: string;
@@ -65,6 +66,7 @@ interface OSData {
   itens_os: ItemOS[];
   defeito_relatado?: string;
   diagnostico?: string;
+  obs_interna?: string;
   cliente: {
     pessoa_fisica?: { pessoa: { nome: string } };
     pessoa_juridica?: { nome_fantasia: string };
@@ -138,6 +140,16 @@ export const FechamentoFinanceiroDetalhePage = () => {
     quantidade: 1,
     valor_venda: 0,
     codigo_referencia: "",
+    is_interno: false,
+  });
+
+  const [addInternalModal, setAddInternalModal] = useState<{
+    isOpen: boolean;
+  }>({ isOpen: false });
+  const [addInternalForm, setAddInternalForm] = useState({
+    descricao: "",
+    quantidade: 1,
+    codigo_referencia: "",
   });
 
   // Dirty Check State
@@ -198,7 +210,9 @@ export const FechamentoFinanceiroDetalhePage = () => {
   const fetchOsData = async (osId: number) => {
     setFetchingOs(true);
     try {
-      const response = await api.get(`/ordem-de-servico/${osId}`);
+      const response = await api.get(
+        `/ordem-de-servico/${osId}?includeInternal=true`,
+      );
       const os: OSData = response.data;
       setOsData(os);
 
@@ -282,8 +296,42 @@ export const FechamentoFinanceiroDetalhePage = () => {
       valor_venda:
         Number(item.valor_venda) || Number(item.valor_total) / item.quantidade,
       codigo_referencia: item.codigo_referencia || "",
+      is_interno: !!item.is_interno,
     });
     setEditItemModal({ isOpen: true, item });
+  };
+
+  const handleOpenAddInternal = () => {
+    setAddInternalForm({
+      descricao: "",
+      quantidade: 1,
+      codigo_referencia: "",
+    });
+    setAddInternalModal({ isOpen: true });
+  };
+
+  const handleSaveAddInternal = async () => {
+    if (!osData) return;
+    try {
+      if (!addInternalForm.descricao.trim()) {
+        toast.error("A descrição é obrigatória.");
+        return;
+      }
+      await api.post("/itens-os", {
+        id_os: osData.id_os,
+        descricao: addInternalForm.descricao,
+        quantidade: Number(addInternalForm.quantidade),
+        valor_venda: 0,
+        valor_total: 0,
+        codigo_referencia: addInternalForm.codigo_referencia,
+        is_interno: true,
+      });
+      toast.success("Custo interno adicionado!");
+      setAddInternalModal({ isOpen: false });
+      fetchOsData(osData.id_os);
+    } catch (error) {
+      toast.error("Erro ao adicionar custo interno.");
+    }
   };
 
   const handleDeleteItemOS = async (itemId: number) => {
@@ -308,17 +356,19 @@ export const FechamentoFinanceiroDetalhePage = () => {
   const handleSaveEditItem = async () => {
     if (!editItemModal.item || !osData) return;
     try {
-      const valorTotal =
-        Number(editItemForm.quantidade) * Number(editItemForm.valor_venda);
+      const valorTotal = editItemModal.item.is_interno
+        ? 0
+        : Number(editItemForm.quantidade) * Number(editItemForm.valor_venda);
       await api.put(`/itens-os/${editItemModal.item.id_iten}`, {
         descricao: editItemForm.descricao,
         quantidade: Number(editItemForm.quantidade),
-        valor_venda: Number(editItemForm.valor_venda),
+        valor_venda: editItemModal.item.is_interno
+          ? 0
+          : Number(editItemForm.valor_venda),
         valor_total: valorTotal,
         codigo_referencia: editItemForm.codigo_referencia,
       });
 
-      setEditItemModal({ isOpen: false, item: null });
       setEditItemModal({ isOpen: false, item: null });
       fetchOsData(osData.id_os);
       toast.success("Item atualizado!");
@@ -338,23 +388,37 @@ export const FechamentoFinanceiroDetalhePage = () => {
         totalItemsRevenue: 0,
         totalItemsCost: 0,
         totalLaborRevenue: 0,
+        totalInternalCost: 0,
       };
 
-    const totalItemsRevenue = osData.itens_os.reduce(
-      (acc, i) => acc + Number(i.valor_total),
-      0,
-    );
-    const totalItemsCost = osData.itens_os.reduce(
-      (acc, i) => acc + Number(itemsState[i.id_iten]?.custo_real || 0),
-      0,
-    );
+    // Client Revenue (excluding internal items)
+    const totalItemsRevenue = osData.itens_os
+      .filter((i) => !i.is_interno)
+      .reduce((acc, i) => acc + Number(i.valor_total), 0);
+
     const totalLaborRevenue =
       osData.servicos_mao_de_obra?.reduce(
         (acc, s) => acc + Number(s.valor),
         0,
       ) || 0;
     const totalReceita = totalItemsRevenue + totalLaborRevenue;
-    const totalCusto = totalItemsCost; // Updated to use totalItemsCost
+
+    // Costs (including internal items)
+    const totalItemsCost = osData.itens_os
+      .filter((i) => !i.is_interno)
+      .reduce(
+        (acc, i) => acc + Number(itemsState[i.id_iten]?.custo_real || 0),
+        0,
+      );
+
+    const totalInternalCost = osData.itens_os
+      .filter((i) => i.is_interno)
+      .reduce(
+        (acc, i) => acc + Number(itemsState[i.id_iten]?.custo_real || 0),
+        0,
+      );
+
+    const totalCusto = totalItemsCost + totalInternalCost;
 
     const lucro = totalReceita - totalCusto;
     const margem = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
@@ -367,14 +431,15 @@ export const FechamentoFinanceiroDetalhePage = () => {
       totalItemsRevenue,
       totalItemsCost,
       totalLaborRevenue,
+      totalInternalCost,
     };
   };
 
   const {
     totalReceita,
     totalCusto,
+    lucro,
     totalItemsRevenue,
-    totalItemsCost,
     totalLaborRevenue,
   } = calculateTotals();
 
@@ -426,6 +491,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
         await api.put(`/ordem-de-servico/${osData.id_os}`, {
           defeito_relatado: osData.defeito_relatado,
           diagnostico: osData.diagnostico,
+          obs_interna: osData.obs_interna,
         });
 
         // Validation: Check Revenue
@@ -449,6 +515,13 @@ export const FechamentoFinanceiroDetalhePage = () => {
         setIsDirty(false);
         setTimeout(() => navigate("/fechamento-financeiro"), 1000);
       } else {
+        // Also sync notes if not finalizing
+        await api.put(`/ordem-de-servico/${osData.id_os}`, {
+          defeito_relatado: osData.defeito_relatado,
+          diagnostico: osData.diagnostico,
+          obs_interna: osData.obs_interna,
+        });
+
         toast.success("Dados Salvos!");
         setIsDirty(false);
         // Refresh data
@@ -466,6 +539,18 @@ export const FechamentoFinanceiroDetalhePage = () => {
     osData?.cliente?.pessoa_fisica?.pessoa?.nome ||
     osData?.cliente?.pessoa_juridica?.nome_fantasia ||
     "Cliente";
+
+  const formatPhone = (phone?: string) => {
+    if (!phone) return "Sem telefone";
+    const clean = phone.replace(/\D/g, "");
+    if (clean.length === 11) {
+      return `(${clean.slice(0, 2)}) ${clean[2]} ${clean.slice(3, 7)}-${clean.slice(7)}`;
+    }
+    if (clean.length === 10) {
+      return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+    }
+    return phone;
+  };
 
   // --- RENDER ---
   if (fetchingOs)
@@ -551,108 +636,116 @@ export const FechamentoFinanceiroDetalhePage = () => {
         </Modal>
       )}
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 hover:bg-neutral-100 rounded-lg transition-all text-neutral-500 hover:text-neutral-700 active:scale-95"
-            title="Voltar"
-          >
-            <ArrowLeft size={20} />
-          </button>
+      {/* CONSOLIDATED HEADER CARD */}
+      <Card className="p-0 overflow-hidden border border-neutral-200 shadow-sm mb-6 bg-white">
+        {/* Top Header: Actions & ID */}
+        <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-neutral-100">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate("/fechamento-financeiro")}
+              className="p-2 hover:bg-neutral-100 rounded-lg transition-all text-neutral-400 hover:text-neutral-700 active:scale-95"
+              title="Voltar"
+            >
+              <ArrowLeft size={24} />
+            </button>
+
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900 leading-none m-0 tracking-tight flex items-center">
+                  OS |{" "}
+                  <span className="text-primary-600 font-mono ml-4 mr-4">
+                    {osData.id_os}
+                  </span>{" "}
+                  Fechamento Financeiro
+                </h1>
+                <span
+                  className={`px-3 py-1 rounded-md text-xs font-bold uppercase tracking-widest ring-1 ${getStatusStyle(osData.status)}`}
+                >
+                  {osData?.status === "FINANCEIRO"
+                    ? "FINANCEIRO"
+                    : (osData?.status as string).replace(/_/g, " ")}
+                </span>
+                {isDirty && (
+                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 shadow-sm">
+                    <AlertCircle size={10} /> ALTERAÇÕES PENDENTES
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-neutral-400 mt-2">
+                Gerenciamento Financeiro da Ordem de Serviço
+              </p>
+            </div>
+          </div>
 
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-neutral-700 leading-none m-0 tracking-tight">
-              Fechamento Financeiro #{osData.id_os}
-            </h1>
-            <span className="h-6 w-px bg-neutral-300 mx-1"></span>
-            <span
-              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(osData.status)}`}
-            >
-              {osData.status === "FINANCEIRO"
-                ? "FINANCEIRO"
-                : osData.status.replace(/_/g, " ")}
-            </span>
-            {isDirty && (
-              <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                <AlertCircle size={10} /> Alterações Pendentes
-              </span>
+            {(osData?.status === "FINALIZADA" ||
+              osData?.status === "FINANCEIRO") && (
+              <Button
+                variant="ghost"
+                className="text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 h-11 px-6 font-bold"
+                onClick={handleReopenOS}
+              >
+                REABRIR OS
+              </Button>
             )}
           </div>
         </div>
 
-        {/* Reopen Button */}
-        {(osData.status === "FINALIZADA" || osData.status === "FINANCEIRO") && (
-          <Button
-            variant="ghost"
-            className="text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200"
-            onClick={handleReopenOS}
-          >
-            Reabrir OS
-          </Button>
-        )}
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Col 1: Vehicle */}
-          {/* Col 1: Vehicle */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+        {/* Grid Info Body */}
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Vehicle */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-gray-400">
+              <Truck size={16} />
+              <span className="text-sm font-medium uppercase tracking-widest">
                 Veículo
-              </p>
+              </span>
               <button
                 onClick={() =>
                   navigate(`/cadastro/${osData.cliente?.id_cliente}`)
                 }
-                className="text-primary-600 hover:text-primary-700 p-0.5 hover:bg-primary-50 rounded transition-colors"
-                title="Editar Veículo"
+                className="text-primary-500 hover:text-primary-600 p-0.5 rounded hover:bg-primary-50"
               >
-                <Edit size={12} />
+                <Edit size={16} />
               </button>
             </div>
             <div className="flex flex-col">
-              <h3 className="text-2xl font-bold text-neutral-600 leading-none tracking-tight">
-                {osData.veiculo?.modelo} - {osData.veiculo?.cor || "Cor N/I"}
-              </h3>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm font-bold text-primary-600 uppercase tracking-widest  px-2 py-0.5 rounded-md">
-                  {osData.veiculo?.placa}
-                </span>
-              </div>
+              <span className="text-gray-900 text-base font-bold uppercase">
+                {osData?.veiculo?.modelo} • {osData?.veiculo?.cor || "N/I"}
+              </span>
+              <span className="text-base text-primary-600 uppercase mt-0.5 font-bold">
+                {osData?.veiculo?.placa || "---"}
+              </span>
             </div>
           </div>
 
-          {/* Col 2: Client */}
-          <div className="md:border-l md:border-gray-100 md:pl-8">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+          {/* Client */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-gray-400">
+              <Phone size={16} />
+              <span className="text-sm font-medium uppercase tracking-widest">
                 Cliente
-              </p>
+              </span>
               <button
                 onClick={() =>
                   navigate(`/cadastro/${osData.cliente?.id_cliente}`)
                 }
-                className="text-primary-600 hover:text-primary-700 p-0.5 hover:bg-primary-50 rounded transition-colors"
-                title="Editar Cliente"
+                className="text-primary-500 hover:text-primary-600 p-0.5 rounded hover:bg-primary-50"
               >
-                <Edit size={12} />
+                <Edit size={16} />
               </button>
             </div>
-            <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">
-              {getClientName()}
-            </h3>
-            <p className="text-gray-600 font-medium text-sm flex items-center gap-2">
-              <Phone size={14} className="text-gray-400" />
-              {osData.cliente.telefone_1 || "Sem telefone"}
-            </p>
+            <div>
+              <p className="text-base font-bold text-gray-900 leading-tight uppercase">
+                {getClientName()}
+              </p>
+              <p className="text-base font-medium text-gray-500 mt-1">
+                {formatPhone(osData?.cliente?.telefone_1)}
+              </p>
+            </div>
           </div>
-
-          {/* Col 3: Removed (Moved to body) */}
         </div>
-      </div>
+      </Card>
 
       {/* SPLIT LAYOUT: Obs (Left) & Labor (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start mt-6">
@@ -660,12 +753,14 @@ export const FechamentoFinanceiroDetalhePage = () => {
         <div className="space-y-4 lg:col-span-1">
           <Card className="space-y-4 p-4">
             <div className="space-y-1">
-              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>{" "}
+              <label className="flex items-center gap-3 pb-2 border-b border-neutral-100 text-sm font-medium text-gray-600 uppercase tracking-widest">
+                <div className="p-1.5 bg-red-100 rounded-lg text-red-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                </div>
                 Defeito Relatado
               </label>
               <textarea
-                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-32 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-base font-medium text-neutral-700 h-32 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
                 placeholder="Descreva o defeito..."
                 value={osData.defeito_relatado || ""}
                 onChange={(e) => {
@@ -674,14 +769,17 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 }}
               />
             </div>
-            <div className="space-y-1">
-              <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>{" "}
-                Observações / Diagnóstico
+
+            <div className="space-y-1 mt-4">
+              <label className="flex items-center gap-3 pb-2 border-b border-neutral-100 text-sm font-medium text-gray-600 uppercase tracking-widest">
+                <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
+                  <BadgeCheck size={18} />
+                </div>
+                Diagnóstico Técnico
               </label>
               <textarea
-                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 h-32 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
-                placeholder="Insira observações ou diagnóstico..."
+                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-base font-medium text-neutral-700 h-32 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                placeholder="Descreva o diagnóstico e a solução técnica..."
                 value={osData.diagnostico || ""}
                 onChange={(e) => {
                   setOsData({ ...osData, diagnostico: e.target.value });
@@ -694,10 +792,10 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
         {/* RIGHT COL: Labor Manager */}
         <div className="w-full space-y-2 h-full lg:col-span-2">
-          <Card className="h-full p-4 space-y-2">
-            <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2 pb-2 border-b border-neutral-50">
-              <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
-                <BadgeCheck size={14} />
+          <Card className="h-full p-6 space-y-4">
+            <h3 className="text-sm font-medium text-gray-600 uppercase tracking-widest flex items-center gap-3 pb-4 border-b border-neutral-100 mb-2">
+              <div className="p-1.5 bg-primary-100 rounded-lg text-primary-600">
+                <BadgeCheck size={18} />
               </div>
               Mão de Obra (Execução)
             </h3>
@@ -718,304 +816,447 @@ export const FechamentoFinanceiroDetalhePage = () => {
       </div>
 
       {/* PARTS COSTS */}
-      <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-          <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide">
+      <div className="border border-neutral-200 rounded-2xl overflow-hidden bg-white shadow-sm mt-6">
+        <div className="bg-neutral-50 px-6 py-4 border-b border-neutral-100 flex justify-between items-center">
+          <h4 className="font-bold text-sm text-gray-700 uppercase tracking-widest flex items-center gap-3">
+            <div className="p-1.5 bg-neutral-200 rounded-lg text-neutral-600">
+              <Truck size={16} />
+            </div>
             Custos de Peças (Fornecedores)
           </h4>
-          <button
-            type="button"
+          <Button
+            size="sm"
             onClick={() => setShowFornecedorModal(true)}
-            className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
+            className="text-sm"
           >
-            <Plus size={12} /> Novo Fornecedor
-          </button>
+            <Plus size={12} className="mr-1" /> NOVO FORNECEDOR
+          </Button>
         </div>
         <table className="w-full text-left">
-          <thead className="bg-gray-50/50 text-xs font-bold text-gray-400 uppercase">
+          <thead className="bg-neutral-50/50 text-xs font-bold text-gray-400 uppercase tracking-widest">
             <tr>
-              <th className="p-4 w-1/3">Peça</th>
-              <th className="p-4">Ref / Nota</th>
-              <th className="p-4">Fornecedor</th>
-              <th className="p-4 w-44">Custo (R$)</th>
-              <th className="p-4 text-center w-20">Ações</th>
+              <th className="p-4 w-1/3 border-b border-neutral-50">Peça</th>
+              <th className="p-4 border-b border-neutral-50">Ref / Nota</th>
+              <th className="p-4 border-b border-neutral-50">Fornecedor</th>
+              <th className="p-4 w-44 border-b border-neutral-50">
+                Custo (R$)
+              </th>
+              <th className="p-4 text-center w-20 border-b border-neutral-50">
+                Ações
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
-            {osData.itens_os.map((item) => (
-              <tr
-                key={item.id_iten}
-                className="hover:bg-gray-50/50 transition-colors group"
-              >
-                <td className="p-4 relative">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-bold text-gray-800 text-sm">
-                        {item.descricao}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        Qtd: {item.quantidade} x{" "}
-                        {formatCurrency(
-                          Number(item.valor_total) / item.quantidade,
-                        )}{" "}
-                        ={" "}
-                        <span className="text-green-600 font-bold">
-                          {formatCurrency(Number(item.valor_total))}
-                        </span>
-                      </p>
+          <tbody className="divide-y divide-neutral-50">
+            {osData?.itens_os
+              ?.filter((i) => !i.is_interno)
+              .map((item) => (
+                <tr
+                  key={item.id_iten}
+                  className="hover:bg-neutral-50/50 transition-colors group"
+                >
+                  <td className="p-4 relative">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-gray-800 text-base">
+                          {item.descricao}
+                        </p>
+                        <p className="text-sm text-gray-400 mt-0.5">
+                          Qtd: {item.quantidade} x{" "}
+                          {formatCurrency(
+                            Number(item.valor_total) / item.quantidade,
+                          )}{" "}
+                          ={" "}
+                          <span className="text-emerald-600 font-bold">
+                            {formatCurrency(Number(item.valor_total))}
+                          </span>
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td className="p-4 text-xs font-mono font-bold text-gray-500">
-                  {item.codigo_referencia || "-"}
-                </td>
-                <td className="p-4">
-                  {item.pecas_estoque || item.id_pecas_estoque ? (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-neutral-100 rounded-lg border border-neutral-200 text-neutral-500 font-bold text-xs uppercase tracking-wider justify-center">
-                      <Truck size={14} /> Estoque Próprio
-                    </div>
-                  ) : (
-                    <select
-                      className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
-                      value={itemsState[item.id_iten]?.id_fornecedor || ""}
-                      onChange={(e) =>
-                        handleItemChange(
-                          item.id_iten,
-                          "id_fornecedor",
-                          e.target.value,
-                        )
-                      }
-                    >
-                      <option value="">-- Selecione --</option>
-                      {fornecedores.map((f) => (
-                        <option key={f.id_fornecedor} value={f.id_fornecedor}>
-                          {f.nome}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </td>
-                <td className="p-4">
-                  {item.pecas_estoque || item.id_pecas_estoque ? (
-                    <div className="opacity-50">
-                      <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 px-3 py-2 w-full">
+                  </td>
+                  <td className="p-4 text-xs font-mono font-bold text-gray-500">
+                    {item.codigo_referencia || "-"}
+                  </td>
+                  <td className="p-4">
+                    {item.pecas_estoque || item.id_pecas_estoque ? (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-neutral-100 rounded-lg border border-neutral-200 text-neutral-500 font-bold text-xs uppercase tracking-wider justify-center">
+                        <Truck size={14} /> Estoque Próprio
+                      </div>
+                    ) : (
+                      <select
+                        className="w-full p-2.5 bg-white border border-neutral-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                        value={itemsState[item.id_iten]?.id_fornecedor || ""}
+                        onChange={(e) =>
+                          handleItemChange(
+                            item.id_iten,
+                            "id_fornecedor",
+                            e.target.value,
+                          )
+                        }
+                      >
+                        <option value="">-- Selecione --</option>
+                        {fornecedores.map((f) => (
+                          <option key={f.id_fornecedor} value={f.id_fornecedor}>
+                            {f.nome}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    {item.pecas_estoque || item.id_pecas_estoque ? (
+                      <div className="opacity-50">
+                        <div className="flex items-center border border-neutral-100 rounded-lg bg-neutral-50 px-3 py-2 w-full">
+                          <span className="text-gray-400 text-xs font-bold mr-2">
+                            R$
+                          </span>
+                          <input
+                            disabled
+                            value="0.00"
+                            className="w-full bg-transparent text-sm font-bold text-gray-400 cursor-not-allowed outline-none"
+                          />
+                        </div>
+                        <div className="text-sm text-gray-400 mt-1 text-center font-medium uppercase tracking-tighter">
+                          {item.pecas_estoque
+                            ? `Custo Orig: ${formatCurrency(Number(item.pecas_estoque.valor_custo))}`
+                            : "Estoque"}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center border border-neutral-200 rounded-lg bg-white px-3 py-2 w-full focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent transition-all shadow-sm">
                         <span className="text-gray-400 text-xs font-bold mr-2">
                           R$
                         </span>
                         <input
-                          disabled
-                          value="0.00"
-                          className="w-full bg-transparent text-sm font-bold text-gray-400 cursor-not-allowed outline-none"
-                        />
-                      </div>
-                      <div className="text-[9px] text-gray-400 mt-1 text-center font-medium">
-                        {item.pecas_estoque
-                          ? `Custo Orig: ${formatCurrency(Number(item.pecas_estoque.valor_custo))}`
-                          : "Estoque"}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center border border-gray-200 rounded-lg bg-white px-3 py-2 w-full focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition-all shadow-sm">
-                      <span className="text-gray-400 text-xs font-bold mr-2">
-                        R$
-                      </span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={itemsState[item.id_iten]?.custo_real}
-                        onChange={(e) =>
-                          handleItemChange(
-                            item.id_iten,
-                            "custo_real",
-                            e.target.value,
-                          )
-                        }
-                        onBlur={(e) => {
-                          const val = parseFloat(e.target.value);
-                          if (!isNaN(val))
+                          type="number"
+                          step="0.01"
+                          value={itemsState[item.id_iten]?.custo_real}
+                          onChange={(e) =>
                             handleItemChange(
                               item.id_iten,
                               "custo_real",
-                              val.toFixed(2),
-                            );
-                        }}
-                        className="w-full text-sm font-bold text-red-600 outline-none placeholder-gray-300"
-                        placeholder="0.00"
+                              e.target.value,
+                            )
+                          }
+                          onBlur={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!isNaN(val))
+                              handleItemChange(
+                                item.id_iten,
+                                "custo_real",
+                                val.toFixed(2),
+                              );
+                          }}
+                          className="w-full text-base font-bold text-gray-900 outline-none placeholder-gray-300"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-4 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <ActionButton
+                        icon={Edit}
+                        label="Editar"
+                        onClick={() => handleOpenEditItem(item)}
+                        variant="neutral"
+                      />
+                      <ActionButton
+                        icon={Trash2}
+                        label="Excluir"
+                        onClick={() => handleDeleteItemOS(item.id_iten)}
+                        variant="danger"
                       />
                     </div>
-                  )}
-                </td>
-                <td className="p-4 text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <ActionButton
-                      icon={Edit}
-                      label="Editar"
-                      onClick={() => handleOpenEditItem(item)}
-                      variant="neutral"
-                    />
-                    <ActionButton
-                      icon={Trash2}
-                      label="Excluir"
-                      onClick={() => handleDeleteItemOS(item.id_iten)}
-                      variant="danger"
-                    />
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
 
-      {/* RECEBIMENTOS */}
-      <div className="border border-green-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-        <div className="bg-green-100 px-4 py-3 border-b border-green-200 flex justify-between items-center">
-          <h4 className="font-bold text-sm text-green-800 uppercase tracking-wide">
-            Recebimentos
+      {/* INTERNAL CONSUMPTION (Hidden from client) */}
+      <div className="border border-amber-200 rounded-2xl overflow-hidden bg-white shadow-sm mt-6">
+        <div className="bg-amber-50 px-6 py-4 border-b border-amber-100 flex justify-between items-center">
+          <h4 className="font-bold text-sm text-amber-800 uppercase tracking-widest flex items-center gap-3">
+            <div className="p-1.5 bg-amber-200 rounded-lg text-amber-600">
+              <Truck size={16} />
+            </div>
+            Consumo Interno de Peças (Custo Oficina)
           </h4>
-          <button
-            type="button"
-            onClick={() => setPaymentModal({ isOpen: true, data: null })}
-            className="text-[10px] font-black uppercase text-green-700 bg-white border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-amber-700 hover:bg-amber-100 border border-amber-200 uppercase"
+            onClick={handleOpenAddInternal}
           >
-            <Plus size={12} /> Novo Pagamento
-          </button>
+            <Plus size={14} className="mr-1" /> NOVO CUSTO INTERNO
+          </Button>
         </div>
-        <div className="p-4">
-          {/* Using a simplified list here or reuse Table logic */}
-          {osData.pagamentos_cliente?.filter((p) => !p.deleted_at).length ===
-          0 ? (
-            <p className="text-gray-400 text-sm text-center">
-              Nenhum recebimento.
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-amber-50/30 text-xs font-bold text-amber-600 uppercase tracking-widest">
+              <tr>
+                <th className="p-4 w-1/3">Descrição do Custo</th>
+                <th className="p-4">Ref / Obs</th>
+                <th className="p-4">Fornecedor</th>
+                <th className="p-4 w-44">Custo Bruto (R$)</th>
+                <th className="p-4 text-center w-20">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-amber-50">
+              {osData?.itens_os?.filter((i) => i.is_interno).length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="p-8 text-center text-amber-400 italic text-sm"
+                  >
+                    Nenhum custo interno registrado.
+                  </td>
+                </tr>
+              ) : (
+                osData.itens_os
+                  .filter((i) => i.is_interno)
+                  .map((item: any) => (
+                    <tr
+                      key={item.id_iten}
+                      className="hover:bg-amber-50/20 transition-colors"
+                    >
+                      <td className="p-4 font-bold text-neutral-700">
+                        {item.descricao}
+                      </td>
+                      <td className="p-4 text-xs font-mono text-neutral-400">
+                        {item.codigo_referencia || "-"}
+                      </td>
+                      <td className="p-4">
+                        <select
+                          className="w-full p-2 bg-white border border-amber-100 rounded-lg text-sm"
+                          value={itemsState[item.id_iten]?.id_fornecedor || ""}
+                          onChange={(e) =>
+                            handleItemChange(
+                              item.id_iten,
+                              "id_fornecedor",
+                              e.target.value,
+                            )
+                          }
+                        >
+                          <option value="">-- Selecione --</option>
+                          {fornecedores.map((f: any) => (
+                            <option
+                              key={f.id_fornecedor}
+                              value={f.id_fornecedor}
+                            >
+                              {f.nome}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center border border-amber-100 rounded-lg bg-white px-3 py-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={itemsState[item.id_iten]?.custo_real}
+                            onChange={(e) =>
+                              handleItemChange(
+                                item.id_iten,
+                                "custo_real",
+                                e.target.value,
+                              )
+                            }
+                            className="w-full text-base font-bold text-amber-700 outline-none"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <ActionButton
+                            icon={Edit}
+                            label="Editar"
+                            onClick={() => handleOpenEditItem(item)}
+                            variant="neutral"
+                          />
+                          <ActionButton
+                            icon={Trash2}
+                            label="Excluir"
+                            onClick={() => handleDeleteItemOS(item.id_iten)}
+                            variant="danger"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* RECEBIMENTOS */}
+      <div className="border border-emerald-200 rounded-2xl overflow-hidden bg-white shadow-sm mt-6">
+        <div className="bg-emerald-50 px-6 py-4 border-b border-emerald-100 flex justify-between items-center">
+          <h4 className="font-bold text-sm text-emerald-800 uppercase tracking-widest">
+            Recebimentos do Cliente
+          </h4>
+          <Button
+            size="sm"
+            variant="success"
+            onClick={() => setPaymentModal({ isOpen: true, data: null })}
+            className="text-sm"
+          >
+            <Plus size={12} className="mr-1" /> NOVO PAGAMENTO
+          </Button>
+        </div>
+        <div className="p-6">
+          {osData.pagamentos_cliente?.length === 0 ? (
+            <p className="text-gray-400 text-base text-center italic">
+              Nenhum recebimento registrado.
             </p>
           ) : (
-            <div className="space-y-2">
-              {osData.pagamentos_cliente
-                ?.filter((p) => !p.deleted_at)
-                .map((pag) => (
-                  <div
-                    key={pag.id_pagamento_cliente}
-                    className="flex flex-col gap-1 bg-green-50/50 p-3 rounded-lg text-sm border border-green-100 group transition-all hover:bg-green-50 hover:shadow-sm"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-green-800 text-base">
-                          {formatCurrency(Number(pag.valor))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {osData.pagamentos_cliente?.map((pag) => (
+                <div
+                  key={pag.id_pagamento_cliente}
+                  className={`flex flex-col gap-1 p-4 rounded-xl text-sm border group transition-all hover:shadow-md ${
+                    pag.deleted_at
+                      ? "bg-red-50/50 border-red-100 opacity-75 grayscale-[0.5]"
+                      : "bg-neutral-50 border-neutral-100 hover:bg-white"
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-col">
+                      <span
+                        className={`font-black text-xl tracking-tight ${pag.deleted_at ? "text-red-400 line-through" : "text-emerald-600"}`}
+                      >
+                        {formatCurrency(Number(pag.valor))}
+                      </span>
+                      <div className="flex items-center gap-2 text-xs text-gray-500 font-bold uppercase mt-1">
+                        <span
+                          className={`tracking-wider px-2 py-0.5 rounded-md ${
+                            pag.deleted_at
+                              ? "bg-red-100 text-red-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {pag.metodo_pagamento}{" "}
+                          {pag.deleted_at && "(CANCELADO)"}
                         </span>
-                        <div className="flex items-center gap-2 text-xs text-green-700 font-medium">
-                          <span className="uppercase tracking-wider px-1.5 py-0.5 bg-green-200 rounded text-[10px] font-bold">
-                            {pag.metodo_pagamento}
-                          </span>
 
-                          {pag.metodo_pagamento === "PIX" &&
-                            pag.conta_bancaria && (
-                              <span className="flex items-center gap-1">
-                                • {pag.conta_bancaria.nome_banco}
-                              </span>
-                            )}
-
-                          {(pag.metodo_pagamento === "CREDITO" ||
-                            pag.metodo_pagamento === "DEBITO") && (
+                        {pag.metodo_pagamento === "PIX" &&
+                          pag.conta_bancaria && (
                             <span className="flex items-center gap-1">
-                              • {pag.operadora?.nome || "Operadora N/I"}
-                              {pag.qtd_parcelas &&
-                                pag.qtd_parcelas > 1 &&
-                                ` (${pag.qtd_parcelas}x)`}
+                              • {pag.conta_bancaria.nome_banco}
                             </span>
                           )}
-                        </div>
-                      </div>
 
+                        {(pag.metodo_pagamento === "CREDITO" ||
+                          pag.metodo_pagamento === "DEBITO") && (
+                          <span className="flex items-center gap-1">
+                            • {pag.operadora?.nome || "Operadora N/I"}
+                            {pag.qtd_parcelas &&
+                              pag.qtd_parcelas > 1 &&
+                              ` (${pag.qtd_parcelas}x)`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {!pag.deleted_at && (
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() =>
                             setPaymentModal({ isOpen: true, data: pag })
                           }
-                          className="text-neutral-400 hover:text-blue-600 p-1 hover:bg-blue-50 rounded"
+                          className="text-neutral-400 hover:text-primary-600 p-1.5 hover:bg-primary-50 rounded-lg transition-colors"
                           title="Editar"
                         >
-                          <Edit size={14} />
+                          <Edit size={16} />
                         </button>
                         <button
                           onClick={() =>
                             handleDeletePayment(pag.id_pagamento_cliente)
                           }
-                          className="text-neutral-400 hover:text-red-600 p-1 hover:bg-red-50 rounded"
+                          className="text-neutral-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                           title="Excluir"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 mt-2 text-[10px] text-gray-500 border-t border-green-100/50 pt-2">
-                      <span>
-                        📅 {new Date(pag.data_pagamento).toLocaleDateString()}
-                      </span>
-                      <span>
-                        🕒{" "}
-                        {new Date(pag.data_pagamento).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-
-                      {(pag.codigo_transacao || pag.bandeira_cartao) && (
-                        <span className="font-mono bg-white px-1 rounded border border-gray-100 text-gray-400">
-                          {pag.bandeira_cartao}{" "}
-                          {pag.codigo_transacao
-                            ? `| NSU: ${pag.codigo_transacao}`
-                            : ""}
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
-                ))}
+
+                  <div className="flex items-center gap-4 mt-3 text-sm text-gray-400 border-t border-neutral-100 pt-3 font-bold uppercase tracking-wider">
+                    <span className="flex items-center gap-1">
+                      📅 {new Date(pag.data_pagamento).toLocaleDateString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      🕒{" "}
+                      {new Date(pag.data_pagamento).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+
+                    {(pag.codigo_transacao || pag.bandeira_cartao) && (
+                      <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-neutral-100">
+                        {pag.bandeira_cartao}{" "}
+                        {pag.codigo_transacao
+                          ? `| NSU: ${pag.codigo_transacao}`
+                          : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
 
       {/* BOTTOM SUMMARY CARD */}
-      <div className="bg-neutral-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
+      <div className="bg-primary-600 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden mt-8">
+        {/* Background Glow Effect */}
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-8 items-end">
           <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-              Total Peças
+            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-2 opacity-80">
+              Custo Total (Peças + Interno)
             </p>
-            <p className="text-2xl font-black text-white">
-              {formatCurrency(totalItemsRevenue)}
+            <p className="text-2xl font-bold text-white">
+              {formatCurrency(totalCusto)}
             </p>
-            <p className="text-[10px] font-bold text-emerald-400 mt-1">
-              Ref: {formatCurrency(Number(totalItemsRevenue) - totalItemsCost)}
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm font-black bg-white/20 px-2 py-0.5 rounded uppercase tracking-wider text-emerald-300">
+                Lucro Líquido: {formatCurrency(lucro)}
+              </span>
+            </div>
           </div>
           <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-              Total Mão de Obra
+            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-2 opacity-80">
+              Mão de Obra
             </p>
-            <p className="text-2xl font-black text-white">
+            <p className="text-2xl font-bold text-white">
               {formatCurrency(totalLaborRevenue)}
             </p>
           </div>
           <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-              Total Geral
+            <p className="text-xs font-medium text-white uppercase tracking-widest mb-2">
+              TOTAL À RECEBER
             </p>
-            <p className="text-3xl font-black text-white">
+            <p className="text-5xl font-bold text-white tracking-tighter drop-shadow-md">
               {formatCurrency(totalReceita)}
             </p>
           </div>
           <div className="text-right">
             <div
-              className={`inline-block px-4 py-2 rounded-xl font-black uppercase text-xs tracking-wider ${
+              className={`inline-block px-6 py-3 rounded-2xl font-black uppercase text-sm tracking-wider shadow-xl ${
                 (osData.pagamentos_cliente?.reduce(
                   (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
                   0,
                 ) || 0) >= totalReceita
-                  ? "bg-emerald-500 text-emerald-950"
-                  : "bg-amber-500 text-amber-950"
+                  ? "bg-emerald-500 text-white shadow-emerald-500/40"
+                  : "bg-amber-500 text-white shadow-amber-500/40 animate-pulse"
               }`}
             >
               {(osData.pagamentos_cliente?.reduce(
@@ -1114,7 +1355,9 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div
+              className={`grid ${editItemForm.is_interno ? "grid-cols-1" : "grid-cols-2"} gap-4`}
+            >
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                   Quantidade
@@ -1131,23 +1374,25 @@ export const FechamentoFinanceiroDetalhePage = () => {
                   className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Valor Unit. Venda
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={editItemForm.valor_venda}
-                  onChange={(e) =>
-                    setEditItemForm({
-                      ...editItemForm,
-                      valor_venda: Number(e.target.value),
-                    })
-                  }
-                  className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {!editItemForm.is_interno && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                    Valor Unit. Venda
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={editItemForm.valor_venda}
+                    onChange={(e) =>
+                      setEditItemForm({
+                        ...editItemForm,
+                        valor_venda: Number(e.target.value),
+                      })
+                    }
+                    className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
@@ -1175,6 +1420,78 @@ export const FechamentoFinanceiroDetalhePage = () => {
               </Button>
               <Button variant="primary" onClick={handleSaveEditItem}>
                 Salvar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Add Internal Item Modal */}
+      {addInternalModal.isOpen && (
+        <Modal
+          title="Novo Custo Interno"
+          onClose={() => setAddInternalModal({ isOpen: false })}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Descrição
+              </label>
+              <input
+                type="text"
+                value={addInternalForm.descricao}
+                onChange={(e) =>
+                  setAddInternalForm({
+                    ...addInternalForm,
+                    descricao: e.target.value,
+                  })
+                }
+                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ex. Material de Limpeza, Estopa, etc..."
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Quantidade
+              </label>
+              <input
+                type="number"
+                value={addInternalForm.quantidade}
+                onChange={(e) =>
+                  setAddInternalForm({
+                    ...addInternalForm,
+                    quantidade: Number(e.target.value),
+                  })
+                }
+                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Ref / Nota
+              </label>
+              <input
+                type="text"
+                value={addInternalForm.codigo_referencia}
+                onChange={(e) =>
+                  setAddInternalForm({
+                    ...addInternalForm,
+                    codigo_referencia: e.target.value,
+                  })
+                }
+                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Opcional"
+              />
+            </div>
+            <div className="pt-2 flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setAddInternalModal({ isOpen: false })}
+              >
+                Cancelar
+              </Button>
+              <Button variant="primary" onClick={handleSaveAddInternal}>
+                Adicionar
               </Button>
             </div>
           </div>

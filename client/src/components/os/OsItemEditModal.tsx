@@ -23,6 +23,8 @@ export const OsItemEditModal = ({
   return (
     <Modal title="Editar Item" onClose={onClose}>
       <div className="space-y-4">
+
+
         <div>
           <label className="text-sm font-medium text-gray-600 block mb-1">
             Descrição
@@ -43,7 +45,9 @@ export const OsItemEditModal = ({
             Código/Ref
           </label>
           <input
-            className="w-full border border-neutral-200 p-2.5 rounded-xl text-base text-gray-900 outline-none focus:border-primary-500"
+            className="w-full border border-neutral-200 p-2.5 rounded-xl text-base text-gray-900 outline-none focus:border-primary-500 placeholder:text-gray-400 placeholder:text-sm"
+            placeholder="Anotações internas ou Referência"
+            title="Utilize este campo para anotações internas da oficina."
             value={itemData.codigo_referencia || ""}
             onChange={(e) =>
               setItemData({
@@ -77,7 +81,7 @@ export const OsItemEditModal = ({
             <input
               type="number"
               step="0.01"
-              className="w-full border border-neutral-200 p-2.5 rounded-xl text-center text-base text-gray-900 outline-none focus:border-primary-500"
+              className="w-full border border-neutral-200 p-2.5 rounded-xl text-center text-base text-gray-900 outline-none focus:border-primary-500 transition-colors"
               value={itemData.valor_venda}
               onChange={(e) =>
                 setItemData({

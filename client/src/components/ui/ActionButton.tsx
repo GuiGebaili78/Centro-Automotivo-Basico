@@ -47,7 +47,7 @@ export const ActionButton = ({
 
       {/* TOOLTIP: Otimizado */}
       <div className="absolute bottom-full mb-2 hidden group-hover/action:flex flex-col items-center pointer-events-none z-100 animate-in fade-in zoom-in-95 duration-200">
-        <span className="px-2 py-1 text-[10px] font-bold text-white bg-neutral-800 rounded shadow-md whitespace-nowrap uppercase tracking-wider">
+        <span className="px-2 py-1 text-sm font-bold text-white bg-neutral-800 rounded shadow-md whitespace-nowrap uppercase tracking-wider">
           {label}
         </span>
         {/* Triângulo invertido */}

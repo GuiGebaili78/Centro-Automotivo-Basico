@@ -153,7 +153,7 @@ export const CategoriasPage = () => {
                     {/* Tipo */}
                     <td className="px-5 py-3.5">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                        className={`inline-block px-2 py-0.5 rounded-full text-sm font-semibold ${
                           TIPO_COLORS[cat.tipo] ??
                           "text-neutral-500 bg-neutral-100"
                         }`}
@@ -165,7 +165,7 @@ export const CategoriasPage = () => {
                     {/* Status / Badge Sistema */}
                     <td className="px-5 py-3.5 text-center">
                       {protegida ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-200">
                           <Shield size={11} />
                           Sistema
                         </span>

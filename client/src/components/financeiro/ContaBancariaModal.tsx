@@ -115,7 +115,7 @@ export const ContaBancariaModal: React.FC<ContaBancariaModalProps> = ({
               }
             />
             {editingAccount && (
-              <p className="text-[10px] text-neutral-400 mt-1">
+              <p className="text-sm text-neutral-400 mt-1">
                 Ajuste via Movimentações.
               </p>
             )}

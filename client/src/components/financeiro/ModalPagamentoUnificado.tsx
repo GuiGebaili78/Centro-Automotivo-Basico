@@ -71,7 +71,7 @@ export const ModalPagamentoUnificado: React.FC<
       <div className="space-y-6 pt-4">
         {/* Account Selection */}
         <div>
-          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2 block">
+          <label className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-2 block">
             Conta Bancária de Origem
           </label>
           <div className="relative">
@@ -107,7 +107,7 @@ export const ModalPagamentoUnificado: React.FC<
         {/* Amount Summary */}
         <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 flex justify-between items-center">
           <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+            <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">
               Valor Bruto
             </p>
             <p className="text-xl font-bold text-neutral-600">
@@ -123,14 +123,14 @@ export const ModalPagamentoUnificado: React.FC<
         {showDiscount && (
           <div className="space-y-4 border-t border-neutral-100 pt-4">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+              <label className="text-sm font-bold text-neutral-400 uppercase tracking-widest">
                 Aplicar Desconto
               </label>
               <div className="flex bg-neutral-100 p-1 rounded-lg">
                 <button
                   type="button"
                   onClick={() => setDiscountType("VALUE")}
-                  className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${
+                  className={`px-3 py-1 rounded-md text-sm font-bold uppercase transition-all ${
                     discountType === "VALUE"
                       ? "bg-white text-blue-600 shadow-sm"
                       : "text-neutral-500 hover:text-neutral-700"
@@ -141,7 +141,7 @@ export const ModalPagamentoUnificado: React.FC<
                 <button
                   type="button"
                   onClick={() => setDiscountType("PERCENT")}
-                  className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${
+                  className={`px-3 py-1 rounded-md text-sm font-bold uppercase transition-all ${
                     discountType === "PERCENT"
                       ? "bg-white text-blue-600 shadow-sm"
                       : "text-neutral-500 hover:text-neutral-700"
@@ -161,7 +161,7 @@ export const ModalPagamentoUnificado: React.FC<
                 icon={discountType === "VALUE" ? DollarSign : Percent}
               />
               <div className="bg-orange-50 p-2 rounded-lg border border-orange-100 flex flex-col justify-center px-4">
-                <p className="text-[9px] font-bold text-orange-400 uppercase tracking-wider">
+                <p className="text-sm font-bold text-orange-400 uppercase tracking-wider">
                   Desconto Final
                 </p>
                 <p className="text-sm font-black text-orange-600">
@@ -175,7 +175,7 @@ export const ModalPagamentoUnificado: React.FC<
         {/* Net Amount - Focus */}
         <div className="bg-blue-600 p-6 rounded-2xl shadow-lg shadow-blue-500/20 flex items-center justify-between text-white animate-in zoom-in duration-300">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-blue-100">
+            <p className="text-sm font-black uppercase tracking-widest mb-1 text-blue-100">
               Valor Líquido Final
             </p>
             <p className="text-3xl font-black tracking-tighter">

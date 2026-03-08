@@ -509,7 +509,7 @@ export const FechamentoFinanceiroForm = ({
                     OS Nº {osData.id_os}
                   </span>
                   <span
-                    className={`px-3 py-1 rounded-md text-[10px] font-black uppercase whitespace-nowrap ${getStatusStyle(osData.status)}`}
+                    className={`px-3 py-1 rounded-md text-sm font-black uppercase whitespace-nowrap ${getStatusStyle(osData.status)}`}
                   >
                     {osData.status === "FINANCEIRO"
                       ? "FINANCEIRO"
@@ -517,7 +517,7 @@ export const FechamentoFinanceiroForm = ({
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold uppercase text-gray-400">
+                  <span className="text-sm font-bold uppercase text-gray-400">
                     Data de Entrada:{" "}
                   </span>
                   <span className="text-xs font-bold text-gray-700">
@@ -580,7 +580,7 @@ export const FechamentoFinanceiroForm = ({
                 {/* COL 2: Defect & Diagnosis (Span 4) */}
                 <div className="lg:col-span-4 space-y-4 lg:border-l lg:border-gray-100 lg:pl-8 lg:border-dashed">
                   <div>
-                    <p className="text-[10px] font-black text-red-400 uppercase mb-1 tracking-wider flex items-center gap-2">
+                    <p className="text-sm font-black text-red-400 uppercase mb-1 tracking-wider flex items-center gap-2">
                       <AlertCircle size={12} /> Defeito Relatado
                     </p>
                     <div className="text-sm font-medium text-gray-700 leading-relaxed bg-red-50/30 p-3 rounded-lg border border-red-50">
@@ -592,7 +592,7 @@ export const FechamentoFinanceiroForm = ({
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-blue-400 uppercase mb-1 tracking-wider flex items-center gap-2">
+                    <p className="text-sm font-black text-blue-400 uppercase mb-1 tracking-wider flex items-center gap-2">
                       <Wrench size={12} /> Diagnóstico Técnico
                     </p>
                     <div className="text-sm font-medium text-gray-700 leading-relaxed bg-blue-50/30 p-3 rounded-lg border border-blue-50">
@@ -615,7 +615,7 @@ export const FechamentoFinanceiroForm = ({
                       {formatCurrency(totalReceita)}
                     </p>
                   </div>
-                  <p className="text-[10px] font-bold text-gray-400">
+                  <p className="text-sm font-bold text-gray-400">
                     Valor Final (Peças + Mão de Obra)
                   </p>
                 </div>
@@ -665,7 +665,7 @@ export const FechamentoFinanceiroForm = ({
                   variant="ghost"
                   size="sm"
                   icon={Plus}
-                  className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
+                  className="text-sm font-black uppercase text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
                 >
                   Novo Fornecedor
                 </Button>
@@ -749,7 +749,7 @@ export const FechamentoFinanceiroForm = ({
                               className="font-bold text-gray-400"
                               prefix="R$"
                             />
-                            <div className="text-[9px] text-gray-400 mt-1 text-center font-medium">
+                            <div className="text-sm text-gray-400 mt-1 text-center font-medium">
                               {item.pecas_estoque
                                 ? `Custo Orig: ${formatCurrency(Number(item.pecas_estoque.valor_custo))}`
                                 : "Estoque"}
@@ -821,7 +821,7 @@ export const FechamentoFinanceiroForm = ({
                   variant="outline"
                   size="sm"
                   icon={Plus}
-                  className="text-[10px] font-black uppercase text-green-700 bg-white border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
+                  className="text-sm font-black uppercase text-green-700 bg-white border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
                 >
                   Novo Pagamento
                 </Button>
@@ -890,11 +890,11 @@ export const FechamentoFinanceiroForm = ({
                           </td>
                           <td className="p-3 text-center">
                             {isDeleted ? (
-                              <span className="text-[9px] font-black text-red-500 uppercase rounded bg-white px-1">
+                              <span className="text-sm font-black text-red-500 uppercase rounded bg-white px-1">
                                 Excluído
                               </span>
                             ) : (
-                              <span className="text-[9px] font-black text-green-600 uppercase">
+                              <span className="text-sm font-black text-green-600 uppercase">
                                 Ativo
                               </span>
                             )}
@@ -948,7 +948,7 @@ export const FechamentoFinanceiroForm = ({
                   <p className="text-3xl font-black text-gray-900">
                     {formatCurrency(totalItemsRevenue || 0)}
                   </p>
-                  <p className="text-[10px] uppercase font-bold text-gray-400 mt-1">
+                  <p className="text-sm uppercase font-bold text-gray-400 mt-1">
                     Ref:{" "}
                     <span
                       className={lucro >= 0 ? "text-green-600" : "text-red-600"}

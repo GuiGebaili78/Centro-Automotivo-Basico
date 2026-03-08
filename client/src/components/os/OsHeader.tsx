@@ -35,7 +35,7 @@ export const OsHeader = ({
           </h1>
           <span className="h-6 w-px bg-neutral-300 mx-1"></span>
           <span
-            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(os.status)}`}
+            className={`px-3 py-1 rounded-md text-sm font-bold uppercase tracking-wider ${getStatusStyle(os.status)}`}
           >
             {os.status === "PRONTO PARA FINANCEIRO"
               ? "FINANCEIRO"

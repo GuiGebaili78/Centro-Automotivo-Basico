@@ -101,7 +101,7 @@ export const OsPrintView = () => {
       </div>
 
       {isBudget && (
-        <div className="border-2 border-red-500 bg-red-50 text-red-600 font-bold text-center p-2 mb-6 uppercase text-sm print:border-black print:text-black print:bg-transparent">
+        <div className="border-2 border-red-500 bg-red-50 text-red-600 font-bold text-center p-2 mb-6 uppercase text-sm print:border-black print:text-neutral-800 print:bg-transparent">
           DOCUMENTO SEM VALOR FISCAL - SERVIÇO NÃO REALIZADO / APENAS ORÇAMENTO
         </div>
       )}
@@ -178,7 +178,7 @@ export const OsPrintView = () => {
 
       {/* Items */}
       <div className="mb-6">
-        <h3 className="font-bold uppercase bg-neutral-800 text-white p-2 mb-0 print:bg-transparent print:text-black print:border-b-2 print:border-black">
+        <h3 className="font-bold uppercase bg-neutral-800 text-white p-2 mb-0 print:bg-transparent print:text-neutral-800 print:border-b-2 print:border-black">
           Peças e Produtos
         </h3>
         <table className="w-full text-sm border-collapse">
@@ -224,7 +224,7 @@ export const OsPrintView = () => {
 
       {/* Services */}
       <div className="mb-6">
-        <h3 className="font-bold uppercase bg-neutral-800 text-white p-2 mb-0 print:bg-transparent print:text-black print:border-b-2 print:border-black">
+        <h3 className="font-bold uppercase bg-neutral-800 text-white p-2 mb-0 print:bg-transparent print:text-neutral-800 print:border-b-2 print:border-black">
           Mão de Obra
         </h3>
         <table className="w-full text-sm border-collapse">
@@ -297,7 +297,7 @@ export const OsPrintView = () => {
         </div>
       </div>
 
-      <div className="text-center text-[10px] text-neutral-400 mt-20 print:fixed print:bottom-0 print:left-0 print:w-full">
+      <div className="text-center text-sm text-neutral-400 mt-20 print:fixed print:bottom-0 print:left-0 print:w-full">
         Gerado em {format(new Date(), "dd/MM/yyyy HH:mm:ss")}
       </div>
     </div>

@@ -9,6 +9,13 @@ export class ItensOsController {
   async create(req: Request, res: Response) {
     try {
       const { id_fornecedor, custo_real, ...itemData } = req.body;
+      
+      itemData.is_interno = Boolean(itemData.is_interno);
+      if (itemData.is_interno) {
+        itemData.valor_venda = 0;
+        itemData.valor_total = 0;
+      }
+
       const item = await repository.create(itemData);
       
       if (id_fornecedor) {
@@ -52,7 +59,8 @@ export class ItensOsController {
   async findByOsId(req: Request, res: Response) {
     try {
       const idOs = Number(req.params.idOs);
-      const itens = await repository.findByOsId(idOs);
+      const includeInternal = req.query.includeInternal === 'true';
+      const itens = await repository.findByOsId(idOs, includeInternal);
       res.json(itens);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch Itens for OS' });
@@ -64,6 +72,16 @@ export class ItensOsController {
       const id = Number(req.params.id);
       const { id_fornecedor, custo_real, ...itemData } = req.body;
       
+      if (itemData.is_interno !== undefined) {
+        itemData.is_interno = Boolean(itemData.is_interno);
+      }
+      
+      // Force prices to 0 if it is internal
+      if (itemData.is_interno === true) {
+        itemData.valor_venda = 0;
+        itemData.valor_total = 0;
+      }
+
       const item = await repository.update(id, itemData);
 
       if (id_fornecedor !== undefined) {

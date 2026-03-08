@@ -368,7 +368,7 @@ export const PagamentoEquipePage = () => {
                                 {new Date(
                                   vale.dt_pagamento,
                                 ).toLocaleDateString()}
-                                <div className="text-[10px] font-normal text-neutral-400">
+                                <div className="text-sm font-normal text-neutral-400">
                                   {new Date(
                                     vale.dt_pagamento,
                                   ).toLocaleTimeString([], {
@@ -431,7 +431,7 @@ export const PagamentoEquipePage = () => {
                                 <div className="font-bold text-neutral-600">
                                   #{item.id_os}
                                 </div>
-                                <div className="text-[10px] text-neutral-400">
+                                <div className="text-sm text-neutral-400">
                                   {new Date(
                                     item.ordem_de_servico?.dt_abertura,
                                   ).toLocaleDateString()}
@@ -446,10 +446,10 @@ export const PagamentoEquipePage = () => {
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mt-0.5">
+                                <div className="text-sm font-bold text-neutral-500 uppercase tracking-wider mt-0.5">
                                   {item.ordem_de_servico?.veiculo?.placa}
                                 </div>
-                                <div className="text-[10px] text-neutral-400 mt-0.5">
+                                <div className="text-sm text-neutral-400 mt-0.5">
                                   {item.ordem_de_servico?.cliente?.pessoa_fisica
                                     ?.pessoa?.nome ||
                                     item.ordem_de_servico?.cliente
@@ -473,7 +473,7 @@ export const PagamentoEquipePage = () => {
                               </td>
                               <td className="text-center">
                                 <span
-                                  className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase whitespace-nowrap ${getStatusStyle(item.ordem_de_servico?.status || "")}`}
+                                  className={`px-3 py-1 rounded-md text-sm font-bold uppercase whitespace-nowrap ${getStatusStyle(item.ordem_de_servico?.status || "")}`}
                                 >
                                   {item.ordem_de_servico?.status
                                     ? item.ordem_de_servico.status ===
@@ -566,7 +566,7 @@ export const PagamentoEquipePage = () => {
                       Histórico de Pagamentos
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                      <span className="text-sm font-bold uppercase tracking-widest text-neutral-400">
                         Total Pago no Período:
                       </span>
                       <span className="text-lg font-bold text-neutral-800 bg-white px-3 py-1 rounded border border-neutral-200 shadow-sm">
@@ -604,7 +604,7 @@ export const PagamentoEquipePage = () => {
                             >
                               <td className="text-xs font-bold text-neutral-600">
                                 {new Date(item.date).toLocaleDateString()}
-                                <div className="text-[10px] font-normal text-neutral-400">
+                                <div className="text-sm font-normal text-neutral-400">
                                   {new Date(item.date).toLocaleTimeString([], {
                                     hour: "2-digit",
                                     minute: "2-digit",
@@ -613,7 +613,7 @@ export const PagamentoEquipePage = () => {
                               </td>
                               <td>
                                 <span
-                                  className={`px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                  className={`px-2 py-1 rounded text-sm font-bold uppercase tracking-wider ${
                                     item.type === "COMISSAO"
                                       ? "bg-emerald-50 text-emerald-600"
                                       : item.type === "VALE"
@@ -632,7 +632,7 @@ export const PagamentoEquipePage = () => {
                                     </span>
                                     {(item.os.defeito_relatado ||
                                       item.os.diagnostico) && (
-                                      <div className="text-[10px] text-neutral-500 leading-tight bg-neutral-100/50 p-1.5 rounded-md border border-neutral-100 max-w-[200px]">
+                                      <div className="text-sm text-neutral-500 leading-tight bg-neutral-100/50 p-1.5 rounded-md border border-neutral-100 max-w-[200px]">
                                         {item.os.defeito_relatado && (
                                           <div className="mb-0.5">
                                             <span className="font-bold text-neutral-600">
@@ -664,7 +664,7 @@ export const PagamentoEquipePage = () => {
                                     <div className="font-bold text-neutral-600">
                                       {item.os.veiculo?.modelo}
                                     </div>
-                                    <div className="text-[10px] text-neutral-500">
+                                    <div className="text-sm text-neutral-500">
                                       {item.os.veiculo?.placa} •{" "}
                                       {item.os.veiculo?.cor}
                                     </div>
@@ -694,7 +694,7 @@ export const PagamentoEquipePage = () => {
                                   )}
                                 </div>
                                 {item.type === "COMISSAO" && (
-                                  <div className="text-[9px] text-neutral-400">
+                                  <div className="text-sm text-neutral-400">
                                     ({item.percentage}%)
                                   </div>
                                 )}

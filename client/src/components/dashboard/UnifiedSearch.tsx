@@ -166,7 +166,7 @@ export const UnifiedSearch = ({
           autoComplete="off"
         />
         <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-          <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-[10px] font-bold text-neutral-400">
+          <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-sm font-bold text-neutral-400">
             ESC
           </kbd>
         </div>
@@ -194,7 +194,7 @@ export const UnifiedSearch = ({
                       <p className="font-bold text-neutral-800 text-sm">
                         {result.display}
                         {result.placa && (
-                          <span className="ml-2 px-1.5 py-0.5 bg-neutral-800 text-white rounded text-[10px] tracking-widest font-mono">
+                          <span className="ml-2 px-1.5 py-0.5 bg-neutral-800 text-white rounded text-sm tracking-widest font-mono">
                             {result.placa}
                           </span>
                         )}

@@ -132,10 +132,12 @@ export class DocumentoService {
       );
       const veiculoDesc = `${os.veiculo.modelo} - ${os.veiculo.placa}`;
 
-      const totalPecas = os.itens_os.reduce(
-        (acc, item) => acc + Number(item.valor_total),
-        0,
-      );
+      const totalPecas = os.itens_os
+        .filter((item) => !item.is_interno)
+        .reduce(
+          (acc, item) => acc + Number(item.valor_total),
+          0,
+        );
       const totalMaoDeObra = os.servicos_mao_de_obra.reduce(
         (acc, serv) => acc + Number(serv.valor),
         0,
@@ -330,19 +332,21 @@ export class DocumentoService {
                   { text: "Unit.", style: "tableHeader" },
                   { text: "Total", style: "tableHeader" },
                 ],
-                ...os.itens_os.map((i) => [
-                  i.quantidade,
-                  i.descricao,
-                  i.codigo_referencia || "-",
-                  {
-                    text: `R$ ${(Number(i.valor_total) / i.quantidade).toFixed(2)}`,
-                    alignment: "right",
-                  },
-                  {
-                    text: `R$ ${Number(i.valor_total).toFixed(2)}`,
-                    alignment: "right",
-                  },
-                ]),
+                ...os.itens_os
+                  .filter((i) => !i.is_interno)
+                  .map((i) => [
+                    i.quantidade,
+                    i.descricao,
+                    i.codigo_referencia || "-",
+                    {
+                      text: `R$ ${(Number(i.valor_total) / i.quantidade).toFixed(2)}`,
+                      alignment: "right",
+                    },
+                    {
+                      text: `R$ ${Number(i.valor_total).toFixed(2)}`,
+                      alignment: "right",
+                    },
+                  ]),
               ],
             },
             layout: "lightHorizontalLines",

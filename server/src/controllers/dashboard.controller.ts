@@ -101,7 +101,7 @@ export class DashboardController {
       const consolidacao = await prisma.ordemDeServico.count({
         where: {
           status: { in: ["PRONTO PARA FINANCEIRO", "FINANCEIRO"] },
-          fechamento_financeiro: null,
+          fechamento_financeiro: { none: {} },
           deleted_at: null,
         },
       });

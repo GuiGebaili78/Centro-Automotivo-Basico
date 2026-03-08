@@ -27,6 +27,7 @@ export const OsItemForm = ({
     descricao: "",
     codigo_referencia: "",
     id_fornecedor: "",
+    is_interno: false,
   });
 
   const [highlightIndex, setHighlightIndex] = useState(-1);
@@ -103,6 +104,7 @@ export const OsItemForm = ({
         descricao: "",
         codigo_referencia: "",
         id_fornecedor: "",
+        is_interno: false,
       });
       setSelectedStockInfo(null);
       requestAnimationFrame(() => partInputRef.current?.focus());
@@ -180,12 +182,12 @@ export const OsItemForm = ({
                   <span className="text-neutral-700 group-hover/item:text-blue-600 flex-1 flex flex-col">
                     <span className="font-bold">{p.nome}</span>
                     {p.isHistory && (
-                      <span className="text-[11px] text-orange-400 uppercase font-black tracking-wider">
+                      <span className="text-sm text-orange-400 uppercase font-black tracking-wider">
                         Histórico
                       </span>
                     )}
                     {!p.isHistory && (
-                      <span className="text-[11px] text-blue-400 uppercase font-black tracking-wider">
+                      <span className="text-sm text-blue-400 uppercase font-black tracking-wider">
                         Estoque
                       </span>
                     )}
@@ -194,7 +196,7 @@ export const OsItemForm = ({
                   <div className="flex items-center gap-3">
                     {p.estoque_atual !== undefined && (
                       <span
-                        className={`text-[11px] font-black px-2 py-0.5 rounded ${p.estoque_atual > 0 ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}
+                        className={`text-sm font-black px-2 py-0.5 rounded ${p.estoque_atual > 0 ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}
                       >
                         Qt: {p.estoque_atual}
                       </span>
@@ -205,7 +207,7 @@ export const OsItemForm = ({
                   </div>
                 </button>
               ))}
-              <div className="p-2 text-[11px] text-center text-neutral-400 bg-neutral-50 border-t border-neutral-100 uppercase font-black tracking-widest">
+              <div className="p-2 text-sm text-center text-neutral-400 bg-neutral-50 border-t border-neutral-100 uppercase font-black tracking-widest">
                 Use as setas para navegar e Enter para selecionar
               </div>
             </div>
@@ -214,11 +216,11 @@ export const OsItemForm = ({
           {newItem.id_pecas_estoque && (
             <div className="absolute right-2 top-6 flex items-center gap-1">
               {selectedStockInfo && (
-                <span className="text-[11px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-blue-200">
+                <span className="text-sm bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-blue-200">
                   Disp: {selectedStockInfo.qtd}
                 </span>
               )}
-              <span className="text-[11px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-green-200">
+              <span className="text-sm bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-green-200">
                 Estoque
               </span>
             </div>
@@ -232,8 +234,9 @@ export const OsItemForm = ({
             </label>
             <input
               ref={referenceInputRef}
-              className="w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 text-base text-gray-900 outline-none focus:border-primary-500"
-              placeholder="..."
+              className="w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 text-base text-gray-900 outline-none focus:border-primary-500 placeholder:text-gray-400 placeholder:text-sm"
+              placeholder="Ref. / Obs"
+              title="Utilize este campo para anotações internas da oficina."
               value={newItem.codigo_referencia}
               onChange={(e) =>
                 setNewItem({
@@ -265,7 +268,7 @@ export const OsItemForm = ({
             <input
               type="number"
               step="0.01"
-              className="w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 text-center text-base text-gray-900 outline-none focus:border-primary-500"
+              className="w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 text-center text-base text-gray-900 outline-none focus:border-primary-500 transition-colors"
               placeholder="0.00"
               value={newItem.valor_venda}
               onChange={(e) =>

@@ -46,7 +46,8 @@ export class OrdemDeServicoController {
   async findById(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
-      const os = await service.findById(id);
+      const includeInternal = req.query.includeInternal === "true";
+      const os = await service.findById(id, includeInternal);
       if (!os) {
         return res.status(404).json({ error: "OS not found" });
       }

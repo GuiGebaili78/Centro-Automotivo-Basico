@@ -59,8 +59,8 @@ export class OrdemDeServicoService {
     return this.repository.findAll();
   }
 
-  async findById(id: number) {
-    return this.repository.findById(id);
+  async findById(id: number, includeInternal: boolean = false) {
+    return this.repository.findById(id, includeInternal);
   }
 
   async findByVehicleId(vehicleId: number) {

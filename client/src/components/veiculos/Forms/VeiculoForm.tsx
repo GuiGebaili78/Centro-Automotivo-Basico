@@ -280,7 +280,7 @@ export const VeiculoForm = memo(
                     <Check size={16} />
                   </div>
                   <div>
-                    <p className="text-[10px] text-primary-600 font-bold uppercase tracking-widest">
+                    <p className="text-sm text-primary-600 font-bold uppercase tracking-widest">
                       Cliente Selecionado
                     </p>
                     <p className="font-bold text-primary-900 leading-tight">

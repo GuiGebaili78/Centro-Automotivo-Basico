@@ -216,13 +216,11 @@ export const OperadorasTab = () => {
 
             <div className="grid grid-cols-3 gap-2 pl-4">
               <div className="bg-neutral-50 p-3 rounded-xl">
-                <p className="text-xs font-medium text-gray-600 mb-1">
-                  Débito
+                <p className="text-xs font-medium text-gray-600 mb-1">Débito</p>
+                <p className="text-base text-gray-900 font-medium">
+                  {op.taxa_debito}%
                 </p>
-                <p className="text-base text-gray-900 font-medium">{op.taxa_debito}%</p>
-                <p className="text-xs text-gray-500">
-                  D+{op.prazo_debito}
-                </p>
+                <p className="text-xs text-gray-500">D+{op.prazo_debito}</p>
               </div>
               <div className="bg-neutral-50 p-3 rounded-xl">
                 <p className="text-xs font-medium text-gray-600 mb-1">
@@ -306,7 +304,7 @@ export const OperadorasTab = () => {
               </h3>
 
               {/* TABLE HEADER */}
-              <div className="grid grid-cols-12 gap-2 text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-2 text-center">
+              <div className="grid grid-cols-12 gap-2 text-sm font-black text-neutral-400 uppercase tracking-wider mb-2 text-center">
                 <div className="col-span-2 text-left">Parcelas</div>
                 <div className="col-span-3">Modalidade</div>
                 <div className="col-span-3">Taxa Total (%)</div>
@@ -319,7 +317,7 @@ export const OperadorasTab = () => {
                   Débito
                 </div>
                 <div className="col-span-3">
-                  <span className="text-[10px] font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded">
+                  <span className="text-sm font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded">
                     DÉBITO
                   </span>
                 </div>
@@ -349,7 +347,7 @@ export const OperadorasTab = () => {
                   1x (Vista)
                 </div>
                 <div className="col-span-3">
-                  <span className="text-[10px] font-bold bg-green-100 text-green-600 px-2 py-1 rounded">
+                  <span className="text-sm font-bold bg-green-100 text-green-600 px-2 py-1 rounded">
                     CRÉDITO
                   </span>
                 </div>
@@ -401,7 +399,7 @@ export const OperadorasTab = () => {
                       {num}x
                     </div>
                     <div className="col-span-3">
-                      <span className="text-[10px] font-bold bg-green-50 text-green-500 px-2 py-0.5 rounded">
+                      <span className="text-sm font-bold bg-green-50 text-green-500 px-2 py-0.5 rounded">
                         PARC.
                       </span>
                     </div>

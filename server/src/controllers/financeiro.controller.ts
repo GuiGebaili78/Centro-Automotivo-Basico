@@ -171,8 +171,7 @@ export class FinanceiroController {
           /* 3. Despesas de Equipe */
           SELECT dt_pagamento as dt, 0 as receita, CAST(valor_total AS DECIMAL) as despesa 
           FROM "pagamento_equipe" 
-          WHERE deleted_at IS NULL
-            AND dt_pagamento BETWEEN $1 AND $2
+          WHERE dt_pagamento BETWEEN $1 AND $2
         ) as combined
         GROUP BY 1
         ORDER BY 1 ASC

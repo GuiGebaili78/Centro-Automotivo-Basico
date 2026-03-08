@@ -41,7 +41,7 @@ export class RecebivelCartaoRepository {
           deleted_at: null,
           id_livro_caixa: null,
           ordem_de_servico: {
-            fechamento_financeiro: { isNot: null }, // Apenas OSs Consolidadas
+            fechamento_financeiro: { some: {} }, // Apenas OSs Consolidadas
           },
         },
         include: {
@@ -254,7 +254,7 @@ export class RecebivelCartaoRepository {
       // Categoria diferenciada para não inflar faturamento diário se for filtrado.
       await tx.livroCaixa.create({
         data: {
-          descricao: `${recebivel.operadora.nome} / ${recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`,
+          descricao: `${recebivel.operadora.nome} / ${recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome} (OS | ${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`,
           valor: recebivel.valor_liquido,
           tipo_movimentacao: "ENTRADA",
           categoria: "CONCILIACAO_CARTAO",
@@ -373,7 +373,7 @@ export class RecebivelCartaoRepository {
             metodo_pagamento: "PIX",
             deleted_at: null,
             id_livro_caixa: null,
-            ordem_de_servico: { fechamento_financeiro: { isNot: null } },
+            ordem_de_servico: { fechamento_financeiro: { some: {} } },
           },
           _sum: { valor: true },
         });
@@ -400,7 +400,7 @@ export class RecebivelCartaoRepository {
             metodo_pagamento: "PIX",
             deleted_at: null,
             id_livro_caixa: null,
-            ordem_de_servico: { fechamento_financeiro: { isNot: null } },
+            ordem_de_servico: { fechamento_financeiro: { some: {} } },
           },
           _sum: { valor: true },
         });

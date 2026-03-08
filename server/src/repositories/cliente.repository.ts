@@ -126,6 +126,18 @@ export class ClienteRepository {
   }
 
   async delete(id: number) {
+    const activeOs = await prisma.ordemDeServico.findFirst({
+      where: {
+        id_cliente: id,
+        deleted_at: null,
+        status: { notIn: ["FINALIZADA", "CANCELADA"] },
+      },
+    });
+
+    if (activeOs) {
+      throw new Error("Não é possível excluir o cliente pois há uma Ordem de Serviço ativa vinculada (OS: " + activeOs.id_os + ").");
+    }
+
     return await prisma.cliente.delete({
       where: { id_cliente: id },
     });

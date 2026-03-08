@@ -181,7 +181,7 @@ export const PagamentoClienteForm = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
-          <label className="text-[0.75rem] font-bold text-slate-500 uppercase tracking-widest block mb-1">
+          <label className="text-sm font-bold text-slate-500 uppercase tracking-widest block mb-1">
             Valor do Pagamento
           </label>
           <div className="relative">
@@ -223,7 +223,7 @@ export const PagamentoClienteForm = ({
                 {m === "DEBITO" && <CreditCard size={20} />}
                 {m === "PIX" && <Smartphone size={20} />}
                 {m === "DINHEIRO" && <DollarSign size={20} />}
-                <span className="text-[10px] font-bold">{m}</span>
+                <span className="text-sm font-bold">{m}</span>
               </Button>
             ))}
           </div>
@@ -305,7 +305,7 @@ export const PagamentoClienteForm = ({
                   </option>
                 ))}
               </Select>
-              <p className="text-[10px] text-neutral-400 mt-1">
+              <p className="text-sm text-neutral-400 mt-1">
                 Necessário para cálculo de taxas e recebíveis.
               </p>
             </div>
@@ -327,7 +327,7 @@ export const PagamentoClienteForm = ({
                 </option>
               ))}
             </Select>
-            <p className="text-[10px] text-neutral-400 mt-1">
+            <p className="text-sm text-neutral-400 mt-1">
               Conta onde o valor será depositado.
             </p>
           </div>

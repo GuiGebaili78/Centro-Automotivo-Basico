@@ -114,7 +114,7 @@ export const OsShareModal = ({
 
         {mode && (
           <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200 animate-in slide-in-from-top-2 fade-in">
-            <label className="block text-[11px] font-black text-neutral-500 uppercase mb-2">
+            <label className="block text-sm font-black text-neutral-500 uppercase mb-2">
               {mode === "EMAIL"
                 ? "Endereço de E-mail"
                 : "Chat ID / Telefone (Telegram)"}
@@ -138,7 +138,7 @@ export const OsShareModal = ({
               </Button>
             </div>
             {mode === "TELEGRAM" && (
-              <p className="text-[11px] text-neutral-400 mt-2 font-black uppercase tracking-tight">
+              <p className="text-sm text-neutral-400 mt-2 font-black uppercase tracking-tight">
                 *Para Telegram, o usuário deve ter iniciado conversa com o bot.
                 Informe o Chat ID.
               </p>

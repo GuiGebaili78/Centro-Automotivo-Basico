@@ -160,7 +160,7 @@ export const DocumentoModal = ({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="exemplo@email.com"
             />
-            <p className="text-[10px] text-gray-400">
+            <p className="text-sm text-gray-400">
               Confirme o e-mail antes de enviar.
             </p>
           </div>

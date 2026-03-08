@@ -90,7 +90,7 @@ export const ReportFilter = ({ onFilterChange }: ReportFilterProps) => {
 
       <div className="flex items-center gap-2 border-l pl-4 border-neutral-200">
         <div className="flex flex-col">
-          <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">
+          <span className="text-sm text-neutral-400 uppercase font-bold tracking-wider">
             Início
           </span>
           <input
@@ -105,7 +105,7 @@ export const ReportFilter = ({ onFilterChange }: ReportFilterProps) => {
         </div>
         <span className="text-neutral-300 mx-1">→</span>
         <div className="flex flex-col">
-          <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">
+          <span className="text-sm text-neutral-400 uppercase font-bold tracking-wider">
             Fim
           </span>
           <input

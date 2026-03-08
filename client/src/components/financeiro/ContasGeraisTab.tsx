@@ -5,9 +5,7 @@ import {
   Modal,
   ActionButton,
   Button,
-  Input,
   Card,
-  Select,
   Checkbox,
   FilterButton,
 } from "../ui";
@@ -219,31 +217,33 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
       {/* HEADER ACTIONS */}
       <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-neutral-100 shadow-sm">
         <div className="flex flex-col">
-            <h2 className="text-base font-bold text-gray-900">
-              Contas e Despesas
-            </h2>
-            <p className="text-sm text-gray-500">
-              Gerencie contas a pagar e despesas gerais
-            </p>
+          <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
+            Contas e Despesas
+          </h3>
+          <p className="text-sm text-gray-500">
+            Gerencie contas a pagar e despesas gerais
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button
+          <button
             onClick={() => setIsCategoryModalOpen(true)}
-            variant="secondary"
-            icon={Settings}
+            className="bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2"
           >
-            Categorias
-          </Button>
-          <Button onClick={openNewModal} variant="primary" icon={Plus}>
-            Nova Conta
-          </Button>
+            <Settings size={18} /> Categorias
+          </button>
+          <button
+            onClick={openNewModal}
+            className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus size={18} /> Nova Conta
+          </button>
         </div>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-red-50 border border-red-100 p-6 rounded-2xl">
-          <p className="text-sm font-medium text-red-600 uppercase mb-1">
+          <p className="text-sm font-black text-red-400 uppercase tracking-widest mb-1">
             Total Pendente (Filtro)
           </p>
           <div className="flex items-center gap-2">
@@ -254,7 +254,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
           </div>
         </div>
         <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-2xl">
-          <p className="text-sm font-medium text-emerald-600 uppercase mb-1">
+          <p className="text-sm font-black text-emerald-400 uppercase tracking-widest mb-1">
             Total Pago (Filtro)
           </p>
           <div className="flex items-center gap-2">
@@ -270,18 +270,26 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
       <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col gap-6">
         <div className="flex flex-col md:flex-row items-end justify-between gap-4">
           <div className="w-full md:flex-1">
-            <Input
-              label="Buscar"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por Descrição, Credor..."
-              icon={Search}
-              className="w-full"
-            />
+            <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+              Buscar
+            </label>
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                size={18}
+              />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar por Descrição, Credor..."
+                className="w-full h-10 pl-10 pr-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
+              />
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-600 pl-1 mb-2 block">
+            <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
               Status da Conta
             </label>
             <div className="flex bg-neutral-50 p-1 rounded-xl items-center border border-neutral-200 gap-1">
@@ -300,7 +308,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
 
         <div className="flex flex-col md:flex-row items-end md:items-center gap-4 border-t border-neutral-100 pt-4">
           <div className="flex flex-col sm:flex-row items-center gap-2">
-            <span className="text-sm font-medium text-gray-600 min-w-[90px]">
+            <span className="text-sm font-bold text-neutral-500 uppercase tracking-widest min-w-[90px]">
               Vencimento:
             </span>
             <div className="flex bg-neutral-50 p-1 rounded-xl shrink-0 gap-1">
@@ -332,33 +340,33 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
 
             <div className="flex gap-2 items-center">
               <div className="w-32">
-                <Input
+                <input
                   type="date"
                   value={filterStart}
                   onChange={(e) => {
                     setFilterStart(e.target.value);
                     setActiveFilter("CUSTOM");
                   }}
-                  className={`h-9 font-bold uppercase ${
+                  className={`w-full h-10 px-3 bg-neutral-50 border rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-bold uppercase ${
                     activeFilter === "CUSTOM"
                       ? "border-primary-300 text-primary-700"
-                      : ""
+                      : "border-neutral-200"
                   }`}
                 />
               </div>
               <span className="text-neutral-400 self-center">-</span>
               <div className="w-32">
-                <Input
+                <input
                   type="date"
                   value={filterEnd}
                   onChange={(e) => {
                     setFilterEnd(e.target.value);
                     setActiveFilter("CUSTOM");
                   }}
-                  className={`h-9 font-bold uppercase ${
+                  className={`w-full h-10 px-3 bg-neutral-50 border rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-bold uppercase ${
                     activeFilter === "CUSTOM"
                       ? "border-primary-300 text-primary-700"
-                      : ""
+                      : "border-neutral-200"
                   }`}
                 />
               </div>
@@ -385,16 +393,16 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
       <Card className="p-0 overflow-hidden">
         <table className="tabela-limpa w-full">
           <thead>
-            <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
-              <th className="p-4 text-left">Vencimento</th>
+            <tr className="bg-neutral-50 text-neutral-400 text-sm uppercase tracking-wider font-bold">
+              <th className="p-4 text-left rounded-tl-xl">Vencimento</th>
               <th className="p-4 text-left">Descrição</th>
               <th className="p-4 text-left">Credor / Docs</th>
               <th className="p-4 text-right">Valor</th>
               <th className="p-4 text-center">Status</th>
-              <th className="p-4 text-right">Ações</th>
+              <th className="p-4 text-right rounded-tr-xl">Ações</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="">
             {loading ? (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-neutral-400">
@@ -430,32 +438,32 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                       /{new Date(conta.dt_vencimento).getUTCFullYear()}
                     </div>
                     {conta.dt_cadastro && (
-                      <div className="text-[10px] text-neutral-400 mt-0.5 ml-6">
+                      <div className="text-sm text-neutral-400 mt-0.5 ml-6">
                         Criado:{" "}
                         {new Date(conta.dt_cadastro).toLocaleDateString()}
                       </div>
                     )}
                     {conta.dt_pagamento && conta.status === "PAGO" && (
-                      <div className="text-[10px] text-emerald-600 font-bold mt-1 ml-6">
+                      <div className="text-sm text-emerald-600 font-bold mt-1 ml-6">
                         Pago:{" "}
                         {new Date(conta.dt_pagamento).toLocaleDateString()}
                       </div>
                     )}
                   </td>
                   <td className="p-4">
-                    <div className="text-base text-gray-900 font-bold">
+                    <div className="font-bold text-base text-neutral-800">
                       {conta.descricao}
                       {conta.id_grupo_recorrencia && (
-                        <span className="ml-2 text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                        <span className="ml-2 text-sm bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">
                           Recorrente
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] font-bold text-gray-500 uppercase bg-neutral-100 px-2 py-0.5 rounded w-fit mt-1 border border-neutral-200">
+                    <div className="text-sm font-bold text-gray-500 uppercase bg-neutral-100 px-2 py-0.5 rounded w-fit mt-1 border border-neutral-200">
                       {conta.categoria}
                     </div>
                     {conta.obs && (
-                      <div className="text-[14px] text-neutral-500 mt-1 italic max-w-[200px] truncate">
+                      <div className="text-sm text-neutral-500 mt-1 italic max-w-[200px] truncate">
                         {conta.obs}
                       </div>
                     )}
@@ -468,13 +476,13 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                       </div>
                     )}
                     {conta.num_documento && (
-                      <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 font-bold">
+                      <div className="flex items-center gap-1.5 text-sm text-neutral-500 font-bold">
                         <FileText size={12} className="text-neutral-400" /> Doc:{" "}
                         {conta.num_documento}
                       </div>
                     )}
                   </td>
-                  <td className="p-4 text-right text-base text-gray-900 font-bold">
+                  <td className="p-4 text-right font-bold text-neutral-800">
                     {formatCurrency(Number(conta.valor))}
                   </td>
                   <td className="p-4 text-center">
@@ -572,30 +580,35 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
         >
           <div className="space-y-4 pt-2">
             <div>
-              <label className="text-xs font-bold text-neutral-500 uppercase block mb-1">
+              <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
                 Valor Pago
               </label>
-              <Input
+              <input
                 type="number"
                 value={paymentValue}
                 onChange={(e) => setPaymentValue(e.target.value)}
+                className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-neutral-500 uppercase block mb-1">
+              <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
                 Data Pagamento
               </label>
-              <Input
+              <input
                 type="date"
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
+                className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
               />
             </div>
             <div>
-              <Select
-                label="Conta Bancária (Opcional)"
+              <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+                Conta Bancária (Opcional)
+              </label>
+              <select
                 value={selectedBank}
                 onChange={(e) => setSelectedBank(e.target.value)}
+                className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
               >
                 <option value="">Selecione...</option>
                 {bankAccounts.map((b: any) => (
@@ -603,15 +616,18 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                     {b.nome_banco} - {b.agencia}/{b.conta}
                   </option>
                 ))}
-              </Select>
+              </select>
             </div>
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex justify-end gap-2 pt-4 border-t border-neutral-100">
               <Button variant="ghost" onClick={() => setPayModalOpen(false)}>
                 Cancelar
               </Button>
-              <Button variant="primary" onClick={executePay}>
+              <button
+                onClick={executePay}
+                className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+              >
                 Confirmar Pagamento
-              </Button>
+              </button>
             </div>
           </div>
         </Modal>

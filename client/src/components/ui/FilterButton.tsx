@@ -23,7 +23,7 @@ export const FilterButton = ({
       <Button
         variant="primary"
         size="sm"
-        className={`text-[10px] h-7 px-3 shadow-sm ${className}`}
+        className={`text-sm h-7 px-3 shadow-sm ${className}`}
         onClick={onClick}
       >
         {children}
@@ -35,7 +35,7 @@ export const FilterButton = ({
     <Button
       variant="ghost"
       size="sm"
-      className={`text-[10px] h-7 px-3 text-neutral-500 hover:text-neutral-700 ${className}`}
+      className={`text-sm h-7 px-3 text-neutral-500 hover:text-neutral-700 ${className}`}
       onClick={onClick}
     >
       {children}

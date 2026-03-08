@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
-import { Button, Input, FilterButton } from "../ui";
+import { Button, FilterButton } from "../ui";
 import {
   Search,
   Calendar,
@@ -101,55 +101,66 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
         <div className="flex flex-col md:flex-row justify-between items-end gap-4 font-bold">
           <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
             <div>
-              <Input
-                label="Buscar Detalhes"
-                value={filters.search}
-                onChange={(e) =>
-                  setFilters({ ...filters, search: e.target.value })
-                }
-                placeholder="Ex: OS 123, Pix..."
-                icon={Search}
-              />
+              <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+                Buscar Detalhes
+              </label>
+              <div className="relative">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                  size={18}
+                />
+                <input
+                  type="text"
+                  value={filters.search}
+                  onChange={(e) =>
+                    setFilters({ ...filters, search: e.target.value })
+                  }
+                  placeholder="Ex: OS 123, Pix..."
+                  className="w-full h-10 pl-10 pr-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
+                />
+              </div>
             </div>
             <div className="md:col-span-2 flex flex-col sm:flex-row items-end gap-2">
               <div className="w-full">
-                <Input
-                  label="Data Início"
+                <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+                  Data Início
+                </label>
+                <input
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => {
                     setFilters({ ...filters, startDate: e.target.value });
                     setActiveFilter("CUSTOM");
                   }}
-                  className={`font-bold uppercase ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
+                  className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
                 />
               </div>
               <div className="w-full">
-                <Input
-                  label="Data Fim"
+                <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
+                  Data Fim
+                </label>
+                <input
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => {
                     setFilters({ ...filters, endDate: e.target.value });
                     setActiveFilter("CUSTOM");
                   }}
-                  className={`font-bold uppercase ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : ""}`}
+                  className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
                 />
               </div>
             </div>
           </div>
-          <Button
-            variant="dark"
-            icon={Plus}
+          <button
             onClick={() =>
               alert(
                 "Funcionalidade de Lançamento Manual será implementada em breve.",
               )
             }
-            className="w-full md:w-auto mt-2 md:mt-0"
+            className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2 w-full md:w-auto mt-2 md:mt-0"
           >
-            Novo Lançamento
-          </Button>
+            <Plus size={18} /> Novo Lançamento
+          </button>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-neutral-100 pt-4">
@@ -223,9 +234,7 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
             <div className="p-2 bg-neutral-800 text-neutral-400 rounded-lg">
               <Wallet size={20} />
             </div>
-            <p className="text-sm font-medium text-gray-400 uppercase">
-              Saldo
-            </p>
+            <p className="text-sm font-medium text-gray-400 uppercase">Saldo</p>
           </div>
           <p
             className={`text-3xl font-black ${
@@ -241,15 +250,15 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
       <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden w-full">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
-              <th className="p-5">Data</th>
-              <th className="p-5">Descrição</th>
-              <th className="p-5">Detalhes</th>
-              <th className="p-5 text-right">Valor</th>
-              <th className="p-5 text-center">Tipo</th>
+            <tr className="bg-neutral-50 text-neutral-400 text-sm uppercase tracking-wider font-bold">
+              <th className="p-4 rounded-tl-xl">Data</th>
+              <th className="p-4">Descrição</th>
+              <th className="p-4">Detalhes</th>
+              <th className="p-4 text-right">Valor</th>
+              <th className="p-4 text-center rounded-tr-xl">Tipo</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-50">
+          <tbody className="">
             {filteredEntries.length === 0 ? (
               <tr>
                 <td
@@ -263,26 +272,26 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
               filteredEntries.map((entry) => (
                 <tr
                   key={entry.id}
-                  className="hover:bg-neutral-25 transition-colors"
+                  className="hover:bg-neutral-50 text-sm text-neutral-600 border-b border-neutral-100 transition-colors"
                 >
-                  <td className="p-5">
-                    <div className="flex items-center gap-2 text-base text-gray-900 font-medium">
-                      <Calendar size={14} className="text-gray-400" />
+                  <td className="p-4">
+                    <div className="flex items-center gap-2 font-medium">
+                      <Calendar size={14} className="text-neutral-400" />
                       {new Date(entry.date).toLocaleDateString()}
                     </div>
                   </td>
-                  <td className="p-5 text-base text-gray-900 font-medium">
+                  <td className="p-4 font-bold text-neutral-800">
                     {entry.description}
                   </td>
-                  <td className="p-5 text-xs font-medium text-neutral-500">
+                  <td className="p-4 text-xs font-medium text-neutral-500">
                     {entry.details}
                   </td>
-                  <td className="p-5 text-right text-base text-gray-900 font-medium">
+                  <td className="p-4 text-right font-bold text-neutral-800">
                     {formatCurrency(entry.value)}
                   </td>
-                  <td className="p-5 text-center">
+                  <td className="p-4 text-center">
                     <span
-                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      className={`px-3 py-1 rounded-full text-sm font-black uppercase tracking-wider ${
                         entry.type === "IN"
                           ? "bg-success-100 text-success-700"
                           : "bg-red-100 text-red-700"

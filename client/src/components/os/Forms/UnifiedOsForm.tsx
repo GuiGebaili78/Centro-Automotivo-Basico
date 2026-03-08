@@ -222,7 +222,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
           <div className="pt-2 border-t border-neutral-200">
             <div className="flex items-center gap-1 mb-2">
               <MapPin size={14} className="text-neutral-400" />
-              <span className="text-[10px] font-black text-neutral-400 uppercase">
+              <span className="text-sm font-black text-neutral-400 uppercase">
                 Endereço
               </span>
             </div>

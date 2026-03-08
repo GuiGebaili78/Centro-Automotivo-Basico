@@ -136,7 +136,7 @@ export const ContasTab = () => {
 
             <div className="bg-neutral-50 p-4 rounded-xl mb-4">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px] font-bold text-neutral-400 uppercase">
+                <span className="text-sm font-bold text-neutral-400 uppercase">
                   Saldo Atual
                 </span>
                 <button
@@ -169,7 +169,7 @@ export const ContasTab = () => {
             </Button>
 
             {!acc.ativo && (
-              <div className="absolute top-4 right-4 bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded-md uppercase">
+              <div className="absolute top-4 right-4 bg-red-100 text-red-600 text-sm font-bold px-2 py-1 rounded-md uppercase">
                 Inativo
               </div>
             )}

@@ -15,7 +15,7 @@ export const getPendentesByFuncionario = async (
         status_pagamento: "PENDENTE",
         deleted_at: null,
         ordem_de_servico: {
-          fechamento_financeiro: { isNot: null },
+          fechamento_financeiro: { some: {} },
         },
       },
       include: {

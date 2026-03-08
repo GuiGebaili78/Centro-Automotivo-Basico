@@ -38,7 +38,7 @@ model PessoaJuridica {
   id_pessoa          Int       @unique
   razao_social       String    @db.VarChar(100)
   nome_fantasia      String?   @db.VarChar(100)
-  cnpj               String?   @unique @db.VarChar(14)
+  cnpj               String?   @db.VarChar(14)
   inscricao_estadual String?   @db.VarChar(50)
   dt_cadastro        DateTime  @default(now()) @db.Timestamp(6)
   clientes           Cliente[]
@@ -151,11 +151,10 @@ model PecasEstoque {
   @@map("pecas_estoque")
 }
 
-
 model Veiculo {
   id_veiculo        Int              @id @default(autoincrement())
   id_cliente        Int
-  placa             String           @unique @db.VarChar(8)
+  placa             String           @db.VarChar(8)
   chassi            String?          @db.VarChar(20)
   marca             String           @db.VarChar(50)
   modelo            String           @db.VarChar(50)
@@ -193,9 +192,10 @@ model OrdemDeServico {
   valor_mao_de_obra     Decimal?              @db.Decimal(10, 2)
   valor_total_cliente   Decimal?              @db.Decimal(10, 2)
   obs_final             String?               @db.VarChar(500)
+  obs_interna           String?               @db.VarChar(1000)
   deleted_at            DateTime?             @db.Timestamp(6)
   updated_at            DateTime              @default(now()) @updatedAt @db.Timestamp(6)
-  fechamento_financeiro FechamentoFinanceiro?
+  fechamento_financeiro FechamentoFinanceiro[]
   itens_os              ItensOs[]
   cliente               Cliente               @relation(fields: [id_cliente], references: [id_cliente])
   funcionario           Funcionario?          @relation(fields: [id_funcionario], references: [id_funcionario])
@@ -221,6 +221,7 @@ model ItensOs {
   quantidade        Int
   valor_venda       Decimal         @db.Decimal(10, 2)
   codigo_referencia String?         @db.VarChar(50)
+  is_interno        Boolean         @default(false)
   deleted_at        DateTime?       @db.Timestamp(6)
   ordem_de_servico  OrdemDeServico  @relation(fields: [id_os], references: [id_os])
   pecas_estoque     PecasEstoque?   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
@@ -272,7 +273,7 @@ model PagamentoPeca {
   data_pagamento_fornecedor DateTime?   @db.Timestamp(6)
   pago_ao_fornecedor        Boolean     @default(false)
   deleted_at                DateTime?   @db.Timestamp(6)
-  id_livro_caixa            Int?        @unique
+  id_livro_caixa            Int?
   fornecedor                Fornecedor  @relation(fields: [id_fornecedor], references: [id_fornecedor])
   item_os                   ItensOs     @relation(fields: [id_item_os], references: [id_iten])
   livro_caixa               LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
@@ -282,8 +283,11 @@ model PagamentoPeca {
 
 model FechamentoFinanceiro {
   id_fechamento_financeiro   Int            @id @default(autoincrement())
-  id_os                      Int            @unique
+  id_os                      Int
   custo_total_pecas_real     Decimal        @db.Decimal(10, 2)
+  lucro_pecas                Decimal?       @db.Decimal(10, 2)
+  lucro_mao_de_obra          Decimal?       @db.Decimal(10, 2)
+  lucro_total                Decimal?       @db.Decimal(10, 2)
   data_fechamento_financeiro DateTime       @default(now()) @db.Timestamp(6)
   deleted_at                 DateTime?      @db.Timestamp(6)
   ordem_de_servico           OrdemDeServico @relation(fields: [id_os], references: [id_os])
@@ -303,7 +307,7 @@ model PagamentoCliente {
   tipo_parcelamento    String?          @default("LOJA") @db.VarChar(20) // 'LOJA' or 'CLIENTE'
   obs                  String?          @db.VarChar(500)
   deleted_at           DateTime?        @db.Timestamp(6)
-  id_livro_caixa       Int?             @unique
+  id_livro_caixa       Int?
   id_operadora         Int?
   id_conta_bancaria    Int?
   conta_bancaria       ContaBancaria?   @relation(fields: [id_conta_bancaria], references: [id_conta])
@@ -346,27 +350,27 @@ model AuditLog {
 }
 
 model ContasPagar {
-  id_conta_pagar  Int       @id @default(autoincrement())
-  descricao       String    @db.VarChar(255)
-  valor           Decimal   @db.Decimal(10, 2)
-  dt_vencimento   DateTime  @db.Date
-  dt_pagamento    DateTime? @db.Date
-  status          String    @db.VarChar(20)
-  categoria       String?   @db.VarChar(50)
-  obs             String?   @db.VarChar(500)
-  dt_cadastro     DateTime  @default(now()) @db.Timestamp(6)
-  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamp(6)
-  deleted_at      DateTime? @db.Timestamp(6)
-  credor          String?   @db.VarChar(100)
-  dt_emissao      DateTime? @db.Date
-  forma_pagamento String?   @db.VarChar(50)
-  num_documento   String?   @db.VarChar(50)
-  url_anexo       String?   @db.VarChar(500)
+  id_conta_pagar       Int       @id @default(autoincrement())
+  descricao            String    @db.VarChar(255)
+  valor                Decimal   @db.Decimal(10, 2)
+  dt_vencimento        DateTime  @db.Date
+  dt_pagamento         DateTime? @db.Date
+  status               String    @db.VarChar(20)
+  categoria            String?   @db.VarChar(50)
+  obs                  String?   @db.VarChar(500)
+  dt_cadastro          DateTime  @default(now()) @db.Timestamp(6)
+  updated_at           DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  deleted_at           DateTime? @db.Timestamp(6)
+  credor               String?   @db.VarChar(100)
+  dt_emissao           DateTime? @db.Date
+  forma_pagamento      String?   @db.VarChar(50)
+  num_documento        String?   @db.VarChar(50)
+  url_anexo            String?   @db.VarChar(500)
   id_grupo_recorrencia String?   @db.VarChar(50)
   numero_parcela       Int?
   total_parcelas       Int?
 
-  id_categoria        Int?
+  id_categoria         Int?
   categoria_financeira CategoriaFinanceira? @relation(fields: [id_categoria], references: [id_categoria])
 
   @@map("contas_pagar")
@@ -409,23 +413,23 @@ model LivroCaixa {
   id_conta_bancaria   Int?
   conta               ContaBancaria?    @relation(fields: [id_conta_bancaria], references: [id_conta])
   pagamento_equipe    PagamentoEquipe?  @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
-  pagamento_cliente   PagamentoCliente?
-  pagamento_peca      PagamentoPeca?
+  pagamento_cliente   PagamentoCliente[]
+  pagamento_peca      PagamentoPeca[]
 
-  id_categoria        Int?
+  id_categoria         Int?
   categoria_financeira CategoriaFinanceira? @relation(fields: [id_categoria], references: [id_categoria])
 
   @@map("livro_caixa")
 }
 
 model CategoriaFinanceira {
-  id_categoria Int                   @id @default(autoincrement())
-  nome         String                @db.VarChar(50)
-  tipo         String                @db.VarChar(10) // 'RECEITA' or 'DESPESA'
-  parentId     Int?
-  dt_cadastro  DateTime              @default(now()) @db.Timestamp(6)
-  parent       CategoriaFinanceira?  @relation("CategoriaHierarchy", fields: [parentId], references: [id_categoria])
-  children     CategoriaFinanceira[] @relation("CategoriaHierarchy")
+  id_categoria  Int                   @id @default(autoincrement())
+  nome          String                @db.VarChar(50)
+  tipo          String                @db.VarChar(10) // 'RECEITA' or 'DESPESA'
+  parentId      Int?
+  dt_cadastro   DateTime              @default(now()) @db.Timestamp(6)
+  parent        CategoriaFinanceira?  @relation("CategoriaHierarchy", fields: [parentId], references: [id_categoria])
+  children      CategoriaFinanceira[] @relation("CategoriaHierarchy")
   movimentacoes LivroCaixa[]
   contas_pagar  ContasPagar[]
 
@@ -496,8 +500,8 @@ model OperadoraCartao {
   ativo               Boolean            @default(true)
   conta_destino       ContaBancaria      @relation(fields: [id_conta_destino], references: [id_conta])
   pagamentos_cliente  PagamentoCliente[]
-  recebivel_cartao     RecebivelCartao[]
-  taxas_cartao         TaxaCartao[]
+  recebivel_cartao    RecebivelCartao[]
+  taxas_cartao        TaxaCartao[]
 
   @@map("operadora_cartao")
 }
@@ -506,7 +510,7 @@ model TaxaCartao {
   id_taxa          Int             @id @default(autoincrement())
   id_operadora     Int
   modalidade       String          @db.VarChar(20) // 'DEBITO', 'CREDITO'
-  num_parcelas     Int             // 1 for Debit/Sight(1x), 2-18 for installments
+  num_parcelas     Int // 1 for Debit/Sight(1x), 2-18 for installments
   taxa_total       Decimal         @db.Decimal(5, 2) // Total fee deducted (Intermediation + Installment Interest)
   taxa_antecipacao Decimal?        @default(0) @db.Decimal(5, 2) // Monthly rate for anticipation calculation
   operadora        OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
@@ -516,43 +520,43 @@ model TaxaCartao {
 }
 
 model RecebivelCartao {
-  id_recebivel     Int             @id @default(autoincrement())
-  id_os            Int?
-  id_operadora     Int
-  num_parcela      Int             @default(1)
-  total_parcelas   Int             @default(1)
-  valor_bruto      Decimal         @db.Decimal(10, 2)
-  valor_liquido    Decimal         @db.Decimal(10, 2)
-  taxa_aplicada    Decimal         @db.Decimal(10, 2)
-  tipo_parcelamento String?        @default("LOJA") @db.VarChar(20)
-  data_venda       DateTime        @default(now()) @db.Date
-  data_prevista    DateTime        @db.Date
-  data_recebimento DateTime?       @db.Date
-  status           String          @default("PENDENTE")
-  confirmado_em    DateTime?       @db.Timestamp(6)
-  confirmado_por   String?         @db.VarChar(100)
-  operadora        OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
-  ordem_de_servico OrdemDeServico? @relation(fields: [id_os], references: [id_os])
+  id_recebivel      Int             @id @default(autoincrement())
+  id_os             Int?
+  id_operadora      Int
+  num_parcela       Int             @default(1)
+  total_parcelas    Int             @default(1)
+  valor_bruto       Decimal         @db.Decimal(10, 2)
+  valor_liquido     Decimal         @db.Decimal(10, 2)
+  taxa_aplicada     Decimal         @db.Decimal(10, 2)
+  tipo_parcelamento String?         @default("LOJA") @db.VarChar(20)
+  data_venda        DateTime        @default(now()) @db.Date
+  data_prevista     DateTime        @db.Date
+  data_recebimento  DateTime?       @db.Date
+  status            String          @default("PENDENTE")
+  confirmado_em     DateTime?       @db.Timestamp(6)
+  confirmado_por    String?         @db.VarChar(100)
+  operadora         OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
+  ordem_de_servico  OrdemDeServico? @relation(fields: [id_os], references: [id_os])
 
   @@map("recebivel_cartao")
 }
 
 model Configuracao {
-  id              String   @id @default(uuid())
-  nomeFantasia    String   @db.VarChar(100)
-  razaoSocial     String?  @db.VarChar(100)
-  cnpj            String?  @db.VarChar(18)
-  inscricaoEstadual String? @db.VarChar(20)
-  endereco        String?  @db.VarChar(255)
-  telefone        String?  @db.VarChar(20)
-  email           String?  @db.VarChar(100)
-  logoUrl         String?  @db.VarChar(500) // URL/Path to the uploaded logo
-  smtpHost        String?  @db.VarChar(100)
-  smtpPort        Int?
-  smtpUser        String?  @db.VarChar(100)
-  smtpPass        String?  @db.VarChar(100)
-  createdAt       DateTime @default(now()) @db.Timestamp(6)
-  updatedAt       DateTime @updatedAt @db.Timestamp(6)
+  id                String   @id @default(uuid())
+  nomeFantasia      String   @db.VarChar(100)
+  razaoSocial       String?  @db.VarChar(100)
+  cnpj              String?  @db.VarChar(18)
+  inscricaoEstadual String?  @db.VarChar(20)
+  endereco          String?  @db.VarChar(255)
+  telefone          String?  @db.VarChar(20)
+  email             String?  @db.VarChar(100)
+  logoUrl           String?  @db.VarChar(500) // URL/Path to the uploaded logo
+  smtpHost          String?  @db.VarChar(100)
+  smtpPort          Int?
+  smtpUser          String?  @db.VarChar(100)
+  smtpPass          String?  @db.VarChar(100)
+  createdAt         DateTime @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime @updatedAt @db.Timestamp(6)
 
   @@map("configuracao")
 }

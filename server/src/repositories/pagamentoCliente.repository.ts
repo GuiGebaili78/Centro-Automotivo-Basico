@@ -52,15 +52,6 @@ export class PagamentoClienteRepository {
   }
 
   async delete(id: number) {
-    // Soft Delete only regarding the payment record.
-    // Financial effects are now handled by Consolidation Reversal if needed,
-    // but if OS is open (not consolidated), there are no financial effects to reverse yet.
-    // If OS IS consolidated, the user should have reversed consolidation FIRST.
-    // But for safety, if there IS a livro_caixa linked, we might want to block or warn?
-    // The requirement implies we just defer creation.
-    // If we delete a payment from an OPEN OS, we just delete the record.
-    // If OS is Closed/Consolidated, the frontend/controller should block modification.
-
     return await prisma.pagamentoCliente.update({
       where: { id_pagamento_cliente: id },
       data: { deleted_at: new Date() } as any,

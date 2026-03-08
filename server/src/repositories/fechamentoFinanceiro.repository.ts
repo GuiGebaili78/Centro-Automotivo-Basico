@@ -143,7 +143,7 @@ export class FechamentoFinanceiroRepository {
         }
       }
 
-      // 1. Buscar OS com todos os pagamentos e detalhes para descrição
+      // 1. Buscar OS com todos os pagamentos e detalhes para descrição e cálculo de lucro
       const os = await tx.ordemDeServico.findUnique({
         where: { id_os: idOs },
         include: {
@@ -157,6 +157,13 @@ export class FechamentoFinanceiroRepository {
             },
           },
           veiculo: true,
+          itens_os: {
+            where: { deleted_at: null },
+            include: { pecas_estoque: true },
+          },
+          servicos_mao_de_obra: {
+            where: { deleted_at: null },
+          },
         },
       });
 
@@ -191,20 +198,84 @@ export class FechamentoFinanceiroRepository {
       // "OS Nº {id} - {cliente} | {placa} | {veiculo} | {cor}"
       const descricaoPadrao = `OS Nº ${idOs} - ${nomeCliente} | ${placa} | ${veiculoDesc} | ${cor}`;
 
+      // --- CÁLCULO DINÂMICO DE LUCRO ---
+      let lucroPecas = 0;
+      let lucroMaoDeObra = os.servicos_mao_de_obra.reduce(
+        (acc, s) => acc + Number(s.valor),
+        0,
+      );
+
+      // 1. Calcular Lucro e Prejuízo por Peça
+      for (const item of os.itens_os) {
+        const valorVenda = Number(item.valor_total);
+
+        // Fallback: Priorizar custoReal do payload itemsPecas se houver, senão banco de dados
+        const pecaPayload = itemsPecas?.find(
+          (p: any) => Number(p.id_item_os) === item.id_iten,
+        );
+        const custoReal =
+          pecaPayload?.custo_real !== undefined
+            ? Number(pecaPayload.custo_real)
+            : Number(item.pecas_estoque?.valor_custo || 0); // No ItemOS não tem valor_custo nativo, é no estoque ou via payload.
+
+        if (item.id_pecas_estoque) {
+          if (item.is_interno) {
+            // Peça de Estoque para Uso Interno -> Impacto Neutro
+            lucroPecas += 0;
+          } else {
+            // Peça de Estoque Vendida -> 100% lucro
+            lucroPecas += valorVenda;
+          }
+        } else if (item.is_interno) {
+          // Peça Externa para Uso Interno -> Subtrai o custo (prejuízo na OS)
+          lucroPecas -= custoReal;
+        } else {
+          // Peça Externa Comum -> Lucro = Venda - Custo
+          lucroPecas += valorVenda - custoReal;
+        }
+      }
+
+      // 2. Regra de Abatimento
+      if (lucroPecas < 0) {
+        const prejuizo = Math.abs(lucroPecas);
+        lucroMaoDeObra -= prejuizo;
+        lucroPecas = 0;
+      }
+
+      const lucroTotal = lucroPecas + lucroMaoDeObra;
+      // ---------------------------------
+
       // 2. Criar ou Atualizar Fechamento Financeiro
-      const fechamento = await tx.fechamentoFinanceiro.upsert({
+      let fechamento = await tx.fechamentoFinanceiro.findFirst({
         where: { id_os: idOs },
-        update: {
-          custo_total_pecas_real: custoTotalPecasReal,
-          data_fechamento_financeiro: new Date(),
-          deleted_at: null,
-        },
-        create: {
-          id_os: idOs,
-          custo_total_pecas_real: custoTotalPecasReal,
-          data_fechamento_financeiro: new Date(),
-        },
       });
+
+      if (fechamento) {
+        fechamento = await tx.fechamentoFinanceiro.update({
+          where: {
+            id_fechamento_financeiro: fechamento.id_fechamento_financeiro,
+          },
+          data: {
+            custo_total_pecas_real: custoTotalPecasReal,
+            lucro_pecas: lucroPecas,
+            lucro_mao_de_obra: lucroMaoDeObra,
+            lucro_total: lucroTotal,
+            data_fechamento_financeiro: new Date(),
+            deleted_at: null,
+          },
+        });
+      } else {
+        fechamento = await tx.fechamentoFinanceiro.create({
+          data: {
+            id_os: idOs,
+            custo_total_pecas_real: custoTotalPecasReal,
+            lucro_pecas: lucroPecas,
+            lucro_mao_de_obra: lucroMaoDeObra,
+            lucro_total: lucroTotal,
+            data_fechamento_financeiro: new Date(),
+          },
+        });
+      }
 
       // 3. Processar cada pagamento do cliente (STRICT MODE)
       console.log(
@@ -533,6 +604,42 @@ export class FechamentoFinanceiroRepository {
             }
           }
         }
+      }
+
+      // 4. Lançamento de Saída (Custo) no Livro Caixa para Peças Externas
+      // Apenas peças não-estoque (id_pecas_estoque == null) geram saída imediata
+      let custoPecasExternas = 0;
+      for (const item of os.itens_os) {
+         if (!item.id_pecas_estoque) {
+            const pecaPayload = itemsPecas?.find(
+              (p: any) => Number(p.id_item_os) === item.id_iten,
+            );
+            const custoReal = pecaPayload?.custo_real !== undefined
+                ? Number(pecaPayload.custo_real)
+                : Number(item.pecas_estoque?.valor_custo || 0);
+
+            custoPecasExternas += custoReal;
+         }
+      }
+
+      if (custoPecasExternas > 0) {
+        // Buscar categoria 'Peças Externas' (Despesa)
+        const categoriaPecas = await tx.categoriaFinanceira.findFirst({
+           where: { nome: "Peças / Materiais", tipo: "DESPESA" }
+        });
+
+        await tx.livroCaixa.create({
+          data: {
+             descricao: `Custo de Peças Externas / Consumo Interno - OS #${idOs}`,
+             valor: custoPecasExternas,
+             tipo_movimentacao: "SAIDA",
+             categoria: categoriaPecas?.nome || "Despesas Gerais",
+             id_categoria: categoriaPecas?.id_categoria || null,
+             dt_movimentacao: new Date(),
+             origem: "AUTOMATICA"
+          }
+        });
+        console.log(`      ✅ [DESPESA LIVRO CAIXA] Lançado custo externo de R$ ${custoPecasExternas}`);
       }
 
       await tx.ordemDeServico.update({

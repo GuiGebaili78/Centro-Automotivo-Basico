@@ -388,17 +388,17 @@ export const EntradaItensForm = ({
         <div className="overflow-x-auto">
           <table className="tabela-limpa w-full">
             <thead>
-            <thead>
-              <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
-                <th className="w-[30%] p-4 text-left">Produto</th>
-                <th className="w-[8%] p-4 text-center">Qtd</th>
-                <th className="w-[10%] p-4 text-right">Custo</th>
-                <th className="w-[8%] p-4 text-right">Margem</th>
-                <th className="w-[8%] p-4 text-right">Venda</th>
-                <th className="w-[8%] p-4 text-right">Subtotal</th>
-                <th className="w-[12%] p-4 text-center">Ações</th>
-              </tr>
-            </thead>
+              <thead>
+                <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
+                  <th className="w-[30%] p-4 text-left">Produto</th>
+                  <th className="w-[8%] p-4 text-center">Qtd</th>
+                  <th className="w-[10%] p-4 text-right">Custo</th>
+                  <th className="w-[8%] p-4 text-right">Margem</th>
+                  <th className="w-[8%] p-4 text-right">Venda</th>
+                  <th className="w-[8%] p-4 text-right">Subtotal</th>
+                  <th className="w-[12%] p-4 text-center">Ações</th>
+                </tr>
+              </thead>
             </thead>
             <tbody>
               {items.map((i) => (
@@ -411,11 +411,9 @@ export const EntradaItensForm = ({
                       <span className="text-base text-gray-900 font-medium">
                         {i.displayName}
                       </span>
-                      <span className="text-xs text-gray-500">
-                        {i.ref_cod}
-                      </span>
+                      <span className="text-xs text-gray-500">{i.ref_cod}</span>
                       {i.new_part_data && (
-                        <span className="text-[9px] bg-blue-100 text-blue-700 w-fit px-1 rounded uppercase font-bold mt-1">
+                        <span className="text-sm bg-blue-100 text-blue-700 w-fit px-1 rounded uppercase font-bold mt-1">
                           NOVO CADASTRO
                         </span>
                       )}

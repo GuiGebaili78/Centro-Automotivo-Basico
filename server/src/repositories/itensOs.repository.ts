@@ -25,9 +25,12 @@ export class ItensOsRepository {
     return created;
   }
 
-  async findAll() {
+  async findAll(includeInternal: boolean = false) {
     return await prisma.itensOs.findMany({
-        where: { deleted_at: null },
+        where: { 
+          deleted_at: null,
+          ...(includeInternal ? {} : { is_interno: false })
+        },
         include: { ordem_de_servico: true, pecas_estoque: true, pagamentos_peca: true }
     });
   }
@@ -39,9 +42,13 @@ export class ItensOsRepository {
     });
   }
 
-  async findByOsId(idOs: number) {
+  async findByOsId(idOs: number, includeInternal: boolean = false) {
     return await prisma.itensOs.findMany({
-      where: { id_os: idOs, deleted_at: null },
+      where: { 
+        id_os: idOs, 
+        deleted_at: null,
+        ...(includeInternal ? {} : { is_interno: false })
+      },
       include: { pecas_estoque: true, pagamentos_peca: true }
     });
   }

@@ -49,7 +49,7 @@ export class VeiculoRepository {
     // Normalize: remove hyphens and convert to uppercase
     const normalizedPlaca = placa.replace(/-/g, "").toUpperCase();
 
-    return await prisma.veiculo.findUnique({
+    return await prisma.veiculo.findFirst({
       where: { placa: normalizedPlaca },
       include: {
         cliente: {
@@ -115,6 +115,18 @@ export class VeiculoRepository {
   }
 
   async delete(id: number) {
+    const activeOs = await prisma.ordemDeServico.findFirst({
+      where: {
+        id_veiculo: id,
+        deleted_at: null,
+        status: { notIn: ["FINALIZADA", "CANCELADA"] },
+      },
+    });
+
+    if (activeOs) {
+      throw new Error("Não é possível excluir o veículo pois há uma Ordem de Serviço ativa vinculada (OS: " + activeOs.id_os + ").");
+    }
+
     return await prisma.veiculo.delete({
       where: { id_veiculo: id },
     });

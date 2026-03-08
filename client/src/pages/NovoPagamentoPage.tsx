@@ -348,7 +348,7 @@ export const NovoPagamentoPage = () => {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={handleSelectAllComissoes}
-                      className="text-[10px] font-bold uppercase tracking-widest text-primary-600 hover:text-primary-700"
+                      className="text-sm font-bold uppercase tracking-widest text-primary-600 hover:text-primary-700"
                     >
                       {selectedItems.length > 0 &&
                       selectedItems.length >=
@@ -364,7 +364,7 @@ export const NovoPagamentoPage = () => {
 
                 <div className="grid grid-cols-2 gap-4 p-4 border-b border-neutral-100 bg-white">
                   <div>
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
+                    <label className="text-sm font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                       De
                     </label>
                     <Input
@@ -375,7 +375,7 @@ export const NovoPagamentoPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
+                    <label className="text-sm font-bold text-neutral-400 uppercase tracking-widest block mb-1">
                       Até
                     </label>
                     <Input
@@ -440,7 +440,7 @@ export const NovoPagamentoPage = () => {
                                   OS Nº {item.id_os}
                                 </span>
                                 <span
-                                  className={`text-[10px] font-black px-2 py-0.5 rounded uppercase border ${
+                                  className={`text-sm font-black px-2 py-0.5 rounded uppercase border ${
                                     os?.status === "FINALIZADA"
                                       ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                                       : os?.status === "ABERTA"
@@ -457,7 +457,7 @@ export const NovoPagamentoPage = () => {
                                     : "N/A"}
                                 </span>
                                 {!isPayable && (
-                                  <span className="text-[10px] font-bold text-red-400 uppercase ml-2">
+                                  <span className="text-sm font-bold text-red-400 uppercase ml-2">
                                     (Não Finalizada)
                                   </span>
                                 )}
@@ -466,7 +466,7 @@ export const NovoPagamentoPage = () => {
                                 <span className="font-black text-emerald-600 text-lg">
                                   {formatCurrency(valorComissao)}
                                 </span>
-                                <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wide">
+                                <div className="text-sm text-neutral-400 font-bold uppercase tracking-wide">
                                   Valor Serviço:{" "}
                                   {formatCurrency(Number(item.valor))}
                                 </div>
@@ -508,7 +508,7 @@ export const NovoPagamentoPage = () => {
                 {mode === "PAGAMENTO" && (
                   <button
                     onClick={handleSelectAllVales}
-                    className="text-[10px] font-black uppercase tracking-widest text-amber-700 hover:text-amber-900"
+                    className="text-sm font-black uppercase tracking-widest text-amber-700 hover:text-amber-900"
                   >
                     {valesPendentes.length > 0 &&
                     selectedVales.length === valesPendentes.length
@@ -565,7 +565,7 @@ export const NovoPagamentoPage = () => {
                               Lançado em{" "}
                               {new Date(vale.dt_pagamento).toLocaleDateString()}
                             </div>
-                            <div className="text-[10px] text-neutral-500 italic mt-0.5">
+                            <div className="text-sm text-neutral-500 italic mt-0.5">
                               {vale.obs || "Sem observação"}
                             </div>
                           </div>

@@ -371,7 +371,7 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
+                <label className="text-sm font-bold text-neutral-400 uppercase block mb-1">
                   KM Entrada *
                 </label>
                 <input
@@ -386,7 +386,7 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
+                <label className="text-sm font-bold text-neutral-400 uppercase block mb-1">
                   Mecânico *
                 </label>
                 <select
@@ -410,7 +410,7 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">
+              <label className="text-sm font-bold text-neutral-400 uppercase block mb-1">
                 Defeito Relatado (Opcional)
               </label>
               <input
