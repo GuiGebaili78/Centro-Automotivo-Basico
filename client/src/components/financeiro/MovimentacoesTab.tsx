@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { FinanceiroService } from "../../services/financeiro.service";
 import {
-  Plus,
-  Search,
   ArrowUpCircle,
   ArrowDownCircle,
   Trash2,
@@ -11,9 +9,11 @@ import {
   Wallet,
   Edit,
   AlertTriangle,
-  FilterX,
 } from "lucide-react";
-import { ActionButton, Button, Input, Modal, FilterRadio, Select } from "../ui";
+import { ActionButton, Button, Input, Modal } from "../ui";
+import { UniversalFilters } from "../common/UniversalFilters";
+import type { UniversalFiltersState } from "../common/UniversalFilters";
+import { useUniversalFilter } from "../../hooks/useUniversalFilter";
 import { CategoryManager } from "./CategoryManager";
 import { CategorySelector } from "./CategorySelector";
 import { toast } from "react-toastify";
@@ -49,23 +49,13 @@ export const MovimentacoesTab = () => {
   const [cashBookEntries, setCashBookEntries] = useState<CashBookEntry[]>([]);
 
   // Filters
-  const [cashSearch, setCashSearch] = useState("");
-  const [cashFilterStart, setCashFilterStart] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString(
-      "en-CA",
-    );
+  const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
+    search: "", osId: "", status: "ALL", operadora: "", fornecedor: "",
+    startDate: "", endDate: "", activePeriod: "ALL",
   });
-  const [cashFilterEnd, setCashFilterEnd] = useState(
-    new Date().toLocaleDateString("en-CA"),
-  );
-  const [filterSource, setFilterSource] = useState<"ALL" | "MANUAL" | "AUTO">(
-    "ALL",
-  );
-  const [filterCategory, setFilterCategory] = useState<string>("ALL");
-  const [activeQuickFilter, setActiveQuickFilter] = useState<
-    "TODAY" | "WEEK" | "MONTH"
-  >("MONTH");
+  // Lists for selects — built from loaded data
+  const [fornecedoresList, setFornecedoresList] = useState<{ id: string; nome: string }[]>([]);
+  const [operadorasList, setOperadorasList] = useState<{ id: string; nome: string }[]>([]);
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -94,30 +84,18 @@ export const MovimentacoesTab = () => {
     balance: 0,
   });
 
+  // Summary cards — re-fetch when date/search changes
   useEffect(() => {
-    fetchSummary();
-  }, [
-    cashFilterStart,
-    cashFilterEnd,
-    filterSource,
-    filterCategory,
-    cashSearch,
-  ]);
-
-  const fetchSummary = async () => {
-    try {
-      const summary = await FinanceiroService.getSummary({
-        startDate: cashFilterStart,
-        endDate: cashFilterEnd,
-        source: filterSource,
-        category: filterCategory,
-        search: cashSearch,
-      });
-      setSummaries(summary);
-    } catch (error) {
-      console.error("Erro ao buscar resumo financeiro", error);
-    }
-  };
+    FinanceiroService.getSummary({
+      startDate: universalFilters.startDate,
+      endDate: universalFilters.endDate,
+      source: "ALL",
+      category: "ALL",
+      search: universalFilters.search,
+    })
+      .then(setSummaries)
+      .catch((err) => console.error("Erro ao buscar resumo financeiro", err));
+  }, [universalFilters.startDate, universalFilters.endDate, universalFilters.search]);
 
   useEffect(() => {
     loadData();
@@ -360,77 +338,38 @@ export const MovimentacoesTab = () => {
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
       setCashBookEntries(combined);
+
+      // Build lists for UniversalFilters selects
+      const uniqueSuppliers = [
+        ...new Map(
+          combined
+            .filter((e) => e.supplier)
+            .map((e) => [e.supplier, { id: e.supplier!, nome: e.supplier! }])
+        ).values(),
+      ];
+      setFornecedoresList(uniqueSuppliers);
+      setOperadorasList(
+        (ops || []).map((op: any) => ({ id: op.nome, nome: op.nome }))
+      );
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados financeiros.");
     }
   };
 
-  // Filter Logic
-  const filteredCashBook = cashBookEntries.filter((entry) => {
-    if (filterSource !== "ALL") {
-      if (filterSource !== entry.source) return false;
-    }
-    if (filterCategory !== "ALL") {
-      if (entry.category !== filterCategory) return false;
-    }
-
-    if (cashSearch) {
-      const searchTerms = cashSearch
-        .toLowerCase()
-        .split(" ")
-        .filter((term) => term.length > 0);
-      const searchableText = [
-        entry.description,
-        entry.category,
-        entry.vehicle,
-        entry.client,
-        entry.obs,
-        `#${entry.rawId}`,
-        String(entry.value),
-        (Number(entry.value) || 0).toLocaleString("pt-BR", {
-          minimumFractionDigits: 2,
-        }),
-        new Date(entry.date).toLocaleDateString("pt-BR"),
-        entry.conta_bancaria,
-        entry.supplier,
-        entry.paymentMethod,
-        entry.type === "IN" ? "Entrada" : "Saída",
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      // Check if ALL search terms are present in the searchable text
-      return searchTerms.every((term) => searchableText.includes(term));
-    }
-
-    const recordDateLocal = new Date(entry.date).toLocaleDateString("en-CA");
-    if (cashFilterStart && recordDateLocal < cashFilterStart) return false;
-    if (cashFilterEnd && recordDateLocal > cashFilterEnd) return false;
-
-    return true;
+  // Filtered via hook
+  const filteredCashBook = useUniversalFilter(cashBookEntries, universalFilters, {
+    dateField: "date",
+    statusField: "type",
+    paidValue: "IN",
+    pendingValue: "OUT",
+    fornecedorField: "supplier",
+    operadoraField: "conta_bancaria",
   });
+
 
   const { totalInflow, totalOutflow, balance } = summaries;
 
-  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
-    setActiveQuickFilter(type);
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-CA"); // Ensure YYYY-MM-DD
-    if (type === "TODAY") {
-      setCashFilterStart(todayStr);
-      setCashFilterEnd(todayStr);
-    } else if (type === "WEEK") {
-      const weekAgo = new Date(now);
-      weekAgo.setDate(now.getDate() - 7);
-      setCashFilterStart(weekAgo.toLocaleDateString("en-CA"));
-      setCashFilterEnd(todayStr);
-    } else if (type === "MONTH") {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      setCashFilterStart(firstDay.toLocaleDateString("en-CA"));
-      setCashFilterEnd(todayStr);
-    }
-  };
 
   const handleOpenCreate = () => {
     setEditingItem(null);
@@ -444,6 +383,7 @@ export const MovimentacoesTab = () => {
     });
     setIsModalOpen(true);
   };
+
 
   const handleOpenEdit = (entry: any) => {
     setEditingItem(entry);
@@ -558,144 +498,22 @@ export const MovimentacoesTab = () => {
       </div>
 
       <div className="space-y-6">
-        {/* Filters Board */}
-        <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex flex-col xl:flex-row justify-between items-end gap-6">
-          <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-            {/* Search */}
-            <div className="md:col-span-3 text-sm text-neutral-600">
-              <Input
-                label="Buscar"
-                value={cashSearch}
-                onChange={(e) => setCashSearch(e.target.value)}
-                placeholder="Pesquisar..."
-                icon={Search}
-              />
-            </div>
-
-            {/* Dates */}
-            <div className="md:col-span-4 flex gap-2">
-              <div className="flex-1">
-                <Input
-                  label="De"
-                  type="date"
-                  value={cashFilterStart}
-                  onChange={(e) => {
-                    setCashFilterStart(e.target.value);
-                    setActiveQuickFilter(null as any); // Clear quick filter
-                  }}
-                  className={`h-[42px] font-bold uppercase ${
-                    activeQuickFilter
-                      ? ""
-                      : "border-primary-300 text-primary-700"
-                  }`}
-                />
-              </div>
-              <div className="flex-1">
-                <Input
-                  label="Até"
-                  type="date"
-                  value={cashFilterEnd}
-                  onChange={(e) => {
-                    setCashFilterEnd(e.target.value);
-                    setActiveQuickFilter(null as any);
-                  }}
-                  className={`h-[42px] font-bold uppercase ${
-                    activeQuickFilter
-                      ? ""
-                      : "border-primary-300 text-primary-700"
-                  }`}
-                />
-              </div>
-            </div>
-
-            {/* Quick Filters */}
-            <div className="md:col-span-5 flex items-center justify-end">
-              <div className="w-full">
-                <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-                  Período
-                </label>
-                <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 h-[42px] items-center w-full">
-                  <FilterRadio
-                    active={activeQuickFilter === "TODAY"}
-                    onClick={() => applyQuickFilter("TODAY")}
-                  >
-                    Hoje
-                  </FilterRadio>
-                  <FilterRadio
-                    active={activeQuickFilter === "WEEK"}
-                    onClick={() => applyQuickFilter("WEEK")}
-                  >
-                    Semana
-                  </FilterRadio>
-                  <FilterRadio
-                    active={activeQuickFilter === "MONTH"}
-                    onClick={() => applyQuickFilter("MONTH")}
-                  >
-                    Mês
-                  </FilterRadio>
-                </div>
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <Select
-                label="Origem"
-                value={filterSource}
-                onChange={(e) => setFilterSource(e.target.value as any)}
-                className="h-[42px] font-bold"
-              >
-                <option value="ALL">Todas</option>
-                <option value="MANUAL">Manual</option>
-                <option value="AUTO">Automática</option>
-              </Select>
-            </div>
-
-            <div className="md:col-span-3">
-              <Select
-                label="Categoria"
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="h-[42px] font-bold"
-              >
-                <option value="ALL">Todas</option>
-                {categories.map((cat) => (
-                  <option key={cat.id_categoria} value={cat.nome}>
-                    {cat.nome}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="md:col-span-2 flex gap-2">
-              <Button
-                variant="primary" // Changed to primary as requested
-                onClick={() => {
-                  setCashSearch("");
-                  setFilterSource("ALL");
-                  setFilterCategory("ALL");
-                  setActiveQuickFilter("TODAY");
-                  const now = new Date();
-                  setCashFilterStart(now.toLocaleDateString("en-CA"));
-                  setCashFilterEnd(now.toLocaleDateString("en-CA"));
-                }}
-                className="w-full h-[42px] shadow-lg shadow-primary-500/20"
-                icon={FilterX}
-                title="Limpar Filtros"
-              >
-                Limpar
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleOpenCreate}
-                className="w-full h-[42px] shadow-lg shadow-primary-500/20"
-                icon={Plus}
-                title="Novo Lançamento"
-              >
-                Novo
-              </Button>
-            </div>
-          </div>
-        </div>
+        {/* Filters */}
+        <UniversalFilters
+          onFilterChange={setUniversalFilters}
+          config={{
+            enableFornecedor: true,
+            enableOperadora: true,
+            enableOsId: true,
+            fornecedores: fornecedoresList,
+            operadoras: operadorasList,
+            statusOptions: [
+              { value: "ALL", label: "Todos" },
+              { value: "PAID", label: "Entradas" },
+              { value: "PENDING", label: "Saídas" },
+            ],
+          }}
+        />
 
         {/* SUMMARY */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

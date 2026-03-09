@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 03/08/2026 19:12:20
+PROJECT DUMP GENERATED ON 03/08/2026 20:14:57
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -12735,14 +12735,14 @@ export const RecebiveisTab = () => {
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle size={14} className="text-primary-400" />
-              <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">
+              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
                 Previsão no Período (Filtrado)
               </p>
             </div>
             <p className="text-3xl font-black text-blue-600 tracking-tighter">
               {formatCurrency(totalPrevisto)}
             </p>
-            <p className="text-sm text-neutral-400 mt-2 font-bold uppercase tracking-wider italic">
+            <p className="text-xs text-neutral-400 mt-2 font-bold uppercase tracking-wider italic">
               * Soma total dos itens visíveis abaixo
             </p>
           </div>
@@ -18003,7 +18003,6 @@ export const OsTotalsSection = ({
 
 
 
-================================================================================
 FILE PATH: client\src\components\os\PaymentOsModal.tsx
 ================================================================================
 import { Modal } from "../ui";
@@ -22020,93 +22019,6 @@ export const useOsParts = () => {
 
 
 ================================================================================
-FILE PATH: client\src\hooks\os\useOsStatus.ts
-================================================================================
-import { useCallback } from "react";
-import { OsService } from "../../services/os.service";
-import { toast } from "react-toastify";
-import { OsStatus } from "../../types/os.types";
-
-export const useOsStatus = (
-  osId: string | undefined,
-  onSuccess?: () => void,
-) => {
-  const finishOS = useCallback(
-    async (data: {
-      valor_pecas: number;
-      valor_mao_de_obra: number;
-      valor_total_cliente: number;
-      dt_entrega: string;
-    }) => {
-      if (!osId) return;
-      try {
-        await OsService.update(Number(osId), {
-          ...data,
-          status: OsStatus.FINANCEIRO,
-        });
-        toast.success("OS Finalizada! Enviada para Financeiro.");
-        if (onSuccess) onSuccess();
-        return true;
-      } catch (e) {
-        toast.error("Erro ao finalizar OS.");
-        return false;
-      }
-    },
-    [osId, onSuccess],
-  );
-
-  const openOsNow = useCallback(async () => {
-    if (!osId) return;
-    try {
-      await OsService.updateStatus(Number(osId), OsStatus.ABERTA);
-      toast.success("OS Aberta com sucesso!");
-      if (onSuccess) onSuccess();
-      return true;
-    } catch (e) {
-      toast.error("Erro ao abrir OS.");
-      return false;
-    }
-  }, [osId, onSuccess]);
-
-  const reopenOS = useCallback(
-    async (fechamentoId?: number) => {
-      if (!osId) return;
-      try {
-        if (fechamentoId) {
-          await OsService.deleteFinancialClosure(fechamentoId);
-        }
-        await OsService.updateStatus(Number(osId), OsStatus.ABERTA);
-        toast.success("OS Reaberta com sucesso!");
-        if (onSuccess) onSuccess();
-        return true;
-      } catch (e) {
-        toast.error("Erro ao reabrir OS.");
-        return false;
-      }
-    },
-    [osId, onSuccess],
-  );
-
-  const cancelOS = useCallback(async () => {
-    if (!osId) return;
-    try {
-      await OsService.updateStatus(Number(osId), OsStatus.CANCELADA);
-      toast.success("OS Cancelada e Estoque Estornado.");
-      if (onSuccess) onSuccess();
-      return true;
-    } catch (e) {
-      toast.error("Erro ao cancelar OS.");
-      return false;
-    }
-  }, [osId, onSuccess]);
-
-  return { finishOS, openOsNow, reopenOS, cancelOS };
-};
-
-
-
-================================================================================
-FILE PATH: client\src\pages\CadastroUnificadoPage.tsx
 ================================================================================
 /**
  * CadastroUnificadoPage
@@ -27202,7 +27114,7 @@ export const FechamentoFinanceiroPage = () => {
                   >
                     <td className="p-4">
                       <div className="font-bold text-neutral-600">
-                        #{os.id_os}
+                        OS | {os.id_os}
                       </div>
                       {/* Show both Date and Time if available */}
                       {os.dt_abertura && (
@@ -27406,7 +27318,7 @@ export const FechamentoFinanceiroPage = () => {
                   >
                     <td className="p-4">
                       <span className="font-bold text-neutral-600 px-2 py-1 rounded text-sm">
-                        #{fech.id_os}
+                        OS | {fech.id_os}
                       </span>
                     </td>
                     <td className="p-4">
@@ -32688,189 +32600,8 @@ export const PessoaJuridicaPage = () => {
 
 
 ================================================================================
+FILE PATH: client\src\pages\PessoaPage.tsx
 ================================================================================
-import { useState, useEffect } from 'react';
-import { api } from '../services/api';
-import type { IPessoa } from '../types/backend';
-import { PessoaForm } from '../components/pessoa/Forms/PessoaForm';
-import { Modal } from '../components/ui';
-import { Plus, Search, Trash2, Edit, User } from 'lucide-react';
-
-export const PessoaPage = () => {
-    const [pessoas, setPessoas] = useState<IPessoa[]>([]);
-    const [showModal, setShowModal] = useState(false);
-    const [searchId, setSearchId] = useState('');
-    const [editData, setEditData] = useState<IPessoa | null>(null);
-
-    useEffect(() => {
-        loadPessoas();
-    }, []);
-
-    const loadPessoas = async () => {
-        try {
-            const response = await api.get('/pessoa');
-            setPessoas(response.data);
-        } catch (error) {
-            alert('Erro ao carregar pessoas');
-        }
-    };
-
-    const handleSearch = async () => {
-        try {
-            const response = await api.get(`/pessoa/${searchId}`);
-            setEditData(response.data);
-        } catch (error) {
-            alert('Pessoa não encontrada');
-            setEditData(null);
-        }
-    };
-
-    const handleUpdate = async () => {
-        if (!editData) return;
-        try {
-            await api.put(`/pessoa/${editData.id_pessoa}`, editData);
-            alert('Pessoa atualizada!');
-            loadPessoas();
-        } catch (error) {
-            alert('Erro ao atualizar pessoa');
-        }
-    };
-
-    const handleDelete = async () => {
-        if (!searchId) return;
-        try {
-            await api.delete(`/pessoa/${searchId}`);
-            alert('Pessoa deletada!');
-            loadPessoas();
-            setEditData(null);
-            setSearchId('');
-        } catch (error) {
-            alert('Erro ao deletar pessoa');
-        }
-    };
-
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Gerenciar Pessoas</h1>
-                    <p className="text-slate-500">Cadastro base de pessoas (antes de PF/PJ).</p>
-                </div>
-                <button 
-                    onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
-                >
-                    <Plus size={20} />
-                    Nova Pessoa
-                </button>
-            </div>
-
-            {/* LIST */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50">
-                        <tr>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">ID</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Nome</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Gênero</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Data Nascimento</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Cadastro</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {pessoas.map((p) => (
-                            <tr key={p.id_pessoa} className="hover:bg-slate-50">
-                                <td className="p-4 text-gray-500 font-mono">#{p.id_pessoa}</td>
-                                <td className="p-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
-                                            <User size={18} />
-                                        </div>
-                                        <div className="font-medium text-slate-900">{p.nome}</div>
-                                    </div>
-                                </td>
-                                <td className="p-4 text-slate-600">{p.genero || '-'}</td>
-                                <td className="p-4 text-slate-600">
-                                    {p.dt_nascimento ? new Date(p.dt_nascimento).toLocaleDateString('pt-BR') : '-'}
-                                </td>
-                                <td className="p-4 text-xs text-slate-500">
-                                    {new Date(p.dt_cadastro).toLocaleDateString('pt-BR')}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* MANAGE */}
-            <div className="bg-white p-4 rounded-xl border border-gray-200">
-                <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Manutenção de Pessoa (Por ID)</h2>
-                <div className="flex gap-4 mb-4">
-                    <input 
-                        type="number" 
-                        value={searchId} 
-                        onChange={(e) => setSearchId(e.target.value)} 
-                        placeholder="Digite o ID da Pessoa..." 
-                        className="border p-2 rounded w-64"
-                    />
-                    <button onClick={handleSearch} className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-700">
-                        <Search size={18} /> Localizar
-                    </button>
-                    {searchId && <button onClick={handleDelete} className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200">
-                        <Trash2 size={18} /> Excluir
-                    </button>}
-                </div>
-
-                {editData && (
-                    <div className="bg-slate-50 p-4 rounded border animate-in fade-in">
-                        <h3 className="font-bold mb-2">Editando: {editData.nome}</h3>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div className="col-span-2">
-                                <label className="text-xs font-bold block mb-1">Nome</label>
-                                <input 
-                                    value={editData.nome} 
-                                    onChange={(e) => setEditData({...editData, nome: e.target.value})} 
-                                    className="border p-2 w-full rounded" 
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold block mb-1">Gênero</label>
-                                <select 
-                                    value={editData.genero || ''} 
-                                    onChange={(e) => setEditData({...editData, genero: e.target.value})} 
-                                    className="border p-2 w-full rounded"
-                                >
-                                    <option value="">Selecione...</option>
-                                    <option value="Masculino">Masculino</option>
-                                    <option value="Feminino">Feminino</option>
-                                    <option value="Outro">Outro</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button onClick={handleUpdate} className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-bold">
-                            <Edit size={18} /> Salvar Alterações
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {showModal && (
-                <Modal title="Nova Pessoa" onClose={() => setShowModal(false)}>
-                    <PessoaForm 
-                        onSuccess={() => {
-                            setShowModal(false);
-                            loadPessoas();
-                        }}
-                        onCancel={() => setShowModal(false)}
-                    />
-                </Modal>
-            )}
-        </div>
-    );
-};
-
-
-
 ================================================================================
 FILE PATH: client\src\pages\RelatoriosFinanceirosPage.tsx
 ================================================================================
@@ -34390,8 +34121,7 @@ export const SearchVeiculoPage = () => {
   );
 };
 
-
-
+FILE PATH: client\src\pages\TipoPage.tsx
 ================================================================================
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
@@ -35115,6 +34845,60 @@ export const ColaboradorService = {
 
 ================================================================================
 FILE PATH: client\src\services\ConfiguracaoService.ts
+================================================================================
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+export type Configuracao = {
+  id?: string;
+  nomeFantasia: string;
+  razaoSocial?: string;
+  cnpj?: string;
+  inscricaoEstadual?: string;
+  endereco?: string;
+  telefone?: string;
+  email?: string;
+  logoUrl?: string; // URL from backend
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
+};
+
+export const ConfiguracaoService = {
+  get: async (): Promise<Configuracao | null> => {
+    const response = await axios.get(`${API_URL}/api/configuracao`);
+    return response.data;
+  },
+
+  save: async (formData: FormData): Promise<Configuracao> => {
+    const response = await axios.post(`${API_URL}/api/configuracao`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+};
+
+
+
+================================================================================
+FILE PATH: client\src\services\dashboard.service.ts
+================================================================================
+import { api } from "./api";
+import type { IDashboardData } from "../types/dashboard.types";
+
+export const DashboardService = {
+  getDashboardData: async (): Promise<IDashboardData> => {
+    const response = await api.get("/dashboard");
+    return response.data;
+  },
+};
+
+
+
 ================================================================================
 FILE PATH: client\src\services\estoque.service.ts
 ================================================================================
@@ -36674,249 +36458,6 @@ export interface ILaborService {
 ================================================================================
 FILE PATH: client\src\types\relatorios.types.ts
 ================================================================================
-export interface Periodo {
-  start: string;
-  end: string;
-}
-
-export interface IndicadoresFinanceiros {
-  lucroLiquido: number;
-  margemLiquida: number;
-  pontoEquilibrio: number;
-}
-
-export interface ResumoFinanceiro {
-  periodo: Periodo;
-  bruta: {
-    maoDeObra: number;
-    pecasTerceiros: number;
-    pecasEstoque: number;
-    total: number;
-  };
-  liquida: {
-    maoDeObra: number;
-    pecasTerceiros: number;
-    pecasEstoque: number;
-    total: number;
-  };
-  custos: {
-    pecasEstoque: number;
-    pecasTerceiros: number;
-    equipe: number;
-    contas: number;
-    total: number;
-  };
-  despesas: {
-    operacional: number;
-    fornecedor: number;
-    total: number;
-  };
-  medias: {
-    receitaBruta: number;
-    lucroLiquido: number;
-    despesasTotais: number;
-  };
-  despesasPorCategoria: { categoria: string; valor: number }[];
-  indicadores: IndicadoresFinanceiros;
-}
-
-export interface PerformanceFuncionario {
-  id: number;
-  nome: string;
-  maoDeObraBruta: number;
-  comissaoPaga: number;
-  lucroMaoDeObra: number;
-  vendasEstoque: number;
-}
-
-export interface EvolucaoDespesaTemporal {
-  mes: string;
-  realizado: number;
-  previsto: number;
-}
-
-export interface EvolucaoDespesa {
-  categoria: string;
-  valorAtual: number;
-  valorAnterior: number;
-  variacaoPercentual: number;
-}
-
-export interface OperadoraStats {
-  nome: string;
-  totalBruto: number;
-  totalTaxas: number;
-  totalLiquido: number;
-  count: number;
-}
-
-export interface EvolucaoMensal {
-  label: string;
-  receita: number;
-  despesa: number;
-  lucro: number;
-}
-
-
-
-================================================================================
-FILE PATH: client\src\utils\financeiroUtils.ts
-================================================================================
-import type { IPagamentoPeca, IPagamentoCliente } from "../types/backend";
-import type { ICashBookEntry } from "../types/financeiro.types";
-
-export const calculateCashBookEntries = (
-  payments: IPagamentoPeca[],
-  inflows: IPagamentoCliente[],
-): ICashBookEntry[] => {
-  // Map Outflows (Payments to Suppliers)
-  const outflows: ICashBookEntry[] = payments
-    .filter((p) => p.pago_ao_fornecedor && p.data_pagamento_fornecedor)
-    .map((p) => ({
-      id: `out-${p.id_pagamento_peca}`,
-      date: p.data_pagamento_fornecedor || p.data_compra,
-      description: `Pagamento Fornecedor - ${p.item_os?.descricao || "Peça"}`,
-      type: "OUT",
-      value: Number(p.custo_real),
-      details: `OS Nº ${p.item_os?.id_os || "?"} - ${p.fornecedor?.nome || "Fornecedor"}`,
-    }));
-
-  // Map Inflows (Payments from Clients)
-  const inflowsMapped: ICashBookEntry[] = (inflows || []).map((p) => ({
-    id: `in-${p.id_pagamento_cliente}`,
-    date: p.data_pagamento,
-    description: `Recebimento OS Nº ${p.id_os || "?"}`,
-    type: "IN",
-    value: Number(p.valor),
-    details: `Forma: ${p.metodo_pagamento}`,
-  }));
-
-  return [...outflows, ...inflowsMapped].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
-};
-
-
-
-================================================================================
-FILE PATH: client\src\utils\formatCurrency.ts
-================================================================================
-export const formatCurrency = (
-  value: number | string | undefined | null,
-): string => {
-  if (value === undefined || value === null || value === "") return "R$ 0,00";
-  const numberValue = Number(value);
-  if (isNaN(numberValue)) return "R$ 0,00";
-
-  return numberValue.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-};
-
-
-
-================================================================================
-FILE PATH: client\src\utils\normalize.ts
-================================================================================
-// Utility functions for data normalization and search
-
-/**
- * Normaliza uma placa de veículo removendo hífens e convertendo para maiúsculas
- * Exemplos: "GIN-1175" -> "GIN1175", "gin1175" -> "GIN1175"
- */
-export const normalizePlate = (plate: string): string => {
-  return plate.replace(/-/g, "").toUpperCase().trim();
-};
-
-/**
- * Normaliza um nome para busca case-insensitive
- * Remove espaços extras e converte para maiúsculas
- * Exemplos: "Tania" -> "TANIA", "  joão silva  " -> "JOÃO SILVA"
- */
-export const normalizeName = (name: string): string => {
-  return name.trim().toUpperCase();
-};
-
-/**
- * Formata um nome seguindo o padrão Title Case (primeira letra maiúscula)
- * Exemplo: "JOÃO SILVA" -> "João Silva", "tania" -> "Tania"
- */
-export const formatNameTitleCase = (name: string): string => {
-  return name
-    .toLowerCase()
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-};
-
-/**
- * Formata uma placa no padrão brasileiro (XXX-0000 ou XXX0X00)
- * Exemplo: "GIN1175" -> "GIN-1175"
- */
-export const formatPlate = (plate: string): string => {
-  const normalized = normalizePlate(plate);
-  if (normalized.length === 7) {
-    return `${normalized.slice(0, 3)}-${normalized.slice(3)}`;
-  }
-  return normalized;
-};
-
-/**
- * Compara duas strings de forma case-insensitive
- */
-export const caseInsensitiveMatch = (str1: string, str2: string): boolean => {
-  return str1.toUpperCase() === str2.toUpperCase();
-};
-
-/**
- * Verifica se uma string contém outra (case-insensitive)
- */
-export const caseInsensitiveIncludes = (
-  haystack: string,
-  needle: string,
-): boolean => {
-  return haystack.toUpperCase().includes(needle.toUpperCase());
-};
-/**
- * Formata um número de telefone para o padrão (XX) XXXX-XXXX ou (XX) XXXXX-XXXX
- */
-export const formatPhone = (phone: string): string => {
-  const digits = phone.replace(/\D/g, "");
-
-  if (digits.length === 11) {
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 3)} ${digits.slice(3, 7)}-${digits.slice(7)}`;
-  } else if (digits.length === 10) {
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  }
-
-  return phone;
-};
-
-
-
-================================================================================
-FILE PATH: client\src\utils\osUtils.ts
-================================================================================
-export const getStatusStyle = (status: string) => {
-  switch (status) {
-    case "FINALIZADA":
-      return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-    case "FINANCEIRO":
-      return "bg-orange-100 text-orange-700 ring-1 ring-orange-200";
-    case "ABERTA":
-      return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
-    case "ORCAMENTO":
-      return "bg-neutral-100 text-neutral-700 ring-1 ring-neutral-200";
-    case "AGENDAMENTO":
-      return "bg-purple-100 text-purple-700 ring-1 ring-purple-200";
-    case "CANCELADA":
-      return "bg-red-100 text-red-700 ring-1 ring-red-200";
-    default:
-      return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
-  }
-};
-
 
 
 ================================================================================
@@ -40198,6 +39739,172 @@ export const deleteConta = async (req: Request, res: Response) => {
 
 
 
+================================================================================
+FILE PATH: server\src\controllers\dashboard.controller.ts
+================================================================================
+import { Request, Response } from "express";
+import { prisma } from "../prisma.js";
+
+export class DashboardController {
+  async getDashboardData(req: Request, res: Response) {
+    try {
+      const now = new Date();
+      const todayStr = now.toISOString().split("T")[0];
+
+      // Use UTC range for "Today" to match how the frontend was doing it (startsWith todayLocal)
+      // or better, use local time range.
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // --- AGGREGATIONS / COUNTS ---
+
+      // 1. Serviços em Aberto
+      const osAberta = await prisma.ordemDeServico.count({
+        where: {
+          status: { in: ["ABERTA", "EM_ANDAMENTO"] },
+          deleted_at: null,
+        },
+      });
+
+      // 2. Contas a Pagar (Split)
+      // Pending: status PENDENTE and date >= today
+      const contasPagarPending = await prisma.contasPagar.count({
+        where: {
+          status: "PENDENTE",
+          dt_vencimento: { gte: startOfDay },
+          deleted_at: null,
+        },
+      });
+
+      // Overdue: status PENDENTE and date < today
+      const contasPagarOverdue = await prisma.contasPagar.count({
+        where: {
+          status: "PENDENTE",
+          dt_vencimento: { lt: startOfDay },
+          deleted_at: null,
+        },
+      });
+
+      // 3. Livro Caixa Entries (Today)
+      // Matches manual + auto entries
+      // Entries = PagamentoCliente (Auto) + LivroCaixa ENTRADA (Manual)
+      const autoInflows = await prisma.pagamentoCliente.count({
+        where: {
+          data_pagamento: { gte: startOfDay, lte: endOfDay },
+          deleted_at: null,
+        },
+      });
+
+      const manualInflows = await prisma.livroCaixa.count({
+        where: {
+          dt_movimentacao: { gte: startOfDay, lte: endOfDay },
+          tipo_movimentacao: "ENTRADA",
+          origem: "MANUAL",
+          deleted_at: null,
+          categoria: { not: "CONCILIACAO_CARTAO" },
+        },
+      });
+
+      const libroCaixaEntries = autoInflows + manualInflows;
+
+      // 4. Livro Caixa Exits (Today)
+      // Exits = PagamentoPeca (Auto) + LivroCaixa SAIDA (Manual/Bills)
+      const autoOutflows = await prisma.pagamentoPeca.count({
+        where: {
+          pago_ao_fornecedor: true, // Only real exits
+          data_pagamento_fornecedor: { gte: startOfDay, lte: endOfDay },
+          deleted_at: null,
+        },
+      });
+
+      const manualOutflows = await prisma.livroCaixa.count({
+        where: {
+          dt_movimentacao: { gte: startOfDay, lte: endOfDay },
+          tipo_movimentacao: "SAIDA",
+          deleted_at: null,
+          categoria: { not: "CONCILIACAO_CARTAO" },
+          NOT: {
+            AND: [{ origem: "AUTOMATICA" }, { categoria: "Auto Peças" }],
+          },
+        },
+      });
+
+      const libroCaixaExits = autoOutflows + manualOutflows;
+
+      // 5. Auto Peças Pendentes
+      const autoPecasPendentes = await prisma.pagamentoPeca.count({
+        where: {
+          pago_ao_fornecedor: false,
+          deleted_at: null,
+        },
+      });
+
+      // 6. Consolidação (OS Pronta para Financeiro / Financeiro E SEM Fechamento)
+      const consolidacao = await prisma.ordemDeServico.count({
+        where: {
+          status: { in: ["PRONTO PARA FINANCEIRO", "FINANCEIRO"] },
+          fechamento_financeiro: { none: {} },
+          deleted_at: null,
+        },
+      });
+
+      // 7. Alerta de Estoque
+      // Efficiency: We only need the count.
+      // prisma.pecasEstoque.findMany is okay if table is small, but let's stick to it for now
+      // or use a better way if possible.
+      const pecasComAlerta = await prisma.pecasEstoque.findMany({
+        select: {
+          id_pecas_estoque: true,
+          estoque_atual: true,
+          estoque_minimo: true,
+        },
+      });
+      const alertaEstoque = pecasComAlerta.filter(
+        (p) => Number(p.estoque_atual) <= Number(p.estoque_minimo || 0),
+      ).length;
+
+      // 8. Recent OSs (Strict Limit, light includes)
+      const recentOss = await prisma.ordemDeServico.findMany({
+        take: 30, // Reduced from 100 for dashboard snappiness
+        orderBy: { updated_at: "desc" },
+        include: {
+          veiculo: true,
+          cliente: {
+            include: {
+              pessoa_fisica: { include: { pessoa: true } },
+              pessoa_juridica: { include: { pessoa: true } },
+            },
+          },
+        },
+      });
+
+      res.json({
+        stats: {
+          osAberta,
+          contasPagarPending,
+          contasPagarOverdue,
+          livroCaixaEntries: libroCaixaEntries,
+          livroCaixaExits: libroCaixaExits,
+          autoPecasPendentes,
+          consolidacao,
+          alertaEstoque,
+        },
+        recentOss,
+      });
+    } catch (error) {
+      console.error("Dashboard Error:", error);
+      res.status(500).json({ error: "Failed to load dashboard data" });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\documento.controller.ts
+================================================================================
 import { Request, Response } from "express";
 import { DocumentoService } from "../services/DocumentoService.js";
 
@@ -41209,195 +40916,6 @@ export const toggleStatus = async (req: Request, res: Response) => {
 
 
 
-================================================================================
-FILE PATH: server\src\controllers\ordemDeServico.controller.ts
-================================================================================
-import { Request, Response } from "express";
-import { OrdemDeServicoService } from "../services/OrdemDeServicoService.js";
-import { MensageriaService } from "../services/MensageriaService.js";
-import { EmailService } from "../services/email.service.js";
-
-const service = new OrdemDeServicoService();
-const mensageria = new MensageriaService();
-
-export class OrdemDeServicoController {
-  async create(req: Request, res: Response) {
-    try {
-      const os = await service.create(req.body);
-      res.status(201).json(os);
-    } catch (error) {
-      res.status(400).json({
-        error: "Failed to create OS",
-        details: error instanceof Error ? error.message : error,
-      });
-    }
-  }
-
-  async createUnified(req: Request, res: Response) {
-    try {
-      const result = await service.create(req.body);
-      res.status(201).json(result);
-    } catch (error) {
-      console.error("Unified Create Error:", error);
-      res.status(400).json({
-        error: "Failed to create OS Unified",
-        details: error instanceof Error ? error.message : error,
-      });
-    }
-  }
-
-  async findAll(req: Request, res: Response) {
-    try {
-      console.error("OrdemDeServicoController.findAll called");
-      const oss = await service.findAll(req.query);
-      res.json(oss);
-    } catch (error) {
-      console.error("OrdemDeServicoController.findAll Error:", error);
-      res.status(500).json({ error: "Failed to fetch OSs" });
-    }
-  }
-
-  async findById(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const includeInternal = req.query.includeInternal === "true";
-      const os = await service.findById(id, includeInternal);
-      if (!os) {
-        return res.status(404).json({ error: "OS not found" });
-      }
-      res.json(os);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch OS" });
-    }
-  }
-
-  async findByVehicleId(req: Request, res: Response) {
-    try {
-      const vehicleId = Number(req.params.vehicleId);
-      if (isNaN(vehicleId)) {
-        return res.status(400).json({ error: "Invalid Vehicle ID" });
-      }
-
-      const oss = await service.findByVehicleId(vehicleId);
-      res.json(oss);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch OSs for vehicle" });
-    }
-  }
-
-  async update(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const os = await service.update(id, req.body);
-      res.json(os);
-    } catch (error) {
-      console.error("Update OS Error:", error);
-      res.status(400).json({
-        error: "Failed to update OS",
-        details: error instanceof Error ? error.message : error,
-      });
-    }
-  }
-
-  async delete(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      await service.delete(id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(400).json({
-        error: "Failed to delete OS",
-        details: error instanceof Error ? error.message : error,
-      });
-    }
-  }
-
-  async getPdf(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const os = await service.findById(id);
-      if (!os) {
-        return res.status(404).json({ error: "OS not found" });
-      }
-
-      const pdfBuffer = await mensageria.gerarPdfOs(os);
-
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename=OS-${id}.pdf`);
-      res.send(pdfBuffer);
-    } catch (error) {
-      console.error("PDF Generation Error:", error);
-      res.status(500).json({ error: "Failed to generate PDF" });
-    }
-  }
-
-  async send(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const { method, target } = req.body; // method: "EMAIL" | "TELEGRAM"
-
-      if (!method || !target) {
-        return res
-          .status(400)
-          .json({ error: "Method and target are required" });
-      }
-
-      const os = await service.findById(id);
-      if (!os) {
-        return res.status(404).json({ error: "OS not found" });
-      }
-
-      const pdfBuffer = await mensageria.gerarPdfOs(os);
-
-      if (method === "EMAIL") {
-        try {
-          await mensageria.enviarEmail(target, os, pdfBuffer);
-        } catch (e: any) {
-          return res.status(500).json({ error: e.message || e });
-        }
-      } else if (method === "TELEGRAM") {
-        await mensageria.enviarTelegram(target, os, pdfBuffer);
-      } else {
-        return res.status(400).json({ error: "Invalid method" });
-      }
-
-      res.json({ success: true, message: `Sent via ${method}` });
-    } catch (error: any) {
-      console.error("Send Error:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Failed to send document" });
-    }
-  }
-
-  async enviarEmail(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const { remetenteEmail } = req.body;
-
-      const os = await service.findById(id);
-      if (!os) {
-        return res.status(404).json({ error: "OS not found" });
-      }
-
-      const emailInfo = await EmailService.sendOsEmail(os, remetenteEmail);
-      res.json({
-        success: true,
-        message: "Email enviado com sucesso",
-        info: emailInfo,
-      });
-    } catch (error: any) {
-      console.error("Erro ao enviar email da OS:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Falha ao enviar o email" });
-    }
-  }
-}
-
-
-
-================================================================================
 FILE PATH: server\src\controllers\pagamentoCliente.controller.ts
 ================================================================================
 import { Request, Response } from "express";
@@ -45819,6 +45337,74 @@ export class OrdemDeServicoRepository {
 
 
 ================================================================================
+FILE PATH: server\src\repositories\pagamentoCliente.repository.ts
+================================================================================
+import { Prisma } from "@prisma/client";
+import { prisma } from "../prisma.js";
+
+export class PagamentoClienteRepository {
+  async create(data: Prisma.PagamentoClienteCreateInput) {
+    return await prisma.pagamentoCliente.create({ data });
+  }
+
+  async findAll() {
+    return await prisma.pagamentoCliente.findMany({
+      include: {
+        ordem_de_servico: {
+          include: {
+            veiculo: true,
+            cliente: {
+              include: {
+                pessoa_fisica: { include: { pessoa: true } },
+                pessoa_juridica: { include: { pessoa: true } },
+              },
+            },
+          },
+        },
+        // @ts-ignore
+        conta_bancaria: true,
+        // @ts-ignore
+        operadora: true,
+        livro_caixa: true,
+      },
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.pagamentoCliente.findUnique({
+      where: { id_pagamento_cliente: id },
+      include: { ordem_de_servico: true },
+    });
+  }
+
+  async update(id: number, data: Prisma.PagamentoClienteUpdateInput) {
+    // Extract obs/observacao from data to avoid Prisma error
+    const { obs, observacao, ...updateData } = data as any;
+    const finalObs = obs || observacao;
+
+    return await prisma.pagamentoCliente.update({
+      where: { id_pagamento_cliente: id },
+      data: {
+        ...updateData,
+        obs: finalObs || null,
+        // id_livro_caixa is NOT touched here anymore, it's handled by Consolidation
+      } as any,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.pagamentoCliente.update({
+      where: { id_pagamento_cliente: id },
+      data: { deleted_at: new Date() } as any,
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\pagamentoPeca.repository.ts
+================================================================================
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 
@@ -46781,7 +46367,7 @@ export class RecebivelCartaoRepository {
       // Categoria diferenciada para não inflar faturamento diário se for filtrado.
       await tx.livroCaixa.create({
         data: {
-          descricao: `${recebivel.operadora.nome} / ${recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`,
+          descricao: `${recebivel.operadora.nome} / ${recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome} (OS | ${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`,
           valor: recebivel.valor_liquido,
           tipo_movimentacao: "ENTRADA",
           categoria: "CONCILIACAO_CARTAO",
@@ -47573,6 +47159,42 @@ export { financeiroRoutes };
 
 ================================================================================
 FILE PATH: server\src\routes\fornecedor.routes.ts
+================================================================================
+import { Router } from 'express';
+import { FornecedorController } from '../controllers/fornecedor.controller.js';
+
+const fornecedorRoutes = Router();
+const controller = new FornecedorController();
+
+fornecedorRoutes.post('/', controller.create);
+fornecedorRoutes.get('/', controller.findAll);
+fornecedorRoutes.get('/:id', controller.findById);
+fornecedorRoutes.put('/:id', controller.update);
+fornecedorRoutes.delete('/:id', controller.delete);
+
+export { fornecedorRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\funcionario.routes.ts
+================================================================================
+import { Router } from 'express';
+import { FuncionarioController } from '../controllers/funcionario.controller.js';
+
+const funcionarioRoutes = Router();
+const controller = new FuncionarioController();
+
+funcionarioRoutes.post('/', controller.create);
+funcionarioRoutes.get('/', controller.findAll);
+funcionarioRoutes.get('/:id', controller.findById);
+funcionarioRoutes.put('/:id', controller.update);
+funcionarioRoutes.delete('/:id', controller.delete);
+
+export { funcionarioRoutes };
+
+
+
 ================================================================================
 FILE PATH: server\src\routes\index.ts
 ================================================================================

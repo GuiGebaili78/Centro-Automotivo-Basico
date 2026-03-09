@@ -1,24 +1,25 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { FinanceiroService } from "../services/financeiro.service";
+import { api } from "../services/api";
 import {
   ActionButton,
   Button,
-  Input,
   PageLayout,
   Card,
   ConfirmModal,
-  FilterButton,
   Checkbox,
 } from "../components/ui";
 import { CategoryManager } from "../components/financeiro/CategoryManager";
 import { ModalPagamentoUnificado } from "../components/financeiro/ModalPagamentoUnificado";
+import { UniversalFilters } from "../components/common/UniversalFilters";
+import type { UniversalFiltersState } from "../components/common/UniversalFilters";
+import { useUniversalFilter } from "../hooks/useUniversalFilter";
 import { toast } from "react-toastify";
 import {
   Plus,
   Calendar,
   CheckCircle,
-  Search,
   Trash2,
   Edit,
   FileText,
@@ -37,15 +38,11 @@ export const ContasAPagarPage = () => {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Filters
-  const [filterStatus, setFilterStatus] = useState("PENDENTE"); // TODOS, PENDENTE, PAGO
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeFilter, setActiveFilter] = useState<
-    "TODAY" | "WEEK" | "MONTH" | "ALL" | "CUSTOM"
-  >("ALL");
-
-  // Date Filters - Start empty for ALL filter
-  const [filterStart, setFilterStart] = useState("");
-  const [filterEnd, setFilterEnd] = useState("");
+  const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
+    search: "", osId: "", status: "ALL", operadora: "", fornecedor: "",
+    startDate: "", endDate: "", activePeriod: "ALL",
+  });
+  const [fornecedoresList, setFornecedoresList] = useState<any[]>([]);
 
   // Modal & Form
   const [modalOpen, setModalOpen] = useState(false);
@@ -63,12 +60,22 @@ export const ContasAPagarPage = () => {
   useEffect(() => {
     loadContas();
     loadAccounts();
+    loadFornecedores();
   }, []);
 
   const loadAccounts = async () => {
     try {
       const data = await FinanceiroService.getContasBancarias();
       setBankAccounts(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadFornecedores = async () => {
+    try {
+      const response = await api.get("/fornecedor");
+      setFornecedoresList(response.data || []);
     } catch (e) {
       console.error(e);
     }
@@ -143,53 +150,15 @@ export const ContasAPagarPage = () => {
     setModalOpen(true);
   };
 
-  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH" | "ALL") => {
-    setActiveFilter(type as any);
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-CA"); // Local YYYY-MM-DD
 
-    if (type === "TODAY") {
-      setFilterStart(todayStr);
-      setFilterEnd(todayStr);
-    } else if (type === "WEEK") {
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - 7); // Last 7 days
-      setFilterStart(weekStart.toLocaleDateString("en-CA"));
-      setFilterEnd(todayStr);
-    } else if (type === "MONTH") {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      setFilterStart(firstDay.toLocaleDateString("en-CA"));
-      setFilterEnd(lastDay.toLocaleDateString("en-CA"));
-    } else if (type === "ALL") {
-      setFilterStart("");
-      setFilterEnd("");
-    }
-  };
 
-  // Calculations
-  const filteredContas = contas.filter((c) => {
-    // Date Filter (Vencimento) - Only apply if not ALL
-    if (activeFilter !== "ALL") {
-      if (filterStart) {
-        if (c.dt_vencimento < filterStart) return false;
-      }
-      if (filterEnd) {
-        const vencC = c.dt_vencimento.split("T")[0];
-        if (vencC > filterEnd) return false;
-      }
-    }
-
-    if (filterStatus !== "TODOS" && c.status !== filterStatus) return false;
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      return (
-        c.descricao.toLowerCase().includes(term) ||
-        c.categoria?.toLowerCase().includes(term) ||
-        c.credor?.toLowerCase().includes(term)
-      );
-    }
-    return true;
+  // Filtered via useUniversalFilter hook
+  const filteredContas = useUniversalFilter(contas, universalFilters, {
+    dateField: "dt_vencimento",
+    statusField: "status",
+    paidValue: "PAGO",
+    pendingValue: "PENDENTE",
+    fornecedorField: "credor",
   });
 
   const totalPending = filteredContas
@@ -247,91 +216,22 @@ export const ContasAPagarPage = () => {
         </div>
       </div>
 
-      {/* FILTERS & SEARCH */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
-        <div className="w-full md:flex-1 relative">
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por Descrição, Credor..."
-            icon={Search}
-            className="w-full"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-          {/* Quick Filters Group */}
-          <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0 gap-1">
-            <FilterButton
-              active={activeFilter === "TODAY"}
-              onClick={() => applyQuickFilter("TODAY")}
-            >
-              Hoje
-            </FilterButton>
-            <FilterButton
-              active={activeFilter === "WEEK"}
-              onClick={() => applyQuickFilter("WEEK")}
-            >
-              Semana
-            </FilterButton>
-            <FilterButton
-              active={activeFilter === "MONTH"}
-              onClick={() => applyQuickFilter("MONTH")}
-            >
-              Mês
-            </FilterButton>
-            <FilterButton
-              active={activeFilter === "ALL"}
-              onClick={() => applyQuickFilter("ALL")}
-            >
-              Todos
-            </FilterButton>
-          </div>
-
-          {/* Manual Date Inputs */}
-          <div className="flex gap-2 items-center">
-            <Input
-              type="date"
-              value={filterStart}
-              onChange={(e) => {
-                setFilterStart(e.target.value);
-                setActiveFilter("CUSTOM");
-              }}
-              className={`h-10 text-xs font-bold ${
-                activeFilter === "CUSTOM"
-                  ? "border-primary-300 text-primary-700"
-                  : ""
-              }`}
-            />
-            <span className="text-neutral-400 self-center">-</span>
-            <Input
-              type="date"
-              value={filterEnd}
-              onChange={(e) => {
-                setFilterEnd(e.target.value);
-                setActiveFilter("CUSTOM");
-              }}
-              className={`h-10 text-xs font-bold ${
-                activeFilter === "CUSTOM"
-                  ? "border-primary-300 text-primary-700"
-                  : ""
-              }`}
-            />
-          </div>
-
-          {/* Status Type */}
-          <div className="flex bg-neutral-100 p-1 rounded-xl h-9 items-center ml-2 gap-1">
-            {["TODOS", "PENDENTE", "PAGO"].map((s) => (
-              <FilterButton
-                key={s}
-                active={filterStatus === s}
-                onClick={() => setFilterStatus(s)}
-              >
-                {s}
-              </FilterButton>
-            ))}
-          </div>
-        </div>
+      {/* FILTERS */}
+      <div className="mb-6">
+        <UniversalFilters
+          onFilterChange={setUniversalFilters}
+          config={{
+            enableFornecedor: true,
+            enableOperadora: false,
+            enableOsId: false,
+            fornecedores: fornecedoresList.map(f => ({ id: f.nome, nome: f.nome })),
+            statusOptions: [
+              { value: "ALL", label: "Todas" },
+              { value: "PENDING", label: "Pendentes" },
+              { value: "PAID", label: "Pagas" },
+            ],
+          }}
+        />
       </div>
 
       {/* TABLE */}

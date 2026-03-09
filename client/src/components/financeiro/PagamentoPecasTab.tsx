@@ -3,28 +3,25 @@ import { formatCurrency } from "../../utils/formatCurrency";
 import { FinanceiroService } from "../../services/financeiro.service";
 import { OsItemsService } from "../../services/osItems.service";
 import {
-  Search,
   Truck,
   Calendar,
   CheckSquare,
   Square,
   Edit,
   Trash2,
-  X,
 } from "lucide-react";
 import {
   ActionButton,
   Button,
   Input,
   Modal,
-  FilterButton,
   Select,
 } from "../ui";
+import { UniversalFilters } from "../common/UniversalFilters";
+import type { UniversalFiltersState } from "../common/UniversalFilters";
+import { useUniversalFilter } from "../../hooks/useUniversalFilter";
 import type { IPagamentoPeca, IFornecedor } from "../../types/backend";
-import type {
-  IFinanceiroStatusMsg,
-  IPaymentFilters,
-} from "../../types/financeiro.types";
+import type { IFinanceiroStatusMsg } from "../../types/financeiro.types";
 
 interface PagamentoPecasTabProps {
   payments: IPagamentoPeca[];
@@ -42,16 +39,15 @@ export const PagamentoPecasTab = ({
   setLoading,
 }: PagamentoPecasTabProps) => {
   // State
-  const [filters, setFilters] = useState<IPaymentFilters>({
-    status: "PENDING",
-    supplier: "",
-    plate: "",
-    startDate: "",
-    endDate: "",
+  const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
+    search: "", osId: "", status: "PENDING", operadora: "", fornecedor: "",
+    startDate: "", endDate: "", activePeriod: "ALL",
   });
-  const [activeFilter, setActiveFilter] = useState<
-    "TODAY" | "WEEK" | "MONTH" | "CUSTOM" | "ALL"
-  >("ALL");
+
+  const fornecedoresList = fornecedores.map((f) => ({
+    id: String(f.id_fornecedor),
+    nome: f.nome,
+  }));
 
   const [editPayment, setEditPayment] = useState<any | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -62,39 +58,18 @@ export const PagamentoPecasTab = ({
     onConfirm: () => void;
   }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
-  // Filter Logic
-  const filteredPayments = payments
-    .filter((p) => {
-      if (filters.status === "PENDING" && p.pago_ao_fornecedor) return false;
-      if (filters.status === "PAID" && !p.pago_ao_fornecedor) return false;
-
-      if (filters.startDate) {
-        const start = new Date(filters.startDate);
-        const date = new Date(p.data_compra);
-        if (date < start) return false;
-      }
-      if (filters.endDate) {
-        const end = new Date(filters.endDate);
-        end.setHours(23, 59, 59, 999);
-        const date = new Date(p.data_compra);
-        if (date > end) return false;
-      }
-
-      const supplierMatch = filters.supplier
-        ? String(p.id_fornecedor) === filters.supplier
-        : true;
-      const plateMatch = filters.plate
-        ? p.item_os?.ordem_de_servico?.veiculo?.placa
-            ?.toLowerCase()
-            .includes(filters.plate.toLowerCase())
-        : true;
-
-      return supplierMatch && plateMatch;
-    })
-    .sort(
-      (a, b) =>
-        new Date(b.data_compra).getTime() - new Date(a.data_compra).getTime(),
-    );
+  // Filtered via hook
+  const filteredPayments = useUniversalFilter(payments, universalFilters, {
+    dateField: "data_compra",
+    statusField: "pago_ao_fornecedor",
+    paidValue: true,
+    pendingValue: false,
+    fornecedorField: "id_fornecedor",
+    // osIdField omitted — IPagamentoPeca has no direct id_os; Nº OS search via busca geral
+  }).sort(
+    (a, b) =>
+      new Date(b.data_compra).getTime() - new Date(a.data_compra).getTime(),
+  );
 
   const totalPending = filteredPayments
     .filter((p) => !p.pago_ao_fornecedor)
@@ -103,38 +78,6 @@ export const PagamentoPecasTab = ({
     .filter((p) => p.pago_ao_fornecedor)
     .reduce((acc, p) => acc + Number(p.custo_real), 0);
 
-  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH" | "ALL") => {
-    setActiveFilter(type);
-    if (type === "ALL") {
-      setFilters((prev) => ({ ...prev, startDate: "", endDate: "" }));
-      return;
-    }
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-CA");
-
-    if (type === "TODAY") {
-      setFilters((prev) => ({
-        ...prev,
-        startDate: todayStr,
-        endDate: todayStr,
-      }));
-    } else if (type === "WEEK") {
-      const weekAgo = new Date(now);
-      weekAgo.setDate(now.getDate() - 7);
-      setFilters((prev) => ({
-        ...prev,
-        startDate: weekAgo.toLocaleDateString("en-CA"),
-        endDate: todayStr,
-      }));
-    } else if (type === "MONTH") {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      setFilters((prev) => ({
-        ...prev,
-        startDate: firstDay.toLocaleDateString("en-CA"),
-        endDate: todayStr,
-      }));
-    }
-  };
 
   // Actions
   const handleTogglePayment = async (
@@ -242,149 +185,21 @@ export const PagamentoPecasTab = ({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Filters */}
-      <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col gap-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div>
-            <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-              Status Pagamento
-            </label>
-            <div className="flex bg-neutral-100 rounded-xl p-1 gap-1">
-              <FilterButton
-                active={filters.status === "PENDING"}
-                onClick={() => setFilters({ ...filters, status: "PENDING" })}
-              >
-                PENDENTES
-              </FilterButton>
-              <FilterButton
-                active={filters.status === "PAID"}
-                onClick={() => setFilters({ ...filters, status: "PAID" })}
-              >
-                PAGAS
-              </FilterButton>
-              <FilterButton
-                active={filters.status === "ALL"}
-                onClick={() => setFilters({ ...filters, status: "ALL" })}
-              >
-                TODAS
-              </FilterButton>
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-              Fornecedor
-            </label>
-            <select
-              value={filters.supplier}
-              onChange={(e) =>
-                setFilters({ ...filters, supplier: e.target.value })
-              }
-              className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-            >
-              <option value="">Todos</option>
-              {fornecedores.map((f) => (
-                <option key={f.id_fornecedor} value={f.id_fornecedor}>
-                  {f.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-              Buscar por Placa
-            </label>
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                size={18}
-              />
-              <input
-                type="text"
-                value={filters.plate}
-                onChange={(e) =>
-                  setFilters({ ...filters, plate: e.target.value })
-                }
-                placeholder="Digite a placa do veículo da OS..."
-                className="w-full h-10 pl-10 pr-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-end md:items-center gap-4 border-t border-neutral-100 pt-4">
-          <div className="flex flex-col sm:flex-row items-center gap-2">
-            <span className="text-sm font-bold text-neutral-500 uppercase tracking-widest whitespace-nowrap min-w-[90px]">
-              Data Compra:
-            </span>
-
-            <div className="flex bg-neutral-50 p-1 rounded-lg w-fit border border-neutral-200 gap-1">
-              <FilterButton
-                active={activeFilter === "TODAY"}
-                onClick={() => applyQuickFilter("TODAY")}
-              >
-                Hoje
-              </FilterButton>
-              <FilterButton
-                active={activeFilter === "WEEK"}
-                onClick={() => applyQuickFilter("WEEK")}
-              >
-                Semana
-              </FilterButton>
-              <FilterButton
-                active={activeFilter === "MONTH"}
-                onClick={() => applyQuickFilter("MONTH")}
-              >
-                Mês
-              </FilterButton>
-            </div>
-
-            <div className="flex gap-2 items-center">
-              <div className="w-32">
-                <input
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) => {
-                    setFilters({ ...filters, startDate: e.target.value });
-                    setActiveFilter("CUSTOM");
-                  }}
-                  className={`w-full h-10 px-3 bg-neutral-50 border rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-bold uppercase ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : "border-neutral-200"}`}
-                />
-              </div>
-              <span className="text-neutral-400">-</span>
-              <div className="w-32">
-                <input
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) => {
-                    setFilters({ ...filters, endDate: e.target.value });
-                    setActiveFilter("CUSTOM");
-                  }}
-                  className={`w-full h-10 px-3 bg-neutral-50 border rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-bold uppercase ${activeFilter === "CUSTOM" ? "border-primary-300 text-primary-700" : "border-neutral-200"}`}
-                />
-              </div>
-            </div>
-          </div>
-
-          <Button
-            onClick={() => {
-              setFilters({
-                status: "PENDING",
-                supplier: "",
-                plate: "",
-                startDate: "",
-                endDate: "",
-              });
-              setActiveFilter("ALL");
-            }}
-            variant="outline"
-            size="sm"
-            icon={X}
-            className="md:ml-auto"
-          >
-            Limpar Filtros
-          </Button>
-        </div>
-      </div>
+      {/* Universal Filters */}
+      <UniversalFilters
+        onFilterChange={setUniversalFilters}
+        config={{
+          enableFornecedor: true,
+          enableOperadora: false,
+          enableOsId: true,
+          fornecedores: fornecedoresList,
+          statusOptions: [
+            { value: "ALL", label: "Todos" },
+            { value: "PENDING", label: "Pendentes" },
+            { value: "PAID", label: "Pagos" },
+          ],
+        }}
+      />
 
       {/* Totals Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

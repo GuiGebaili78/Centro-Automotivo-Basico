@@ -4,17 +4,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { FinanceiroService } from "../services/financeiro.service";
 import { CategoryManager } from "../components/financeiro/CategoryManager";
+import { UniversalFilters } from "../components/common/UniversalFilters";
+import type { UniversalFiltersState } from "../components/common/UniversalFilters";
+import { useUniversalFilter } from "../hooks/useUniversalFilter";
 import {
   ArrowLeft,
   ArrowUpCircle,
   ArrowDownCircle,
   Plus,
-  Search,
   Calendar,
   Wallet,
   ArrowRight,
   Settings,
-  FilterX,
 } from "lucide-react";
 import type { IContaBancaria } from "../types/backend";
 import { Button, Input, Modal } from "../components/ui";
@@ -29,18 +30,10 @@ export const ExtratoBancarioPage = () => {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [searchTerm, setSearchTerm] = useState("");
-  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
-    start: new Date(new Date().setDate(new Date().getDate() - 30))
-      .toISOString()
-      .split("T")[0], // Last 30 days
-    end: new Date().toISOString().split("T")[0],
+  const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
+    search: "", osId: "", status: "ALL", operadora: "", fornecedor: "",
+    startDate: "", endDate: "", activePeriod: "ALL",
   });
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedType, setSelectedType] = useState("");
-  const [activeShortcut, setActiveShortcut] = useState<string | null>(
-    "30 Dias",
-  );
 
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -122,42 +115,12 @@ export const ExtratoBancarioPage = () => {
     }
   };
 
-  // Apply Filters
-  const filteredMovimentacoes = movimentacoes.filter((mov) => {
-    const matchesSearch = (() => {
-      if (!searchTerm.trim()) return true;
-      const term = searchTerm.toLowerCase();
-      const terms = term.split(" ").filter((t) => t.trim() !== "");
-      const searchString = [
-        mov.descricao || "",
-        mov.obs || "",
-        mov.categoria || "",
-        mov.paymentMethod || "",
-        mov.tipo_movimentacao === "ENTRADA" ? "entrada" : "saída",
-        mov.valor?.toString() || "",
-        (Number(mov.valor) || 0).toLocaleString("pt-BR", {
-          minimumFractionDigits: 2,
-        }),
-        new Date(mov.dt_movimentacao).toLocaleDateString("pt-BR"),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return terms.every((t) => searchString.includes(t));
-    })();
-
-    const matchesCategory = selectedCategory
-      ? mov.categoria === selectedCategory
-      : true;
-    const matchesType = selectedType
-      ? mov.tipo_movimentacao === selectedType
-      : true;
-
-    const movDate = new Date(mov.dt_movimentacao).toISOString().split("T")[0];
-    const matchesDate =
-      (!dateRange.start || movDate >= dateRange.start) &&
-      (!dateRange.end || movDate <= dateRange.end);
-
-    return matchesSearch && matchesCategory && matchesType && matchesDate;
+  // Apply Filters via useUniversalFilter hook
+  const filteredMovimentacoes = useUniversalFilter(movimentacoes, universalFilters, {
+    dateField: "dt_movimentacao",
+    statusField: "tipo_movimentacao",
+    paidValue: "ENTRADA",
+    pendingValue: "SAIDA",
   });
 
   if (loading) {
@@ -269,149 +232,21 @@ export const ExtratoBancarioPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Date Shortcuts */}
-        <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 w-fit">
-          {[
-            { label: "Hoje", days: 0 },
-            { label: "7 Dias", days: 7 },
-            { label: "15 Dias", days: 15 },
-            { label: "30 Dias", days: 30 },
-            { label: "Mês Atual", type: "MONTH" },
-          ].map((item: any) => (
-            <button
-              key={item.label}
-              onClick={() => {
-                setActiveShortcut(item.label);
-                const end = new Date().toISOString().split("T")[0];
-                let start = "";
-                if (item.type === "MONTH") {
-                  const now = new Date();
-                  start = new Date(now.getFullYear(), now.getMonth(), 1)
-                    .toISOString()
-                    .split("T")[0];
-                } else {
-                  start = new Date(
-                    new Date().setDate(new Date().getDate() - item.days),
-                  )
-                    .toISOString()
-                    .split("T")[0];
-                }
-                setDateRange({ start, end });
-              }}
-              className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
-                activeShortcut === item.label
-                  ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Filter Bar */}
-        <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm flex flex-col xl:flex-row gap-4 items-end">
-          <div className="flex-1 w-full xl:w-auto">
-            <Input
-              label="Buscar"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Descrição ou observação..."
-              icon={Search}
-            />
-          </div>
-          <div className="w-full xl:w-auto flex gap-2">
-            <div>
-              <label className="text-sm font-bold text-neutral-400 uppercase mb-1.5 block">
-                De
-              </label>
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => {
-                  setDateRange({ ...dateRange, start: e.target.value });
-                  setActiveShortcut(null);
-                }}
-                className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-bold text-neutral-400 uppercase mb-1.5 block">
-                Até
-              </label>
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => {
-                  setDateRange({ ...dateRange, end: e.target.value });
-                  setActiveShortcut(null);
-                }}
-                className="h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all uppercase w-full"
-              />
-            </div>
-          </div>
-          <div className="w-full xl:w-48">
-            <label className="text-sm font-bold text-neutral-400 uppercase mb-1.5 block">
-              Tipo
-            </label>
-            <div className="relative">
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-              >
-                <option value="">Todos</option>
-                <option value="ENTRADA">Entradas</option>
-                <option value="SAIDA">Saídas</option>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                <ArrowDownCircle size={14} />
-              </div>
-            </div>
-          </div>
-          <div className="w-full xl:w-56">
-            <label className="text-sm font-bold text-neutral-400 uppercase mb-1.5 block">
-              Categoria
-            </label>
-            <div className="relative">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full h-[42px] bg-neutral-50 border border-neutral-200 px-3 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-              >
-                <option value="">Todas</option>
-                {categories.map((cat) => (
-                  <option key={cat.id_categoria} value={cat.nome}>
-                    {cat.nome}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                <ArrowDownCircle size={14} />
-              </div>
-            </div>
-          </div>
-          <div className="w-full xl:w-auto">
-            <Button
-              variant="primary"
-              onClick={() => {
-                setSearchTerm("");
-                setActiveShortcut(null);
-                setDateRange({
-                  start: new Date(new Date().setDate(new Date().getDate() - 30))
-                    .toISOString()
-                    .split("T")[0],
-                  end: new Date().toISOString().split("T")[0],
-                });
-                setSelectedCategory("");
-                setSelectedType("");
-              }}
-              className="h-[42px] w-full shadow-lg shadow-primary-500/20"
-              icon={FilterX}
-            >
-              Limpar
-            </Button>
-          </div>
+        {/* Universal Filters */}
+        <div className="mb-6">
+          <UniversalFilters
+            onFilterChange={setUniversalFilters}
+            config={{
+              enableFornecedor: false,
+              enableOperadora: false,
+              enableOsId: false,
+              statusOptions: [
+                { value: "ALL", label: "Todos" },
+                { value: "PAID", label: "Entradas" },
+                { value: "PENDING", label: "Saídas" },
+              ],
+            }}
+          />
         </div>
 
         {/* Summary Area */}
@@ -479,7 +314,6 @@ export const ExtratoBancarioPage = () => {
                 <tr>
                   <td colSpan={6} className="p-12 text-center text-neutral-400">
                     <div className="flex flex-col items-center gap-2">
-                      <Search size={32} className="opacity-20 mb-2" />
                       <p className="font-bold">
                         Nenhuma movimentação encontrada.
                       </p>

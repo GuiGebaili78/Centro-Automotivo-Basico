@@ -1,42 +1,38 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { FinanceiroService } from "../../services/financeiro.service";
 import {
   Calendar,
   CheckCircle,
   Search,
-  FilterX,
   Clock,
   AlertCircle,
 } from "lucide-react";
 import type { IRecebivelCartao } from "../../types/backend";
-import { Button, Input, Modal } from "../ui";
+import { Button, Modal } from "../ui";
 import { toast } from "react-toastify";
+import { UniversalFilters } from "../common/UniversalFilters";
+import type { UniversalFiltersState } from "../common/UniversalFilters";
+import { useUniversalFilter } from "../../hooks/useUniversalFilter";
 
 export const RecebiveisTab = () => {
   const [recebiveis, setRecebiveis] = useState<IRecebivelCartao[]>([]);
-  const [originalData, setOriginalData] = useState<IRecebivelCartao[]>([]);
-
-  // Filters
-  const [filterStatus, setFilterStatus] = useState<
-    "PENDENTE" | "RECEBIDO" | "ALL"
-  >("PENDENTE");
-  const [dateRange, setDateRange] = useState({ start: "", end: "" });
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchOsId, setSearchOsId] = useState(""); // Dedicated OS Search
-  const [activeShortcut, setActiveShortcut] = useState<string | null>(null);
-  const [selectedOperadoraId, setSelectedOperadoraId] = useState<
-    number | "ALL"
-  >("ALL");
   const [operadoras, setOperadoras] = useState<any[]>([]);
+
+  // Universal Filters
+  const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
+    search: "", osId: "", status: "PENDING", operadora: "", fornecedor: "",
+    startDate: "", endDate: "", activePeriod: "ALL",
+  });
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [showConciliateModal, setShowConciliateModal] = useState(false);
 
   useEffect(() => {
-    loadData();
     loadOperadoras();
   }, []);
+
 
   const loadOperadoras = async () => {
     try {
@@ -47,132 +43,42 @@ export const RecebiveisTab = () => {
     }
   };
 
-  const loadData = async (start?: string, end?: string) => {
+  const loadData = useCallback(async (start?: string, end?: string) => {
     try {
-      let data;
-      if (start || end) {
-        data = await FinanceiroService.getRecebiveisCartaoByDateRange(
-          start || "",
-          end || "",
-        );
-      } else {
-        data = await FinanceiroService.getRecebiveisCartao();
-      }
-      setOriginalData(data);
-      applyFilters(data, filterStatus, searchTerm, selectedOperadoraId);
+      const data =
+        start || end
+          ? await FinanceiroService.getRecebiveisCartaoByDateRange(
+              start ?? "",
+              end ?? "",
+            )
+          : await FinanceiroService.getRecebiveisCartao();
+      setRecebiveis(data);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar recebíveis.");
     }
-  };
+  }, []);
 
-  const applyFilters = (
-    data: IRecebivelCartao[],
-    status: string,
-    search: string,
-    operadoraId: number | "ALL",
-  ) => {
-    let filtered = data;
-
-    // 1. Status Filter
-    if (status !== "ALL") {
-      filtered = filtered.filter((r) => r.status === status);
-    }
-
-    // 2. Operadora Filter
-    if (operadoraId !== "ALL") {
-      filtered = filtered.filter((r) => r.id_operadora === Number(operadoraId));
-    }
-
-    // 3. Search Term (Dynamic "letra a letra" in all relevant columns)
-    if (search.trim()) {
-      const term = search.toLowerCase();
-      const terms = term.split(" ").filter((t) => t.trim() !== "");
-
-      // Helper para limpar termos de busca (ex: remover # para buscar numero OS)
-      const cleanTerm = (t: string) => t.replace("#", "");
-
-      filtered = filtered.filter((r) => {
-        const searchString = [
-          (r as any).codigo_autorizacao || "",
-          (r as any).nsu || "",
-          (r as any).ordem_de_servico?.veiculo?.placa || "",
-          (r as any).ordem_de_servico?.veiculo?.modelo || "",
-          (r as any).ordem_de_servico?.veiculo?.cor || "",
-          (r as any).ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome ||
-            "",
-          (r as any).ordem_de_servico?.cliente?.pessoa_juridica?.razao_social ||
-            "",
-          (r as any).operadora?.nome || "",
-          (r as any).bandeira_cartao || "",
-          `#${r.id_os}`, // Permite busca exata "#22"
-          `OS Nº ${r.id_os}`, // Permite busca "OS Nº 22"
-          `OS N ${r.id_os}`, // Permite busca "OS N 22"
-          `OSN${r.id_os}`, // Permite busca "OSN22"
-          `OS ${r.id_os}`, // Permite busca "OS 22"
-          `OS${r.id_os}`, // Permite busca "OS22"
-          r.id_os?.toString() || "", // Permite busca "22"
-          r.valor_bruto?.toString() || "",
-          (Number(r.valor_bruto) || 0).toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-          }),
-          r.valor_liquido?.toString() || "",
-          (Number(r.valor_liquido) || 0).toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-          }),
-          r.num_parcela?.toString() || "",
-          `${r.num_parcela}/${r.total_parcelas}`,
-          new Date(r.data_prevista).toLocaleDateString("pt-BR"),
-          r.total_parcelas > 1 ? "parcelado" : "vista",
-          r.status === "RECEBIDO" ? "recebido pago" : "pendente aberto",
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        // Verifica se TODOS os termos digitados estão na string de busca
-        return terms.every(
-          (t) =>
-            searchString.includes(t) || searchString.includes(cleanTerm(t)),
-        );
-      });
-    }
-
-    setRecebiveis(filtered);
-  };
-
+  // Re-fetch when date range changes (backend filter)
   useEffect(() => {
-    applyFilters(originalData, filterStatus, searchTerm, selectedOperadoraId);
-  }, [filterStatus, originalData, searchTerm, selectedOperadoraId]);
+    loadData(universalFilters.startDate, universalFilters.endDate);
+  }, [universalFilters.startDate, universalFilters.endDate, loadData]);
 
-  const handleDateChange = (type: "start" | "end", val: string) => {
-    setActiveShortcut(null);
-    const newRange = { ...dateRange, [type]: val };
-    setDateRange(newRange);
-    if (newRange.start && newRange.end) {
-      loadData(newRange.start, newRange.end);
-    }
-  };
 
-  const setPresetRange = (days: number) => {
-    const today = new Date();
-    const start = today.toISOString().split("T")[0];
+  // Client-side filtering via hook (operadora, status, osId, busca geral)
+  const filteredData = useUniversalFilter(recebiveis, universalFilters, {
+    dateField: "data_prevista",
+    statusField: "status",
+    paidValue: "RECEBIDO",
+    pendingValue: "PENDENTE",
+    operadoraField: "id_operadora",
+    osIdField: "id_os",
+  });
 
-    const futureDate = new Date();
-    futureDate.setDate(today.getDate() + days);
-    const end = futureDate.toISOString().split("T")[0];
-
-    setDateRange({ start, end });
-    loadData(start, end);
-  };
-
-  const clearFilters = () => {
-    setFilterStatus("PENDENTE");
-    setSelectedOperadoraId("ALL");
-    setSearchTerm("");
-    setDateRange({ start: "", end: "" });
-    setActiveShortcut(null);
-    loadData();
-  };
+  const operadorasList = operadoras.map((op) => ({
+    id: String(op.id_operadora),
+    nome: op.nome,
+  }));
 
   const toggleSelect = (id: number) => {
     if (selectedIds.includes(id)) {
@@ -183,26 +89,20 @@ export const RecebiveisTab = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === recebiveis.length) {
+    if (selectedIds.length === filteredData.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(recebiveis.map((r) => r.id_recebivel));
+      setSelectedIds(filteredData.map((r) => r.id_recebivel));
     }
   };
 
-  // CONCILIATION
-  const [showConciliateModal, setShowConciliateModal] = useState(false);
-
-  // SEARCH STATES (Already defined at top, avoiding duplicates)
-  // const [searchTerm, setSearchTerm] = useState(""); // DUPLICATE REMOVED
-  // const [searchOsId, setSearchOsId] = useState(""); // DUPLICATE REMOVED
 
   const executeConciliacao = async () => {
     try {
       await FinanceiroService.confirmarRecebiveis(selectedIds);
       toast.success("Recebimentos confirmados e conciliados!");
       setSelectedIds([]);
-      loadData(dateRange.start, dateRange.end);
+      loadData(universalFilters.startDate, universalFilters.endDate);
       setShowConciliateModal(false);
     } catch (error: any) {
       console.error(error);
@@ -219,182 +119,36 @@ export const RecebiveisTab = () => {
     setShowConciliateModal(true);
   };
 
-  const totalSelected = recebiveis
+  const totalSelected = filteredData
     .filter((r) => selectedIds.includes(r.id_recebivel))
     .reduce((acc, r) => acc + Number(r.valor_liquido), 0);
 
-  const totalPrevisto = recebiveis.reduce(
+  const totalPrevisto = filteredData.reduce(
     (acc, r) => acc + Number(r.valor_liquido),
     0,
   );
 
-  // Filter Logic (Applied inside component for now, or use Memo if heavy)
-  const filteredData = useMemo(() => {
-    let data = recebiveis;
-
-    // Filter by Status (Already done by API usually, but client side refinement)
-    if (filterStatus !== "ALL") {
-      data = data.filter((r) => r.status === filterStatus);
-    }
-
-    // Filter by Operadora
-    if (selectedOperadoraId !== "ALL") {
-      data = data.filter((r) => r.id_operadora === Number(selectedOperadoraId));
-    }
-
-    // Filter by OS ID
-    if (searchOsId) {
-      data = data.filter((r) => r.id_os === Number(searchOsId));
-    }
-
-    // Filter by Search Term
-    if (searchTerm) {
-      const lower = searchTerm.toLowerCase();
-      data = data.filter(
-        (r) =>
-          r.operadora?.nome?.toLowerCase().includes(lower) ||
-          r.id_os?.toString().includes(lower) ||
-          // removed OS concatenation to avoid false positives as requested,
-          // since we have dedicated OS search now.
-          r.valor_liquido?.toString().includes(lower),
-      );
-    }
-
-    return data;
-  }, [recebiveis, filterStatus, selectedOperadoraId, searchOsId, searchTerm]);
+  // Filter Logic — handled by useUniversalFilter above
 
   return (
     <div className="p-6 space-y-6">
       {/* ... Header ... */}
 
-      {/* FILTERS CONTAINER */}
-      <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-end">
-          {/* OS Search Field */}
-          <div className="xl:col-span-2">
-            <label className="text-sm font-medium text-gray-600 ml-1 mb-1.5 block">
-              Nº OS
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">
-                #
-              </span>
-              <input
-                type="number"
-                value={searchOsId}
-                onChange={(e) => setSearchOsId(e.target.value)}
-                className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 font-bold text-neutral-700 outline-none focus:border-primary-500 transition-all text-sm"
-                placeholder="ID"
-              />
-            </div>
-          </div>
-
-          {/* Search Field */}
-          <div className="xl:col-span-4">
-            <Input
-              label="Filtro Rápido (Placa, Operadora...)"
-              icon={Search}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Busca inteligente..."
-            />
-          </div>
-
-          {/* Operadora Select */}
-          <div className="xl:col-span-3 space-y-1.5">
-            <label className="text-sm font-medium text-gray-600 ml-1">
-              Operadora
-            </label>
-            <div className="relative">
-              <select
-                value={selectedOperadoraId}
-                onChange={(e) =>
-                  setSelectedOperadoraId(
-                    e.target.value === "ALL" ? "ALL" : Number(e.target.value),
-                  )
-                }
-                className="w-full bg-neutral-50 border border-neutral-200 px-4 py-[11px] rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-              >
-                <option value="ALL">Todas as Operadoras</option>
-                {operadoras.map((op) => (
-                  <option key={op.id_operadora} value={op.id_operadora}>
-                    {op.nome}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                {/* Could add an arrow icon here if needed */}
-              </div>
-            </div>
-          </div>
-
-          {/* Date Range Fields */}
-          <div className="xl:col-span-3">
-            <label className="text-sm font-medium text-gray-600 ml-1 mb-1.5 block">
-              Período Customizado
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => handleDateChange("start", e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all shadow-inner uppercase"
-                />
-              </div>
-              <div className="flex-1 relative">
-                <input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => handleDateChange("end", e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all shadow-inner uppercase"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Clear Button */}
-          <div className="xl:col-span-2">
-            <Button
-              variant="primary" // Changed to primary as requested
-              onClick={clearFilters}
-              className="w-full h-[46px] shadow-lg shadow-primary-500/20"
-              icon={FilterX}
-            >
-              Limpar Filtro
-            </Button>
-          </div>
-        </div>
-
-        {/* Date Shortcut Pills */}
-        <div className="flex flex-wrap gap-2 pt-4 border-t border-neutral-100">
-          <div className="flex bg-neutral-50 p-1 rounded-lg border border-neutral-100 gap-1 w-fit">
-            {[
-              { label: "Hoje", days: 0 },
-              { label: "7 Dias", days: 7 },
-              { label: "15 Dias", days: 15 },
-              { label: "30 Dias", days: 30 },
-              { label: "60 Dias", days: 60 },
-              { label: "90 Dias", days: 90 },
-            ].map((card) => (
-              <button
-                key={card.label}
-                onClick={() => {
-                  setPresetRange(card.days);
-                  setActiveShortcut(card.label);
-                }}
-                className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
-                  activeShortcut === card.label
-                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                    : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
-                }`}
-              >
-                {card.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Universal Filters */}
+      <UniversalFilters
+        onFilterChange={setUniversalFilters}
+        config={{
+          enableFornecedor: false,
+          enableOperadora: true,
+          enableOsId: true,
+          operadoras: operadorasList,
+          statusOptions: [
+            { value: "ALL", label: "Todos" },
+            { value: "PENDING", label: "Pendentes" },
+            { value: "PAID", label: "Recebidos" },
+          ],
+        }}
+      />
 
       {/* VALUE SUMMARY & ACTIONS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -460,8 +214,8 @@ export const RecebiveisTab = () => {
                     type="checkbox"
                     onChange={toggleSelectAll}
                     checked={
-                      recebiveis.length > 0 &&
-                      selectedIds.length === recebiveis.length
+                      filteredData.length > 0 &&
+                      selectedIds.length === filteredData.length
                     }
                     className="w-5 h-5 rounded-lg border-neutral-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
                   />

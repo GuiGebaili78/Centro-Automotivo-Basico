@@ -5,17 +5,17 @@ import { FinanceiroService } from "../services/financeiro.service";
 import { OsService } from "../services/os.service";
 import {
   ActionButton,
-  FilterButton,
   Button,
-  Input,
   PageLayout,
   Card,
   ConfirmModal,
 } from "../components/ui";
 import { toast } from "react-toastify";
 import { DocumentoModal } from "../components/ui/Modals/DocumentoModal";
-
-import { Search, Trash2, Edit, CheckCircle, Printer } from "lucide-react";
+import { UniversalFilters } from "../components/common/UniversalFilters";
+import type { UniversalFiltersState } from "../components/common/UniversalFilters";
+import { useUniversalFilter } from "../hooks/useUniversalFilter";
+import { Trash2, Edit, CheckCircle, Printer } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { IOrdemDeServico, IFechamentoFinanceiro } from "../types/backend";
 
@@ -32,7 +32,11 @@ export const FechamentoFinanceiroPage = () => {
   const navigate = useNavigate();
   const [fechamentos, setFechamentos] = useState<IFechamentoWithOS[]>([]);
   const [pendingOss, setPendingOss] = useState<IOrdemDeServico[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
+    search: "", osId: "", status: "ALL", operadora: "", fornecedor: "",
+    startDate: "", endDate: "", activePeriod: "ALL",
+  });
+
 
   // Confirm Delete Modal
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -46,25 +50,6 @@ export const FechamentoFinanceiroPage = () => {
     clienteTelefone: string;
   } | null>(null);
 
-  // Date Filters
-  const [activeFilter, setActiveFilter] = useState<
-    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
-  >("WEEK");
-
-  const [filterStart, setFilterStart] = useState(() => {
-    const now = new Date();
-    const weekAgo = new Date(now);
-    weekAgo.setDate(now.getDate() - 7);
-    return weekAgo.toLocaleDateString("en-CA");
-  });
-
-  const [filterEnd, setFilterEnd] = useState(() => {
-    return new Date().toLocaleDateString("en-CA");
-  });
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -143,55 +128,12 @@ export const FechamentoFinanceiroPage = () => {
     );
   };
 
-  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
-    setActiveFilter(type);
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-CA");
+  // Filtered via hook
+  const filteredFechamentos = useUniversalFilter(fechamentos, universalFilters, {
+    dateField: "data_fechamento_financeiro",
+    osIdField: "id_os",
+  }).sort((a, b) => b.id_fechamento_financeiro - a.id_fechamento_financeiro);
 
-    if (type === "TODAY") {
-      setFilterStart(todayStr);
-      setFilterEnd(todayStr);
-    } else if (type === "WEEK") {
-      const weekAgo = new Date(now);
-      weekAgo.setDate(now.getDate() - 7);
-      setFilterStart(weekAgo.toLocaleDateString("en-CA"));
-      setFilterEnd(todayStr);
-    } else if (type === "MONTH") {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      setFilterStart(firstDay.toLocaleDateString("en-CA"));
-      setFilterEnd(todayStr);
-    }
-  };
-
-  const filteredFechamentos = fechamentos
-    .filter((f) => {
-      if (filterStart) {
-        const recordDate = new Date(f.data_fechamento_financeiro);
-        const recordDateLocal = recordDate.toLocaleDateString("en-CA");
-        if (recordDateLocal < filterStart) return false;
-      }
-      if (filterEnd) {
-        const recordDate = new Date(f.data_fechamento_financeiro);
-        const recordDateLocal = recordDate.toLocaleDateString("en-CA");
-        if (recordDateLocal > filterEnd) return false;
-      }
-
-      if (!searchTerm) return true;
-      const q = searchTerm.toLowerCase();
-
-      const id = String(f.id_fechamento_financeiro);
-      const fullId = `#${id}`;
-      const osId = String(f.id_os);
-      const fullOsId = `#${osId}`;
-      const plate = f.ordem_de_servico?.veiculo?.placa?.toLowerCase() || "";
-      const model = f.ordem_de_servico?.veiculo?.modelo?.toLowerCase() || "";
-      const color = f.ordem_de_servico?.veiculo?.cor?.toLowerCase() || "";
-
-      return [id, fullId, osId, fullOsId, plate, model, color]
-        .join(" ")
-        .includes(q);
-    })
-    .sort((a, b) => b.id_fechamento_financeiro - a.id_fechamento_financeiro);
 
   return (
     <PageLayout
@@ -229,7 +171,7 @@ export const FechamentoFinanceiroPage = () => {
                   >
                     <td className="p-4">
                       <div className="font-bold text-neutral-600">
-                        #{os.id_os}
+                        OS | {os.id_os}
                       </div>
                       {/* Show both Date and Time if available */}
                       {os.dt_abertura && (
@@ -330,73 +272,16 @@ export const FechamentoFinanceiroPage = () => {
         Histórico de Fechamentos
       </h2>
 
-      {/* FILTERS & SEARCH */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
-        <div className="w-full md:flex-1 relative">
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por ID ou Placa..."
-            icon={Search}
-            className="w-full"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-          {/* Quick Filters Group */}
-          <div className="flex bg-neutral-100 p-1 rounded-xl shrink-0 gap-1">
-            <FilterButton
-              active={activeFilter === "TODAY"}
-              onClick={() => applyQuickFilter("TODAY")}
-            >
-              Hoje
-            </FilterButton>
-            <FilterButton
-              active={activeFilter === "WEEK"}
-              onClick={() => applyQuickFilter("WEEK")}
-            >
-              Semana
-            </FilterButton>
-            <FilterButton
-              active={activeFilter === "MONTH"}
-              onClick={() => applyQuickFilter("MONTH")}
-            >
-              Mês
-            </FilterButton>
-          </div>
-
-          {/* Manual Date Inputs */}
-          <div className="flex gap-2 items-center">
-            <Input
-              type="date"
-              value={filterStart}
-              onChange={(e) => {
-                setFilterStart(e.target.value);
-                setActiveFilter("CUSTOM");
-              }}
-              className={`h-10 text-xs font-bold ${
-                activeFilter === "CUSTOM"
-                  ? "border-primary-300 text-primary-700"
-                  : ""
-              }`}
-            />
-            <span className="text-neutral-400 self-center">-</span>
-            <Input
-              type="date"
-              value={filterEnd}
-              onChange={(e) => {
-                setFilterEnd(e.target.value);
-                setActiveFilter("CUSTOM");
-              }}
-              className={`h-10 text-xs font-bold ${
-                activeFilter === "CUSTOM"
-                  ? "border-primary-300 text-primary-700"
-                  : ""
-              }`}
-            />
-          </div>
-        </div>
-      </div>
+      {/* Filters */}
+      <UniversalFilters
+        onFilterChange={setUniversalFilters}
+        config={{
+          enableFornecedor: false,
+          enableOperadora: false,
+          enableOsId: true,
+          enableStatus: false,
+        }}
+      />
 
       <Card className="p-0 overflow-hidden min-h-[300px]">
         <div className="overflow-x-auto">
@@ -418,7 +303,7 @@ export const FechamentoFinanceiroPage = () => {
                   <td colSpan={7} className="p-12 text-center text-neutral-500">
                     <div className="flex flex-col items-center gap-4">
                       <p className="font-bold text-neutral-400 mb-2">
-                        {searchTerm || filterStart
+                        {universalFilters.search || universalFilters.startDate
                           ? "Nenhum registro encontrado para a busca."
                           : "Nenhum fechamento realizado ainda."}
                       </p>
@@ -433,7 +318,7 @@ export const FechamentoFinanceiroPage = () => {
                   >
                     <td className="p-4">
                       <span className="font-bold text-neutral-600 px-2 py-1 rounded text-sm">
-                        #{fech.id_os}
+                        OS | {fech.id_os}
                       </span>
                     </td>
                     <td className="p-4">

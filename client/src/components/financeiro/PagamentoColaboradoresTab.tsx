@@ -7,7 +7,6 @@ import { Button, Card, Checkbox, Modal, Select, FilterButton } from "../ui";
 import { toast } from "react-toastify";
 import {
   Plus,
-  Search,
   AlertCircle,
   Calculator,
   CheckCircle2,
@@ -16,8 +15,10 @@ import {
   CheckSquare,
   Square,
   Save,
-  X,
 } from "lucide-react";
+import { UniversalFilters } from "../common/UniversalFilters";
+import type { UniversalFiltersState } from "../common/UniversalFilters";
+import { useUniversalFilter } from "../../hooks/useUniversalFilter";
 import type {
   IPagamentoColaborador,
   IPendenciaColaborador,
@@ -48,13 +49,12 @@ export const PagamentoColaboradoresTab = ({
   // Novo Pagamento Modal State
   const [showNewPaymentModal, setShowNewPaymentModal] = useState(false);
 
-  // Filters (History)
-  const [historySearchTerm, setHistorySearchTerm] = useState("");
-  const [activeFilter, setActiveFilter] = useState<
-    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
-  >("WEEK");
-  const [filterHistStart, setFilterHistStart] = useState("");
-  const [filterHistEnd, setFilterHistEnd] = useState("");
+
+  // Filters (History) — replaced by UniversalFilters
+  const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
+    search: "", osId: "", status: "ALL", operadora: "", fornecedor: "",
+    startDate: "", endDate: "", activePeriod: "ALL",
+  });
 
   // --- NEW PAYMENT STATE ---
   const [paymentMode, setPaymentMode] = useState<"PAGAMENTO" | "ADIANTAMENTO">(
@@ -152,33 +152,11 @@ export const PagamentoColaboradoresTab = ({
     return { porcentagem, valorComissao };
   };
 
-  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
-    setActiveFilter(type);
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-CA");
+  const applyQuickFilter = (_type: string) => {}; // replaced by UniversalFilters
 
-    if (type === "TODAY") {
-      setFilterHistStart(todayStr);
-      setFilterHistEnd(todayStr);
-    } else if (type === "WEEK") {
-      const weekAgo = new Date(now);
-      weekAgo.setDate(now.getDate() - 7);
-      setFilterHistStart(weekAgo.toLocaleDateString("en-CA"));
-      setFilterHistEnd(todayStr);
-    } else if (type === "MONTH") {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      setFilterHistStart(firstDay.toLocaleDateString("en-CA"));
-      setFilterHistEnd(todayStr);
-    }
-  };
-
-  // --- FLATTENING HISTORIC (Same logic as PagamentoEquipePage) ---
   const flattenedHistorico = useMemo(() => {
     const flatList: any[] = [];
     historico.forEach((h) => {
-      const dtPagamento = h.dt_pagamento ? h.dt_pagamento.split("T")[0] : "";
-      if (filterHistStart && dtPagamento < filterHistStart) return;
-      if (filterHistEnd && dtPagamento > filterHistEnd) return;
 
       // 1. Commissions
       if (h.servicos_pagos && h.servicos_pagos.length > 0) {
@@ -247,21 +225,15 @@ export const PagamentoColaboradoresTab = ({
       }
     });
 
-    if (!historySearchTerm) return flatList;
-    const low = historySearchTerm.toLowerCase();
-    return flatList.filter((item) => {
-      if (item.date && item.date.includes(low)) return true;
-      if (String(item.value).includes(low)) return true;
-      // ... simple search
-      return false;
-    });
+    return flatList;
   }, [
     historico,
-    filterHistStart,
-    filterHistEnd,
-    historySearchTerm,
     selectedFuncId,
   ]);
+
+  const filteredHistorico = useUniversalFilter(flattenedHistorico, universalFilters, {
+    dateField: "date",
+  });
 
   const totalHistorico = useMemo(() => {
     return flattenedHistorico.reduce((acc, item) => {
@@ -594,68 +566,16 @@ export const PagamentoColaboradoresTab = ({
 
           {activeTab === "PAGO" && (
             <div className="space-y-4">
-              {/* FILTERS */}
-              <div className="flex flex-col md:flex-row gap-4 items-end justify-between border-b border-neutral-100 pb-4 mb-4">
-                <div className="w-full md:max-w-md">
-                  <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                    Buscar
-                  </label>
-                  <div className="relative">
-                    <Search
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                      size={18}
-                    />
-                    <input
-                      type="text"
-                      value={historySearchTerm}
-                      onChange={(e) => setHistorySearchTerm(e.target.value)}
-                      placeholder="Buscar no histórico..."
-                      className="w-full h-10 pl-10 pr-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                      Período
-                    </label>
-                    <div className="flex bg-neutral-100 p-1 rounded-xl gap-1">
-                      <FilterButton
-                        active={activeFilter === "TODAY"}
-                        onClick={() => applyQuickFilter("TODAY")}
-                      >
-                        Hoje
-                      </FilterButton>
-                      <FilterButton
-                        active={activeFilter === "WEEK"}
-                        onClick={() => applyQuickFilter("WEEK")}
-                      >
-                        Semana
-                      </FilterButton>
-                      <FilterButton
-                        active={activeFilter === "MONTH"}
-                        onClick={() => applyQuickFilter("MONTH")}
-                      >
-                        Mês
-                      </FilterButton>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => {
-                      setHistorySearchTerm("");
-                      setFilterHistStart("");
-                      setFilterHistEnd("");
-                      setActiveFilter("WEEK");
-                      applyQuickFilter("WEEK");
-                    }}
-                    variant="outline"
-                    size="sm"
-                    icon={X}
-                  >
-                    Limpar
-                  </Button>
-                </div>
-              </div>
+              {/* Universal Filters */}
+              <UniversalFilters
+                onFilterChange={setUniversalFilters}
+                config={{
+                  enableFornecedor: false,
+                  enableOperadora: false,
+                  enableOsId: false,
+                  enableStatus: false,
+                }}
+              />
 
               <Card className="p-0 overflow-hidden">
                 <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex justify-between items-center">
@@ -682,7 +602,7 @@ export const PagamentoColaboradoresTab = ({
                     </tr>
                   </thead>
                   <tbody className="">
-                    {flattenedHistorico.length === 0 ? (
+                    {filteredHistorico.length === 0 ? (
                       <tr>
                         <td
                           colSpan={5}
@@ -692,7 +612,7 @@ export const PagamentoColaboradoresTab = ({
                         </td>
                       </tr>
                     ) : (
-                      flattenedHistorico.map((h, i) => (
+                      filteredHistorico.map((h, i) => (
                         <tr key={i} className="hover:bg-neutral-50">
                           <td className="p-4 text-sm font-medium text-gray-900">
                             {new Date(h.date).toLocaleDateString()}
