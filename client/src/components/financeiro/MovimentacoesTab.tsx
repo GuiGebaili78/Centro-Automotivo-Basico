@@ -371,19 +371,6 @@ export const MovimentacoesTab = () => {
   const { totalInflow, totalOutflow, balance } = summaries;
 
 
-  const handleOpenCreate = () => {
-    setEditingItem(null);
-    setFormData({
-      descricao: "",
-      valor: "",
-      tipo_movimentacao: "ENTRADA",
-      categoria: "OUTROS",
-      id_categoria: undefined,
-      obs: "",
-    });
-    setIsModalOpen(true);
-  };
-
 
   const handleOpenEdit = (entry: any) => {
     setEditingItem(entry);
