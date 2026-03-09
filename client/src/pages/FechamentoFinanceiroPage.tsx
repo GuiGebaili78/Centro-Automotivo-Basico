@@ -51,6 +51,12 @@ export const FechamentoFinanceiroPage = () => {
   } | null>(null);
 
 
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Handle deep-link redirect via URL param
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const urlIdOs = params.get("id_os");

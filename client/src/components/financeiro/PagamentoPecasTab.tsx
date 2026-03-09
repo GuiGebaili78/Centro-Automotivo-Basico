@@ -38,17 +38,46 @@ export const PagamentoPecasTab = ({
   setStatusMsg,
   setLoading,
 }: PagamentoPecasTabProps) => {
-  // State
+  // ── Universal Filters ──────────────────────────────────────────────────────
   const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
     search: "", osId: "", status: "PENDING", operadora: "", fornecedor: "",
     startDate: "", endDate: "", activePeriod: "ALL",
   });
 
+  // Supplier list for the select (id as String for exact match)
   const fornecedoresList = fornecedores.map((f) => ({
     id: String(f.id_fornecedor),
     nome: f.nome,
   }));
 
+  // Elevate id_os to root — IPagamentoPeca has no top-level id_os
+  const pagamentosMapeados = payments.map((p) => ({
+    ...p,
+    id_os: (p as any).item_os?.id_os || (p as any).item_os?.ordem_de_servico?.id_os,
+  }));
+
+  // Filtered array via hook
+  const filteredPayments = useUniversalFilter(pagamentosMapeados, universalFilters, {
+    dateField: "data_compra",
+    statusField: "pago_ao_fornecedor",
+    paidValue: true,
+    pendingValue: false,
+    fornecedorField: "id_fornecedor",
+    osIdField: "id_os",
+  }).sort(
+    (a, b) =>
+      new Date(b.data_compra).getTime() - new Date(a.data_compra).getTime(),
+  );
+
+  // ── Totals ─────────────────────────────────────────────────────────────────
+  const totalPending = filteredPayments
+    .filter((p) => !p.pago_ao_fornecedor)
+    .reduce((acc, p) => acc + Number(p.custo_real), 0);
+  const totalPaid = filteredPayments
+    .filter((p) => p.pago_ao_fornecedor)
+    .reduce((acc, p) => acc + Number(p.custo_real), 0);
+
+  // ── Modal State ────────────────────────────────────────────────────────────
   const [editPayment, setEditPayment] = useState<any | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
@@ -58,28 +87,7 @@ export const PagamentoPecasTab = ({
     onConfirm: () => void;
   }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
-  // Filtered via hook
-  const filteredPayments = useUniversalFilter(payments, universalFilters, {
-    dateField: "data_compra",
-    statusField: "pago_ao_fornecedor",
-    paidValue: true,
-    pendingValue: false,
-    fornecedorField: "id_fornecedor",
-    // osIdField omitted — IPagamentoPeca has no direct id_os; Nº OS search via busca geral
-  }).sort(
-    (a, b) =>
-      new Date(b.data_compra).getTime() - new Date(a.data_compra).getTime(),
-  );
-
-  const totalPending = filteredPayments
-    .filter((p) => !p.pago_ao_fornecedor)
-    .reduce((acc, p) => acc + Number(p.custo_real), 0);
-  const totalPaid = filteredPayments
-    .filter((p) => p.pago_ao_fornecedor)
-    .reduce((acc, p) => acc + Number(p.custo_real), 0);
-
-
-  // Actions
+  // ── Actions ────────────────────────────────────────────────────────────────
   const handleTogglePayment = async (
     paymentId: number,
     currentStatus: boolean,
@@ -152,8 +160,10 @@ export const PagamentoPecasTab = ({
         },
       );
 
-      if (editPayment.item_os && editPayment.ref_nota) {
-        await OsItemsService.update(editPayment.item_os.id_iten, {
+      // Update reference code on the OS item if available
+      const itemOs = (editPayment as any).item_os;
+      if (itemOs && editPayment.ref_nota) {
+        await OsItemsService.update(itemOs.id_iten, {
           codigo_referencia: editPayment.ref_nota,
         });
       }
@@ -183,8 +193,10 @@ export const PagamentoPecasTab = ({
     setShowEditModal(true);
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
       {/* Universal Filters */}
       <UniversalFilters
         onFilterChange={setUniversalFilters}
@@ -206,7 +218,7 @@ export const PagamentoPecasTab = ({
         <div className="bg-red-50 p-6 rounded-2xl border border-red-100 flex items-center justify-between">
           <div>
             <p className="text-sm font-black text-red-400 uppercase tracking-widest">
-              Total Pendente (Selecionado)
+              Total Pendente (Filtrado)
             </p>
             <p className="text-2xl font-bold text-red-600">
               {formatCurrency(totalPending)}
@@ -219,7 +231,7 @@ export const PagamentoPecasTab = ({
         <div className="bg-green-50 p-6 rounded-2xl border border-green-100 flex items-center justify-between">
           <div>
             <p className="text-sm font-black text-green-400 uppercase tracking-widest">
-              Total Pago (Selecionado)
+              Total Pago (Filtrado)
             </p>
             <p className="text-2xl font-bold text-green-600">
               {formatCurrency(totalPaid)}
@@ -246,7 +258,7 @@ export const PagamentoPecasTab = ({
               <th className="p-4 text-center w-16 rounded-tr-xl">Editar</th>
             </tr>
           </thead>
-          <tbody className="">
+          <tbody>
             {filteredPayments.length === 0 ? (
               <tr>
                 <td
@@ -272,12 +284,12 @@ export const PagamentoPecasTab = ({
                   </td>
                   <td className="p-4">
                     <span className="font-mono text-sm text-neutral-600 bg-neutral-100 px-2 py-1 rounded border border-neutral-200 w-fit">
-                      {p.item_os?.codigo_referencia || "---"}
+                      {(p as any).item_os?.codigo_referencia || "---"}
                     </span>
                   </td>
                   <td className="p-4">
                     <p className="font-bold text-neutral-800">
-                      {p.item_os?.descricao}
+                      {(p as any).item_os?.descricao}
                     </p>
                   </td>
                   <td className="p-4">
@@ -292,16 +304,15 @@ export const PagamentoPecasTab = ({
                     <div className="flex flex-col">
                       <div className="flex flex-col">
                         <span className="font-bold uppercase text-neutral-800 leading-tight">
-                          {p.item_os?.ordem_de_servico?.veiculo?.modelo ||
-                            "S/M"}{" "}
-                          • {p.item_os?.ordem_de_servico?.veiculo?.cor || "S/C"}
+                          {(p as any).item_os?.ordem_de_servico?.veiculo?.modelo || "S/M"}{" "}
+                          • {(p as any).item_os?.ordem_de_servico?.veiculo?.cor || "S/C"}
                         </span>
                         <span className="text-xs font-bold uppercase text-primary-600 leading-tight mt-0.5">
-                          {p.item_os?.ordem_de_servico?.veiculo?.placa || "S/P"}
+                          {(p as any).item_os?.ordem_de_servico?.veiculo?.placa || "S/P"}
                         </span>
                       </div>
                       <p className="text-sm font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded w-fit mt-1">
-                        OS | {p.item_os?.id_os}
+                        OS | {(p as any).item_os?.id_os}
                       </p>
                     </div>
                   </td>
