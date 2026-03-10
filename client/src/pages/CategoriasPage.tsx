@@ -127,7 +127,7 @@ export const CategoriasPage = () => {
                     }`}
                   >
                     {/* Nome */}
-                    <td className="px-5 py-3.5 font-medium text-neutral-800">
+                    <td className="px-5 py-3.5 text-base font-normal text-neutral-900">
                       <div className="flex items-center gap-2">
                         {cat.parentId ? (
                           <ChevronRight
@@ -135,18 +135,18 @@ export const CategoriasPage = () => {
                             className="text-neutral-300 shrink-0"
                           />
                         ) : (
-                          <Tag size={14} className="text-orange-400 shrink-0" />
+                          <Tag size={14} className="text-neutral-400 shrink-0" />
                         )}
                         {cat.nome}
                       </div>
                     </td>
 
                     {/* Pai */}
-                    <td className="px-5 py-3.5 text-neutral-400 text-xs">
+                    <td className="px-5 py-3.5 text-neutral-600 text-base font-normal">
                       {pai ? (
                         pai.nome
                       ) : (
-                        <span className="text-neutral-200">—</span>
+                        <span className="text-neutral-300">—</span>
                       )}
                     </td>
 

@@ -37,6 +37,8 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { ConfiguracaoPage } from "./pages/ConfiguracaoPage";
 import { CategoriasPage } from "./pages/CategoriasPage";
 import { OperadoraCartaoPage } from "./pages/OperadoraCartaoPage";
+import { RecebiveisPage } from "./pages/RecebiveisPage";
+import { ContasBancariasPage } from "./pages/ContasBancariasPage";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -60,6 +62,11 @@ const router = createBrowserRouter(
       <Route path="/funcionario" element={<FuncionarioPage />} />
       <Route path="/pessoa" element={<PessoaPage />} />
       <Route path="/tipo" element={<TipoPage />} />
+      
+      {/* Financeiro / Caixa / Recebíveis */}
+      <Route path="/caixa" element={<LivroCaixaPage />} />
+      <Route path="/recebiveis" element={<RecebiveisPage />} />
+
       <Route
         path="/fechamento-financeiro"
         element={<FechamentoFinanceiroPage />}
@@ -82,16 +89,19 @@ const router = createBrowserRouter(
         path="/financeiro/extrato/:idConta"
         element={<ExtratoBancarioPage />}
       />
-      <Route path="/financeiro/operadoras" element={<OperadoraCartaoPage />} />
       <Route path="/financeiro/equipe" element={<PagamentoEquipePage />} />{" "}
       {/* Nova Rota */}
       <Route path="/pagamento-equipe" element={<PagamentoEquipePage />} />
       <Route path="/pagamento-equipe/novo" element={<NovoPagamentoPage />} />
       <Route path="/fornecedor" element={<FornecedorPage />} />
       <Route path="/pagamento-peca" element={<PagamentoPecaPage />} />
+      
       {/* Configurações */}
       <Route path="/configuracoes" element={<ConfiguracaoPage />} />
       <Route path="/configuracoes/categorias" element={<CategoriasPage />} />
+      <Route path="/configuracoes/contas-bancarias" element={<ContasBancariasPage />} />
+      <Route path="/configuracoes/operadoras" element={<OperadoraCartaoPage />} />
+
       {/* Search Pages */}
       <Route path="/search-cliente" element={<SearchClientePage />} />
       <Route path="/search-veiculo" element={<SearchVeiculoPage />} />

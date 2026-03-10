@@ -22,8 +22,6 @@ import {
   CheckCircle,
   Trash2,
   Edit,
-  FileText,
-  User,
   Link,
   Settings,
 } from "lucide-react";
@@ -238,16 +236,15 @@ export const ContasAPagarPage = () => {
       <Card className="p-0 overflow-hidden">
         <table className="tabela-limpa w-full">
           <thead>
-            <tr>
-              <th>Vencimento</th>
-              <th>Descrição</th>
-              <th>Credor / Docs</th>
-              <th className="text-right">Valor</th>
-              <th className="text-center">Status</th>
-              <th className="text-right">Ações</th>
+            <tr className="bg-neutral-50 border-b border-neutral-200 text-sm font-medium text-gray-600">
+              <th className="p-4 text-left">Vencimento / Status</th>
+              <th className="p-4 text-left">Descrição</th>
+              <th className="p-4 text-left">Categoria</th>
+              <th className="p-4 text-right min-w-[150px]">Valor</th>
+              <th className="p-4 text-center">Ações</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-neutral-100">
             {loading ? (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-neutral-400">
@@ -270,100 +267,67 @@ export const ContasAPagarPage = () => {
                   className="hover:bg-neutral-50 transition-colors group"
                 >
                   <td className="p-4">
-                    <div className="font-bold text-neutral-700 text-sm flex items-center gap-2">
-                      <Calendar size={14} className="text-neutral-400" />
-                      {/* Fix Timezone Display: Use UTC to calculate date */}
-                      {new Date(conta.dt_vencimento)
-                        .getUTCDate()
-                        .toString()
-                        .padStart(2, "0")}
-                      /
-                      {(new Date(conta.dt_vencimento).getUTCMonth() + 1)
-                        .toString()
-                        .padStart(2, "0")}
-                      /{new Date(conta.dt_vencimento).getUTCFullYear()}
-                    </div>
-                    {conta.dt_vencimento && conta.dt_cadastro && (
-                      <div className="text-sm text-neutral-400 mt-0.5 ml-6">
-                        {new Date(conta.dt_cadastro).toLocaleTimeString(
-                          "pt-BR",
-                          { hour: "2-digit", minute: "2-digit" },
+                    <div className="flex flex-col">
+                      <div className="text-base text-neutral-900 font-normal flex items-center gap-2">
+                        <Calendar size={14} className="text-neutral-400" />
+                        {new Date(conta.dt_vencimento).getUTCDate().toString().padStart(2, "0")}/
+                        {(new Date(conta.dt_vencimento).getUTCMonth() + 1).toString().padStart(2, "0")}/
+                        {new Date(conta.dt_vencimento).getUTCFullYear()}
+                      </div>
+                      <div className="mt-1 min-h-[1.5rem]">
+                        <span className={`px-2 py-0.5 rounded-md text-sm uppercase tracking-wider ${
+                          conta.status === "PAGO"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : new Date(conta.dt_vencimento) < new Date() && conta.status !== "PAGO"
+                              ? "bg-red-100 text-red-600"
+                              : "bg-orange-100 text-orange-700"
+                        }`}>
+                          {conta.status === "PAGO"
+                            ? "PAGO"
+                            : new Date(conta.dt_vencimento) < new Date() && conta.status !== "PAGO"
+                              ? "ATRASADO"
+                              : "PENDENTE"}
+                        </span>
+                      </div>
+                      <div className="text-sm text-neutral-500 font-normal mt-1 min-h-[1.25rem]">
+                        {conta.dt_cadastro ? new Date(conta.dt_cadastro).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : <>&nbsp;</>}
+                        {conta.dt_pagamento && conta.status === "PAGO" && (
+                          <span className="text-emerald-600 ml-2 font-normal">
+                             (Pago em: {new Date(conta.dt_pagamento).getUTCDate().toString().padStart(2, "0")}/
+                             {(new Date(conta.dt_pagamento).getUTCMonth() + 1).toString().padStart(2, "0")})
+                          </span>
                         )}
                       </div>
-                    )}
-                    {conta.dt_pagamento && conta.status === "PAGO" && (
-                      <div className="text-sm text-emerald-600 font-bold mt-1 ml-6">
-                        Pago em:{" "}
-                        {new Date(conta.dt_pagamento)
-                          .getUTCDate()
-                          .toString()
-                          .padStart(2, "0")}
-                        /
-                        {(new Date(conta.dt_pagamento).getUTCMonth() + 1)
-                          .toString()
-                          .padStart(2, "0")}
-                      </div>
-                    )}
+                    </div>
                   </td>
                   <td className="p-4">
-                    <div className="font-bold text-neutral-900">
-                      {conta.descricao}
-                    </div>
-                    <div className="text-sm font-bold text-neutral-400 uppercase bg-neutral-100 px-2 py-0.5 rounded w-fit mt-1">
-                      {conta.categoria}
-                    </div>
-                    {conta.obs && (
-                      <div className="text-sm text-neutral-500 mt-1 italic max-w-[200px] truncate">
-                        {conta.obs}
+                    <div className="flex flex-col">
+                      <div className="text-base text-neutral-900 font-normal flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap max-w-[300px]" title={conta.descricao}>
+                        {conta.descricao}
+                        {conta.num_documento && <span className="text-sm text-neutral-500">| Doc: {conta.num_documento}</span>}
+                        {conta.url_anexo && (
+                          <a href={conta.url_anexo} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline flex items-center gap-1 shrink-0">
+                            <Link size={12} /> Anexo
+                          </a>
+                        )}
                       </div>
-                    )}
+                      <div className="text-base text-neutral-600 font-normal min-h-[1.5rem] mt-1">
+                        {conta.credor ? `Pago a: ${conta.credor}` : "Credor não informado"}
+                      </div>
+                      <div className="text-sm text-neutral-500 font-normal italic min-h-[1.25rem] truncate max-w-[300px]">
+                        {conta.obs || "\u00A0"}
+                      </div>
+                    </div>
                   </td>
                   <td className="p-4">
-                    {conta.credor && (
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-700 mb-1">
-                        <User size={12} className="text-neutral-400" />{" "}
-                        {conta.credor}
-                      </div>
-                    )}
-                    {conta.num_documento && (
-                      <div className="flex items-center gap-1.5 text-sm text-neutral-500 font-bold">
-                        <FileText size={12} className="text-neutral-400" /> Doc:{" "}
-                        {conta.num_documento}
-                      </div>
-                    )}
-                    {conta.url_anexo && (
-                      <a
-                        href={conta.url_anexo}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-sm text-blue-500 font-bold hover:underline mt-1"
-                      >
-                        <Link size={12} /> Ver Anexo
-                      </a>
-                    )}
+                    <div className="flex flex-col">
+                       <div className="text-base text-neutral-900 font-normal lowercase">{conta.categoria || "\u00A0"}</div>
+                       <div className="text-sm text-neutral-500 font-normal min-h-[1.5rem] mt-1">&nbsp;</div>
+                       <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                    </div>
                   </td>
-                  <td className="p-4 text-right font-bold text-neutral-600">
-                    {formatCurrency(Number(conta.valor))}
-                  </td>
-                  <td className="p-4 text-center">
-                    <span
-                      className={`px-2 py-1 rounded-md text-sm font-bold uppercase ${
-                        conta.status === "PAGO"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : // Check overdue
-                            new Date(conta.dt_vencimento) < new Date() &&
-                              conta.status !== "PAGO"
-                            ? "bg-red-100 text-red-600"
-                            : "bg-orange-100 text-orange-700"
-                      }`}
-                    >
-                      {conta.status === "PAGO"
-                        ? "PAGO"
-                        : new Date(conta.dt_vencimento) < new Date() &&
-                            conta.status !== "PAGO"
-                          ? "ATRASADO"
-                          : "PENDENTE"}
-                    </span>
+                  <td className="p-4 text-right">
+                     <span className="text-base text-neutral-600 font-normal">{formatCurrency(Number(conta.valor))}</span>
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

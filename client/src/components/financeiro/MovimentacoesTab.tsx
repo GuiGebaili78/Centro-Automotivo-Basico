@@ -594,47 +594,67 @@ export const MovimentacoesTab = () => {
                       </div>
                     </td>
                     <td
-                      className={`p-4 font-bold ${entry.deleted_at ? "line-through text-neutral-400" : "text-neutral-900"}`}
+                      className={`p-4 ${entry.deleted_at ? "line-through text-neutral-400" : "text-neutral-900"}`}
                     >
-                      <div className="text-base text-gray-900">
-                        {entry.description.replace(/OS Nº (\d+)/g, "OS | $1")}
-                      </div>
+                      {(() => {
+                         // Pagamento de Fornecedores
+                         if (entry.id.startsWith("out-")) {
+                            const os = entry.originalData?.item_os?.ordem_de_servico;
+                            const veh = os?.veiculo;
+                            return (
+                               <div className="flex flex-col">
+                                  <div className="text-base text-neutral-600 font-normal">Pg. Auto Peças - OS | {os?.id_os || "?"}</div>
+                                  <div className="text-base text-neutral-600 font-normal">{veh?.modelo || "Veículo"} - {veh?.cor || "Cor"} - {veh?.placa || "Placa"}</div>
+                                  <div className="text-sm text-neutral-500 font-normal">Pago a: {entry.supplier || "Fornecedor"}</div>
+                               </div>
+                            );
+                         }
+                         // Recebimento da OS
+                         if (entry.id.startsWith("in-")) {
+                            const os = entry.originalData?.ordem_de_servico;
+                            const veh = os?.veiculo;
+                            return (
+                               <div className="flex flex-col">
+                                  <div className="text-base text-neutral-900 font-normal">OS | {os?.id_os || "?"} - {veh?.modelo || "Veículo"} - {veh?.cor || ""} - {veh?.placa || "Placa"}</div>
+                                  <div className="text-base text-neutral-900 font-normal">{os?.diagnostico || os?.defeito_relatado || "Sem diagnóstico"}</div>
+                                  <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                               </div>
+                            );
+                         }
+                         // Pagamento Equipes / Contas a Pagar
+                         const isEquipe = entry.originalData?.tipo_lancamento === "PAGAMENTO_EQUIPE" || entry.category?.toLowerCase().includes("equipe");
+                         if (entry.source === "MANUAL") {
+                            if (isEquipe) {
+                               const nomeMatch = entry.description.split(" - ")[1] || entry.description;
+                               const isVale = entry.originalData?.tipo_lancamento === "VALE" || entry.description.toLowerCase().includes("adiantamento");
+                               return (
+                                  <div className="flex flex-col">
+                                     <div className="text-base text-neutral-900 font-normal">Pg. Equipe - {nomeMatch}</div>
+                                     <div className="text-base text-neutral-900 font-normal">{isVale ? "Adiantamento" : "Pagamento"}</div>
+                                     <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                               );
+                            } else {
+                               // Contas
+                               return (
+                                  <div className="flex flex-col">
+                                     <div className="text-base text-neutral-900 font-normal">Pg. de Contas: {entry.description}</div>
+                                     <div className="text-base text-neutral-900 font-normal">{entry.supplier ? `Pago a: ${entry.supplier}` : <>&nbsp;</>}</div>
+                                     <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                               );
+                            }
+                         }
 
-                      {/* Sub-header for AUTO (Clients) or ANY (Suppliers) */}
-                      <div className="mt-1">
-                        {entry.type === "OUT" ? (
-                          entry.supplier && (
-                            <span className="text-sm font-medium text-gray-600">
-                              Pago a: {entry.supplier}
-                            </span>
-                          )
-                        ) : entry.source === "AUTO" ? (
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-600">
-                              {entry.client}
-                            </span>
-                            {entry.vehicle && (
-                              <div className="flex flex-col mt-0.5">
-                                <span className="text-base font-medium uppercase text-gray-900">
-                                  {
-                                    entry.vehicle
-                                      .split(" - ")[1]
-                                      ?.split(" (")[0]
-                                  }{" "}
-                                  •{" "}
-                                  {entry.vehicle
-                                    .split("(")[1]
-                                    ?.replace(")", "")}
-                                </span>
-                                <span className="text-base uppercase text-primary-600">
-                                  {entry.vehicle.split(" - ")[0]}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ) : null}
-                      </div>
-
+                         // Fallback
+                         return (
+                            <div className="flex flex-col">
+                               <div className="text-base text-neutral-900 font-normal">{entry.description.replace(/OS Nº (\d+)/g, "OS | $1")}</div>
+                               <div className="text-base text-neutral-900 font-normal min-h-[1.25rem]">&nbsp;</div>
+                               <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                            </div>
+                         );
+                      })()}
                       {/* Show manual obs if exists */}
                       {entry.source === "MANUAL" && entry.obs && (
                         <div className="text-sm text-gray-400 mt-0.5 italic">
@@ -643,39 +663,57 @@ export const MovimentacoesTab = () => {
                       )}
                     </td>
                     <td className="p-4">
-                      <span
-                        className={`px-2 py-1 rounded-md text-sm font-bold uppercase tracking-wider ${
-                          entry.deleted_at
-                            ? "bg-neutral-100 text-neutral-500 line-through"
-                            : entry.type === "IN"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-red-50 text-red-700"
-                        }`}
-                      >
-                        {entry.deleted_at
-                          ? "CANCELADO"
+                      <span className={`px-2 py-1 rounded-md text-sm uppercase tracking-wider ${
+                        entry.deleted_at
+                          ? "bg-neutral-100 text-neutral-500 line-through"
                           : entry.type === "IN"
-                            ? "Entrada"
-                            : "Saída"}{" "}
-                        ({entry.source === "MANUAL" ? "M" : "A"})
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-red-50 text-red-700"
+                      }`}>
+                        {entry.deleted_at ? "CANCELADO" : entry.type === "IN" ? "Entrada" : "Saída"} ({entry.source === "MANUAL" ? "M" : "A"})
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className="text-base text-gray-900">
-                        {entry.category}
-                      </span>
+                      {/* Categoria L1 lowercase conforme regra geral */}
+                       <div className="flex flex-col">
+                          <div className="text-base text-neutral-900 font-normal lowercase">{entry.category || "outros"}</div>
+                          <div className="text-sm font-normal min-h-[1.25rem]">&nbsp;</div>
+                          <div className="text-sm font-normal min-h-[1.25rem]">&nbsp;</div>
+                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="flex flex-col">
-                        <span className="text-base text-gray-900 font-medium">
-                          {entry.conta_bancaria || "Caixa Geral / Indefinido"}
-                        </span>
-                        {entry.paymentMethod && (
-                          <span className="text-sm text-gray-500 uppercase mt-0.5">
-                            {entry.paymentMethod}
-                          </span>
-                        )}
-                      </div>
+                      {/* Conta / Origem com lógica de 3 linhas (referida como Categoria pelo usuário para as condicionais) */}
+                      {(() => {
+                         const bancoLowerCase = (entry.conta_bancaria || "Caixa Geral Indefinido").toLowerCase();
+                         if (entry.id.startsWith("out-") || entry.id.startsWith("man-")) {
+                            // Pg Fornecedores / Equipes / Contas usam esse fallback (L2/L3 vazios)
+                            return (
+                               <div className="flex flex-col">
+                                  <div className="text-base text-neutral-600 font-normal lowercase">{bancoLowerCase}</div>
+                                  <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                                  <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                               </div>
+                            );
+                         }
+                         if (entry.id.startsWith("in-")) {
+                            // Recebimento OS
+                            const method = entry.paymentMethod || entry.originalData?.forma_pagamento || "Não informado";
+                            return (
+                               <div className="flex flex-col">
+                                  <div className="text-base text-neutral-600 font-normal lowercase">{bancoLowerCase}</div>
+                                  <div className="text-base text-neutral-600 font-normal">{method}</div>
+                                  <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                               </div>
+                            );
+                         }
+                         return (
+                             <div className="flex flex-col">
+                                <div className="text-base text-neutral-600 font-normal lowercase">{bancoLowerCase}</div>
+                                <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                                <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                             </div>
+                         );
+                      })()}
                     </td>
                     <td
                       className={`p-4 text-right text-base font-medium whitespace-nowrap ${

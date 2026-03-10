@@ -338,12 +338,11 @@ export const PagamentoPecaPage = () => {
             <table className="tabela-limpa w-full">
               <thead>
                 <tr className="bg-neutral-50 text-sm font-bold text-neutral-500 uppercase tracking-widest">
-                  <th className="p-5">Data</th>
-                  <th className="p-5">Ref / Nota</th>
-                  <th className="p-5">Peça</th>
-                  <th className="p-5">Fornecedor</th>
-                  <th className="p-5">Veículo / OS</th>
-                  <th className="p-5">Status OS</th>
+                  <th className="p-5 text-left">OS / Data</th>
+                  <th className="p-5 text-left">Ref / Nota</th>
+                  <th className="p-5 text-left">Peça / Veículo</th>
+                  <th className="p-5 text-left">Fornecedor</th>
+                  <th className="p-5 text-center">Status OS</th>
                   <th className="p-5 text-right w-32">Valor Custo</th>
                   <th className="p-5 text-center w-24">Pagar</th>
                   <th className="p-5 text-right w-32">Ações</th>
@@ -366,68 +365,55 @@ export const PagamentoPecaPage = () => {
                       className={`group hover:bg-neutral-50 transition-colors ${p.pago_ao_fornecedor ? "bg-neutral-50/50" : ""}`}
                     >
                       <td className="p-5">
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-2 font-bold text-neutral-600 text-xs">
+                        <div className="flex flex-col">
+                          <div className="text-base text-neutral-900 font-normal">
+                            OS | {p.item_os?.id_os || p.item_os?.ordem_de_servico?.id_os || "N/A"}
+                          </div>
+                          <div className="flex items-center gap-2 text-base text-neutral-600 font-normal mt-1">
                             <Calendar size={14} className="text-neutral-400" />
                             <span>
                               {p.data_compra
-                                ? new Date(p.data_compra).toLocaleDateString()
+                                ? new Date(p.data_compra).toLocaleDateString("pt-BR")
                                 : p.item_os?.dt_cadastro
-                                  ? new Date(p.item_os.dt_cadastro).toLocaleDateString()
+                                  ? new Date(p.item_os.dt_cadastro).toLocaleDateString("pt-BR")
                                   : "N/A"}
                             </span>
                           </div>
-                          <div className="text-sm font-medium text-neutral-400 ml-6">
-                            {(p.data_compra || p.item_os?.dt_cadastro) &&
+                          <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">
+                            {(p.data_compra || p.item_os?.dt_cadastro) ?
                               new Date(
                                 p.data_compra || p.item_os.dt_cadastro,
-                              ).toLocaleTimeString([], {
+                              ).toLocaleTimeString("pt-BR", {
                                 hour: "2-digit",
                                 minute: "2-digit",
-                              })}
+                              }) : '\u00A0'}
                           </div>
                         </div>
                       </td>
                       <td className="p-5">
-                        <span className="font-mono text-xs font-black text-neutral-600 bg-neutral-100 px-2 py-1 rounded w-fit">
+                        <div className="text-base text-neutral-900 font-normal">
                           {p.item_os?.codigo_referencia || "---"}
-                        </span>
-                      </td>
-                      <td className="p-5">
-                        <p className="font-bold text-neutral-600 text-sm">
-                          {p.item_os?.descricao}
-                        </p>
-                      </td>
-                      <td className="p-5">
-                        <div className="flex items-center gap-2">
-                          <Truck size={14} className="text-orange-500" />
-                          <span className="font-bold text-neutral-700 text-xs uppercase">
-                            {p.fornecedor?.nome_fantasia || p.fornecedor?.nome}
-                          </span>
                         </div>
                       </td>
                       <td className="p-5">
                         <div className="flex flex-col">
-                          <p className="font-black text-neutral-800 text-xs uppercase tracking-widest bg-neutral-100 px-2 py-1 rounded w-fit">
-                            {p.item_os?.ordem_de_servico?.veiculo?.placa || "---"}
-                          </p>
-                          <p className="text-sm text-neutral-500 font-bold mt-1 uppercase">
-                            {p.item_os?.ordem_de_servico?.veiculo?.modelo || "N/A"}{" "}
-                            {p.item_os?.ordem_de_servico?.veiculo?.cor
-                              ? `• ${p.item_os.ordem_de_servico.veiculo.cor}`
-                              : ""}
-                          </p>
-                          <p className="text-sm text-neutral-400 font-bold mt-0.5">
-                            OS Nº {p.item_os?.id_os}
-                          </p>
-                          {p.item_os?.ordem_de_servico?.dt_entrega && (
-                            <p className="text-sm text-green-600 font-bold mt-1">
-                              Fim OS:{" "}
-                              {new Date(
-                                p.item_os.ordem_de_servico.dt_entrega,
-                              ).toLocaleDateString()}
-                            </p>
-                          )}
+                          <div className="text-base text-neutral-900 font-normal max-w-[200px] truncate" title={p.item_os?.descricao}>
+                            {p.item_os?.descricao || "N/I"}
+                          </div>
+                          <div className="text-base text-neutral-600 font-normal uppercase max-w-[200px] truncate mt-1">
+                            {p.item_os?.ordem_de_servico?.veiculo?.modelo || "VEÍCULO N/A"} {p.item_os?.ordem_de_servico?.veiculo?.cor ? `• ${p.item_os.ordem_de_servico.veiculo.cor}` : ""}
+                          </div>
+                          <div className="text-sm text-neutral-500 font-normal uppercase min-h-[1.25rem]">
+                            Placa: {p.item_os?.ordem_de_servico?.veiculo?.placa || "N/A"}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-5">
+                        <div className="flex items-center gap-2 text-base text-neutral-900 font-normal">
+                          <Truck size={14} className="text-neutral-400" />
+                          <span>
+                            {p.fornecedor?.nome_fantasia || p.fornecedor?.nome || "N/I"}
+                          </span>
                         </div>
                       </td>
                       <td className="p-5">
@@ -453,7 +439,7 @@ export const PagamentoPecaPage = () => {
                           );
                         })()}
                       </td>
-                      <td className="p-5 text-right font-bold text-neutral-600">
+                      <td className="p-5 text-right text-base text-neutral-900 font-normal">
                         {formatCurrency(Number(p.custo_real))}
                       </td>
                       <td className="p-5 text-center">

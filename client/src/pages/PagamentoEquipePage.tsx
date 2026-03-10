@@ -400,15 +400,15 @@ export const PagamentoEquipePage = () => {
                   <table className="tabela-limpa w-full">
                     <thead>
                       <tr>
-                        <th>OS / Data</th>
-                        <th>Veículo / Cliente</th>
-                        <th className="text-right">Valor Serviço</th>
-                        <th className="text-center">%</th>
-                        <th className="text-right">Valor A Receber</th>
-                        <th className="text-center">Status OS</th>
+                        <th className="text-left p-4">OS / Data</th>
+                        <th className="text-left p-4">Veículo / Cliente / Diagnóstico</th>
+                        <th className="text-left p-4">Valor Serviço</th>
+                        <th className="text-left p-4">%</th>
+                        <th className="text-left p-4">Valor A Receber</th>
+                        <th className="text-left p-4">Status OS</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-neutral-100">
                       {pendentes.length === 0 ? (
                         <tr>
                           <td
@@ -427,51 +427,48 @@ export const PagamentoEquipePage = () => {
                               key={`${item.id_os}-${idx}`}
                               className="group hover:bg-neutral-50 transition-colors"
                             >
-                              <td>
-                                <div className="font-bold text-neutral-600">
-                                  #{item.id_os}
-                                </div>
-                                <div className="text-sm text-neutral-400">
-                                  {new Date(
-                                    item.ordem_de_servico?.dt_abertura,
-                                  ).toLocaleDateString()}
-                                </div>
-                              </td>
-                              <td>
-                                <div className="text-xs font-bold text-neutral-600">
-                                  {item.ordem_de_servico?.veiculo?.modelo}
-                                  {item.ordem_de_servico?.veiculo?.cor && (
-                                    <span className="text-neutral-500 font-normal ml-1">
-                                      • {item.ordem_de_servico?.veiculo?.cor}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-sm font-bold text-neutral-500 uppercase tracking-wider mt-0.5">
-                                  {item.ordem_de_servico?.veiculo?.placa}
-                                </div>
-                                <div className="text-sm text-neutral-400 mt-0.5">
-                                  {item.ordem_de_servico?.cliente?.pessoa_fisica
-                                    ?.pessoa?.nome ||
-                                    item.ordem_de_servico?.cliente
-                                      ?.pessoa_juridica?.razao_social}
+                              <td className="p-4">
+                                <div className="flex flex-col">
+                                  <div className="text-base text-neutral-900 font-normal">
+                                    OS | {item.id_os}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal mt-1">
+                                    {new Date(item.ordem_de_servico?.dt_abertura).toLocaleDateString("pt-BR")}
+                                  </div>
+                                  <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">
+                                    {item.ordem_de_servico?.dt_abertura ? new Date(item.ordem_de_servico.dt_abertura).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : '\u00A0'}
+                                  </div>
                                 </div>
                               </td>
-                              <td className="text-right">
-                                <span className="text-xs font-bold text-neutral-400">
+                              <td className="p-4">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="text-base text-neutral-900 font-normal uppercase">
+                                    {item.ordem_de_servico?.veiculo?.modelo} {item.ordem_de_servico?.veiculo?.placa ? `- ${item.ordem_de_servico.veiculo.placa}` : ""}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal truncate max-w-[200px]">
+                                    {item.ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome || item.ordem_de_servico?.cliente?.pessoa_juridica?.razao_social || "N/A"}
+                                  </div>
+                                  <div className="text-sm text-neutral-500 font-normal italic truncate max-w-[250px] min-h-[1.25rem]">
+                                    Def: {item.ordem_de_servico?.defeito_relatado || item.ordem_de_servico?.diagnostico || "N/A"}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-neutral-900">
                                   {formatCurrency(Number(item.valor))}
                                 </span>
                               </td>
-                              <td className="text-center">
-                                <span className="text-xs font-bold text-neutral-500 bg-neutral-100 px-2 py-1 rounded">
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-neutral-900 bg-neutral-100 px-2 py-1 rounded">
                                   {porcentagem ? porcentagem : "0"}%
                                 </span>
                               </td>
-                              <td className="text-right">
-                                <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
                                   {formatCurrency(valorComissao)}
                                 </span>
                               </td>
-                              <td className="text-center">
+                              <td className="p-4 text-left align-top pt-5">
                                 <span
                                   className={`px-3 py-1 rounded-md text-sm font-bold uppercase whitespace-nowrap ${getStatusStyle(item.ordem_de_servico?.status || "")}`}
                                 >
@@ -578,12 +575,12 @@ export const PagamentoEquipePage = () => {
                     <table className="tabela-limpa w-full">
                       <thead>
                         <tr>
-                          <th>Data Pagto</th>
-                          <th>Tipo</th>
-                          <th>OS / Detalhe</th>
-                          <th>Veículo</th>
-                          <th>Cliente</th>
-                          <th className="text-right">Valor Pago</th>
+                          <th className="text-left p-4">OS / Data</th>
+                          <th className="text-left p-4">Tipo</th>
+                          <th className="text-left p-4">Diagnóstico</th>
+                          <th className="text-left p-4">Veículo</th>
+                          <th className="text-left p-4">Cliente</th>
+                          <th className="text-left p-4">Valor Pago</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -602,16 +599,20 @@ export const PagamentoEquipePage = () => {
                               key={`${item.id}-${idx}`}
                               className="group hover:bg-neutral-50 transition-colors"
                             >
-                              <td className="text-xs font-bold text-neutral-600">
-                                {new Date(item.date).toLocaleDateString()}
-                                <div className="text-sm font-normal text-neutral-400">
-                                  {new Date(item.date).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
+                              <td className="p-4">
+                                <div className="flex flex-col">
+                                  <div className="text-base text-neutral-900 font-normal">
+                                    {item.type === "COMISSAO" ? `OS | ${item.os.id_os}` : "N/A"}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal mt-1">
+                                    {new Date(item.date).toLocaleDateString("pt-BR")}
+                                  </div>
+                                  <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">
+                                    {new Date(item.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                  </div>
                                 </div>
                               </td>
-                              <td>
+                              <td className="p-4 align-top pt-5">
                                 <span
                                   className={`px-2 py-1 rounded text-sm font-bold uppercase tracking-wider ${
                                     item.type === "COMISSAO"
@@ -624,80 +625,65 @@ export const PagamentoEquipePage = () => {
                                   {item.type}
                                 </span>
                               </td>
-                              <td>
+                              <td className="p-4 align-top pt-5">
                                 {item.type === "COMISSAO" ? (
-                                  <div className="flex flex-col gap-1">
-                                    <span className="font-bold text-neutral-600">
-                                      OS Nº {item.os.id_os}
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 truncate max-w-[200px]" title={item.os?.defeito_relatado || item.os?.diagnostico || "N/A"}>
+                                      {item.os?.defeito_relatado || item.os?.diagnostico || "Sem diagnóstico"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-base font-normal text-neutral-900">
+                                      {item.description}
                                     </span>
-                                    {(item.os.defeito_relatado ||
-                                      item.os.diagnostico) && (
-                                      <div className="text-sm text-neutral-500 leading-tight bg-neutral-100/50 p-1.5 rounded-md border border-neutral-100 max-w-[200px]">
-                                        {item.os.defeito_relatado && (
-                                          <div className="mb-0.5">
-                                            <span className="font-bold text-neutral-600">
-                                              Def:
-                                            </span>{" "}
-                                            {item.os.defeito_relatado}
-                                          </div>
-                                        )}
-                                        {item.os.diagnostico && (
-                                          <div>
-                                            <span className="font-bold text-neutral-600">
-                                              Diag:
-                                            </span>{" "}
-                                            {item.os.diagnostico}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
                                   </div>
-                                ) : (
-                                  <span className="text-xs font-medium text-neutral-600">
-                                    {item.description}
-                                  </span>
                                 )}
                               </td>
-                              <td>
+                              <td className="p-4 align-top pt-5">
                                 {item.type === "COMISSAO" ? (
-                                  <div className="text-xs">
-                                    <div className="font-bold text-neutral-600">
-                                      {item.os.veiculo?.modelo}
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 uppercase">
+                                      {item.os.veiculo?.modelo || "N/A"}
                                     </div>
-                                    <div className="text-sm text-neutral-500">
-                                      {item.os.veiculo?.placa} •{" "}
-                                      {item.os.veiculo?.cor}
+                                    <div className="text-base font-normal text-neutral-600 uppercase">
+                                      {item.os.veiculo?.placa || "SEM PLACA"}
+                                    </div>
+                                    <div className="text-sm font-normal text-neutral-500 uppercase min-h-[1.25rem]">
+                                      {item.os.veiculo?.cor || "\u00A0"}
                                     </div>
                                   </div>
                                 ) : (
-                                  <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash"></span>
+                                  <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash mt-3"></span>
                                 )}
                               </td>
-                              <td>
+                              <td className="p-4 align-top pt-5">
                                 {item.type === "COMISSAO" ? (
-                                  <div className="text-xs font-medium text-neutral-600">
-                                    {item.os.cliente?.pessoa_fisica?.pessoa
-                                      ?.nome ||
-                                      item.os.cliente?.pessoa_juridica
-                                        ?.razao_social}
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 truncate max-w-[150px]">
+                                      {item.os.cliente?.pessoa_fisica?.pessoa?.nome || item.os.cliente?.pessoa_juridica?.razao_social || "N/I"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
                                   </div>
                                 ) : (
-                                  <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash"></span>
+                                  <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash mt-3"></span>
                                 )}
                               </td>
-                              <td className="text-right">
-                                <div className="font-bold text-neutral-600 text-xs">
-                                  {formatCurrency(
-                                    item.type === "COMISSAO"
-                                      ? item.commissionValue
-                                      : item.value,
-                                  )}
+                              <td className="p-4 align-top pt-5 text-left">
+                                <div className="text-base font-normal text-neutral-900">
+                                  {formatCurrency(item.type === "COMISSAO" ? item.commissionValue : item.value)}
                                 </div>
                                 {item.type === "COMISSAO" && (
-                                  <div className="text-sm text-neutral-400">
+                                  <div className="text-base font-normal text-neutral-600">
                                     ({item.percentage}%)
                                   </div>
                                 )}
+                                <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
                               </td>
                             </tr>
                           ))

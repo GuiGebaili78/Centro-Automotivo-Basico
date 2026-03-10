@@ -43,7 +43,8 @@ const menuItems = [
     icon: DollarSign,
     path: "/financeiro", // Base path for checking active state
     subItems: [
-      { path: "/financeiro/livro-caixa", label: "Gestão Financeira" },
+      { path: "/caixa", label: "Caixa" },
+      { path: "/recebiveis", label: "Recebíveis" },
       { path: "/financeiro/equipe", label: "Pgto. Colaboradores" },
       { path: "/financeiro/pagamento-pecas", label: "Pgto. Auto Peças" },
       { path: "/financeiro/contas-pagar", label: "Contas a Pagar" },
@@ -58,6 +59,8 @@ const menuItems = [
     subItems: [
       { path: "/configuracoes", label: "Personalização" },
       { path: "/configuracoes/categorias", label: "Categorias Financeiras" },
+      { path: "/configuracoes/contas-bancarias", label: "Contas Bancárias" },
+      { path: "/configuracoes/operadoras", label: "Operadoras Cartão" },
     ],
   },
 ];

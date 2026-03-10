@@ -176,43 +176,49 @@ export const FechamentoFinanceiroPage = () => {
                     className="hover:bg-neutral-50 transition-colors group"
                   >
                     <td className="p-4">
-                      <div className="font-bold text-neutral-600">
-                        OS | {os.id_os}
-                      </div>
-                      {/* Show both Date and Time if available */}
-                      {os.dt_abertura && (
-                        <div className="flex flex-col mt-1">
-                          <span className="text-sm font-bold text-neutral-500">
-                            {new Date(os.dt_abertura).toLocaleDateString(
-                              "pt-BR",
-                            )}
-                          </span>
-                          <span className="text-sm text-neutral-400">
-                            {new Date(os.dt_abertura).toLocaleTimeString(
-                              "pt-BR",
-                              { hour: "2-digit", minute: "2-digit" },
-                            )}
-                          </span>
+                      <div className="flex flex-col">
+                        <div className="text-base text-neutral-900 font-normal">
+                          OS | {os.id_os}
                         </div>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
-                        {getClientName(os)}
-                      </div>
-                      <div className="text-sm text-neutral-400 font-medium">
-                        {os.cliente?.telefone_1 || "Sem telefone"}
+                        {os.dt_abertura ? (
+                          <>
+                            <div className="text-base text-neutral-600 font-normal">
+                              {new Date(os.dt_abertura).toLocaleDateString("pt-BR")}
+                            </div>
+                            <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">
+                              {new Date(os.dt_abertura).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-base text-neutral-600 font-normal min-h-[1.5rem]">&nbsp;</div>
+                            <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                          </>
+                        )}
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="flex flex-col">
-                        <span className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
-                          {os.veiculo?.marca} {os.veiculo?.modelo} -{" "}
-                          {os.veiculo?.cor}
-                        </span>
-                        <span className="text-sm text-primary-500 font-bold uppercase">
-                          {os.veiculo?.placa || "Placa N/I"}
-                        </span>
+                        <div className="text-base text-neutral-900 font-normal truncate max-w-[150px]" title={getClientName(os)}>
+                          {getClientName(os)}
+                        </div>
+                        <div className="text-base text-neutral-600 font-normal">
+                          {os.cliente?.telefone_1 || "Sem telefone"}
+                        </div>
+                        <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <div className="text-base text-primary-600 font-normal uppercase">
+                          {os.veiculo?.placa || "SEM PLACA"}
+                        </div>
+                        <div className="text-base text-neutral-600 font-normal uppercase">
+                          {os.veiculo?.marca} {os.veiculo?.modelo}
+                        </div>
+                        <div className="text-sm text-neutral-500 font-normal uppercase min-h-[1.25rem]">
+                          {os.veiculo?.cor || "\u00A0"}
+                        </div>
                       </div>
                     </td>
                     <td className="p-4">
@@ -323,38 +329,41 @@ export const FechamentoFinanceiroPage = () => {
                     className="hover:bg-neutral-50 transition-colors group"
                   >
                     <td className="p-4">
-                      <span className="font-bold text-neutral-600 px-2 py-1 rounded text-sm">
-                        OS | {fech.id_os}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <div className="font-bold text-neutral-700 text-sm truncate max-w-[150px]">
-                        {getClientName(fech.ordem_de_servico)}
-                      </div>
-                      <div className="text-sm text-neutral-400 font-medium">
-                        {fech.ordem_de_servico?.cliente?.telefone_1 ||
-                          "Sem telefone"}
+                      <div className="flex flex-col">
+                        <div className="text-base text-neutral-900 font-normal">
+                          OS | {fech.id_os}
+                        </div>
+                        <div className="text-base text-neutral-600 font-normal min-h-[1.5rem]">&nbsp;</div>
+                        <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="flex flex-col">
-                        <span className="font-bold text-neutral-700 tracking-tight text-sm uppercase">
-                          {fech.ordem_de_servico?.veiculo?.marca}{" "}
-                          {fech.ordem_de_servico?.veiculo?.modelo} -{" "}
-                          {fech.ordem_de_servico?.veiculo?.cor}
-                        </span>
-                        <span className="text-sm text-primary-500 font-bold uppercase">
-                          {fech.ordem_de_servico?.veiculo?.placa || "Placa N/I"}
-                        </span>
+                        <div className="text-base text-neutral-900 font-normal truncate max-w-[150px]" title={getClientName(fech.ordem_de_servico)}>
+                          {getClientName(fech.ordem_de_servico)}
+                        </div>
+                        <div className="text-base text-neutral-600 font-normal">
+                          {fech.ordem_de_servico?.cliente?.telefone_1 || "Sem telefone"}
+                        </div>
+                        <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center gap-1 text-primary-600 font-bold bg-primary-50 w-fit px-3 py-1 rounded-lg">
-                        {formatCurrency(
-                          Number(
-                            fech.ordem_de_servico?.valor_total_cliente || 0,
-                          ),
-                        )}
+                      <div className="flex flex-col">
+                        <div className="text-base text-primary-600 font-normal uppercase">
+                          {fech.ordem_de_servico?.veiculo?.placa || "SEM PLACA"}
+                        </div>
+                        <div className="text-base text-neutral-600 font-normal uppercase">
+                          {fech.ordem_de_servico?.veiculo?.marca} {fech.ordem_de_servico?.veiculo?.modelo}
+                        </div>
+                        <div className="text-sm text-neutral-500 font-normal uppercase min-h-[1.25rem]">
+                          {fech.ordem_de_servico?.veiculo?.cor || "\u00A0"}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-base text-neutral-900 font-normal">
+                        {formatCurrency(Number(fech.ordem_de_servico?.valor_total_cliente || 0))}
                       </div>
                     </td>
                     <td className="p-4">
@@ -367,42 +376,34 @@ export const FechamentoFinanceiroPage = () => {
                               fech.ordem_de_servico.servicos_mao_de_obra
                                 .map(
                                   (svc) =>
-                                    svc.funcionario?.pessoa_fisica?.pessoa?.nome?.split(
-                                      " ",
-                                    )[0],
+                                    svc.funcionario?.pessoa_fisica?.pessoa?.nome?.split(" ")[0],
                                 )
                                 .filter(Boolean),
                             ),
                           ).map((name, idx) => (
                             <span
                               key={idx}
-                              className="text-xs font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded"
+                              className="text-sm font-normal text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded"
                             >
                               {name}
                             </span>
                           ))
                         ) : (
-                          <span className="text-xs text-neutral-400 italic">
+                          <span className="text-sm text-neutral-400 italic">
                             Não informado
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="p-4 text-sm font-medium text-neutral-500">
+                    <td className="p-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-neutral-600">
-                          {new Date(
-                            fech.data_fechamento_financeiro,
-                          ).toLocaleDateString("pt-BR")}
-                        </span>
-                        <span className="text-sm text-neutral-400">
-                          {new Date(
-                            fech.data_fechamento_financeiro,
-                          ).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
+                        <div className="text-base text-neutral-900 font-normal">
+                          {new Date(fech.data_fechamento_financeiro).toLocaleDateString("pt-BR")}
+                        </div>
+                        <div className="text-sm text-neutral-500 font-normal">
+                          {new Date(fech.data_fechamento_financeiro).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                        <div className="text-sm font-normal min-h-[1.25rem]">&nbsp;</div>
                       </div>
                     </td>
                     <td className="p-4 text-right">
