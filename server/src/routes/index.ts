@@ -23,6 +23,7 @@ import { categoriaFinanceiraRoutes } from "./categoriaFinanceira.routes.js";
 import { contaBancariaRoutes } from "./contaBancaria.routes.js";
 import { operadoraRoutes } from "./operadoraCartao.routes.js";
 import { recebivelCartaoRoutes } from "./recebivelCartao.routes.js";
+import { authRoutes } from "./auth.routes.js";
 import { relatoriosRoutes } from "./relatorio.routes.js";
 import configuracaoRoutes from "./configuracao.routes.js";
 import { documentoRoutes } from "./documento.routes.js";
@@ -32,6 +33,7 @@ import { financeiroRoutes } from "./financeiro.routes.js";
 const apiRouter = Router();
 
 // Register routes
+apiRouter.use("/auth", authRoutes);
 apiRouter.use("/financeiro", financeiroRoutes);
 apiRouter.use("/configuracao", configuracaoRoutes);
 apiRouter.use("/documento", documentoRoutes);

@@ -40,79 +40,109 @@ import { OperadoraCartaoPage } from "./pages/OperadoraCartaoPage";
 import { RecebiveisPage } from "./pages/RecebiveisPage";
 import { ContasBancariasPage } from "./pages/ContasBancariasPage";
 
+import { AuthProvider } from "./contexts/AuthContext";
+import { PrivateRoute } from "./components/PrivateRoute";
+import { Login } from "./pages/Login";
+
 const router = createBrowserRouter(
   createRoutesFromElements(
-    <Route element={<MainLayout />}>
-      <Route path="/" element={<DashboardPage />} />
-      {/* Páginas Modernizadas */}
-      <Route path="/cliente" element={<ClientePage />} />
-      <Route path="/print/os/:id" element={<OsPrintView />} />
-      {/* Páginas Legadas (Ainda funcionam dentro do layout novo!) */}
-      <Route path="/veiculo" element={<VeiculoPage />} />
-      <Route path="/ordem-de-servico" element={<OrdemDeServicoPage />} />
-      <Route
-        path="/ordem-de-servico/:id"
-        element={<OrdemDeServicoDetalhePage />}
-      />
-      {/* Unified Registration Routes */}
-      <Route path="/novo-cadastro" element={<CadastroUnificadoPage />} />
-      <Route path="/cadastro/:clienteId" element={<CadastroUnificadoPage />} />
-      <Route path="/pecas-estoque" element={<PecasEstoquePage />} />
-      <Route path="/entrada-estoque" element={<EntradaEstoquePage />} />
-      <Route path="/funcionario" element={<FuncionarioPage />} />
-      <Route path="/pessoa" element={<PessoaPage />} />
-      <Route path="/tipo" element={<TipoPage />} />
-      
-      {/* Financeiro / Caixa / Recebíveis */}
-      <Route path="/caixa" element={<LivroCaixaPage />} />
-      <Route path="/recebiveis" element={<RecebiveisPage />} />
+    <>
+      {/* Rota Pública */}
+      <Route path="/login" element={<Login />} />
 
-      <Route
-        path="/fechamento-financeiro"
-        element={<FechamentoFinanceiroPage />}
-      />
-      <Route
-        path="/fechamento-financeiro/:id"
-        element={<FechamentoFinanceiroDetalhePage />}
-      />
-      <Route path="/financeiro" element={<LivroCaixaPage />} />{" "}
-      {/* Redirect old /financeiro to LivroCaixaPage */}
-      <Route path="/financeiro/livro-caixa" element={<LivroCaixaPage />} />
-      <Route
-        path="/financeiro/pagamento-pecas"
-        element={<PagamentoPecaPage />}
-      />
-      <Route path="/relatorios" element={<RelatoriosPage />} />
-      <Route path="/financeiro/contas-pagar" element={<ContasAPagarPage />} />
-      <Route path="/financeiro/relatorios" element={<RelatoriosPage />} />
-      <Route
-        path="/financeiro/extrato/:idConta"
-        element={<ExtratoBancarioPage />}
-      />
-      <Route path="/financeiro/equipe" element={<PagamentoEquipePage />} />{" "}
-      {/* Nova Rota */}
-      <Route path="/pagamento-equipe" element={<PagamentoEquipePage />} />
-      <Route path="/pagamento-equipe/novo" element={<NovoPagamentoPage />} />
-      <Route path="/fornecedor" element={<FornecedorPage />} />
-      <Route path="/pagamento-peca" element={<PagamentoPecaPage />} />
-      
-      {/* Configurações */}
-      <Route path="/configuracoes" element={<ConfiguracaoPage />} />
-      <Route path="/configuracoes/categorias" element={<CategoriasPage />} />
-      <Route path="/configuracoes/contas-bancarias" element={<ContasBancariasPage />} />
-      <Route path="/configuracoes/operadoras" element={<OperadoraCartaoPage />} />
-
-      {/* Search Pages */}
-      <Route path="/search-cliente" element={<SearchClientePage />} />
-      <Route path="/search-veiculo" element={<SearchVeiculoPage />} />
-      {/* Rota 404 para qualquer coisa não definida */}
-      <Route path="*" element={<NotFoundPage />} />
-    </Route>,
+      {/* Rotas Protegidas (Sobe o PrivateRoute encobrindo o Layout inteiro) */}
+      <Route element={<PrivateRoute />}>
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<DashboardPage />} />
+          {/* Páginas Modernizadas */}
+          <Route path="/cliente" element={<ClientePage />} />
+          <Route path="/print/os/:id" element={<OsPrintView />} />
+          {/* Páginas Legadas (Ainda funcionam dentro do layout novo!) */}
+          <Route path="/veiculo" element={<VeiculoPage />} />
+          <Route path="/ordem-de-servico" element={<OrdemDeServicoPage />} />
+          <Route
+            path="/ordem-de-servico/:id"
+            element={<OrdemDeServicoDetalhePage />}
+          />
+          {/* Unified Registration Routes */}
+          <Route path="/novo-cadastro" element={<CadastroUnificadoPage />} />
+          <Route
+            path="/cadastro/:clienteId"
+            element={<CadastroUnificadoPage />}
+          />
+          <Route path="/pecas-estoque" element={<PecasEstoquePage />} />
+          <Route path="/entrada-estoque" element={<EntradaEstoquePage />} />
+          <Route path="/funcionario" element={<FuncionarioPage />} />
+          <Route path="/pessoa" element={<PessoaPage />} />
+          <Route path="/tipo" element={<TipoPage />} />
+          {/* Financeiro / Caixa / Recebíveis */}
+          <Route path="/caixa" element={<LivroCaixaPage />} />
+          <Route path="/recebiveis" element={<RecebiveisPage />} />
+          <Route
+            path="/fechamento-financeiro"
+            element={<FechamentoFinanceiroPage />}
+          />
+          <Route
+            path="/fechamento-financeiro/:id"
+            element={<FechamentoFinanceiroDetalhePage />}
+          />
+          <Route path="/financeiro" element={<LivroCaixaPage />} />{" "}
+          {/* Redirect old /financeiro to LivroCaixaPage */}
+          <Route path="/financeiro/livro-caixa" element={<LivroCaixaPage />} />
+          <Route
+            path="/financeiro/pagamento-pecas"
+            element={<PagamentoPecaPage />}
+          />
+          <Route path="/relatorios" element={<RelatoriosPage />} />
+          <Route
+            path="/financeiro/contas-pagar"
+            element={<ContasAPagarPage />}
+          />
+          <Route path="/financeiro/relatorios" element={<RelatoriosPage />} />
+          <Route
+            path="/financeiro/extrato/:idConta"
+            element={<ExtratoBancarioPage />}
+          />
+          <Route path="/financeiro/equipe" element={<PagamentoEquipePage />} />{" "}
+          {/* Nova Rota */}
+          <Route path="/pagamento-equipe" element={<PagamentoEquipePage />} />
+          <Route
+            path="/pagamento-equipe/novo"
+            element={<NovoPagamentoPage />}
+          />
+          <Route path="/fornecedor" element={<FornecedorPage />} />
+          <Route path="/pagamento-peca" element={<PagamentoPecaPage />} />
+          {/* Configurações */}
+          <Route path="/configuracoes" element={<ConfiguracaoPage />} />
+          <Route
+            path="/configuracoes/categorias"
+            element={<CategoriasPage />}
+          />
+          <Route
+            path="/configuracoes/contas-bancarias"
+            element={<ContasBancariasPage />}
+          />
+          <Route
+            path="/configuracoes/operadoras"
+            element={<OperadoraCartaoPage />}
+          />
+          {/* Search Pages */}
+          <Route path="/search-cliente" element={<SearchClientePage />} />
+          <Route path="/search-veiculo" element={<SearchVeiculoPage />} />
+          {/* Rota 404 para qualquer coisa não definida */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Route>
+    </>,
   ),
 );
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }
 
 export default App;

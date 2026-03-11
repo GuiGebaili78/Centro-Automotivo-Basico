@@ -560,3 +560,19 @@ model Configuracao {
 
   @@map("configuracao")
 }
+
+enum PerfilAcesso {
+  ADMIN
+  ATENDENTE
+  MECANICO
+}
+
+model Usuario {
+  id_usuario Int          @id @default(autoincrement())
+  nome       String
+  email      String       @unique
+  senha_hash String
+  perfil     PerfilAcesso
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+}
