@@ -78,11 +78,27 @@ model Cliente {
   tipo               Tipo             @relation(fields: [tipo_pessoa], references: [id_tipo])
   ordens_de_servico  OrdemDeServico[]
   veiculos           Veiculo[]
+  equipamentos       EquipamentoCliente[]
 
   @@index([id_pessoa_fisica])
   @@index([id_pessoa_juridica])
   @@index([tipo_pessoa])
   @@map("cliente")
+}
+
+model EquipamentoCliente {
+  id_equipamento    Int              @id @default(autoincrement())
+  id_cliente        Int
+  nome_peca         String           @db.VarChar(100)
+  fabricante        String?          @db.VarChar(50)
+  numeracao         String?          @db.VarChar(50)
+  observacoes       String?          @db.VarChar(500)
+  created_at        DateTime         @default(now()) @db.Timestamp(6)
+  updated_at        DateTime         @default(now()) @updatedAt @db.Timestamp(6)
+  cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
+  ordens_de_servico OrdemDeServico[]
+
+  @@map("equipamento_cliente")
 }
 
 model Funcionario {
@@ -173,11 +189,12 @@ model Veiculo {
 model OrdemDeServico {
   id_os                 Int                   @id @default(autoincrement())
   id_cliente            Int
-  id_veiculo            Int
+  id_veiculo            Int?
+  id_equipamento        Int?
   id_funcionario        Int?
   dt_abertura           DateTime              @default(now()) @db.Timestamp(6)
   dt_entrega            DateTime?             @db.Timestamp(6)
-  km_entrada            Int
+  km_entrada            Int?
   status                String                @db.VarChar(50)
   defeito_relatado      String?               @db.VarChar(500)
   diagnostico           String?               @db.VarChar(500)
@@ -199,13 +216,15 @@ model OrdemDeServico {
   itens_os              ItensOs[]
   cliente               Cliente               @relation(fields: [id_cliente], references: [id_cliente])
   funcionario           Funcionario?          @relation(fields: [id_funcionario], references: [id_funcionario])
-  veiculo               Veiculo               @relation(fields: [id_veiculo], references: [id_veiculo])
+  veiculo               Veiculo?              @relation(fields: [id_veiculo], references: [id_veiculo])
+  equipamento           EquipamentoCliente?   @relation(fields: [id_equipamento], references: [id_equipamento])
   pagamentos_cliente    PagamentoCliente[]
   recebiveis_cartao     RecebivelCartao[]
   servicos_mao_de_obra  ServicoMaoDeObra[]
 
   @@index([id_cliente])
   @@index([id_veiculo])
+  @@index([id_equipamento])
   @@index([status])
   @@index([deleted_at])
   @@map("ordem_de_servico")

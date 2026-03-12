@@ -40,8 +40,8 @@ export const OsTable = ({
         <thead>
           <tr>
             <th className="w-[15%]">OS / Data</th>
-            <th className="w-[20%]">Veículo</th>
-            <th className="w-[25%]">Diagnóstico / Ações</th>
+            <th className="w-[20%]">Veículo / Peça</th>
+            <th className="w-[25%]">Diagnóstico / Obs</th>
             <th className="w-[15%]">Técnico</th>
             <th className="w-[15%]">Cliente</th>
             <th className="w-[10%] text-center">Status</th>
@@ -85,14 +85,28 @@ export const OsTable = ({
                 </td>
                 <td className="p-4">
                   <div className="flex flex-col">
-                    <span className="text-neutral-600 text-base font-medium uppercase">
-                      {os.veiculo?.marca} {os.veiculo?.modelo} •{" "}
-                      {os.veiculo?.cor}
-                    </span>
-                    <span className="text-base text-primary-600 uppercase mt-0.5">
-                      {os.veiculo?.placa || "---"} -{" "}
-                      {os.veiculo?.ano_modelo || "---"}
-                    </span>
+                    {os.veiculo ? (
+                      <>
+                        <span className="text-neutral-600 text-base font-medium uppercase">
+                          {os.veiculo.marca} {os.veiculo.modelo} • {os.veiculo.cor}
+                        </span>
+                        <span className="text-base text-primary-600 uppercase mt-0.5">
+                          {os.veiculo.placa} - {os.veiculo.ano_modelo}
+                        </span>
+                      </>
+                    ) : os.equipamento ? (
+                      <>
+                        <span className="text-neutral-600 text-base font-medium uppercase">
+                           {os.equipamento.nome_peca}
+                        </span>
+                        <span className="text-sm text-neutral-400 mt-1 italic">
+                          {os.equipamento.fabricante && `Marca: ${os.equipamento.fabricante}`}
+                          {os.equipamento.numeracao && ` • S/N: ${os.equipamento.numeracao}`}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-neutral-300 italic">Serviço Avulso</span>
+                    )}
                   </div>
                 </td>
                 <td className="p-4">

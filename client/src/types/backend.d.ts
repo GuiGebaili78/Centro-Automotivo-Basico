@@ -52,6 +52,7 @@ export interface ICliente {
   pessoa_fisica?: IPessoaFisica & { pessoa: IPessoa };
   pessoa_juridica?: IPessoaJuridica & { pessoa: IPessoa };
   veiculos?: IVeiculo[];
+  equipamentos?: IEquipamentoCliente[];
 }
 
 export interface IFuncionario {
@@ -143,14 +144,26 @@ export interface IVeiculo {
   cliente?: ICliente;
 }
 
+export interface IEquipamentoCliente {
+  id_equipamento: number;
+  id_cliente: number;
+  nome_peca: string;
+  fabricante?: string | null;
+  numeracao?: string | null;
+  observacoes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface IOrdemDeServico {
   id_os: number;
   id_cliente: number;
-  id_veiculo: number;
+  id_veiculo?: number | null;
+  id_equipamento?: number | null;
   id_funcionario: number;
   dt_abertura: string;
   dt_entrega?: string | null;
-  km_entrada: number;
+  km_entrada?: number | null;
   status: string;
   defeito_relatado?: string | null;
   diagnostico?: string | null;
@@ -171,6 +184,7 @@ export interface IOrdemDeServico {
   // Optional Joins
   cliente?: ICliente;
   veiculo?: IVeiculo;
+  equipamento?: IEquipamentoCliente;
   itens_os?: IItensOs[];
   pagamentos_cliente?: IPagamentoCliente[];
   funcionario?: IFuncionario;

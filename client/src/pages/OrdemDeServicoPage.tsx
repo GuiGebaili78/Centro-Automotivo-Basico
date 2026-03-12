@@ -248,6 +248,10 @@ export const OrdemDeServicoPage = () => {
     const model = os.veiculo?.modelo?.toLowerCase() || "";
     const brand = os.veiculo?.marca?.toLowerCase() || "";
     const color = os.veiculo?.cor?.toLowerCase() || "";
+    const part = os.equipamento?.nome_peca?.toLowerCase() || "";
+    const serial = os.equipamento?.numeracao?.toLowerCase() || "";
+    const diag = os.diagnostico?.toLowerCase() || "";
+
     const owner = (
       os.cliente?.pessoa_fisica?.pessoa?.nome ||
       os.cliente?.pessoa_juridica?.razao_social ||
@@ -256,7 +260,7 @@ export const OrdemDeServicoPage = () => {
     const id = String(os.id_os);
     const fullIdHash = `#${os.id_os}`;
 
-    return [plate, model, brand, color, owner, id, fullIdHash]
+    return [plate, model, brand, color, part, serial, diag, owner, id, fullIdHash]
       .join(" ")
       .includes(q);
   });
@@ -285,7 +289,7 @@ export const OrdemDeServicoPage = () => {
               icon={Search}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por Placa, Cliente, Modelo ou OS..."
+              placeholder="Buscar por Cliente, Placa, Peça, Diagnóstico ou OS..."
             />
           </div>
 

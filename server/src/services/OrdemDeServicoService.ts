@@ -9,14 +9,14 @@ export class OrdemDeServicoService {
   }
 
   async create(data: any) {
-    // Verificando se é payload Unificado (com client, vehicle, os)
-    if (data.client && data.vehicle && data.os) {
-      OsStateMachine.validateInitialStatus(data.os.status);
+    // Verificando se é payload Unificado (com client, vehicle/equipamento, os)
+    if (data.client && (data.vehicle || data.equipamento) && data.os) {
+      if (data.os.status) OsStateMachine.validateInitialStatus(data.os.status);
       return this.repository.createUnified(data);
     }
 
     // Payload Padrão (direto com IDs)
-    OsStateMachine.validateInitialStatus(data.status);
+    if (data.status) OsStateMachine.validateInitialStatus(data.status);
     return this.repository.create(data);
   }
 

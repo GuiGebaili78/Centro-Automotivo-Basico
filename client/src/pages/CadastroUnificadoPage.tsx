@@ -45,13 +45,16 @@ import {
 
 import { ClienteService } from "../services/cliente.service";
 import { VeiculoService } from "../services/veiculo.service";
-import type { IVeiculo } from "../types/backend";
+import { EquipamentoService } from "../services/equipamento.service";
+import type { IVeiculo, IEquipamentoCliente } from "../types/backend";
+import { EquipamentoFormSection } from "../components/clientes/Forms/EquipamentoFormSection";
 
 // ─── Tipos auxiliares ─────────────────────────────────────────────────────────
 
 interface SavedData {
   clientId: number;
   vehicleId?: number | null;
+  equipId?: number | null;
   clientName: string;
   vehicleName?: string;
 }
@@ -66,11 +69,15 @@ export const CadastroUnificadoPage = () => {
   // ── UI-only state (formulários não ficam aqui) ──
   const [loading, setLoading] = useState(false);
   const [veiculos, setVeiculos] = useState<IVeiculo[]>([]);
-  const [showVehicleModal, setShowVehicleModal] = useState(false);
-  const [editingVehicle, setEditingVehicle] = useState<IVeiculo | null>(null);
-  const [confirmDeleteVehicle, setConfirmDeleteVehicle] = useState<
-    number | null
-  >(null);
+  const [equipamentos, setEquipamentos] = useState<IEquipamentoCliente[]>([]);
+  const [showAssetModal, setShowAssetModal] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<{ type: 'VEICULO' | 'EQUIPAMENTO', data: any } | null>(null);
+  const [assetType, setAssetType] = useState<'VEICULO' | 'EQUIPAMENTO'>('VEICULO');
+  
+  const [confirmDeleteAsset, setConfirmDeleteAsset] = useState<{
+    id: number;
+    type: 'VEICULO' | 'EQUIPAMENTO';
+  } | null>(null);
   const [decisionModalOpen, setDecisionModalOpen] = useState(false);
   const [savedData, setSavedData] = useState<SavedData | null>(null);
 
@@ -124,6 +131,7 @@ export const CadastroUnificadoPage = () => {
       setInitialClienteData(parsed);
 
       if (data.veiculos) setVeiculos(data.veiculos);
+      if (data.equipamentos) setEquipamentos(data.equipamentos);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao carregar dados do cliente.");
@@ -149,7 +157,6 @@ export const CadastroUnificadoPage = () => {
 
     // "Pull" dos dados dos filhos — única chamada, sem estado duplicado
     const clienteData = clienteRef.current?.getData();
-    const veiculoData = veiculoRef.current?.getData();
 
     if (!clienteData) {
       toast.error("Dados do cliente inválidos.");
@@ -200,40 +207,61 @@ export const CadastroUnificadoPage = () => {
         finalClientId = newClient.id_cliente;
       }
 
-      // Cria veículo se informado (somente no cadastro novo)
+      // Cria veículo ou equipamento se informado (somente no cadastro novo)
       let finalVehicleId: number | null = null;
-      if (!isEditMode && finalClientId && veiculoData) {
-        const { placa, marca, modelo, cor, anoModelo, combustivel, chassi } =
-          veiculoData;
-        if (placa || modelo) {
-          const newVehicle = await VeiculoService.create({
-            id_cliente: finalClientId,
-            placa: normalizePlate(placa),
-            marca,
-            modelo,
-            cor,
-            ano_modelo: anoModelo,
-            combustivel,
-            chassi,
-          });
-          finalVehicleId = newVehicle.id_veiculo;
+      let finalEquipId: number | null = null;
+      
+      if (!isEditMode && finalClientId) {
+        if (assetType === 'VEICULO' && veiculoRef.current) {
+          const veiculoData = (veiculoRef.current as any).getData();
+          if (veiculoData.placa || veiculoData.modelo) {
+            const newVehicle = await VeiculoService.create({
+              id_cliente: finalClientId,
+              placa: normalizePlate(veiculoData.placa),
+              marca: veiculoData.marca,
+              modelo: veiculoData.modelo,
+              cor: veiculoData.cor,
+              ano_modelo: veiculoData.anoModelo,
+              combustivel: veiculoData.combustivel,
+              chassi: veiculoData.chassi,
+            });
+            finalVehicleId = newVehicle.id_veiculo;
+          }
+        } else if (assetType === 'EQUIPAMENTO' && veiculoRef.current) {
+          const equipData = (veiculoRef.current as any).getData();
+          if (equipData.nome_peca) {
+            const newEquip = await EquipamentoService.create({
+              ...equipData,
+              id_cliente: finalClientId
+            });
+            finalEquipId = newEquip.id_equipamento;
+          }
         }
       }
 
       // Pós-criação: abre modal de decisão
       if (!isEditMode && finalClientId) {
         toast.success("Cadastro realizado! O que deseja fazer?");
+        
+        // Se for equipamento, podemos passar o nome da peça para o modal de decisão
+        let assetName = undefined;
+        if (assetType === 'VEICULO') {
+            const vData = (veiculoRef.current as any)?.getData();
+            if (vData?.placa || vData?.modelo) assetName = `${vData.modelo} - ${vData.placa}`;
+        } else {
+            const eData = (veiculoRef.current as any)?.getData();
+            if (eData?.nome_peca) assetName = eData.nome_peca;
+        }
+
         setSavedData({
           clientId: finalClientId,
           vehicleId: finalVehicleId,
+          equipId: finalEquipId,
           clientName:
             clienteData.tipoPessoa === "PF"
               ? clienteData.nome
               : clienteData.razaoSocial,
-          vehicleName:
-            veiculoData?.placa || veiculoData?.modelo
-              ? `${veiculoData.modelo} - ${veiculoData.placa}`
-              : undefined,
+          vehicleName: assetName,
         });
         setDecisionModalOpen(true);
       }
@@ -248,36 +276,32 @@ export const CadastroUnificadoPage = () => {
     }
   };
 
-  // ─── Veículos (modo edição) ────────────────────────────────────────────────
+  // ─── Ativos (modo edição) ──────────────────────────────────────────────────
 
-  const handleDeleteVehicle = async () => {
-    if (!confirmDeleteVehicle) return;
+  const handleDeleteAsset = async () => {
+    if (!confirmDeleteAsset) return;
     try {
-      await VeiculoService.delete(confirmDeleteVehicle);
-      setVeiculos((prev) =>
-        prev.filter((v) => v.id_veiculo !== confirmDeleteVehicle),
-      );
-      setConfirmDeleteVehicle(null);
-      toast.success("Veículo removido com sucesso!");
+      if (confirmDeleteAsset.type === 'VEICULO') {
+        await VeiculoService.delete(confirmDeleteAsset.id);
+        setVeiculos((prev) => prev.filter((v) => v.id_veiculo !== confirmDeleteAsset.id));
+      } else {
+        await EquipamentoService.delete(confirmDeleteAsset.id);
+        setEquipamentos((prev) => prev.filter((e) => e.id_equipamento !== confirmDeleteAsset.id));
+      }
+      setConfirmDeleteAsset(null);
+      toast.success(`${confirmDeleteAsset.type === 'VEICULO' ? 'Veículo' : 'Peça'} removido(a) com sucesso!`);
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message ||
-          error.response?.data?.error ||
-          "Erro ao remover veículo.",
-      );
-      setConfirmDeleteVehicle(null);
+      toast.error("Erro ao remover item.");
+      setConfirmDeleteAsset(null);
     }
   };
 
-  const handleVeiculoSuccess = useCallback(() => {
-    setShowVehicleModal(false);
+  const handleAssetSuccess = useCallback(() => {
+    setShowAssetModal(false);
     loadClienteData();
-    toast.success("Veículo salvo com sucesso!");
+    toast.success("Salvo com sucesso!");
   }, [loadClienteData]);
 
-  const handleVeiculoCancel = useCallback(() => {
-    setShowVehicleModal(false);
-  }, []);
 
   // ─── OS navigation ─────────────────────────────────────────────────────────
 
@@ -288,6 +312,8 @@ export const CadastroUnificadoPage = () => {
       params.append("clientId", savedData.clientId.toString());
       if (savedData.vehicleId)
         params.append("vehicleId", savedData.vehicleId.toString());
+      if (savedData.equipId)
+        params.append("equipId", savedData.equipId.toString());
       params.append("initialStatus", status);
       navigate(`/ordem-de-servico?${params.toString()}`);
     },
@@ -344,7 +370,7 @@ export const CadastroUnificadoPage = () => {
                   <Car size={20} />
                 </div>
                 <h2 className="font-bold text-lg text-neutral-800">
-                  {isEditMode ? "Veículos Cadastrados" : "Dados do Veículo"}
+                  {isEditMode ? "Patrimônio (Veículos/Peças)" : "Vincular Ativo"}
                 </h2>
               </div>
               {isEditMode && (
@@ -354,63 +380,71 @@ export const CadastroUnificadoPage = () => {
                   icon={Plus}
                   type="button"
                   onClick={() => {
-                    setEditingVehicle(null);
-                    setShowVehicleModal(true);
+                    setEditingAsset(null);
+                    setAssetType('VEICULO'); // Default choice
+                    setShowAssetModal(true);
                   }}
                 >
-                  NOVO VEÍCULO
+                  + NOVO
                 </Button>
               )}
             </div>
 
             {isEditMode ? (
-              /* Lista de veículos (somente edit mode) */
-              <div className="space-y-3">
-                {veiculos.length > 0 ? (
-                  veiculos.map((v) => (
-                    <div
-                      key={v.id_veiculo}
-                      className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 flex justify-between items-center group hover:border-primary-300 hover:bg-neutral-25 transition-all"
-                    >
+              /* Lista hibrida (edit mode) */
+              <div className="space-y-6">
+                {/* Veículos */}
+                <div className="space-y-3">
+                   <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-widest pl-1">Veículos ({veiculos.length})</h4>
+                   {veiculos.map((v) => (
+                    <div key={v.id_veiculo} className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 flex justify-between items-center group hover:border-primary-300 hover:bg-neutral-25 transition-all">
                       <div>
-                        <p className="font-bold text-primary-900 uppercase font-mono">
-                          {v.placa}
-                        </p>
-                        <p className="text-xs font-bold text-neutral-500 uppercase">
-                          {v.marca} {v.modelo} • {v.cor}
-                        </p>
+                        <p className="font-bold text-primary-900 uppercase font-mono">{v.placa}</p>
+                        <p className="text-xs font-bold text-neutral-500 uppercase">{v.marca} {v.modelo}</p>
                       </div>
                       <div className="flex gap-1">
-                        <ActionButton
-                          icon={Edit}
-                          label="Editar"
-                          variant="neutral"
-                          onClick={() => {
-                            setEditingVehicle(v);
-                            setShowVehicleModal(true);
-                          }}
-                        />
-                        <ActionButton
-                          icon={Trash2}
-                          label="Excluir"
-                          variant="danger"
-                          onClick={() => setConfirmDeleteVehicle(v.id_veiculo)}
-                        />
+                        <ActionButton icon={Edit} label="Editar" variant="neutral" onClick={() => { setEditingAsset({type: 'VEICULO', data: v}); setAssetType('VEICULO'); setShowAssetModal(true); }} />
+                        <ActionButton icon={Trash2} label="Excluir" variant="danger" onClick={() => setConfirmDeleteAsset({id: v.id_veiculo, type: 'VEICULO'})} />
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-neutral-400 italic text-sm">
-                    Nenhum veículo cadastrado.
-                  </div>
-                )}
+                  ))}
+                </div>
+
+                {/* Peças Avulsas */}
+                <div className="space-y-3 pt-4 border-t border-dashed border-neutral-200">
+                   <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-widest pl-1">Peças Avulsas ({equipamentos.length})</h4>
+                   {equipamentos.map((e) => (
+                    <div key={e.id_equipamento} className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 flex justify-between items-center group hover:border-blue-300 hover:bg-blue-25 transition-all">
+                      <div>
+                        <p className="font-bold text-blue-900 uppercase">{e.nome_peca}</p>
+                        <p className="text-xs font-bold text-neutral-500 uppercase">{e.fabricante || 'Fabricante N/I'}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <ActionButton icon={Edit} label="Editar" variant="neutral" onClick={() => { setEditingAsset({type: 'EQUIPAMENTO', data: e}); setAssetType('EQUIPAMENTO'); setShowAssetModal(true); }} />
+                        <ActionButton icon={Trash2} label="Excluir" variant="danger" onClick={() => setConfirmDeleteAsset({id: e.id_equipamento, type: 'EQUIPAMENTO' })} />
+                      </div>
+                    </div>
+                  ))}
+                  {equipamentos.length === 0 && <p className="text-center py-2 text-neutral-400 italic text-[11px]">Nenhuma peça cadastrada.</p>}
+                </div>
               </div>
             ) : (
-              /*
-               * VeiculoFormSection — memo + forwardRef.
-               * Mudanças em ClienteFormSection NÃO causam re-render aqui.
-               */
-              <VeiculoFormSection ref={veiculoRef} />
+              /* Toggle tipo ativo (creation mode) */
+              <div className="space-y-6">
+                 <div className="flex bg-neutral-100 p-1 rounded-lg w-full">
+                    {(['VEICULO', 'EQUIPAMENTO'] as const).map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setAssetType(t)}
+                        className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${assetType === t ? 'bg-white shadow text-primary-600' : 'text-neutral-500'}`}
+                      >
+                        {t === 'VEICULO' ? 'Vincular Veículo' : 'Vincular Peça Avulsa'}
+                      </button>
+                    ))}
+                 </div>
+                 {assetType === 'VEICULO' ? <VeiculoFormSection ref={veiculoRef} /> : <EquipamentoFormSection ref={veiculoRef as any} />}
+              </div>
             )}
           </div>
         </div>
@@ -439,29 +473,78 @@ export const CadastroUnificadoPage = () => {
         </div>
       </form>
 
-      {/* Modal: Editar / Criar Veículo (somente edit mode) */}
-      {showVehicleModal && clienteId && (
+      {/* Modal: Editar / Criar Ativo (somente edit mode) */}
+      {showAssetModal && clienteId && (
         <Modal
-          title={editingVehicle ? "Editar Veículo" : "Novo Veículo"}
-          onClose={handleVeiculoCancel}
+          title={editingAsset ? `Editar ${assetType === 'VEICULO' ? 'Veículo' : 'Peça'}` : `Novo(a) ${assetType === 'VEICULO' ? 'Veículo' : 'Peça'}`}
+          onClose={() => setShowAssetModal(false)}
         >
-          <VeiculoForm
-            clientId={Number(clienteId)}
-            vehicleId={editingVehicle?.id_veiculo}
-            initialData={editingVehicle}
-            onSuccess={handleVeiculoSuccess}
-            onCancel={handleVeiculoCancel}
-          />
+           {/* Seletor de tipo no modal de novo asset */}
+           {!editingAsset && (
+              <div className="flex bg-neutral-100 p-1 rounded-lg w-full mb-6">
+                {(['VEICULO', 'EQUIPAMENTO'] as const).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setAssetType(t)}
+                    className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${assetType === t ? 'bg-white shadow text-primary-600' : 'text-neutral-500'}`}
+                  >
+                    {t === 'VEICULO' ? 'Veículo' : 'Peça Avulsa'}
+                  </button>
+                ))}
+            </div>
+           )}
+
+           {assetType === 'VEICULO' ? (
+              <VeiculoForm
+                clientId={Number(clienteId)}
+                vehicleId={editingAsset?.data?.id_veiculo}
+                initialData={editingAsset?.data}
+                onSuccess={handleAssetSuccess}
+                onCancel={() => setShowAssetModal(false)}
+              />
+           ) : (
+              <div className="space-y-6">
+                <EquipamentoFormSection ref={veiculoRef as any} initialData={editingAsset?.data} />
+                <div className="flex gap-2 pt-4 border-t border-neutral-100">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowAssetModal(false)}>Cancelar</Button>
+                  <Button
+                    variant="primary"
+                    className="flex-1"
+                    icon={Save}
+                    isLoading={loading}
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const data = (veiculoRef.current as any).getData();
+                        if (editingAsset) {
+                          await EquipamentoService.update(editingAsset.data.id_equipamento, data);
+                        } else {
+                          await EquipamentoService.create({ ...data, id_cliente: Number(clienteId) });
+                        }
+                        handleAssetSuccess();
+                      } catch (err) {
+                        toast.error("Erro ao salvar equipamento.");
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    Salvar Peça
+                  </Button>
+                </div>
+              </div>
+           )}
         </Modal>
       )}
 
-      {/* Modal: Confirmar exclusão de veículo */}
+      {/* Modal: Confirmar exclusão */}
       <ConfirmModal
-        isOpen={!!confirmDeleteVehicle}
-        onClose={() => setConfirmDeleteVehicle(null)}
-        onConfirm={handleDeleteVehicle}
-        title="Excluir Veículo"
-        description="Tem certeza que deseja excluir este veículo?"
+        isOpen={!!confirmDeleteAsset}
+        onClose={() => setConfirmDeleteAsset(null)}
+        onConfirm={handleDeleteAsset}
+        title={`Excluir ${confirmDeleteAsset?.type === 'VEICULO' ? 'Veículo' : 'Peça'}`}
+        description={`Tem certeza que deseja excluir este item?`}
         variant="danger"
       />
 

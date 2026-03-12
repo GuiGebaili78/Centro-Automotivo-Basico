@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import { OsStatus } from "../types/os.types";
 import { UnifiedSearch } from "../components/dashboard/UnifiedSearch";
 import { OsCreationModal } from "../components/os/OsCreationModal";
+import { LoosePartOsModal } from "../components/os/LoosePartOsModal";
 import { DashboardCalendar } from "../components/dashboard/DashboardCalendar";
 
 import { DashboardService } from "../services/dashboard.service";
@@ -17,6 +18,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
 
   const [decisionModalOpen, setDecisionModalOpen] = useState(false);
+  const [isLoosePartModalOpen, setIsLoosePartModalOpen] = useState(false);
   const [selectedSearch, setSelectedSearch] = useState<any>(null);
 
   const [handleNewRecord] = useState(() => () => navigate("/novo-cadastro"));
@@ -116,12 +118,19 @@ export function DashboardPage() {
               className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
               onClick={() => {
                 const input = document.querySelector(
-                  "input[placeholder*='Buscar por Placa']",
+                  "input[placeholder*='Buscar cliente, placa ou peça...']",
                 );
                 if (input) (input as HTMLElement).focus();
               }}
             >
               Nova OS
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsLoosePartModalOpen(true)}
+              className="h-[42px] px-4 border-neutral-200 text-neutral-600 hover:text-primary-600 whitespace-nowrap font-bold"
+            >
+              🔧 Peça Avulsa
             </Button>
           </div>
 
@@ -167,6 +176,11 @@ export function DashboardPage() {
         onSelect={handleOsSelect}
         clientName={selectedSearch?.display}
         vehicleName={selectedSearch?.subtext}
+      />
+
+      <LoosePartOsModal
+        isOpen={isLoosePartModalOpen}
+        onClose={() => setIsLoosePartModalOpen(false)}
       />
     </div>
   );

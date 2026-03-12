@@ -157,7 +157,7 @@ export const UnifiedSearch = ({
           ref={inputRef}
           type="text"
           className="block w-full pl-10 pr-4 py-3 border-2 border-neutral-200 rounded-xl leading-5 bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-medium text-neutral-700 disabled:opacity-50"
-          placeholder="Buscar por Placa, Cliente ou Veículo..."
+          placeholder="Buscar cliente, placa ou peça..."
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => {

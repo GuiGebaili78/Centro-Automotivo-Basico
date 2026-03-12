@@ -52,10 +52,19 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
     isNew: true,
   });
 
+  const [osMode, setOsMode] = useState<"OFICINA" | "AVULSO">("OFICINA");
+
   const [osData, setOsData] = useState({
     km_entrada: "",
     id_funcionario: "",
     defeito: "",
+  });
+
+  const [equipData, setEquipData] = useState({
+    nome_peca: "",
+    fabricante: "",
+    numeracao: "",
+    observacoes: "",
   });
 
   // Client Search for Autocomplete
@@ -114,11 +123,18 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
     if (!clientData.nome) return setError("Nome do cliente é obrigatório.");
     if (!clientData.telefone)
       return setError("Telefone do cliente é obrigatório.");
-    if (!vehicleData.placa) return setError("Placa do veículo é obrigatória.");
-    if (!vehicleData.marca) return setError("Marca do veículo é obrigatória.");
-    if (!vehicleData.modelo)
-      return setError("Modelo do veículo é obrigatório.");
-    if (!osData.km_entrada) return setError("KM é obrigatório.");
+    
+    // Validations based on Mode
+    if (osMode === "OFICINA") {
+      if (!vehicleData.placa) return setError("Placa do veículo é obrigatória.");
+      if (!vehicleData.marca) return setError("Marca do veículo é obrigatória.");
+      if (!vehicleData.modelo) return setError("Modelo do veículo é obrigatório.");
+      if (!osData.km_entrada) return setError("KM é obrigatório para serviços de oficina.");
+    } else {
+      // AVULSO Mode
+      if (!equipData.nome_peca) return setError("Nome da peça é obrigatório para serviços avulsos.");
+    }
+
     if (!osData.id_funcionario) return setError("Mecânico é obrigatório.");
 
     setLoading(true);
@@ -129,15 +145,15 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
           id_cliente: clientData.isNew ? null : Number(clientData.id_cliente),
           nome: clientData.nome,
           telefone: clientData.telefone,
-          tipo: "FISICA", // Defaulting to Fisica as per UI simplicity
+          tipo: "FISICA",
           logradouro: clientData.logradouro,
           numero: clientData.numero,
           bairro: clientData.bairro,
           cidade: clientData.cidade,
           estado: clientData.estado,
-          // CPF not in form yet, sending null implicitly by omission
         },
-        vehicle: {
+        // Send vehicle if provided or if it's OFICINA mode
+        vehicle: (osMode === "OFICINA" || vehicleData.placa) ? {
           id_veiculo: vehicleData.isNew ? null : Number(vehicleData.id_veiculo),
           placa: vehicleData.placa.toUpperCase(),
           marca: vehicleData.marca,
@@ -145,10 +161,17 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
           cor: vehicleData.cor || "BRANCO",
           ano_modelo: vehicleData.ano,
           combustivel: vehicleData.combustivel,
-        },
+        } : null,
+        // Send equipment if AVULSO mode or if provided
+        equipamento: (osMode === "AVULSO" || equipData.nome_peca) ? {
+          nome_peca: equipData.nome_peca,
+          fabricante: equipData.fabricante,
+          numeracao: equipData.numeracao,
+          observacoes: equipData.observacoes,
+        } : null,
         os: {
           id_funcionario: Number(osData.id_funcionario),
-          km_entrada: Number(osData.km_entrada),
+          km_entrada: osData.km_entrada ? Number(osData.km_entrada) : null,
           defeito_relatado: osData.defeito,
         },
       };
@@ -166,6 +189,30 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* TABS / MODE SELECTOR */}
+      <div className="flex bg-neutral-100 p-1.5 rounded-2xl w-fit">
+        <button
+          onClick={() => setOsMode("OFICINA")}
+          className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
+            osMode === "OFICINA"
+              ? "bg-white text-primary-600 shadow-sm"
+              : "text-neutral-500 hover:text-neutral-700"
+          }`}
+        >
+          <Car size={18} /> Oficina
+        </button>
+        <button
+          onClick={() => setOsMode("AVULSO")}
+          className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
+            osMode === "AVULSO"
+              ? "bg-white text-primary-600 shadow-sm"
+              : "text-neutral-500 hover:text-neutral-700"
+          }`}
+        >
+          <Wrench size={18} /> Serviços Avulsos
+        </button>
+      </div>
+
       {/* ERROR MSG */}
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-center gap-2 text-sm font-bold">
@@ -269,98 +316,97 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
           </div>
         </div>
 
-        {/* SECTION: VEÍCULO */}
+        {/* SECTION: VEÍCULO / EQUIPAMENTO */}
         <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-4">
           <div className="flex items-center gap-2 text-primary-600 mb-2">
-            <Car size={20} />
+            {osMode === "OFICINA" ? <Car size={20} /> : <Wrench size={20} />}
             <h3 className="font-black text-neutral-400 uppercase tracking-widest text-xs">
-              Dados do Veículo
+              {osMode === "OFICINA" ? "Dados do Veículo" : "Dados da Peça / Equipamento"}
             </h3>
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <Input
-                label="Placa *"
-                value={vehicleData.placa}
-                onChange={(e) =>
-                  setVehicleData({
-                    ...vehicleData,
-                    placa: e.target.value.toUpperCase(),
-                  })
-                }
-                className="font-black text-neutral-800 uppercase"
-                placeholder="MER-0000"
-                maxLength={8}
-              />
+          {osMode === "AVULSO" && (
+            <div className="space-y-3 animate-in fade-in zoom-in duration-300">
+                <Input
+                  label="Nome da Peça *"
+                  value={equipData.nome_peca}
+                  onChange={(e) => setEquipData({ ...equipData, nome_peca: e.target.value })}
+                  placeholder="Ex: Alternador, Cabeçote..."
+                  className="font-bold text-neutral-800"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Fabricante"
+                    value={equipData.fabricante}
+                    onChange={(e) => setEquipData({ ...equipData, fabricante: e.target.value })}
+                    placeholder="Ex: Bosch"
+                  />
+                  <Input
+                    label="Numeração"
+                    value={equipData.numeracao}
+                    onChange={(e) => setEquipData({ ...equipData, numeracao: e.target.value })}
+                    placeholder="Serial Opcional"
+                  />
+                </div>
             </div>
-            <div className="w-24">
-              <Input
-                label="Ano"
-                value={vehicleData.ano}
-                onChange={(e) =>
-                  setVehicleData({ ...vehicleData, ano: e.target.value })
-                }
-                className="font-bold text-neutral-800 text-center"
-                placeholder="2024"
-              />
+          )}
+
+          {/* Vehicle Fields - Always visible but optional in AVULSO */}
+          <div className={osMode === "AVULSO" ? "pt-4 border-t border-dotted border-neutral-200 opacity-60 hover:opacity-100 transition-opacity" : ""}>
+            {osMode === "AVULSO" && (
+                <p className="text-[10px] text-neutral-400 uppercase font-black mb-2">Vincular a um Veículo (Opcional)</p>
+            )}
+            <div className="flex gap-3">
+                <div className="flex-1">
+                <Input
+                    label={`Placa ${osMode === "OFICINA" ? "*" : ""}`}
+                    value={vehicleData.placa}
+                    onChange={(e) =>
+                    setVehicleData({
+                        ...vehicleData,
+                        placa: e.target.value.toUpperCase(),
+                    })
+                    }
+                    className="font-black text-neutral-800 uppercase"
+                    placeholder="MER-0000"
+                    maxLength={8}
+                />
+                </div>
+                <div className="w-24">
+                <Input
+                    label="Ano"
+                    value={vehicleData.ano}
+                    onChange={(e) =>
+                    setVehicleData({ ...vehicleData, ano: e.target.value })
+                    }
+                    className="font-bold text-neutral-800 text-center"
+                    placeholder="2024"
+                />
+                </div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Input
-                label="Marca *"
-                value={vehicleData.marca}
-                onChange={(e) =>
-                  setVehicleData({ ...vehicleData, marca: e.target.value })
-                }
-                className="font-bold text-neutral-800"
-                placeholder="Ex: VW"
-              />
-            </div>
-            <div>
-              <Input
-                label="Modelo *"
-                value={vehicleData.modelo}
-                onChange={(e) =>
-                  setVehicleData({ ...vehicleData, modelo: e.target.value })
-                }
-                className="font-bold text-neutral-800"
-                placeholder="Ex: Gol"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Input
-                label="Cor"
-                value={vehicleData.cor}
-                onChange={(e) =>
-                  setVehicleData({ ...vehicleData, cor: e.target.value })
-                }
-                className="font-bold text-neutral-800"
-                placeholder="Ex: Branco"
-              />
-            </div>
-            <div>
-              <Select
-                label="Combustível *"
-                value={vehicleData.combustivel}
-                onChange={(e) =>
-                  setVehicleData({
-                    ...vehicleData,
-                    combustivel: e.target.value,
-                  })
-                }
-                className="font-bold text-neutral-800"
-              >
-                <option value="FLEX">Flex</option>
-                <option value="GASOLINA">Gasolina</option>
-                <option value="ETANOL">Etanol</option>
-                <option value="DIESEL">Diesel</option>
-                <option value="GNV">GNV</option>
-                <option value="ELETRICO">Elétrico</option>
-              </Select>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                <Input
+                    label={`Marca ${osMode === "OFICINA" ? "*" : ""}`}
+                    value={vehicleData.marca}
+                    onChange={(e) =>
+                    setVehicleData({ ...vehicleData, marca: e.target.value })
+                    }
+                    className="font-bold text-neutral-800"
+                    placeholder="Ex: VW"
+                />
+                </div>
+                <div>
+                <Input
+                    label={`Modelo ${osMode === "OFICINA" ? "*" : ""}`}
+                    value={vehicleData.modelo}
+                    onChange={(e) =>
+                    setVehicleData({ ...vehicleData, modelo: e.target.value })
+                    }
+                    className="font-bold text-neutral-800"
+                    placeholder="Ex: Gol"
+                />
+                </div>
             </div>
           </div>
         </div>

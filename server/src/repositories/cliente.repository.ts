@@ -101,6 +101,7 @@ export class ClienteRepository {
         pessoa_juridica: { include: { pessoa: true } },
         tipo: true,
         veiculos: true,
+        equipamentos: true,
       },
     });
   }
@@ -113,6 +114,7 @@ export class ClienteRepository {
         pessoa_juridica: { include: { pessoa: true } },
         tipo: true,
         veiculos: true,
+        equipamentos: true,
         ordens_de_servico: true,
       },
     });

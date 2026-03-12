@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 03/10/2026 21:27:02
+PROJECT DUMP GENERATED ON 03/11/2026 22:35:23
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -1301,6 +1301,8 @@ EXPOSE 5173
 # Inicia o servidor de desenvolvimento com host 0.0.0.0 para acesso externo
 CMD ["npm", "run", "dev", "--", "--host"]
 
+
+
 ================================================================================
 FILE PATH: client\eslint.config.js
 ================================================================================
@@ -2060,7 +2062,6 @@ export const showMessage = {
 ================================================================================
 FILE PATH: client\src\components\PrivateRoute.tsx
 ================================================================================
-import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -2756,6 +2757,379 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
 };
 
 
+
+================================================================================
+FILE PATH: client\src\components\clientes\Forms\ClienteFormSection.tsx
+================================================================================
+/**
+ * ClienteFormSection
+ *
+ * Responsabilidades:
+ *  - Gerenciar o estado interno de TODOS os campos do cliente.
+ *  - Expor `getData()` via useImperativeHandle para que a página pai
+ *    colete os dados SOMENTE no momento do submit (sem prop drilling de state).
+ *  - Usar React.memo + forwardRef, eliminando re-renderizações causadas
+ *    pelo estado de componentes irmãos (ex: VeiculoFormSection).
+ *
+ * Padrão adoptado: estado totalmente local + imperativeHandle (pull on submit)
+ */
+import {
+  memo,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+  useCallback,
+  useEffect,
+} from "react";
+import {
+  User,
+  Phone,
+  Mail,
+  Search,
+  MapPin,
+  Building2,
+  Hash,
+} from "lucide-react";
+import { Input } from "../../ui/Input";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface ClienteFormData {
+  tipoPessoa: "PF" | "PJ";
+  nome: string;
+  cpf: string;
+  razaoSocial: string;
+  nomeFantasia: string;
+  cnpj: string;
+  ie: string;
+  telefone: string;
+  telefone2: string;
+  email: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complLogradouro: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+}
+
+export interface ClienteFormSectionRef {
+  getData: () => ClienteFormData;
+}
+
+interface ClienteFormSectionProps {
+  /** Dados iniciais (edição). Em modo criação, pode ser omitido. */
+  initialData?: Partial<ClienteFormData>;
+  /** Em modo de edição, campos do nome/tipo ficam desabilitados. */
+  isEditMode?: boolean;
+  /** Ref para o input "nome" principal para autoFocus no modo criação. */
+  nameInputRef?: React.RefObject<HTMLInputElement | null>;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export const ClienteFormSection = memo(
+  forwardRef<ClienteFormSectionRef, ClienteFormSectionProps>(
+    ({ initialData, isEditMode = false, nameInputRef }, ref) => {
+      // ── Local state (não sobe para o pai até o submit) ──
+      const [tipoPessoa, setTipoPessoa] = useState<"PF" | "PJ">(
+        initialData?.tipoPessoa ?? "PF",
+      );
+      const [nome, setNome] = useState(initialData?.nome ?? "");
+      const [cpf, setCpf] = useState(initialData?.cpf ?? "");
+      const [razaoSocial, setRazaoSocial] = useState(
+        initialData?.razaoSocial ?? "",
+      );
+      const [nomeFantasia, setNomeFantasia] = useState(
+        initialData?.nomeFantasia ?? "",
+      );
+      const [cnpj, setCnpj] = useState(initialData?.cnpj ?? "");
+      const [ie, setIe] = useState(initialData?.ie ?? "");
+      const [telefone, setTelefone] = useState(initialData?.telefone ?? "");
+      const [telefone2, setTelefone2] = useState(initialData?.telefone2 ?? "");
+      const [email, setEmail] = useState(initialData?.email ?? "");
+      const [cep, setCep] = useState(initialData?.cep ?? "");
+      const [logradouro, setLogradouro] = useState(
+        initialData?.logradouro ?? "",
+      );
+      const [numero, setNumero] = useState(initialData?.numero ?? "");
+      const [complLogradouro, setComplLogradouro] = useState(
+        initialData?.complLogradouro ?? "",
+      );
+      const [bairro, setBairro] = useState(initialData?.bairro ?? "");
+      const [cidade, setCidade] = useState(initialData?.cidade ?? "São Paulo");
+      const [estado, setEstado] = useState(initialData?.estado ?? "SP");
+
+      // Sincroniza quando os dados iniciais chegam (modo edição assíncrono)
+      useEffect(() => {
+        if (!initialData) return;
+        if (initialData.tipoPessoa) setTipoPessoa(initialData.tipoPessoa);
+        if (initialData.nome !== undefined) setNome(initialData.nome);
+        if (initialData.cpf !== undefined) setCpf(initialData.cpf);
+        if (initialData.razaoSocial !== undefined)
+          setRazaoSocial(initialData.razaoSocial);
+        if (initialData.nomeFantasia !== undefined)
+          setNomeFantasia(initialData.nomeFantasia);
+        if (initialData.cnpj !== undefined) setCnpj(initialData.cnpj);
+        if (initialData.ie !== undefined) setIe(initialData.ie);
+        if (initialData.telefone !== undefined)
+          setTelefone(initialData.telefone);
+        if (initialData.telefone2 !== undefined)
+          setTelefone2(initialData.telefone2);
+        if (initialData.email !== undefined) setEmail(initialData.email);
+        if (initialData.cep !== undefined) setCep(initialData.cep);
+        if (initialData.logradouro !== undefined)
+          setLogradouro(initialData.logradouro);
+        if (initialData.numero !== undefined) setNumero(initialData.numero);
+        if (initialData.complLogradouro !== undefined)
+          setComplLogradouro(initialData.complLogradouro);
+        if (initialData.bairro !== undefined) setBairro(initialData.bairro);
+        if (initialData.cidade !== undefined) setCidade(initialData.cidade);
+        if (initialData.estado !== undefined) setEstado(initialData.estado);
+        // Dependência intencional: só roda quando initialData mudar de referência
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [initialData]);
+
+      // ── Expõe getData() para a página pai ──
+      useImperativeHandle(
+        ref,
+        () => ({
+          getData: () => ({
+            tipoPessoa,
+            nome,
+            cpf,
+            razaoSocial,
+            nomeFantasia,
+            cnpj,
+            ie,
+            telefone,
+            telefone2,
+            email,
+            cep,
+            logradouro,
+            numero,
+            complLogradouro,
+            bairro,
+            cidade,
+            estado,
+          }),
+        }),
+        [
+          tipoPessoa,
+          nome,
+          cpf,
+          razaoSocial,
+          nomeFantasia,
+          cnpj,
+          ie,
+          telefone,
+          telefone2,
+          email,
+          cep,
+          logradouro,
+          numero,
+          complLogradouro,
+          bairro,
+          cidade,
+          estado,
+        ],
+      );
+
+      // ── Busca de CEP ViaCEP ──
+      const handleCepBlur = useCallback(async () => {
+        const cepRaw = cep.replace(/\D/g, "");
+        if (cepRaw.length !== 8) return;
+        try {
+          const res = await fetch(`https://viacep.com.br/ws/${cepRaw}/json/`);
+          const data = await res.json();
+          if (!data.erro) {
+            setLogradouro(data.logradouro ?? "");
+            setBairro(data.bairro ?? "");
+            setCidade(data.localidade ?? "");
+            setEstado(data.uf ?? "");
+            // Foca no campo "Número" após autocomplete
+            document.getElementById("nr_logradouro")?.focus();
+          }
+        } catch {
+          // silently fail — user can fill manually
+        }
+      }, [cep]);
+
+      // ─── Render ───────────────────────────────────────────────────────────
+      return (
+        <div className="bg-neutral-25 p-6 rounded-2xl border border-neutral-200 shadow-sm space-y-6">
+          {/* Header */}
+          <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
+            <div className="bg-primary-100 p-2 rounded-lg text-primary-600">
+              <User size={20} />
+            </div>
+            <h2 className="font-bold text-lg text-neutral-800">
+              Dados do Cliente
+            </h2>
+          </div>
+
+          {/* Tipo Pessoa Toggle */}
+          <div className="flex bg-neutral-100 p-1 rounded-lg w-fit">
+            {(["PF", "PJ"] as const).map((tipo) => (
+              <button
+                key={tipo}
+                type="button"
+                disabled={isEditMode}
+                onClick={() => !isEditMode && setTipoPessoa(tipo)}
+                className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${
+                  tipoPessoa === tipo
+                    ? "bg-neutral-25 shadow text-primary-600"
+                    : "text-neutral-500"
+                } ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {tipo === "PF" ? "Pessoa Física" : "Pessoa Jurídica"}
+              </button>
+            ))}
+          </div>
+
+          {/* Campos de identificação (PF / PJ) */}
+          <div className="grid grid-cols-1 gap-4">
+            {tipoPessoa === "PF" ? (
+              <>
+                <Input
+                  label="Nome Completo *"
+                  icon={User}
+                  ref={nameInputRef as React.Ref<HTMLInputElement>}
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Nome do cliente"
+                  required
+                  disabled={isEditMode}
+                />
+                <Input
+                  label="CPF"
+                  icon={Hash}
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value)}
+                  placeholder="000.000.000-00"
+                  disabled={isEditMode}
+                />
+              </>
+            ) : (
+              <>
+                <Input
+                  label="Razão Social *"
+                  icon={Building2}
+                  ref={nameInputRef as React.Ref<HTMLInputElement>}
+                  value={razaoSocial}
+                  onChange={(e) => setRazaoSocial(e.target.value)}
+                  placeholder="Nome da Empresa"
+                  required
+                  disabled={isEditMode}
+                />
+                <Input
+                  label="Nome Fantasia"
+                  value={nomeFantasia}
+                  onChange={(e) => setNomeFantasia(e.target.value)}
+                  placeholder="Nome Comercial"
+                  disabled={isEditMode}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="CNPJ"
+                    value={cnpj}
+                    onChange={(e) => setCnpj(e.target.value)}
+                    placeholder="00.000.000/0000-00"
+                  />
+                  <Input
+                    label="IE"
+                    value={ie}
+                    onChange={(e) => setIe(e.target.value)}
+                    placeholder="Inscrição Estadual"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Contato */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-100">
+            <Input
+              label="Telefone Principal *"
+              icon={Phone}
+              value={telefone}
+              onChange={(e) => setTelefone(e.target.value)}
+              placeholder="(00) 00000-0000"
+              required
+            />
+            <Input
+              label="Telefone 2"
+              icon={Phone}
+              value={telefone2}
+              onChange={(e) => setTelefone2(e.target.value)}
+              placeholder="(00) 00000-0000"
+            />
+            <div className="sm:col-span-2">
+              <Input
+                label="Email"
+                icon={Mail}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="cliente@email.com"
+              />
+            </div>
+          </div>
+
+          {/* Endereço */}
+          <div className="space-y-4 pt-4 border-t border-neutral-100">
+            <div className="grid grid-cols-3 gap-4">
+              <Input
+                label="CEP"
+                icon={Search}
+                value={cep}
+                onChange={(e) => setCep(e.target.value)}
+                onBlur={handleCepBlur}
+                placeholder="00000-000"
+              />
+              <div className="col-span-2">
+                <Input
+                  label="Logradouro"
+                  icon={MapPin}
+                  value={logradouro}
+                  onChange={(e) => setLogradouro(e.target.value)}
+                />
+              </div>
+              <Input
+                id="nr_logradouro"
+                label="Número"
+                value={numero}
+                onChange={(e) => setNumero(e.target.value)}
+              />
+              <div className="col-span-2">
+                <Input
+                  label="Complemento"
+                  value={complLogradouro}
+                  onChange={(e) => setComplLogradouro(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Bairro"
+                value={bairro}
+                onChange={(e) => setBairro(e.target.value)}
+              />
+              <Input
+                label="Cidade"
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    },
+  ),
+);
+
+ClienteFormSection.displayName = "ClienteFormSection";
 
 
 
@@ -15285,6 +15659,223 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
 
 
 ================================================================================
+FILE PATH: client\src\components\os\LoosePartOsModal.tsx
+================================================================================
+import { useState, useEffect } from "react";
+import { Modal, Button, Input, TextArea } from "../ui";
+import { Search, User, Plus, Wrench, ArrowRight } from "lucide-react";
+import { api } from "../../services/api";
+import { useNavigate } from "react-router-dom";
+
+interface LoosePartOsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const LoosePartOsModal = ({ isOpen, onClose }: LoosePartOsModalProps) => {
+  const navigate = useNavigate();
+  const [step, setStep] = useState<1 | 2>(1);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [clients, setClients] = useState<any[]>([]);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  
+  const [equipData, setEquipData] = useState({
+    nome_peca: "",
+    fabricante: "",
+    numeracao: "",
+    observacoes: ""
+  });
+
+  // Client Search logic
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setClients([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        // Usando o endpoint de busca que suporta o termo
+        const resp = await api.get(`/cliente?search=${searchQuery}`);
+        setClients(resp.data);
+      } catch (err) {
+        console.error(err);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSelectClient = (client: any) => {
+    setSelectedClient(client);
+    setStep(2);
+  };
+
+  const handleCreateOs = async () => {
+    if (!equipData.nome_peca) return;
+    setLoading(true);
+    try {
+      const payload = {
+        client: { id_cliente: selectedClient.id_cliente },
+        equipamento: {
+          nome_peca: equipData.nome_peca,
+          fabricante: equipData.fabricante,
+          numeracao: equipData.numeracao,
+          observacoes: equipData.observacoes
+        },
+        os: {
+          status: "ABERTA",
+          defeito_relatado: `Peça Avulsa: ${equipData.nome_peca}`,
+          parcelas: 1
+        }
+      };
+
+      const resp = await api.post("/ordem-de-servico", payload);
+      onClose();
+      // Reset state for next time
+      setStep(1);
+      setSelectedClient(null);
+      setSearchQuery("");
+      setEquipData({ nome_peca: "", fabricante: "", numeracao: "", observacoes: "" });
+      
+      navigate(`/os/${resp.data.id_os}`);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || "Erro ao criar OS de peça avulsa.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <Modal title="Nova OS / Peça Avulsa" onClose={onClose} className="max-w-2xl">
+      <div className="space-y-6">
+        {step === 1 ? (
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+              <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                <Search size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-blue-900">Passo 1: Identificar Cliente</h4>
+                <p className="text-sm text-blue-700">Pesquise o cliente que trouxe a peça.</p>
+              </div>
+            </div>
+
+            <div className="relative">
+              <Input
+                placeholder="Nome ou Telefone do cliente..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="max-h-64 overflow-y-auto border border-neutral-100 rounded-xl divide-y divide-neutral-100">
+              {clients.map((c) => (
+                <button
+                  key={c.id_cliente}
+                  onClick={() => handleSelectClient(c)}
+                  className="w-full text-left p-4 hover:bg-neutral-50 transition-colors flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-neutral-100 rounded-lg text-neutral-500 group-hover:bg-primary-100 group-hover:text-primary-600 transition-colors">
+                      <User size={18} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-neutral-800">
+                        {c.pessoa_fisica?.pessoa?.nome || c.pessoa_juridica?.nome_fantasia}
+                      </p>
+                      <p className="text-xs text-neutral-500">{c.telefone_1}</p>
+                    </div>
+                  </div>
+                  <ArrowRight size={18} className="text-neutral-300 group-hover:text-primary-500 transition-colors" />
+                </button>
+              ))}
+              {searchQuery.length >= 2 && clients.length === 0 && (
+                <div className="p-8 text-center bg-neutral-50 rounded-xl">
+                  <p className="text-neutral-500 mb-4">Cliente não encontrado.</p>
+                  <Button variant="primary" icon={Plus} onClick={() => navigate("/cadastro-unificado")}>
+                    Cadastrar Novo Cliente
+                  </Button>
+                </div>
+              )}
+              {searchQuery.length < 2 && (
+                <div className="p-8 text-center text-neutral-400 text-sm italic">
+                  Digite pelo menos 2 caracteres para buscar...
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 animate-in slide-in-from-right duration-300">
+            <div className="bg-primary-50 p-4 rounded-xl border border-primary-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary-100 text-primary-600 rounded-lg">
+                  <User size={20} />
+                </div>
+                <div>
+                  <p className="text-xs text-primary-700 font-bold uppercase tracking-wider">Cliente Selecionado</p>
+                  <h4 className="font-bold text-neutral-800">
+                    {selectedClient.pessoa_fisica?.pessoa?.nome || selectedClient.pessoa_juridica?.nome_fantasia}
+                  </h4>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setStep(1)}>Alterar</Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Nome da Peça / Equipamento"
+                required
+                placeholder="Ex: Alternador, Motor de Partida..."
+                value={equipData.nome_peca}
+                onChange={(e) => setEquipData({ ...equipData, nome_peca: e.target.value })}
+              />
+              <Input
+                label="Fabricante / Marca"
+                placeholder="Ex: Bosch, Valeo..."
+                value={equipData.fabricante}
+                onChange={(e) => setEquipData({ ...equipData, fabricante: e.target.value })}
+              />
+              <Input
+                label="Numeração / Serial"
+                placeholder="Opcional"
+                value={equipData.numeracao}
+                onChange={(e) => setEquipData({ ...equipData, numeracao: e.target.value })}
+              />
+            </div>
+            <TextArea
+              label="Observações Adicionais"
+              placeholder="Estado da peça, defeitos visíveis, etc..."
+              value={equipData.observacoes}
+              onChange={(e) => setEquipData({ ...equipData, observacoes: e.target.value })}
+              rows={3}
+            />
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
+              <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+              <Button
+                variant="primary"
+                icon={Wrench}
+                onClick={handleCreateOs}
+                loading={loading}
+                disabled={!equipData.nome_peca}
+              >
+                Abrir Ordem de Serviço
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+};
+
+
+
+================================================================================
 FILE PATH: client\src\components\os\OrdemDeServicoNova.tsx
 ================================================================================
 import React, { useState, useEffect } from "react";
@@ -17085,8 +17676,8 @@ export const OsTable = ({
         <thead>
           <tr>
             <th className="w-[15%]">OS / Data</th>
-            <th className="w-[20%]">Veículo</th>
-            <th className="w-[25%]">Diagnóstico / Ações</th>
+            <th className="w-[20%]">Veículo / Peça</th>
+            <th className="w-[25%]">Diagnóstico / Obs</th>
             <th className="w-[15%]">Técnico</th>
             <th className="w-[15%]">Cliente</th>
             <th className="w-[10%] text-center">Status</th>
@@ -17130,14 +17721,28 @@ export const OsTable = ({
                 </td>
                 <td className="p-4">
                   <div className="flex flex-col">
-                    <span className="text-neutral-600 text-base font-medium uppercase">
-                      {os.veiculo?.marca} {os.veiculo?.modelo} •{" "}
-                      {os.veiculo?.cor}
-                    </span>
-                    <span className="text-base text-primary-600 uppercase mt-0.5">
-                      {os.veiculo?.placa || "---"} -{" "}
-                      {os.veiculo?.ano_modelo || "---"}
-                    </span>
+                    {os.veiculo ? (
+                      <>
+                        <span className="text-neutral-600 text-base font-medium uppercase">
+                          {os.veiculo.marca} {os.veiculo.modelo} • {os.veiculo.cor}
+                        </span>
+                        <span className="text-base text-primary-600 uppercase mt-0.5">
+                          {os.veiculo.placa} - {os.veiculo.ano_modelo}
+                        </span>
+                      </>
+                    ) : os.equipamento ? (
+                      <>
+                        <span className="text-neutral-600 text-base font-medium uppercase">
+                           {os.equipamento.nome_peca}
+                        </span>
+                        <span className="text-sm text-neutral-400 mt-1 italic">
+                          {os.equipamento.fabricante && `Marca: ${os.equipamento.fabricante}`}
+                          {os.equipamento.numeracao && ` • S/N: ${os.equipamento.numeracao}`}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-neutral-300 italic">Serviço Avulso</span>
+                    )}
                   </div>
                 </td>
                 <td className="p-4">
@@ -17703,6 +18308,495 @@ export const TipoForm = ({ onSuccess, onCancel }: TipoFormProps) => {
 
 ================================================================================
 FILE PATH: client\src\components\os\Forms\UnifiedOsForm.tsx
+================================================================================
+import React, { useState, useEffect } from "react";
+import {
+  User,
+  Car,
+  Wrench,
+  ArrowRight,
+  Phone,
+  AlertCircle,
+  MapPin,
+} from "lucide-react";
+import { OsService } from "../../../services/os.service";
+import { Button, Input, Select } from "../../ui";
+
+interface UnifiedOsFormProps {
+  onCancel: () => void;
+  onSuccess: (osId: number) => void;
+  employees: any[];
+  initialClient?: any; // If we start from a found client
+}
+
+export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
+  onCancel,
+  onSuccess,
+  employees,
+  initialClient,
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // --- FORM DATA ---
+  const [clientData, setClientData] = useState({
+    id_cliente: "",
+    nome: "",
+    telefone: "",
+    cep: "",
+    logradouro: "",
+    numero: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+    isNew: true,
+  });
+
+  const [vehicleData, setVehicleData] = useState({
+    id_veiculo: "",
+    placa: "",
+    marca: "",
+    modelo: "",
+    cor: "",
+    ano: new Date().getFullYear().toString(),
+    combustivel: "FLEX",
+    isNew: true,
+  });
+
+  const [osMode, setOsMode] = useState<"OFICINA" | "AVULSO">("OFICINA");
+
+  const [osData, setOsData] = useState({
+    km_entrada: "",
+    id_funcionario: "",
+    defeito: "",
+  });
+
+  const [equipData, setEquipData] = useState({
+    nome_peca: "",
+    fabricante: "",
+    numeracao: "",
+    observacoes: "",
+  });
+
+  // Client Search for Autocomplete
+  const [clientQuery, setClientQuery] = useState("");
+  const [clientResults, setClientResults] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (initialClient) {
+      selectClient(initialClient);
+    }
+  }, [initialClient]);
+
+  // Search existing client
+  const handleClientSearch = async (val: string) => {
+    setClientQuery(val);
+    setClientData((prev) => ({
+      ...prev,
+      nome: val,
+      isNew: true,
+      id_cliente: "",
+    }));
+    if (val.length < 3) {
+      setClientResults([]);
+      return;
+    }
+    try {
+      const data = await OsService.searchClientes(val);
+      setClientResults(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const selectClient = (c: any) => {
+    const nome =
+      c.pessoa_fisica?.pessoa?.nome || c.pessoa_juridica?.razao_social;
+    setClientData({
+      id_cliente: c.id_cliente,
+      nome: nome,
+      telefone: c.telefone_1,
+      cep: c.cep || "",
+      logradouro: c.logradouro || "",
+      numero: c.nr_logradouro || "",
+      bairro: c.bairro || "",
+      cidade: c.cidade || "",
+      estado: c.estado || "",
+      isNew: false,
+    });
+    setClientQuery(nome);
+    setClientResults([]);
+  };
+
+  // --- VALIDATION & SUBMIT ---
+  const handleSubmit = async () => {
+    setError("");
+    if (!clientData.nome) return setError("Nome do cliente é obrigatório.");
+    if (!clientData.telefone)
+      return setError("Telefone do cliente é obrigatório.");
+    
+    // Validations based on Mode
+    if (osMode === "OFICINA") {
+      if (!vehicleData.placa) return setError("Placa do veículo é obrigatória.");
+      if (!vehicleData.marca) return setError("Marca do veículo é obrigatória.");
+      if (!vehicleData.modelo) return setError("Modelo do veículo é obrigatório.");
+      if (!osData.km_entrada) return setError("KM é obrigatório para serviços de oficina.");
+    } else {
+      // AVULSO Mode
+      if (!equipData.nome_peca) return setError("Nome da peça é obrigatório para serviços avulsos.");
+    }
+
+    if (!osData.id_funcionario) return setError("Mecânico é obrigatório.");
+
+    setLoading(true);
+    try {
+      // UNIFIED PAYLOAD
+      const payload = {
+        client: {
+          id_cliente: clientData.isNew ? null : Number(clientData.id_cliente),
+          nome: clientData.nome,
+          telefone: clientData.telefone,
+          tipo: "FISICA",
+          logradouro: clientData.logradouro,
+          numero: clientData.numero,
+          bairro: clientData.bairro,
+          cidade: clientData.cidade,
+          estado: clientData.estado,
+        },
+        // Send vehicle if provided or if it's OFICINA mode
+        vehicle: (osMode === "OFICINA" || vehicleData.placa) ? {
+          id_veiculo: vehicleData.isNew ? null : Number(vehicleData.id_veiculo),
+          placa: vehicleData.placa.toUpperCase(),
+          marca: vehicleData.marca,
+          modelo: vehicleData.modelo,
+          cor: vehicleData.cor || "BRANCO",
+          ano_modelo: vehicleData.ano,
+          combustivel: vehicleData.combustivel,
+        } : null,
+        // Send equipment if AVULSO mode or if provided
+        equipamento: (osMode === "AVULSO" || equipData.nome_peca) ? {
+          nome_peca: equipData.nome_peca,
+          fabricante: equipData.fabricante,
+          numeracao: equipData.numeracao,
+          observacoes: equipData.observacoes,
+        } : null,
+        os: {
+          id_funcionario: Number(osData.id_funcionario),
+          km_entrada: osData.km_entrada ? Number(osData.km_entrada) : null,
+          defeito_relatado: osData.defeito,
+        },
+      };
+
+      const data = await OsService.createUnified(payload);
+
+      onSuccess(data.id_os);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.error || err.message || "Erro ao salvar.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* TABS / MODE SELECTOR */}
+      <div className="flex bg-neutral-100 p-1.5 rounded-2xl w-fit">
+        <button
+          onClick={() => setOsMode("OFICINA")}
+          className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
+            osMode === "OFICINA"
+              ? "bg-white text-primary-600 shadow-sm"
+              : "text-neutral-500 hover:text-neutral-700"
+          }`}
+        >
+          <Car size={18} /> Oficina
+        </button>
+        <button
+          onClick={() => setOsMode("AVULSO")}
+          className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
+            osMode === "AVULSO"
+              ? "bg-white text-primary-600 shadow-sm"
+              : "text-neutral-500 hover:text-neutral-700"
+          }`}
+        >
+          <Wrench size={18} /> Serviços Avulsos
+        </button>
+      </div>
+
+      {/* ERROR MSG */}
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-center gap-2 text-sm font-bold">
+          <AlertCircle size={16} /> {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* SECTION: CLIENTE */}
+        <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-4">
+          <div className="flex items-center gap-2 text-primary-600 mb-2">
+            <User size={20} />
+            <h3 className="font-black text-neutral-400 uppercase tracking-widest text-xs">
+              Dados do Cliente
+            </h3>
+          </div>
+
+          <div className="relative">
+            <Input
+              label="Nome Completo *"
+              value={clientQuery}
+              onChange={(e) => handleClientSearch(e.target.value)}
+              className="font-bold text-neutral-800"
+              placeholder="Buscar ou Digitar Novo..."
+            />
+            {clientResults.length > 0 && (
+              <div className="absolute top-16 left-0 w-full bg-white shadow-xl border border-neutral-100 rounded-xl z-20 max-h-40 overflow-y-auto">
+                {clientResults.map((c) => (
+                  <button
+                    key={c.id_cliente}
+                    onClick={() => selectClient(c)}
+                    className="w-full text-left p-3 hover:bg-neutral-50 text-sm font-bold text-neutral-700"
+                  >
+                    {c.pessoa_fisica?.pessoa?.nome ||
+                      c.pessoa_juridica?.razao_social}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <Input
+            label="Telefone / Celular *"
+            value={clientData.telefone}
+            onChange={(e) =>
+              setClientData({ ...clientData, telefone: e.target.value })
+            }
+            disabled={!clientData.isNew}
+            icon={Phone}
+            className="font-bold text-neutral-800"
+            placeholder="(00) 00000-0000"
+          />
+
+          {/* Endereço Simplificado */}
+          <div className="pt-2 border-t border-neutral-200">
+            <div className="flex items-center gap-1 mb-2">
+              <MapPin size={14} className="text-neutral-400" />
+              <span className="text-sm font-black text-neutral-400 uppercase">
+                Endereço
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <Input
+                placeholder="CEP"
+                className="col-span-1 border rounded-lg text-sm"
+                value={clientData.cep}
+                onChange={(e) =>
+                  setClientData({ ...clientData, cep: e.target.value })
+                }
+                disabled={!clientData.isNew}
+              />
+              <Input
+                placeholder="Cidade"
+                className="col-span-2 border rounded-lg text-sm"
+                value={clientData.cidade}
+                onChange={(e) =>
+                  setClientData({ ...clientData, cidade: e.target.value })
+                }
+                disabled={!clientData.isNew}
+              />
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              <Input
+                placeholder="Logradouro"
+                className="col-span-3 border rounded-lg text-sm"
+                value={clientData.logradouro}
+                onChange={(e) =>
+                  setClientData({ ...clientData, logradouro: e.target.value })
+                }
+                disabled={!clientData.isNew}
+              />
+              <Input
+                placeholder="Nº"
+                className="col-span-1 border rounded-lg text-sm"
+                value={clientData.numero}
+                onChange={(e) =>
+                  setClientData({ ...clientData, numero: e.target.value })
+                }
+                disabled={!clientData.isNew}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* SECTION: VEÍCULO / EQUIPAMENTO */}
+        <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-4">
+          <div className="flex items-center gap-2 text-primary-600 mb-2">
+            {osMode === "OFICINA" ? <Car size={20} /> : <Wrench size={20} />}
+            <h3 className="font-black text-neutral-400 uppercase tracking-widest text-xs">
+              {osMode === "OFICINA" ? "Dados do Veículo" : "Dados da Peça / Equipamento"}
+            </h3>
+          </div>
+
+          {osMode === "AVULSO" && (
+            <div className="space-y-3 animate-in fade-in zoom-in duration-300">
+                <Input
+                  label="Nome da Peça *"
+                  value={equipData.nome_peca}
+                  onChange={(e) => setEquipData({ ...equipData, nome_peca: e.target.value })}
+                  placeholder="Ex: Alternador, Cabeçote..."
+                  className="font-bold text-neutral-800"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Fabricante"
+                    value={equipData.fabricante}
+                    onChange={(e) => setEquipData({ ...equipData, fabricante: e.target.value })}
+                    placeholder="Ex: Bosch"
+                  />
+                  <Input
+                    label="Numeração"
+                    value={equipData.numeracao}
+                    onChange={(e) => setEquipData({ ...equipData, numeracao: e.target.value })}
+                    placeholder="Serial Opcional"
+                  />
+                </div>
+            </div>
+          )}
+
+          {/* Vehicle Fields - Always visible but optional in AVULSO */}
+          <div className={osMode === "AVULSO" ? "pt-4 border-t border-dotted border-neutral-200 opacity-60 hover:opacity-100 transition-opacity" : ""}>
+            {osMode === "AVULSO" && (
+                <p className="text-[10px] text-neutral-400 uppercase font-black mb-2">Vincular a um Veículo (Opcional)</p>
+            )}
+            <div className="flex gap-3">
+                <div className="flex-1">
+                <Input
+                    label={`Placa ${osMode === "OFICINA" ? "*" : ""}`}
+                    value={vehicleData.placa}
+                    onChange={(e) =>
+                    setVehicleData({
+                        ...vehicleData,
+                        placa: e.target.value.toUpperCase(),
+                    })
+                    }
+                    className="font-black text-neutral-800 uppercase"
+                    placeholder="MER-0000"
+                    maxLength={8}
+                />
+                </div>
+                <div className="w-24">
+                <Input
+                    label="Ano"
+                    value={vehicleData.ano}
+                    onChange={(e) =>
+                    setVehicleData({ ...vehicleData, ano: e.target.value })
+                    }
+                    className="font-bold text-neutral-800 text-center"
+                    placeholder="2024"
+                />
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                <Input
+                    label={`Marca ${osMode === "OFICINA" ? "*" : ""}`}
+                    value={vehicleData.marca}
+                    onChange={(e) =>
+                    setVehicleData({ ...vehicleData, marca: e.target.value })
+                    }
+                    className="font-bold text-neutral-800"
+                    placeholder="Ex: VW"
+                />
+                </div>
+                <div>
+                <Input
+                    label={`Modelo ${osMode === "OFICINA" ? "*" : ""}`}
+                    value={vehicleData.modelo}
+                    onChange={(e) =>
+                    setVehicleData({ ...vehicleData, modelo: e.target.value })
+                    }
+                    className="font-bold text-neutral-800"
+                    placeholder="Ex: Gol"
+                />
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION: OS BASICS */}
+      <div className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="col-span-1 md:col-span-3 pb-2 border-b border-neutral-100 mb-2">
+          <h3 className="font-black text-primary-600 uppercase tracking-widest text-xs flex items-center gap-2">
+            <Wrench size={16} /> Detalhes Iniciais
+          </h3>
+        </div>
+
+        <div>
+          <Input
+            label="KM Entrada *"
+            type="number"
+            value={osData.km_entrada}
+            onChange={(e) =>
+              setOsData({ ...osData, km_entrada: e.target.value })
+            }
+            className="font-black text-xl text-neutral-900"
+            placeholder="000000"
+          />
+        </div>
+        <div>
+          <Select
+            label="Mecânico *"
+            value={osData.id_funcionario}
+            onChange={(e) =>
+              setOsData({ ...osData, id_funcionario: e.target.value })
+            }
+            className="font-bold text-neutral-800"
+          >
+            <option value="">Selecione...</option>
+            {employees.map((e) => (
+              <option key={e.id_funcionario} value={e.id_funcionario}>
+                {e.pessoa_fisica?.pessoa?.nome || "Func"}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Input
+            label="Defeito (Opcional)"
+            value={osData.defeito}
+            onChange={(e) => setOsData({ ...osData, defeito: e.target.value })}
+            className="font-medium text-neutral-800"
+            placeholder="Barulho no motor..."
+          />
+        </div>
+      </div>
+
+      {/* ACTIONS */}
+      <div className="flex gap-4 pt-4">
+        <Button
+          variant="secondary"
+          onClick={onCancel}
+          className="flex-1 py-4 h-auto text-neutral-500"
+        >
+          Cancelar
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleSubmit}
+          isLoading={loading}
+          className="flex-2 w-full py-4 h-auto text-lg uppercase tracking-widest"
+        >
+          CRIAR ORDEM DE SERVIÇO <ArrowRight className="ml-2" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\components\pessoa\Forms\PessoaFisicaForm.tsx
 ================================================================================
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -20233,7 +21327,7 @@ VeiculoFormSection.displayName = "VeiculoFormSection";
 ================================================================================
 FILE PATH: client\src\contexts\AuthContext.tsx
 ================================================================================
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 
 interface User {
   id_usuario: number;
@@ -23389,6 +24483,7 @@ import { Button } from "../components/ui/Button";
 import { OsStatus } from "../types/os.types";
 import { UnifiedSearch } from "../components/dashboard/UnifiedSearch";
 import { OsCreationModal } from "../components/os/OsCreationModal";
+import { LoosePartOsModal } from "../components/os/LoosePartOsModal";
 import { DashboardCalendar } from "../components/dashboard/DashboardCalendar";
 
 import { DashboardService } from "../services/dashboard.service";
@@ -23400,6 +24495,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
 
   const [decisionModalOpen, setDecisionModalOpen] = useState(false);
+  const [isLoosePartModalOpen, setIsLoosePartModalOpen] = useState(false);
   const [selectedSearch, setSelectedSearch] = useState<any>(null);
 
   const [handleNewRecord] = useState(() => () => navigate("/novo-cadastro"));
@@ -23493,6 +24589,13 @@ export function DashboardPage() {
               />
             </div>
             <Button
+              variant="outline"
+              onClick={() => setIsLoosePartModalOpen(true)}
+              className="h-[42px] px-4 border-neutral-200 text-neutral-600 hover:text-primary-600 whitespace-nowrap font-bold"
+            >
+              🔧 Peça Avulsa
+            </Button>
+            <Button
               variant="primary"
               size="lg"
               icon={Plus}
@@ -23550,6 +24653,11 @@ export function DashboardPage() {
         onSelect={handleOsSelect}
         clientName={selectedSearch?.display}
         vehicleName={selectedSearch?.subtext}
+      />
+
+      <LoosePartOsModal
+        isOpen={isLoosePartModalOpen}
+        onClose={() => setIsLoosePartModalOpen(false)}
       />
     </div>
   );
@@ -26594,7 +27702,6 @@ export const FinanceiroPage = () => {
 
 
 ================================================================================
-FILE PATH: client\src\pages\FornecedorPage.tsx
 ================================================================================
 import { useState, useEffect, useRef } from "react";
 import { FornecedorService } from "../services/fornecedor.service";
@@ -27029,7 +28136,7 @@ export const LivroCaixaPage = () => {
 ================================================================================
 FILE PATH: client\src\pages\Login.tsx
 ================================================================================
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -27048,16 +28155,13 @@ export const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, senha }),
+      const response = await fetch("http://localhost:3000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({ email, senha }),
+      });
 
       const data = await response.json();
 
@@ -28438,8 +29542,6 @@ export const OrdemDeServicoDetalhePage = () => {
 
 
 ================================================================================
-FILE PATH: client\src\pages\OrdemDeServicoPage.tsx
-================================================================================
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -28690,6 +29792,10 @@ export const OrdemDeServicoPage = () => {
     const model = os.veiculo?.modelo?.toLowerCase() || "";
     const brand = os.veiculo?.marca?.toLowerCase() || "";
     const color = os.veiculo?.cor?.toLowerCase() || "";
+    const part = os.equipamento?.nome_peca?.toLowerCase() || "";
+    const serial = os.equipamento?.numeracao?.toLowerCase() || "";
+    const diag = os.diagnostico?.toLowerCase() || "";
+
     const owner = (
       os.cliente?.pessoa_fisica?.pessoa?.nome ||
       os.cliente?.pessoa_juridica?.razao_social ||
@@ -28698,7 +29804,7 @@ export const OrdemDeServicoPage = () => {
     const id = String(os.id_os);
     const fullIdHash = `#${os.id_os}`;
 
-    return [plate, model, brand, color, owner, id, fullIdHash]
+    return [plate, model, brand, color, part, serial, diag, owner, id, fullIdHash]
       .join(" ")
       .includes(q);
   });
@@ -28727,7 +29833,7 @@ export const OrdemDeServicoPage = () => {
               icon={Search}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por Placa, Cliente, Modelo ou OS..."
+              placeholder="Buscar por Cliente, Placa, Peça, Diagnóstico ou OS..."
             />
           </div>
 
@@ -29035,9 +30141,1057 @@ export const OrdemDeServicoPage = () => {
 
 ================================================================================
 FILE PATH: client\src\pages\OsPrintView.tsx
+================================================================================
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { api } from "../services/api"; // Or useOrdemServico hook if available globally without layout
+import { format } from "date-fns";
+import { formatCurrency } from "../utils/formatCurrency";
+import {
+  ConfiguracaoService,
+  type Configuracao,
+} from "../services/ConfiguracaoService";
+
+export const OsPrintView = () => {
+  const { id } = useParams();
+  const [os, setOs] = useState<any>(null);
+  const [config, setConfig] = useState<Configuracao | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    Promise.all([
+      api.get(`/ordem-de-servico/${id}`).then((res) => res.data),
+      ConfiguracaoService.get(),
+    ])
+      .then(([osData, configData]) => {
+        setOs(osData);
+        setConfig(configData);
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  useEffect(() => {
+    if (os && config && !loading) {
+      setTimeout(() => {
+        window.print();
+      }, 500);
+    }
+  }, [os, config, loading]);
+
+  if (loading) return <div className="p-8 text-center">Carregando...</div>;
+  if (!os) return <div className="p-8 text-center">OS não encontrada.</div>;
+
+  const isBudget = ["AGENDAMENTO", "ORCAMENTO", "ABERTA"].includes(os.status);
+
+  // Totals Calculation (if not present in OS object directly)
+  const totalPecas =
+    os.itens_os?.reduce(
+      (acc: number, item: any) => acc + Number(item.valor_total || 0),
+      0,
+    ) || 0;
+
+  const totalServicos =
+    os.servicos_mao_de_obra?.reduce(
+      (acc: number, item: any) => acc + Number(item.valor || 0),
+      0,
+    ) || 0;
+
+  const totalGeral = totalPecas + totalServicos;
+
+  return (
+    <div className="min-h-screen bg-white p-8 print:p-0 print:m-0 print:w-full print:absolute print:top-0 print:left-0">
+      {/* Print Controls - Hidden when printing */}
+      <div className="mb-8 flex gap-4 print:hidden"></div>
+      {/* Header with Config Data */}
+      <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+        <div className="flex items-center gap-4">
+          {config?.logoUrl && (
+            <img
+              src={`${import.meta.env.VITE_API_URL}${config.logoUrl}`}
+              alt="Logo"
+              className="h-20 w-auto object-contain"
+            />
+          )}
+          <div>
+            <h1 className="text-xl font-black uppercase">
+              {config?.nomeFantasia || "Centro Automotivo"}
+            </h1>
+            <p className="text-sm font-bold">{config?.razaoSocial}</p>
+            <p className="text-xs">
+              CNPJ: {config?.cnpj || "-"}
+              {config?.inscricaoEstadual &&
+                ` • IE: ${config.inscricaoEstadual}`}
+            </p>
+            <p className="text-xs">
+              {config?.endereco || "Endereço não configurado"}
+            </p>
+            <p className="text-xs">Tel: {config?.telefone || "-"}</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <h2 className="text-3xl font-black text-neutral-800">
+            OS #{os.id_os}
+          </h2>
+          <p className="font-bold text-sm uppercase mt-1">{os.status}</p>
+          <p className="text-xs text-neutral-500">
+            {format(
+              new Date(os.dt_abertura || os.created_at || new Date()),
+              "dd/MM/yyyy HH:mm",
+            )}
+          </p>
+        </div>
+      </div>
+
+      {isBudget && (
+        <div className="border-2 border-red-500 bg-red-50 text-red-600 font-bold text-center p-2 mb-6 uppercase text-sm print:border-black print:text-neutral-800 print:bg-transparent">
+          DOCUMENTO SEM VALOR FISCAL - SERVIÇO NÃO REALIZADO / APENAS ORÇAMENTO
+        </div>
+      )}
+
+      {/* Info Grid */}
+      <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
+        <div className="border border-neutral-300 p-4 rounded-lg print:border-black">
+          <h3 className="font-bold uppercase border-b border-neutral-200 mb-2 pb-1 print:border-black">
+            Cliente
+          </h3>
+          <p>
+            <span className="font-bold">Nome:</span>{" "}
+            {os.cliente?.pessoa?.nome ||
+              os.cliente?.pessoa_fisica?.pessoa?.nome ||
+              os.cliente?.pessoa_juridica?.pessoa?.nome}
+          </p>
+          <p>
+            <span className="font-bold">CPF/CNPJ:</span>{" "}
+            {os.cliente?.pessoa?.cpf || os.cliente?.pessoa?.cnpj || "-"}
+          </p>
+          <p>
+            <span className="font-bold">Telefone:</span>{" "}
+            {os.cliente?.pessoa?.telefone || os.cliente?.telefone_1 || "-"}
+          </p>
+          <p>
+            <span className="font-bold">Endereço:</span>{" "}
+            {os.cliente?.logradouro}, {os.cliente?.nr_logradouro} -{" "}
+            {os.cliente?.cidade}/{os.cliente?.estado}
+          </p>
+        </div>
+        <div className="border border-neutral-300 p-4 rounded-lg print:border-black">
+          <h3 className="font-bold uppercase border-b border-neutral-200 mb-2 pb-1 print:border-black">
+            {os.veiculo ? "Veículo" : "Peça / Equipamento"}
+          </h3>
+          {os.veiculo && (
+            <>
+              <p>
+                <span className="font-bold">Modelo:</span> {os.veiculo.modelo}
+              </p>
+              <p>
+                <span className="font-bold">Placa:</span> {os.veiculo.placa}
+              </p>
+              <p>
+                <span className="font-bold">Marca/Cor:</span> {os.veiculo.marca} • {os.veiculo.cor}
+              </p>
+              {os.km_entrada && (
+                <p>
+                  <span className="font-bold">KM:</span> {os.km_entrada} km
+                </p>
+              )}
+            </>
+          )}
+          {os.equipamento && (
+            <div className={os.veiculo ? "mt-4 pt-2 border-t border-dotted border-neutral-300 print:border-black" : ""}>
+               {os.veiculo && <p className="text-[10px] font-black uppercase mb-1">Peça Avulsa Vinculada</p>}
+               <p>
+                <span className="font-bold">Peça:</span> {os.equipamento.nome_peca}
+              </p>
+              <p>
+                <span className="font-bold">Fabricante:</span> {os.equipamento.fabricante || "-"}
+              </p>
+              <p>
+                <span className="font-bold">Nº Série:</span> {os.equipamento.numeracao || "-"}
+              </p>
+            </div>
+          )}
+          {!os.veiculo && !os.equipamento && (
+             <p className="italic text-neutral-400">Nenhum veículo ou peça vinculado.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Defeito / Diagnostico */}
+      <div className="mb-6 text-sm">
+        <div className="mb-4">
+          <h3 className="font-bold uppercase bg-neutral-100 p-1 mb-1 print:bg-transparent print:border-b print:border-black">
+            Defeito Relatado
+          </h3>
+          <p className="p-2 border border-neutral-200 rounded print:border-black min-h-[40px]">
+            {os.defeito_relatado || "-"}
+          </p>
+        </div>
+        {os.diagnostico && (
+          <div className="mb-4">
+            <h3 className="font-bold uppercase bg-neutral-100 p-1 mb-1 print:bg-transparent print:border-b print:border-black">
+              Diagnóstico Técnico
+            </h3>
+            <p className="p-2 border border-neutral-200 rounded print:border-black min-h-[40px]">
+              {os.diagnostico}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Items */}
+      <div className="mb-6">
+        <h3 className="font-bold uppercase bg-neutral-800 text-white p-2 mb-0 print:bg-transparent print:text-neutral-800 print:border-b-2 print:border-black">
+          Peças e Produtos
+        </h3>
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-neutral-100 print:bg-transparent border-b border-black">
+              <th className="text-left p-2">Descrição</th>
+              <th className="text-center p-2 w-[80px]">Qtd</th>
+              <th className="text-right p-2 w-[100px]">Unit.</th>
+              <th className="text-right p-2 w-[100px]">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {os.itens_os?.map((item: any, idx: number) => (
+              <tr
+                key={idx}
+                className="border-b border-neutral-200 print:border-neutral-400"
+              >
+                <td className="p-2">
+                  {item.descricao || item.pecas_estoque?.nome}
+                </td>
+                <td className="text-center p-2">{item.quantidade}</td>
+                <td className="text-right p-2">
+                  {formatCurrency(Number(item.valor_venda))}
+                </td>
+                <td className="text-right p-2 font-bold">
+                  {formatCurrency(Number(item.valor_total))}
+                </td>
+              </tr>
+            ))}
+            {(!os.itens_os || os.itens_os.length === 0) && (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="p-4 text-center italic text-neutral-400"
+                >
+                  Nenhuma peça utilizada.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Services */}
+      <div className="mb-6">
+        <h3 className="font-bold uppercase bg-neutral-800 text-white p-2 mb-0 print:bg-transparent print:text-neutral-800 print:border-b-2 print:border-black">
+          Mão de Obra
+        </h3>
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-neutral-100 print:bg-transparent border-b border-black">
+              <th className="text-left p-2">Descrição</th>
+              <th className="text-left p-2">Profissional</th>
+              <th className="text-right p-2 w-[100px]">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {os.servicos_mao_de_obra?.map((svc: any, idx: number) => (
+              <tr
+                key={idx}
+                className="border-b border-neutral-200 print:border-neutral-400"
+              >
+                <td className="p-2">{svc.descricao || "Serviço"}</td>
+                <td className="p-2">
+                  {svc.funcionario?.pessoa_fisica?.pessoa?.nome || "-"}
+                </td>
+                <td className="text-right p-2 font-bold">
+                  {formatCurrency(Number(svc.valor))}
+                </td>
+              </tr>
+            ))}
+            {(!os.servicos_mao_de_obra ||
+              os.servicos_mao_de_obra.length === 0) && (
+              <tr>
+                <td
+                  colSpan={3}
+                  className="p-4 text-center italic text-neutral-400"
+                >
+                  Nenhum serviço lançado.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Totals */}
+      <div className="flex justify-end mb-12">
+        <div className="w-[300px]">
+          <div className="flex justify-between py-1 border-b border-neutral-200">
+            <span>Total Peças:</span>
+            <span>{formatCurrency(totalPecas)}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b border-neutral-200">
+            <span>Total Serviços:</span>
+            <span>{formatCurrency(totalServicos)}</span>
+          </div>
+          <div className="flex justify-between py-2 border-t-2 border-black font-black text-xl mt-2">
+            <span>TOTAL GERAL:</span>
+            <span>{formatCurrency(totalGeral)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Signatures */}
+      <div className="grid grid-cols-2 gap-16 mt-20 pt-8 print:break-inside-avoid">
+        <div className="text-center border-t border-black pt-2">
+          <p className="font-bold">Assinatura do Cliente</p>
+          <p className="text-xs text-neutral-500">
+            Declaro estar ciente e de acordo com os serviços.
+          </p>
+        </div>
+        <div className="text-center border-t border-black pt-2">
+          <p className="font-bold">Responsável Técnico</p>
+          <p className="text-xs text-neutral-500">Centro Automotivo</p>
+        </div>
+      </div>
+
+      <div className="text-center text-sm text-neutral-400 mt-20 print:fixed print:bottom-0 print:left-0 print:w-full">
+        Gerado em {format(new Date(), "dd/MM/yyyy HH:mm:ss")}
+      </div>
+    </div>
+  );
+};
+
 
 
 ================================================================================
+FILE PATH: client\src\pages\PagamentoEquipePage.tsx
+================================================================================
+import { useState, useEffect, useMemo } from "react";
+import { formatCurrency } from "../utils/formatCurrency";
+import { getStatusStyle } from "../utils/osUtils";
+import { FinanceiroService } from "../services/financeiro.service";
+import { ColaboradorService } from "../services/colaborador.service";
+import { Button, Input, FilterButton, Select } from "../components/ui";
+import { Plus, Search, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { toast } from "react-toastify";
+
+export const PagamentoEquipePage = () => {
+  const navigate = useNavigate();
+  // --- STATE ---
+  const [selectedFuncId, setSelectedFuncId] = useState("");
+  const [activeTab, setActiveTab] = useState<"PENDENTE" | "PAGO">("PENDENTE");
+
+  // Data States
+  const [funcionarios, setFuncionarios] = useState<any[]>([]);
+  const [pendentes, setPendentes] = useState<any[]>([]);
+  const [valesPendentes, setValesPendentes] = useState<any[]>([]);
+  const [historico, setHistorico] = useState<any[]>([]);
+
+  // Filters (History Tab)
+  // Default to "WEEK" logic if desired, or keep generic dates. User asked for "hj, semana e mes" filters.
+  const [activeFilter, setActiveFilter] = useState<
+    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
+  >("WEEK");
+  const [filterHistStart, setFilterHistStart] = useState("");
+  const [filterHistEnd, setFilterHistEnd] = useState("");
+  const [historySearchTerm, setHistorySearchTerm] = useState("");
+
+  // --- EFFECTS ---
+  useEffect(() => {
+    loadFuncionarios();
+    // Initialize Week Filter
+    applyQuickFilter("WEEK");
+  }, []);
+
+  useEffect(() => {
+    if (!selectedFuncId) {
+      setPendentes([]);
+      setValesPendentes([]);
+      setHistorico([]);
+      return;
+    }
+
+    if (activeTab === "PENDENTE") {
+      loadPendentes(selectedFuncId);
+      loadVales(selectedFuncId);
+    } else {
+      loadHistorico(selectedFuncId);
+    }
+  }, [selectedFuncId, activeTab]);
+
+  // --- LOADERS ---
+  const loadFuncionarios = async () => {
+    try {
+      const data = await ColaboradorService.getAll();
+      setFuncionarios(data);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar colaboradores.");
+    }
+  };
+
+  const loadPendentes = async (id: string) => {
+    try {
+      const data = await FinanceiroService.getPendenciasColaborador(id);
+      setPendentes(data);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar pendências.");
+    }
+  };
+
+  const loadVales = async (id: string) => {
+    try {
+      const data = await FinanceiroService.getValesPendentes(id);
+      setValesPendentes(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadHistorico = async (id: string) => {
+    try {
+      const data = await FinanceiroService.getPagamentosColaborador({
+        id_funcionario: id,
+      });
+      setHistorico(data);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar histórico.");
+    }
+  };
+
+  // --- HELPERS ---
+  const getComissaoInfo = (funcId: any, valorTotal: number) => {
+    const func = funcionarios.find(
+      (f) => String(f.id_funcionario) === String(funcId),
+    );
+    const porcentagem = func?.comissao || 0;
+    const valorComissao = (valorTotal * porcentagem) / 100;
+    return { porcentagem, valorComissao };
+  };
+
+  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
+    setActiveFilter(type);
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("en-CA");
+
+    if (type === "TODAY") {
+      setFilterHistStart(todayStr);
+      setFilterHistEnd(todayStr);
+    } else if (type === "WEEK") {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      setFilterHistStart(weekAgo.toLocaleDateString("en-CA"));
+      setFilterHistEnd(todayStr);
+    } else if (type === "MONTH") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFilterHistStart(firstDay.toLocaleDateString("en-CA"));
+      setFilterHistEnd(todayStr);
+    }
+  };
+
+  // --- FILTERS & FLATTENING ---
+  const flattenedHistorico = useMemo(() => {
+    const flatList: any[] = [];
+
+    historico.forEach((h) => {
+      const dtPagamento = h.dt_pagamento ? h.dt_pagamento.split("T")[0] : "";
+
+      // Check Date Range Filter
+      if (filterHistStart && dtPagamento < filterHistStart) return;
+      if (filterHistEnd && dtPagamento > filterHistEnd) return;
+
+      // 1. Add Commission Items (OSs)
+      if (h.servicos_pagos && h.servicos_pagos.length > 0) {
+        h.servicos_pagos.forEach((s: any) => {
+          flatList.push({
+            type: "COMISSAO",
+            id: s.id_servico_mao_de_obra,
+            date: h.dt_pagamento,
+            os: s.ordem_de_servico,
+            value: s.valor, // Base labor value
+            commissionValue: getComissaoInfo(selectedFuncId, Number(s.valor))
+              .valorComissao,
+            percentage: getComissaoInfo(selectedFuncId, Number(s.valor))
+              .porcentagem,
+            paymentId: h.id_pagamento_equipe,
+            paymentMethod: h.forma_pagamento,
+          });
+        });
+      }
+
+      // 2. Add Bonus (Prêmio) if exists
+      if (Number(h.premio_valor) > 0) {
+        flatList.push({
+          type: "PREMIO",
+          id: `premio-${h.id_pagamento_equipe}`,
+          date: h.dt_pagamento,
+          description: h.premio_descricao || "Prêmio / Bônus",
+          value: Number(h.premio_valor),
+          paymentId: h.id_pagamento_equipe,
+          paymentMethod: h.forma_pagamento,
+        });
+      }
+
+      // 3. Add Vales (Adiantamentos) paid
+      if (h.tipo_lancamento === "VALE") {
+        flatList.push({
+          type: "VALE",
+          id: `vale-${h.id_pagamento_equipe}`,
+          date: h.dt_pagamento,
+          description: `Adiantamento (Vale)${h.obs ? " - " + h.obs : ""}`,
+          value: Number(h.valor_total),
+          paymentId: h.id_pagamento_equipe,
+          paymentMethod: h.forma_pagamento,
+        });
+      }
+
+      // 4. Add Salary/Other Check (Residual Value)
+      // If the payment total is greater than the sum of commissions + bonuses, the remainder is Salário/Contrato
+      const commissionTotal = h.servicos_pagos
+        ? h.servicos_pagos.reduce(
+            (acc: number, s: any) => acc + Number(s.valor),
+            0,
+          )
+        : 0;
+      const premioVal = Number(h.premio_valor) || 0;
+
+      // If it is NOT a Vale record, we check for residuals
+      if (h.tipo_lancamento !== "VALE") {
+        const totalExplained = commissionTotal + premioVal;
+        const residual = Number(h.valor_total) - totalExplained;
+
+        if (residual > 0.05) {
+          // Tolerance for float math
+          flatList.push({
+            type: "SALARIO",
+            id: `salario-${h.id_pagamento_equipe}`,
+            date: h.dt_pagamento,
+            description: h.obs || "Pagamento / Salário",
+            value: residual,
+            paymentId: h.id_pagamento_equipe,
+            paymentMethod: h.forma_pagamento,
+          });
+        }
+      }
+    });
+
+    // Search Filter
+    if (!historySearchTerm) return flatList;
+
+    const lowSearch = historySearchTerm.toLowerCase();
+
+    return flatList.filter((item) => {
+      // Common fields
+      if (item.date && item.date.includes(lowSearch)) return true;
+      if (String(item.value).includes(lowSearch)) return true;
+      if (
+        item.paymentMethod &&
+        item.paymentMethod.toLowerCase().includes(lowSearch)
+      )
+        return true;
+
+      // OS Specific
+      if (item.type === "COMISSAO" && item.os) {
+        if (String(item.os.id_os).includes(lowSearch)) return true;
+        if (item.os.veiculo?.placa?.toLowerCase().includes(lowSearch))
+          return true;
+        if (item.os.veiculo?.modelo?.toLowerCase().includes(lowSearch))
+          return true;
+        if (item.os.veiculo?.cor?.toLowerCase().includes(lowSearch))
+          return true;
+        if (
+          item.os.cliente?.pessoa_fisica?.pessoa?.nome
+            ?.toLowerCase()
+            .includes(lowSearch)
+        )
+          return true;
+        if (
+          item.os.cliente?.pessoa_juridica?.razao_social
+            ?.toLowerCase()
+            .includes(lowSearch)
+        )
+          return true;
+      }
+
+      // Description Specific (Vale/Premio)
+      if (
+        item.description &&
+        item.description.toLowerCase().includes(lowSearch)
+      )
+        return true;
+
+      return false;
+    });
+  }, [
+    historico,
+    filterHistStart,
+    filterHistEnd,
+    historySearchTerm,
+    selectedFuncId,
+    funcionarios,
+  ]);
+
+  // Recalculate total based on filtered view
+  const totalHistorico = useMemo(() => {
+    return flattenedHistorico.reduce((acc, item) => {
+      if (item.type === "COMISSAO") return acc + (item.commissionValue || 0);
+      return acc + (item.value || 0);
+    }, 0);
+  }, [flattenedHistorico]);
+
+  return (
+    <PageLayout
+      title="Pagamentos de Equipe"
+      subtitle="Gestão individual de comissões e pagamentos."
+      actions={
+        <Button
+          onClick={() =>
+            navigate("/pagamento-equipe/novo", {
+              state: { funcionarioId: selectedFuncId },
+            })
+          }
+          variant="primary"
+          icon={Plus}
+          disabled={!selectedFuncId}
+          title={!selectedFuncId ? "Selecione um colaborador primeiro" : ""}
+        >
+          Novo Pagamento
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {/* SELEÇÃO COLABORADOR */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-200">
+          <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest block mb-2">
+            Selecione o Colaborador
+          </label>
+          <div className="relative max-w-md">
+            <Select
+              value={selectedFuncId}
+              onChange={(e) => setSelectedFuncId(e.target.value)}
+            >
+              <option value="">Selecione um colaborador...</option>
+              {funcionarios.map((f: any) => (
+                <option key={f.id_funcionario} value={f.id_funcionario}>
+                  {f.pessoa_fisica?.pessoa?.nome}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        {selectedFuncId ? (
+          <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+            {/* ACTION & TABS */}
+            <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
+              <div className="flex bg-neutral-50 p-1 rounded-lg w-fit border border-neutral-200 gap-1">
+                <FilterButton
+                  active={activeTab === "PENDENTE"}
+                  onClick={() => setActiveTab("PENDENTE")}
+                >
+                  Visão Geral / Pendências
+                </FilterButton>
+                <FilterButton
+                  active={activeTab === "PAGO"}
+                  onClick={() => setActiveTab("PAGO")}
+                >
+                  Histórico (Pagos)
+                </FilterButton>
+              </div>
+            </div>
+
+            {/* TAB: PENDENTE */}
+            {activeTab === "PENDENTE" && (
+              <Card className="p-0 overflow-hidden">
+                {/* ADIANTAMENTOS EM ABERTO */}
+                {valesPendentes.length > 0 && (
+                  <div className="border-b border-neutral-100">
+                    <div className="px-6 py-4 bg-amber-50/50 flex items-center gap-2">
+                      <AlertCircle size={16} className="text-amber-500" />
+                      <h3 className="text-xs font-bold text-amber-700 uppercase tracking-widest">
+                        Adiantamentos (Vales) em Aberto
+                      </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="tabela-limpa w-full">
+                        <thead>
+                          <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th className="text-right">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {valesPendentes.map((vale, idx) => (
+                            <tr
+                              key={`vale-${idx}`}
+                              className="group hover:bg-neutral-50 transition-colors"
+                            >
+                              <td className="font-bold text-neutral-600">
+                                {new Date(
+                                  vale.dt_pagamento,
+                                ).toLocaleDateString()}
+                                <div className="text-sm font-normal text-neutral-400">
+                                  {new Date(
+                                    vale.dt_pagamento,
+                                  ).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </div>
+                              </td>
+                              <td className="text-neutral-600">
+                                {vale.obs || "Adiantamento (Sem descrição)"}
+                              </td>
+                              <td className="text-right font-bold text-orange-600">
+                                {formatCurrency(Number(vale.valor_total))}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="px-6 py-4 bg-neutral-50/50 border-b border-neutral-100">
+                  <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                    Comissões Pendentes
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="tabela-limpa w-full">
+                    <thead>
+                      <tr>
+                        <th className="text-left p-4">OS / Data</th>
+                        <th className="text-left p-4">Veículo / Cliente / Diagnóstico</th>
+                        <th className="text-left p-4">Valor Serviço</th>
+                        <th className="text-left p-4">%</th>
+                        <th className="text-left p-4">Valor A Receber</th>
+                        <th className="text-left p-4">Status OS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {pendentes.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="p-12 text-center text-neutral-400 font-bold"
+                          >
+                            Nenhuma comissão pendente encontrada.
+                          </td>
+                        </tr>
+                      ) : (
+                        pendentes.map((item, idx) => {
+                          const { porcentagem, valorComissao } =
+                            getComissaoInfo(selectedFuncId, Number(item.valor));
+                          return (
+                            <tr
+                              key={`${item.id_os}-${idx}`}
+                              className="group hover:bg-neutral-50 transition-colors"
+                            >
+                              <td className="p-4">
+                                <div className="flex flex-col">
+                                  <div className="text-base text-neutral-900 font-normal">
+                                    OS | {item.id_os}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal mt-1">
+                                    {new Date(item.ordem_de_servico?.dt_abertura).toLocaleDateString("pt-BR")}
+                                  </div>
+                                  <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">
+                                    {item.ordem_de_servico?.dt_abertura ? new Date(item.ordem_de_servico.dt_abertura).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : '\u00A0'}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="text-base text-neutral-900 font-normal uppercase">
+                                    {item.ordem_de_servico?.veiculo?.modelo} {item.ordem_de_servico?.veiculo?.placa ? `- ${item.ordem_de_servico.veiculo.placa}` : ""}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal truncate max-w-[200px]">
+                                    {item.ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome || item.ordem_de_servico?.cliente?.pessoa_juridica?.razao_social || "N/A"}
+                                  </div>
+                                  <div className="text-sm text-neutral-500 font-normal italic truncate max-w-[250px] min-h-[1.25rem]">
+                                    Def: {item.ordem_de_servico?.defeito_relatado || item.ordem_de_servico?.diagnostico || "N/A"}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-neutral-900">
+                                  {formatCurrency(Number(item.valor))}
+                                </span>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-neutral-900 bg-neutral-100 px-2 py-1 rounded">
+                                  {porcentagem ? porcentagem : "0"}%
+                                </span>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                                  {formatCurrency(valorComissao)}
+                                </span>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span
+                                  className={`px-3 py-1 rounded-md text-sm font-bold uppercase whitespace-nowrap ${getStatusStyle(item.ordem_de_servico?.status || "")}`}
+                                >
+                                  {item.ordem_de_servico?.status
+                                    ? item.ordem_de_servico.status ===
+                                        "PRONTO_PARA_FINANCEIRO" ||
+                                      item.ordem_de_servico.status ===
+                                        "PRONTO PARA FINANCEIRO"
+                                      ? "FINANCEIRO"
+                                      : item.ordem_de_servico.status.replace(
+                                          /_/g,
+                                          " ",
+                                        )
+                                    : "N/A"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
+            {/* TAB: PAGO (HISTORICO) */}
+            {activeTab === "PAGO" && (
+              <>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+                  <div className="flex-1 w-full relative">
+                    <Input
+                      placeholder="Buscar por OS, Placa, Cliente..."
+                      value={historySearchTerm}
+                      onChange={(e) => setHistorySearchTerm(e.target.value)}
+                      icon={Search}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+                    <div className="flex bg-neutral-50 p-1 rounded-xl border border-neutral-100 gap-1 shrink-0">
+                      {["TODAY", "WEEK", "MONTH"].map((f) => (
+                        <FilterButton
+                          key={f}
+                          active={activeFilter === f}
+                          onClick={() => applyQuickFilter(f as any)}
+                        >
+                          {f === "TODAY"
+                            ? "Hoje"
+                            : f === "WEEK"
+                              ? "Semana"
+                              : "Mês"}
+                        </FilterButton>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 items-center px-4 border-l border-neutral-200 ml-2">
+                      <Input
+                        type="date"
+                        value={filterHistStart}
+                        onChange={(e) => {
+                          setFilterHistStart(e.target.value);
+                          setActiveFilter("CUSTOM");
+                        }}
+                        className={`h-9 text-xs ${
+                          activeFilter === "CUSTOM"
+                            ? "border-blue-300 text-blue-700"
+                            : ""
+                        }`}
+                      />
+                      <Input
+                        type="date"
+                        value={filterHistEnd}
+                        onChange={(e) => {
+                          setFilterHistEnd(e.target.value);
+                          setActiveFilter("CUSTOM");
+                        }}
+                        className={`h-9 text-xs ${
+                          activeFilter === "CUSTOM"
+                            ? "border-blue-300 text-blue-700"
+                            : ""
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Card className="p-0 overflow-hidden">
+                  <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex justify-between items-center">
+                    <span className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+                      Histórico de Pagamentos
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold uppercase tracking-widest text-neutral-400">
+                        Total Pago no Período:
+                      </span>
+                      <span className="text-lg font-bold text-neutral-800 bg-white px-3 py-1 rounded border border-neutral-200 shadow-sm">
+                        {formatCurrency(totalHistorico)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="tabela-limpa w-full">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-4">OS / Data</th>
+                          <th className="text-left p-4">Tipo</th>
+                          <th className="text-left p-4">Diagnóstico</th>
+                          <th className="text-left p-4">Veículo</th>
+                          <th className="text-left p-4">Cliente</th>
+                          <th className="text-left p-4">Valor Pago</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {flattenedHistorico.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={6}
+                              className="p-12 text-center text-neutral-400 font-bold"
+                            >
+                              Nenhum histórico encontrado.
+                            </td>
+                          </tr>
+                        ) : (
+                          flattenedHistorico.map((item, idx) => (
+                            <tr
+                              key={`${item.id}-${idx}`}
+                              className="group hover:bg-neutral-50 transition-colors"
+                            >
+                              <td className="p-4">
+                                <div className="flex flex-col">
+                                  <div className="text-base text-neutral-900 font-normal">
+                                    {item.type === "COMISSAO" ? `OS | ${item.os.id_os}` : "N/A"}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal mt-1">
+                                    {new Date(item.date).toLocaleDateString("pt-BR")}
+                                  </div>
+                                  <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">
+                                    {new Date(item.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                <span
+                                  className={`px-2 py-1 rounded text-sm font-bold uppercase tracking-wider ${
+                                    item.type === "COMISSAO"
+                                      ? "bg-emerald-50 text-emerald-600"
+                                      : item.type === "VALE"
+                                        ? "bg-amber-50 text-amber-600"
+                                        : "bg-blue-50 text-blue-600"
+                                  }`}
+                                >
+                                  {item.type}
+                                </span>
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                {item.type === "COMISSAO" ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 truncate max-w-[200px]" title={item.os?.defeito_relatado || item.os?.diagnostico || "N/A"}>
+                                      {item.os?.defeito_relatado || item.os?.diagnostico || "Sem diagnóstico"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-base font-normal text-neutral-900">
+                                      {item.description}
+                                    </span>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                {item.type === "COMISSAO" ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 uppercase">
+                                      {item.os.veiculo?.modelo || "N/A"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 uppercase">
+                                      {item.os.veiculo?.placa || "SEM PLACA"}
+                                    </div>
+                                    <div className="text-sm font-normal text-neutral-500 uppercase min-h-[1.25rem]">
+                                      {item.os.veiculo?.cor || "\u00A0"}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash mt-3"></span>
+                                )}
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                {item.type === "COMISSAO" ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 truncate max-w-[150px]">
+                                      {item.os.cliente?.pessoa_fisica?.pessoa?.nome || item.os.cliente?.pessoa_juridica?.razao_social || "N/I"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                                ) : (
+                                  <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash mt-3"></span>
+                                )}
+                              </td>
+                              <td className="p-4 align-top pt-5 text-left">
+                                <div className="text-base font-normal text-neutral-900">
+                                  {formatCurrency(item.type === "COMISSAO" ? item.commissionValue : item.value)}
+                                </div>
+                                {item.type === "COMISSAO" && (
+                                  <div className="text-base font-normal text-neutral-600">
+                                    ({item.percentage}%)
+                                  </div>
+                                )}
+                                <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </>
+            )}
+          </div>
+        ) : (
+          // EMPTY STATE
+          <div className="bg-surface rounded-xl border border-dashed border-neutral-200 p-12 flex flex-col items-center justify-center text-center mt-6">
+            <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-500 mb-4">
+              <Plus size={32} />
+            </div>
+            <h3 className="font-bold text-lg text-neutral-600">
+              Nenhum Colaborador Selecionado
+            </h3>
+            <p className="text-neutral-500 max-w-sm mt-2">
+              Selecione um colaborador na lista acima para visualizar suas
+              comissões, histórico e realizar pagamentos.
+            </p>
+          </div>
+        )}
+      </div>
+    </PageLayout>
+  );
+};
+
+
+
 ================================================================================
 FILE PATH: client\src\pages\PagamentoPecaPage.tsx
 ================================================================================
@@ -33518,6 +35672,7 @@ export interface ICliente {
   pessoa_fisica?: IPessoaFisica & { pessoa: IPessoa };
   pessoa_juridica?: IPessoaJuridica & { pessoa: IPessoa };
   veiculos?: IVeiculo[];
+  equipamentos?: IEquipamentoCliente[];
 }
 
 export interface IFuncionario {
@@ -33609,14 +35764,26 @@ export interface IVeiculo {
   cliente?: ICliente;
 }
 
+export interface IEquipamentoCliente {
+  id_equipamento: number;
+  id_cliente: number;
+  nome_peca: string;
+  fabricante?: string | null;
+  numeracao?: string | null;
+  observacoes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface IOrdemDeServico {
   id_os: number;
   id_cliente: number;
-  id_veiculo: number;
+  id_veiculo?: number | null;
+  id_equipamento?: number | null;
   id_funcionario: number;
   dt_abertura: string;
   dt_entrega?: string | null;
-  km_entrada: number;
+  km_entrada?: number | null;
   status: string;
   defeito_relatado?: string | null;
   diagnostico?: string | null;
@@ -33637,6 +35804,7 @@ export interface IOrdemDeServico {
   // Optional Joins
   cliente?: ICliente;
   veiculo?: IVeiculo;
+  equipamento?: IEquipamentoCliente;
   itens_os?: IItensOs[];
   pagamentos_cliente?: IPagamentoCliente[];
   funcionario?: IFuncionario;
@@ -34492,7 +36660,6 @@ export const formatPhone = (phone: string): string => {
 ================================================================================
 FILE PATH: client\src\utils\osUtils.ts
 ================================================================================
-================================================================================
 FILE PATH: server\.dockerignore
 ================================================================================
 node_modules
@@ -34726,11 +36893,27 @@ model Cliente {
   tipo               Tipo             @relation(fields: [tipo_pessoa], references: [id_tipo])
   ordens_de_servico  OrdemDeServico[]
   veiculos           Veiculo[]
+  equipamentos       EquipamentoCliente[]
 
   @@index([id_pessoa_fisica])
   @@index([id_pessoa_juridica])
   @@index([tipo_pessoa])
   @@map("cliente")
+}
+
+model EquipamentoCliente {
+  id_equipamento    Int              @id @default(autoincrement())
+  id_cliente        Int
+  nome_peca         String           @db.VarChar(100)
+  fabricante        String?          @db.VarChar(50)
+  numeracao         String?          @db.VarChar(50)
+  observacoes       String?          @db.VarChar(500)
+  created_at        DateTime         @default(now()) @db.Timestamp(6)
+  updated_at        DateTime         @default(now()) @updatedAt @db.Timestamp(6)
+  cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
+  ordens_de_servico OrdemDeServico[]
+
+  @@map("equipamento_cliente")
 }
 
 model Funcionario {
@@ -34821,11 +37004,12 @@ model Veiculo {
 model OrdemDeServico {
   id_os                 Int                   @id @default(autoincrement())
   id_cliente            Int
-  id_veiculo            Int
+  id_veiculo            Int?
+  id_equipamento        Int?
   id_funcionario        Int?
   dt_abertura           DateTime              @default(now()) @db.Timestamp(6)
   dt_entrega            DateTime?             @db.Timestamp(6)
-  km_entrada            Int
+  km_entrada            Int?
   status                String                @db.VarChar(50)
   defeito_relatado      String?               @db.VarChar(500)
   diagnostico           String?               @db.VarChar(500)
@@ -34847,13 +37031,15 @@ model OrdemDeServico {
   itens_os              ItensOs[]
   cliente               Cliente               @relation(fields: [id_cliente], references: [id_cliente])
   funcionario           Funcionario?          @relation(fields: [id_funcionario], references: [id_funcionario])
-  veiculo               Veiculo               @relation(fields: [id_veiculo], references: [id_veiculo])
+  veiculo               Veiculo?              @relation(fields: [id_veiculo], references: [id_veiculo])
+  equipamento           EquipamentoCliente?   @relation(fields: [id_equipamento], references: [id_equipamento])
   pagamentos_cliente    PagamentoCliente[]
   recebiveis_cartao     RecebivelCartao[]
   servicos_mao_de_obra  ServicoMaoDeObra[]
 
   @@index([id_cliente])
   @@index([id_veiculo])
+  @@index([id_equipamento])
   @@index([status])
   @@index([deleted_at])
   @@map("ordem_de_servico")
@@ -36482,11 +38668,6 @@ ALTER TABLE "servico_mao_de_obra" ADD CONSTRAINT "servico_mao_de_obra_id_funcion
 ================================================================================
 FILE PATH: server\prisma\migrations\20251223143630_add_soft_delete_to_itens_os\migration.sql
 ================================================================================
--- AlterTable
-ALTER TABLE "itens_os" ADD COLUMN     "deleted_at" TIMESTAMP;
-
-
-
 ================================================================================
 FILE PATH: server\prisma\migrations\20260103205456_add_indexes_os\migration.sql
 ================================================================================
@@ -36895,8 +39076,6 @@ ADD COLUMN "total_parcelas" INTEGER;
 
 
 
-================================================================================
-FILE PATH: server\prisma\migrations\202602190000_fix_drift\migration.sql
 ================================================================================
 -- DropIndex
 DROP INDEX "categoria_financeira_nome_key";
@@ -41848,6 +44027,7 @@ export class ClienteRepository {
         pessoa_juridica: { include: { pessoa: true } },
         tipo: true,
         veiculos: true,
+        equipamentos: true,
       },
     });
   }
@@ -41860,6 +44040,7 @@ export class ClienteRepository {
         pessoa_juridica: { include: { pessoa: true } },
         tipo: true,
         veiculos: true,
+        equipamentos: true,
         ordens_de_servico: true,
       },
     });
@@ -42378,6 +44559,63 @@ export class ContasPagarRepository {
     return prisma.contasPagar.update({
       where: { id_conta_pagar: id },
       data: { deleted_at: new Date() },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\equipamentoCliente.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class EquipamentoClienteRepository {
+  async create(data: Prisma.EquipamentoClienteUncheckedCreateInput) {
+    return await prisma.equipamentoCliente.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.equipamentoCliente.findMany({
+      include: { cliente: true }
+    });
+  }
+
+  async findByClienteId(clienteId: number) {
+    return await prisma.equipamentoCliente.findMany({
+      where: { id_cliente: clienteId }
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.equipamentoCliente.findUnique({
+      where: { id_equipamento: id },
+      include: { cliente: true }
+    });
+  }
+
+  async update(id: number, data: Prisma.EquipamentoClienteUncheckedUpdateInput) {
+    return await prisma.equipamentoCliente.update({
+      where: { id_equipamento: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    // Check if there are OS linked
+    const linkedOs = await prisma.ordemDeServico.findFirst({
+      where: { id_equipamento: id, deleted_at: null }
+    });
+
+    if (linkedOs) {
+      throw new Error(`Não é possível excluir o equipamento pois ele está vinculado à OS ${linkedOs.id_os}.`);
+    }
+
+    return await prisma.equipamentoCliente.delete({
+      where: { id_equipamento: id },
     });
   }
 }
@@ -43432,8 +45670,8 @@ export class OrdemDeServicoRepository {
         }
 
         // 2. Handle Vehicle Creation if needed
-        let finalVehicleId = data.vehicle.id_veiculo;
-        if (!finalVehicleId) {
+        let finalVehicleId = data.vehicle?.id_veiculo || null;
+        if (data.vehicle && !finalVehicleId && data.vehicle.placa) {
              // Check if vehicle exists by Plate to avoid duplicates
              const existingVehicle = await tx.veiculo.findFirst({
                  where: { placa: data.vehicle.placa }
@@ -43464,18 +45702,34 @@ export class OrdemDeServicoRepository {
              }
         }
 
+        // 2.1 Handle Equipment Creation if needed
+        let finalEquipamentoId = data.equipamento?.id_equipamento || null;
+        if (data.equipamento && !finalEquipamentoId && data.equipamento.nome_peca) {
+            const newEquip = await tx.equipamentoCliente.create({
+                data: {
+                    id_cliente: finalClientId,
+                    nome_peca: data.equipamento.nome_peca,
+                    fabricante: data.equipamento.fabricante,
+                    numeracao: data.equipamento.numeracao,
+                    observacoes: data.equipamento.observacoes
+                }
+            });
+            finalEquipamentoId = newEquip.id_equipamento;
+        }
+
         // 3. Create OS
         const os = await tx.ordemDeServico.create({
             data: {
                 id_cliente: finalClientId,
                 id_veiculo: finalVehicleId,
-                id_funcionario: Number(data.os.id_funcionario),
-                km_entrada: Number(data.os.km_entrada),
+                id_equipamento: finalEquipamentoId,
+                id_funcionario: data.os.id_funcionario ? Number(data.os.id_funcionario) : null,
+                km_entrada: data.os.km_entrada ? Number(data.os.km_entrada) : null,
                 defeito_relatado: data.os.defeito_relatado,
-                status: 'ABERTA',
+                status: data.os.status || 'ABERTA',
                 valor_total_cliente: 0,
                 valor_mao_de_obra: 0,
-                parcelas: 1 // Default
+                parcelas: data.os.parcelas || 1 
             }
         });
 
@@ -43490,17 +45744,34 @@ export class OrdemDeServicoRepository {
     });
   }
 
-  async findAll() {
+  async findAll(searchTerm?: string) {
+    const where: Prisma.OrdemDeServicoWhereInput = { deleted_at: null };
+
+    if (searchTerm) {
+        where.OR = [
+            { cliente: { pessoa_fisica: { pessoa: { nome: { contains: searchTerm, mode: 'insensitive' } } } } },
+            { cliente: { pessoa_juridica: { pessoa: { nome: { contains: searchTerm, mode: 'insensitive' } } } } },
+            { cliente: { pessoa_juridica: { nome_fantasia: { contains: searchTerm, mode: 'insensitive' } } } },
+            { veiculo: { placa: { contains: searchTerm, mode: 'insensitive' } } },
+            { veiculo: { modelo: { contains: searchTerm, mode: 'insensitive' } } },
+            { equipamento: { nome_peca: { contains: searchTerm, mode: 'insensitive' } } },
+            { equipamento: { numeracao: { contains: searchTerm, mode: 'insensitive' } } },
+            { diagnostico: { contains: searchTerm, mode: 'insensitive' } }
+        ];
+    }
+
     return await prisma.ordemDeServico.findMany({
-      where: { deleted_at: null },
+      where,
       include: {
         cliente: {
           include: {
             pessoa_fisica: { include: { pessoa: true } },
-            pessoa_juridica: { include: { pessoa: true } }
+            pessoa_juridica: { include: { pessoa: true } },
+            equipamentos: true
           }
         },
         veiculo: true,
+        equipamento: true,
         funcionario: { 
           include: { pessoa_fisica: { include: { pessoa: true } } } 
         },
@@ -43519,7 +45790,8 @@ export class OrdemDeServicoRepository {
             }
          },
         fechamento_financeiro: true
-      }
+      },
+      orderBy: { dt_abertura: 'desc' }
     });
   }
 
@@ -43534,6 +45806,7 @@ export class OrdemDeServicoRepository {
           }
         },
         veiculo: true,
+        equipamento: true,
         funcionario: {
           include: { pessoa_fisica: { include: { pessoa: true } } } 
         },
@@ -45196,6 +47469,47 @@ export class ServicoMaoDeObraRepository {
 
 
 ================================================================================
+FILE PATH: server\src\repositories\tipo.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class TipoRepository {
+  async create(data: Prisma.TipoCreateInput) {
+    return await prisma.tipo.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.tipo.findMany();
+  }
+
+  async findById(id: number) {
+    return await prisma.tipo.findUnique({
+      where: { id_tipo: id },
+    });
+  }
+
+  async update(id: number, data: Prisma.TipoUpdateInput) {
+    return await prisma.tipo.update({
+      where: { id_tipo: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.tipo.delete({
+      where: { id_tipo: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\UsuarioRepository.ts
+================================================================================
 import { PrismaClient, Usuario } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -45480,6 +47794,25 @@ const controller = new DashboardController();
 dashboardRoutes.get('/', controller.getDashboardData);
 
 export { dashboardRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\documento.routes.ts
+================================================================================
+import { Router } from "express";
+import { DocumentoController } from "../controllers/documento.controller.js";
+
+const documentoRoutes = Router();
+const controller = new DocumentoController();
+
+documentoRoutes.get("/:id/pdf", controller.generatePdf.bind(controller));
+documentoRoutes.post("/:id/email", controller.sendEmail.bind(controller));
+documentoRoutes.post("/:id/telegram", controller.sendTelegram.bind(controller));
+
+export { documentoRoutes };
+
+
 
 ================================================================================
 FILE PATH: server\src\routes\fechamentoFinanceiro.routes.ts
@@ -46364,57 +48697,6 @@ main()
 
 
 
-================================================================================
-FILE PATH: server\src\scripts\fix_financial_consistency.ts
-================================================================================
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
-async function main() {
-  console.log("🔍 Looking for inconsistent OSs...");
-
-  const inconsistentOs = await prisma.ordemDeServico.findMany({
-    where: {
-      status: "FINALIZADA",
-      fechamento_financeiro: null,
-    },
-    select: {
-      id_os: true,
-      valor_total_cliente: true,
-      dt_entrega: true,
-      updated_at: true,
-    },
-  });
-
-  console.log(`Found ${inconsistentOs.length} OSs to fix.`);
-
-  for (const os of inconsistentOs) {
-    const dataFechamento = os.dt_entrega || os.updated_at || new Date();
-
-    // Create missing financial closure record
-    await prisma.fechamentoFinanceiro.create({
-      data: {
-        id_os: os.id_os,
-        data_fechamento_financeiro: dataFechamento,
-        custo_total_pecas_real: 0, // Simplified assumption for fix
-        // Other fields will be default or calculated by triggers if present
-      },
-    });
-
-    console.log(`✅ Fixed OS #${os.id_os} - Created FechamentoFinanceiro`);
-  }
-}
-
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\src\scripts\inspect_test_data.ts
-================================================================================
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -47921,6 +50203,89 @@ export class NotificationService {
       console.error("Error sending telegram:", error);
       throw new Error("Falha ao enviar mensagem no Telegram");
     }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\services\OrdemDeServicoService.ts
+================================================================================
+import { OrdemDeServicoRepository } from "../repositories/ordemDeServico.repository.js";
+import { OsStateMachine, OsStatus } from "../domain/os-state-machine.js";
+
+export class OrdemDeServicoService {
+  private repository: OrdemDeServicoRepository;
+
+  constructor() {
+    this.repository = new OrdemDeServicoRepository();
+  }
+
+  async create(data: any) {
+    // Verificando se é payload Unificado (com client, vehicle/equipamento, os)
+    if (data.client && (data.vehicle || data.equipamento) && data.os) {
+      if (data.os.status) OsStateMachine.validateInitialStatus(data.os.status);
+      return this.repository.createUnified(data);
+    }
+
+    // Payload Padrão (direto com IDs)
+    if (data.status) OsStateMachine.validateInitialStatus(data.status);
+    return this.repository.create(data);
+  }
+
+  async update(id: number, data: any) {
+    const currentOs = await this.repository.findById(id);
+    if (!currentOs) {
+      throw new Error("Ordem de Serviço não encontrada");
+    }
+
+    // Validação de Transição e Imutabilidade
+    // Se data.status estiver presente, valida a transição.
+    // Se não, valida apenas a regra de imutabilidade (não pode editar se FINALIZADA).
+    const nextStatus = data.status ? (data.status as OsStatus) : undefined;
+
+    OsStateMachine.validateTransition(currentOs.status as OsStatus, nextStatus);
+
+    // 3. Lógica de Estoque (Moved from Controller)
+    const oldStatus = currentOs.status as OsStatus;
+
+    if (nextStatus && nextStatus !== oldStatus) {
+      const closedStatuses = [OsStatus.FINANCEIRO, OsStatus.FINALIZADA];
+      const isClosing = closedStatuses.includes(nextStatus);
+      const wasClosed = closedStatuses.includes(oldStatus);
+
+      // Se movendo para status de fechamento (e não estava fechado) -> DEDUZIR
+      if (isClosing && !wasClosed) {
+        await this.repository.adjustStockForOS(id, "DEDUCT");
+      }
+      // Se voltando para aberto (e estava fechado) -> DEVOLVER
+      else if (!isClosing && wasClosed) {
+        await this.repository.adjustStockForOS(id, "RETURN");
+      }
+    }
+
+    // Delega para o repositório
+    return this.repository.update(id, data);
+  }
+
+  async findAll(filters: any) {
+    return this.repository.findAll();
+  }
+
+  async findById(id: number, includeInternal: boolean = false) {
+    return this.repository.findById(id, includeInternal);
+  }
+
+  async findByVehicleId(vehicleId: number) {
+    return this.repository.findByVehicleId(vehicleId);
+  }
+
+  async delete(id: number) {
+    const currentOs = await this.repository.findById(id);
+    if (currentOs && currentOs.status === OsStatus.FINALIZADA) {
+      throw new Error("Não é possível excluir uma OS Finalizada.");
+    }
+    return this.repository.delete(id);
   }
 }
 

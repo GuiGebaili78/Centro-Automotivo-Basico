@@ -8,6 +8,7 @@ import {
   User,
   Car,
   Wrench,
+  ArrowRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Badge, ActionButton, Button, ConfirmModal } from "../ui";
@@ -184,49 +185,90 @@ export const ClientesTable = ({
                           icon={Plus}
                           onClick={() => navigate(`/cadastro/${c.id_cliente}`)}
                         >
-                          Gerenciar Veículos
+                          Gerenciar
                         </Button>
                       </div>
 
-                      {!c.veiculos || c.veiculos.length === 0 ? (
-                        <p className="text-sm text-neutral-400 italic">
-                          Nenhum veículo vinculado a este cliente.
-                        </p>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {c.veiculos?.map((v: any) => (
-                            <div
-                              key={v.id_veiculo}
-                              className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-primary-200 transition-all group/card flex justify-between items-start"
-                            >
-                              <div>
-                                <div className="flex flex-col">
-                                  <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
-                                    {v.marca} {v.modelo} • {v.cor || "COR N/A"}
-                                  </span>
-                                  <span className="text-base text-primary-600 uppercase mt-0.5 font-bold">
-                                    {v.placa}
-                                  </span>
-                                  {v.ano_modelo && (
-                                    <span className="text-basetext-neutral-600 mt-1 uppercase">
-                                      Ano: {v.ano_modelo}
-                                    </span>
-                                  )}
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        {/* Coluna de Veículos */}
+                        <div className="space-y-4">
+                          <h5 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                            <Car size={14} /> Veículos
+                          </h5>
+                          {!c.veiculos || c.veiculos.length === 0 ? (
+                            <p className="text-sm text-neutral-400 italic">Nenhum veículo vinculado.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-3">
+                              {c.veiculos.map((v: any) => (
+                                <div
+                                  key={v.id_veiculo}
+                                  className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-primary-200 transition-all group/card flex justify-between items-start"
+                                >
+                                  <div>
+                                    <div className="flex flex-col">
+                                      <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
+                                        {v.marca} {v.modelo} • {v.cor || "COR N/A"}
+                                      </span>
+                                      <span className="text-base text-primary-600 uppercase mt-0.5 font-bold">
+                                        {v.placa}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <ActionButton
+                                    icon={Wrench}
+                                    variant="primary"
+                                    label="Abrir OS"
+                                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                    onClick={() => onOpenOsModal(c.id_cliente, v.id_veiculo)}
+                                  />
                                 </div>
-                              </div>
-                              <ActionButton
-                                icon={Wrench}
-                                variant="primary"
-                                label="Abrir OS"
-                                className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                                onClick={() =>
-                                  onOpenOsModal(c.id_cliente, v.id_veiculo)
-                                }
-                              />
+                              ))}
                             </div>
-                          ))}
+                          )}
                         </div>
-                      )}
+
+                        {/* Coluna de Peças Avulsas */}
+                        <div className="space-y-4">
+                          <h5 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                            <Wrench size={14} /> Peças Avulsas
+                          </h5>
+                          {!c.equipamentos || c.equipamentos.length === 0 ? (
+                            <p className="text-sm text-neutral-400 italic">Nenhuma peça vinculada.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-3">
+                              {c.equipamentos.map((e: any) => (
+                                <div
+                                  key={e.id_equipamento}
+                                  className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group/card flex justify-between items-start"
+                                >
+                                  <div>
+                                    <div className="flex flex-col">
+                                      <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
+                                        {e.nome_peca}
+                                      </span>
+                                      <span className="text-sm text-blue-600 uppercase mt-0.5 font-bold">
+                                        {e.fabricante || "Fabricante N/I"}
+                                      </span>
+                                      {e.numeracao && (
+                                        <span className="text-xs text-neutral-400 mt-1 font-mono">
+                                          SN: {e.numeracao}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <ActionButton
+                                    icon={ArrowRight}
+                                    variant="neutral"
+                                    label="Ver Histórico"
+                                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                    onClick={() => navigate(`/cadastro/${c.id_cliente}`)}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </td>
                 </tr>

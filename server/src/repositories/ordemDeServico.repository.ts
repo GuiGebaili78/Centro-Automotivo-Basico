@@ -74,8 +74,8 @@ export class OrdemDeServicoRepository {
         }
 
         // 2. Handle Vehicle Creation if needed
-        let finalVehicleId = data.vehicle.id_veiculo;
-        if (!finalVehicleId) {
+        let finalVehicleId = data.vehicle?.id_veiculo || null;
+        if (data.vehicle && !finalVehicleId && data.vehicle.placa) {
              // Check if vehicle exists by Plate to avoid duplicates
              const existingVehicle = await tx.veiculo.findFirst({
                  where: { placa: data.vehicle.placa }
@@ -106,18 +106,34 @@ export class OrdemDeServicoRepository {
              }
         }
 
+        // 2.1 Handle Equipment Creation if needed
+        let finalEquipamentoId = data.equipamento?.id_equipamento || null;
+        if (data.equipamento && !finalEquipamentoId && data.equipamento.nome_peca) {
+            const newEquip = await tx.equipamentoCliente.create({
+                data: {
+                    id_cliente: finalClientId,
+                    nome_peca: data.equipamento.nome_peca,
+                    fabricante: data.equipamento.fabricante,
+                    numeracao: data.equipamento.numeracao,
+                    observacoes: data.equipamento.observacoes
+                }
+            });
+            finalEquipamentoId = newEquip.id_equipamento;
+        }
+
         // 3. Create OS
         const os = await tx.ordemDeServico.create({
             data: {
                 id_cliente: finalClientId,
                 id_veiculo: finalVehicleId,
-                id_funcionario: Number(data.os.id_funcionario),
-                km_entrada: Number(data.os.km_entrada),
+                id_equipamento: finalEquipamentoId,
+                id_funcionario: data.os.id_funcionario ? Number(data.os.id_funcionario) : null,
+                km_entrada: data.os.km_entrada ? Number(data.os.km_entrada) : null,
                 defeito_relatado: data.os.defeito_relatado,
-                status: 'ABERTA',
+                status: data.os.status || 'ABERTA',
                 valor_total_cliente: 0,
                 valor_mao_de_obra: 0,
-                parcelas: 1 // Default
+                parcelas: data.os.parcelas || 1 
             }
         });
 
@@ -132,17 +148,34 @@ export class OrdemDeServicoRepository {
     });
   }
 
-  async findAll() {
+  async findAll(searchTerm?: string) {
+    const where: Prisma.OrdemDeServicoWhereInput = { deleted_at: null };
+
+    if (searchTerm) {
+        where.OR = [
+            { cliente: { pessoa_fisica: { pessoa: { nome: { contains: searchTerm, mode: 'insensitive' } } } } },
+            { cliente: { pessoa_juridica: { pessoa: { nome: { contains: searchTerm, mode: 'insensitive' } } } } },
+            { cliente: { pessoa_juridica: { nome_fantasia: { contains: searchTerm, mode: 'insensitive' } } } },
+            { veiculo: { placa: { contains: searchTerm, mode: 'insensitive' } } },
+            { veiculo: { modelo: { contains: searchTerm, mode: 'insensitive' } } },
+            { equipamento: { nome_peca: { contains: searchTerm, mode: 'insensitive' } } },
+            { equipamento: { numeracao: { contains: searchTerm, mode: 'insensitive' } } },
+            { diagnostico: { contains: searchTerm, mode: 'insensitive' } }
+        ];
+    }
+
     return await prisma.ordemDeServico.findMany({
-      where: { deleted_at: null },
+      where,
       include: {
         cliente: {
           include: {
             pessoa_fisica: { include: { pessoa: true } },
-            pessoa_juridica: { include: { pessoa: true } }
+            pessoa_juridica: { include: { pessoa: true } },
+            equipamentos: true
           }
         },
         veiculo: true,
+        equipamento: true,
         funcionario: { 
           include: { pessoa_fisica: { include: { pessoa: true } } } 
         },
@@ -161,7 +194,8 @@ export class OrdemDeServicoRepository {
             }
          },
         fechamento_financeiro: true
-      }
+      },
+      orderBy: { dt_abertura: 'desc' }
     });
   }
 
@@ -176,6 +210,7 @@ export class OrdemDeServicoRepository {
           }
         },
         veiculo: true,
+        equipamento: true,
         funcionario: {
           include: { pessoa_fisica: { include: { pessoa: true } } } 
         },

@@ -134,23 +134,43 @@ export const OsPrintView = () => {
         </div>
         <div className="border border-neutral-300 p-4 rounded-lg print:border-black">
           <h3 className="font-bold uppercase border-b border-neutral-200 mb-2 pb-1 print:border-black">
-            Veículo
+            {os.veiculo ? "Veículo" : "Peça / Equipamento"}
           </h3>
-          <p>
-            <span className="font-bold">Modelo:</span> {os.veiculo?.modelo}
-          </p>
-          <p>
-            <span className="font-bold">Placa:</span> {os.veiculo?.placa}
-          </p>
-          <p>
-            <span className="font-bold">Marca:</span> {os.veiculo?.marca}
-          </p>
-          <p>
-            <span className="font-bold">Cor:</span> {os.veiculo?.cor}
-          </p>
-          <p>
-            <span className="font-bold">KM:</span> {os.km_entrada} km
-          </p>
+          {os.veiculo && (
+            <>
+              <p>
+                <span className="font-bold">Modelo:</span> {os.veiculo.modelo}
+              </p>
+              <p>
+                <span className="font-bold">Placa:</span> {os.veiculo.placa}
+              </p>
+              <p>
+                <span className="font-bold">Marca/Cor:</span> {os.veiculo.marca} • {os.veiculo.cor}
+              </p>
+              {os.km_entrada && (
+                <p>
+                  <span className="font-bold">KM:</span> {os.km_entrada} km
+                </p>
+              )}
+            </>
+          )}
+          {os.equipamento && (
+            <div className={os.veiculo ? "mt-4 pt-2 border-t border-dotted border-neutral-300 print:border-black" : ""}>
+               {os.veiculo && <p className="text-[10px] font-black uppercase mb-1">Peça Avulsa Vinculada</p>}
+               <p>
+                <span className="font-bold">Peça:</span> {os.equipamento.nome_peca}
+              </p>
+              <p>
+                <span className="font-bold">Fabricante:</span> {os.equipamento.fabricante || "-"}
+              </p>
+              <p>
+                <span className="font-bold">Nº Série:</span> {os.equipamento.numeracao || "-"}
+              </p>
+            </div>
+          )}
+          {!os.veiculo && !os.equipamento && (
+             <p className="italic text-neutral-400">Nenhum veículo ou peça vinculado.</p>
+          )}
         </div>
       </div>
 
