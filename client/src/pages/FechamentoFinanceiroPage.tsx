@@ -78,9 +78,8 @@ export const FechamentoFinanceiroPage = () => {
       const pending = allOss.filter(
         (os) =>
           [
-            "ABERTA",
-            "EM_ANDAMENTO",
             "PRONTO PARA FINANCEIRO",
+            "FINANCEIRO",
             "FINALIZADA",
           ].includes(os.status) &&
           !fechamentosData.some(
@@ -163,7 +162,7 @@ export const FechamentoFinanceiroPage = () => {
                 <tr>
                   <th>OS / Data</th>
                   <th>Cliente</th>
-                  <th>Veículo</th>
+                  <th>Veículo / Peça</th>
                   <th className="w-1/4">Defeito / Diagnóstico</th>
                   <th className="text-center">Status</th>
                   <th className="text-right">Ação</th>
@@ -211,13 +210,13 @@ export const FechamentoFinanceiroPage = () => {
                     <td className="p-4">
                       <div className="flex flex-col">
                         <div className="text-base text-primary-600 font-normal uppercase">
-                          {os.veiculo?.placa || "SEM PLACA"}
+                          {os.veiculo?.placa || os.equipamento?.numeracao || "SEM PLACA/REF"}
                         </div>
-                        <div className="text-base text-neutral-600 font-normal uppercase">
-                          {os.veiculo?.marca} {os.veiculo?.modelo}
+                        <div className="text-base text-neutral-600 font-normal uppercase text-sm">
+                          {os.veiculo ? `${os.veiculo.marca} ${os.veiculo.modelo}` : (os.equipamento?.nome_peca || "Peça Avulsa")}
                         </div>
                         <div className="text-sm text-neutral-500 font-normal uppercase min-h-[1.25rem]">
-                          {os.veiculo?.cor || "\u00A0"}
+                          {os.veiculo?.cor || (os.equipamento?.fabricante ? `FAB: ${os.equipamento.fabricante}` : "\u00A0")}
                         </div>
                       </div>
                     </td>
@@ -302,7 +301,7 @@ export const FechamentoFinanceiroPage = () => {
               <tr>
                 <th>OS</th>
                 <th>Cliente</th>
-                <th>Veículo (Placa/Cor)</th>
+                <th>Veículo / Peça</th>
                 <th>Valor Serviço</th>
                 <th>Mão de Obra (Execução)</th>
                 <th>Data</th>
@@ -351,13 +350,15 @@ export const FechamentoFinanceiroPage = () => {
                     <td className="p-4">
                       <div className="flex flex-col">
                         <div className="text-base text-primary-600 font-normal uppercase">
-                          {fech.ordem_de_servico?.veiculo?.placa || "SEM PLACA"}
+                          {fech.ordem_de_servico?.veiculo?.placa || fech.ordem_de_servico?.equipamento?.numeracao || "SEM PLACA/REF"}
                         </div>
-                        <div className="text-base text-neutral-600 font-normal uppercase">
-                          {fech.ordem_de_servico?.veiculo?.marca} {fech.ordem_de_servico?.veiculo?.modelo}
+                        <div className="text-base text-neutral-600 font-normal uppercase text-sm">
+                          {fech.ordem_de_servico?.veiculo 
+                            ? `${fech.ordem_de_servico.veiculo.marca} ${fech.ordem_de_servico.veiculo.modelo}` 
+                            : (fech.ordem_de_servico?.equipamento?.nome_peca || "Peça Avulsa")}
                         </div>
                         <div className="text-sm text-neutral-500 font-normal uppercase min-h-[1.25rem]">
-                          {fech.ordem_de_servico?.veiculo?.cor || "\u00A0"}
+                          {fech.ordem_de_servico?.veiculo?.cor || (fech.ordem_de_servico?.equipamento?.fabricante ? `FAB: ${fech.ordem_de_servico.equipamento.fabricante}` : "\u00A0")}
                         </div>
                       </div>
                     </td>

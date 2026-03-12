@@ -8,6 +8,11 @@ import { OsTable } from "../components/os/OsTable";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
+import {
+  UniversalFilters,
+  type UniversalFiltersState,
+} from "../components/common/UniversalFilters";
+import { useUniversalFilter } from "../hooks/useUniversalFilter";
 import { Modal } from "../components/ui/Modal";
 import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
@@ -23,15 +28,20 @@ export const OrdemDeServicoPage = () => {
 
   // --- STATE ---
   const [osCreationModalOpen, setOsCreationModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(""); // NEW: Localizar Search
-  const [dateFilter, setDateFilter] = useState<
-    "ALL" | "HOJE" | "SEMANA" | "MES"
-  >("SEMANA");
+  const [filters, setFilters] = useState<UniversalFiltersState>({
+    search: "",
+    osId: "",
+    status: "ALL",
+    operadora: "",
+    fornecedor: "",
+    startDate: "",
+    endDate: "",
+    activePeriod: "7D", // Default to last 7 days
+  });
 
   const [oss, setOss] = useState<IOrdemDeServico[]>([]);
 
   // Status Feedback
-
   const location = useLocation();
 
   // --- DATA LOADING ---
@@ -56,23 +66,14 @@ export const OrdemDeServicoPage = () => {
   const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [clientSearchResults, setClientSearchResults] = useState<any[]>([]);
 
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const clientSearchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, []);
 
   // Client Search Effect
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (clientSearchTerm.length >= 2 && newOsWizardStep === "SEARCH_CLIENT") {
         try {
-          const allClients = await ClienteService.getAll(); // TODO: Optimize backend to accept search param or filter locally if list is small. Assuming small for now or using existing list.
-          // Actually, we should probably use a specific search endpoint or filter the full list if already loaded?
-          // Let's filter locally from a fresh fetch to ensure latest data.
+          const allClients = await ClienteService.getAll();
           const filtered = allClients.filter((c: any) => {
             const name = (
               c.pessoa_fisica?.pessoa?.nome ||
@@ -214,55 +215,10 @@ export const OrdemDeServicoPage = () => {
   };
 
   // FILTER LOGIC
-  const filteredOss = (Array.isArray(oss) ? oss : []).filter((os) => {
-    // 1. Date Filter
-    if (dateFilter !== "ALL") {
-      const now = new Date();
-      const startOfToday = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-      );
-      const osDate = new Date(os.dt_abertura);
-
-      if (dateFilter === "HOJE") {
-        if (osDate < startOfToday) return false;
-      } else if (dateFilter === "SEMANA") {
-        const weekAgo = new Date(startOfToday);
-        weekAgo.setDate(startOfToday.getDate() - 7);
-        if (osDate < weekAgo) return false;
-      } else if (dateFilter === "MES") {
-        const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        if (osDate < firstDayMonth) return false;
-      }
-    }
-
-    if (!searchTerm) {
-      // User requested to show ALL OSs (subject to Date Filter)
-      // Previously restricted to 'ABERTA'. Now we show everything matching the date filter.
-      return true;
-    }
-
-    const q = searchTerm.toLowerCase();
-    const plate = os.veiculo?.placa?.toLowerCase() || "";
-    const model = os.veiculo?.modelo?.toLowerCase() || "";
-    const brand = os.veiculo?.marca?.toLowerCase() || "";
-    const color = os.veiculo?.cor?.toLowerCase() || "";
-    const part = os.equipamento?.nome_peca?.toLowerCase() || "";
-    const serial = os.equipamento?.numeracao?.toLowerCase() || "";
-    const diag = os.diagnostico?.toLowerCase() || "";
-
-    const owner = (
-      os.cliente?.pessoa_fisica?.pessoa?.nome ||
-      os.cliente?.pessoa_juridica?.razao_social ||
-      ""
-    ).toLowerCase();
-    const id = String(os.id_os);
-    const fullIdHash = `#${os.id_os}`;
-
-    return [plate, model, brand, color, part, serial, diag, owner, id, fullIdHash]
-      .join(" ")
-      .includes(q);
+  const filteredOss = useUniversalFilter(oss, filters, {
+    dateField: "dt_abertura",
+    statusField: "status",
+    osIdField: "id_os",
   });
 
   // --- RENDER ---
@@ -282,30 +238,25 @@ export const OrdemDeServicoPage = () => {
           </Button>
         }
       >
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
-          <div className="flex-1 w-full relative">
-            <Input
-              ref={searchInputRef}
-              icon={Search}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por Cliente, Placa, Peça, Diagnóstico ou OS..."
-            />
-          </div>
-
-          <div className="flex bg-neutral-100 p-1 rounded-lg border border-neutral-100 gap-1 shrink-0">
-            {["ALL", "HOJE", "SEMANA", "MES"].map((f) => (
-              <Button
-                key={f}
-                size="sm"
-                variant={dateFilter === f ? "primary" : "ghost"}
-                className={`text-sm h-8 px-4 ${dateFilter === f ? "shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
-                onClick={() => setDateFilter(f as any)}
-              >
-                {f === "ALL" ? "Todos" : f === "MES" ? "Mês" : f}
-              </Button>
-            ))}
-          </div>
+        <div className="mb-6">
+          <UniversalFilters
+            onFilterChange={setFilters}
+            config={{
+              enableStatus: true,
+              enableOsId: true,
+              enableFornecedor: false, // Agora eles ficarão cinzas/desabilitados em vez de sumirem
+              enableOperadora: false, // Agora eles ficarão cinzas/desabilitados em vez de sumirem
+              statusOptions: [
+                { value: "ALL", label: "TODOS OS STATUS" },
+                { value: "AGENDAMENTO", label: "AGENDAMENTO" },
+                { value: "ORCAMENTO", label: "ORÇAMENTO" },
+                { value: "ABERTA", label: "ABERTA" },
+                { value: "FINANCEIRO", label: "FINANCEIRO" },
+                { value: "FINALIZADA", label: "FINALIZADA" },
+                { value: "CANCELADA", label: "CANCELADA" },
+              ],
+            }}
+          />
         </div>
 
         <Card className="p-0 overflow-hidden">
@@ -354,7 +305,9 @@ export const OrdemDeServicoPage = () => {
               label="Buscar Cliente"
               placeholder="Digite nome ou documento..."
               value={clientSearchTerm}
-              onChange={(e) => setClientSearchTerm(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setClientSearchTerm(e.target.value)
+              }
               icon={Search}
               autoFocus
             />
@@ -488,6 +441,7 @@ export const OrdemDeServicoPage = () => {
         </Modal>
       )}
 
+      {/* 3. CONFIRM STEP */}
       {newOsWizardStep === "CONFIRM" && wizardClient && wizardVehicle && (
         <Modal
           title={

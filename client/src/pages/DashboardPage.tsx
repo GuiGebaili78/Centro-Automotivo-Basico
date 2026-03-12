@@ -104,7 +104,7 @@ export function DashboardPage() {
           </div>
 
           {/* Search & Actions - MOVED TO MIDDLE */}
-          <div className="flex-1 w-full xl:max-w-xl mx-auto flex items-center gap-3 order-2">
+          <div className="flex-1 w-full xl:max-w-3xl mx-auto flex items-center gap-3 order-2">
             <div className="flex-1">
               <UnifiedSearch
                 onSelect={handleSearchResultSelect}

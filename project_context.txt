@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 03/11/2026 22:35:23
+PROJECT DUMP GENERATED ON 03/12/2026 18:25:10
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -2092,6 +2092,7 @@ import {
   User,
   Car,
   Wrench,
+  ArrowRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Badge, ActionButton, Button, ConfirmModal } from "../ui";
@@ -2268,49 +2269,90 @@ export const ClientesTable = ({
                           icon={Plus}
                           onClick={() => navigate(`/cadastro/${c.id_cliente}`)}
                         >
-                          Gerenciar Veículos
+                          Gerenciar
                         </Button>
                       </div>
 
-                      {!c.veiculos || c.veiculos.length === 0 ? (
-                        <p className="text-sm text-neutral-400 italic">
-                          Nenhum veículo vinculado a este cliente.
-                        </p>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {c.veiculos?.map((v: any) => (
-                            <div
-                              key={v.id_veiculo}
-                              className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-primary-200 transition-all group/card flex justify-between items-start"
-                            >
-                              <div>
-                                <div className="flex flex-col">
-                                  <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
-                                    {v.marca} {v.modelo} • {v.cor || "COR N/A"}
-                                  </span>
-                                  <span className="text-base text-primary-600 uppercase mt-0.5 font-bold">
-                                    {v.placa}
-                                  </span>
-                                  {v.ano_modelo && (
-                                    <span className="text-basetext-neutral-600 mt-1 uppercase">
-                                      Ano: {v.ano_modelo}
-                                    </span>
-                                  )}
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        {/* Coluna de Veículos */}
+                        <div className="space-y-4">
+                          <h5 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                            <Car size={14} /> Veículos
+                          </h5>
+                          {!c.veiculos || c.veiculos.length === 0 ? (
+                            <p className="text-sm text-neutral-400 italic">Nenhum veículo vinculado.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-3">
+                              {c.veiculos.map((v: any) => (
+                                <div
+                                  key={v.id_veiculo}
+                                  className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-primary-200 transition-all group/card flex justify-between items-start"
+                                >
+                                  <div>
+                                    <div className="flex flex-col">
+                                      <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
+                                        {v.marca} {v.modelo} • {v.cor || "COR N/A"}
+                                      </span>
+                                      <span className="text-base text-primary-600 uppercase mt-0.5 font-bold">
+                                        {v.placa}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <ActionButton
+                                    icon={Wrench}
+                                    variant="primary"
+                                    label="Abrir OS"
+                                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                    onClick={() => onOpenOsModal(c.id_cliente, v.id_veiculo)}
+                                  />
                                 </div>
-                              </div>
-                              <ActionButton
-                                icon={Wrench}
-                                variant="primary"
-                                label="Abrir OS"
-                                className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                                onClick={() =>
-                                  onOpenOsModal(c.id_cliente, v.id_veiculo)
-                                }
-                              />
+                              ))}
                             </div>
-                          ))}
+                          )}
                         </div>
-                      )}
+
+                        {/* Coluna de Peças Avulsas */}
+                        <div className="space-y-4">
+                          <h5 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                            <Wrench size={14} /> Peças Avulsas
+                          </h5>
+                          {!c.equipamentos || c.equipamentos.length === 0 ? (
+                            <p className="text-sm text-neutral-400 italic">Nenhuma peça vinculada.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-3">
+                              {c.equipamentos.map((e: any) => (
+                                <div
+                                  key={e.id_equipamento}
+                                  className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group/card flex justify-between items-start"
+                                >
+                                  <div>
+                                    <div className="flex flex-col">
+                                      <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
+                                        {e.nome_peca}
+                                      </span>
+                                      <span className="text-sm text-blue-600 uppercase mt-0.5 font-bold">
+                                        {e.fabricante || "Fabricante N/I"}
+                                      </span>
+                                      {e.numeracao && (
+                                        <span className="text-xs text-neutral-400 mt-1 font-mono">
+                                          SN: {e.numeracao}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <ActionButton
+                                    icon={ArrowRight}
+                                    variant="neutral"
+                                    label="Ver Histórico"
+                                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                    onClick={() => navigate(`/cadastro/${c.id_cliente}`)}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -3130,6 +3172,121 @@ export const ClienteFormSection = memo(
 );
 
 ClienteFormSection.displayName = "ClienteFormSection";
+
+
+
+================================================================================
+FILE PATH: client\src\components\clientes\Forms\EquipamentoFormSection.tsx
+================================================================================
+/**
+ * EquipamentoFormSection
+ * 
+ * Responsável por gerenciar os campos de peças avulsas na ficha do cliente.
+ */
+import {
+  memo,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+  useEffect,
+} from "react";
+import { Wrench, Tag, Hash } from "lucide-react";
+import { Input, TextArea } from "../../ui";
+
+export interface EquipamentoFormData {
+  nome_peca: string;
+  fabricante: string;
+  numeracao: string;
+  observacoes: string;
+}
+
+export interface EquipamentoFormSectionRef {
+  getData: () => EquipamentoFormData;
+}
+
+interface EquipamentoFormSectionProps {
+  initialData?: Partial<EquipamentoFormData>;
+  nomeInputRef?: React.Ref<HTMLInputElement>;
+}
+
+export const EquipamentoFormSection = memo(
+  forwardRef<EquipamentoFormSectionRef, EquipamentoFormSectionProps>(
+    ({ initialData, nomeInputRef }, ref) => {
+      const [nomePeca, setNomePeca] = useState(initialData?.nome_peca ?? "");
+      const [fabricante, setFabricante] = useState(initialData?.fabricante ?? "");
+      const [numeracao, setNumeracao] = useState(initialData?.numeracao ?? "");
+      const [observacoes, setObservacoes] = useState(initialData?.observacoes ?? "");
+
+      useEffect(() => {
+        if (!initialData) return;
+        if (initialData.nome_peca !== undefined) setNomePeca(initialData.nome_peca);
+        if (initialData.fabricante !== undefined) setFabricante(initialData.fabricante);
+        if (initialData.numeracao !== undefined) setNumeracao(initialData.numeracao);
+        if (initialData.observacoes !== undefined) setObservacoes(initialData.observacoes);
+      }, [initialData]);
+
+      useImperativeHandle(
+        ref,
+        () => ({
+          getData: () => ({
+            nome_peca: nomePeca,
+            fabricante,
+            numeracao,
+            observacoes,
+          }),
+        }),
+        [nomePeca, fabricante, numeracao, observacoes],
+      );
+
+      return (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-800 font-medium">
+            Cadastre os dados da peça avulsa para vincular ao patrimônio do cliente.
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <Input
+              label="Nome da Peça / Equipamento *"
+              icon={Wrench}
+              ref={nomeInputRef as React.Ref<HTMLInputElement>}
+              value={nomePeca}
+              onChange={(e) => setNomePeca(e.target.value)}
+              placeholder="Ex: Alternador, Motor de Partida..."
+              required
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Fabricante / Marca"
+                icon={Tag}
+                value={fabricante}
+                onChange={(e) => setFabricante(e.target.value)}
+                placeholder="Ex: Bosch, Valeo..."
+              />
+              <Input
+                label="Numeração / Serial"
+                icon={Hash}
+                value={numeracao}
+                onChange={(e) => setNumeracao(e.target.value)}
+                placeholder="SN: 000000"
+              />
+            </div>
+
+            <TextArea
+              label="Observações Adicionais"
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
+              placeholder="Estado da peça, defeitos visíveis, etc..."
+              rows={3}
+            />
+          </div>
+        </div>
+      );
+    },
+  ),
+);
+
+EquipamentoFormSection.displayName = "EquipamentoFormSection";
 
 
 
@@ -5030,7 +5187,7 @@ export const UnifiedSearch = ({
           ref={inputRef}
           type="text"
           className="block w-full pl-10 pr-4 py-3 border-2 border-neutral-200 rounded-xl leading-5 bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-medium text-neutral-700 disabled:opacity-50"
-          placeholder="Buscar por Placa, Cliente ou Veículo..."
+          placeholder="Buscar cliente, placa ou peça..."
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => {
@@ -5104,8 +5261,6 @@ export const UnifiedSearch = ({
     </div>
   );
 };
-
-
 
 ================================================================================
 FILE PATH: client\src\components\estoque\EdicaoPecaModal.tsx
@@ -15695,13 +15850,12 @@ export const LoosePartOsModal = ({ isOpen, onClose }: LoosePartOsModalProps) => 
     }
     const timer = setTimeout(async () => {
       try {
-        // Usando o endpoint de busca que suporta o termo
         const resp = await api.get(`/cliente?search=${searchQuery}`);
         setClients(resp.data);
       } catch (err) {
         console.error(err);
       }
-    }, 300);
+    }, 150); // Debounce mais curto para resposta rápida
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -15737,7 +15891,7 @@ export const LoosePartOsModal = ({ isOpen, onClose }: LoosePartOsModalProps) => 
       setSearchQuery("");
       setEquipData({ nome_peca: "", fabricante: "", numeracao: "", observacoes: "" });
       
-      navigate(`/os/${resp.data.id_os}`);
+      navigate(`/ordem-de-servico/${resp.data.id_os}`);
     } catch (err: any) {
       console.error(err);
       alert(err.response?.data?.message || "Erro ao criar OS de peça avulsa.");
@@ -15860,7 +16014,7 @@ export const LoosePartOsModal = ({ isOpen, onClose }: LoosePartOsModalProps) => 
                 variant="primary"
                 icon={Wrench}
                 onClick={handleCreateOs}
-                loading={loading}
+                isLoading={loading}
                 disabled={!equipData.nome_peca}
               >
                 Abrir Ordem de Serviço
@@ -22497,13 +22651,16 @@ import {
 
 import { ClienteService } from "../services/cliente.service";
 import { VeiculoService } from "../services/veiculo.service";
-import type { IVeiculo } from "../types/backend";
+import { EquipamentoService } from "../services/equipamento.service";
+import type { IVeiculo, IEquipamentoCliente } from "../types/backend";
+import { EquipamentoFormSection } from "../components/clientes/Forms/EquipamentoFormSection";
 
 // ─── Tipos auxiliares ─────────────────────────────────────────────────────────
 
 interface SavedData {
   clientId: number;
   vehicleId?: number | null;
+  equipId?: number | null;
   clientName: string;
   vehicleName?: string;
 }
@@ -22518,11 +22675,15 @@ export const CadastroUnificadoPage = () => {
   // ── UI-only state (formulários não ficam aqui) ──
   const [loading, setLoading] = useState(false);
   const [veiculos, setVeiculos] = useState<IVeiculo[]>([]);
-  const [showVehicleModal, setShowVehicleModal] = useState(false);
-  const [editingVehicle, setEditingVehicle] = useState<IVeiculo | null>(null);
-  const [confirmDeleteVehicle, setConfirmDeleteVehicle] = useState<
-    number | null
-  >(null);
+  const [equipamentos, setEquipamentos] = useState<IEquipamentoCliente[]>([]);
+  const [showAssetModal, setShowAssetModal] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<{ type: 'VEICULO' | 'EQUIPAMENTO', data: any } | null>(null);
+  const [assetType, setAssetType] = useState<'VEICULO' | 'EQUIPAMENTO'>('VEICULO');
+  
+  const [confirmDeleteAsset, setConfirmDeleteAsset] = useState<{
+    id: number;
+    type: 'VEICULO' | 'EQUIPAMENTO';
+  } | null>(null);
   const [decisionModalOpen, setDecisionModalOpen] = useState(false);
   const [savedData, setSavedData] = useState<SavedData | null>(null);
 
@@ -22576,6 +22737,7 @@ export const CadastroUnificadoPage = () => {
       setInitialClienteData(parsed);
 
       if (data.veiculos) setVeiculos(data.veiculos);
+      if (data.equipamentos) setEquipamentos(data.equipamentos);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao carregar dados do cliente.");
@@ -22601,7 +22763,6 @@ export const CadastroUnificadoPage = () => {
 
     // "Pull" dos dados dos filhos — única chamada, sem estado duplicado
     const clienteData = clienteRef.current?.getData();
-    const veiculoData = veiculoRef.current?.getData();
 
     if (!clienteData) {
       toast.error("Dados do cliente inválidos.");
@@ -22652,40 +22813,61 @@ export const CadastroUnificadoPage = () => {
         finalClientId = newClient.id_cliente;
       }
 
-      // Cria veículo se informado (somente no cadastro novo)
+      // Cria veículo ou equipamento se informado (somente no cadastro novo)
       let finalVehicleId: number | null = null;
-      if (!isEditMode && finalClientId && veiculoData) {
-        const { placa, marca, modelo, cor, anoModelo, combustivel, chassi } =
-          veiculoData;
-        if (placa || modelo) {
-          const newVehicle = await VeiculoService.create({
-            id_cliente: finalClientId,
-            placa: normalizePlate(placa),
-            marca,
-            modelo,
-            cor,
-            ano_modelo: anoModelo,
-            combustivel,
-            chassi,
-          });
-          finalVehicleId = newVehicle.id_veiculo;
+      let finalEquipId: number | null = null;
+      
+      if (!isEditMode && finalClientId) {
+        if (assetType === 'VEICULO' && veiculoRef.current) {
+          const veiculoData = (veiculoRef.current as any).getData();
+          if (veiculoData.placa || veiculoData.modelo) {
+            const newVehicle = await VeiculoService.create({
+              id_cliente: finalClientId,
+              placa: normalizePlate(veiculoData.placa),
+              marca: veiculoData.marca,
+              modelo: veiculoData.modelo,
+              cor: veiculoData.cor,
+              ano_modelo: veiculoData.anoModelo,
+              combustivel: veiculoData.combustivel,
+              chassi: veiculoData.chassi,
+            });
+            finalVehicleId = newVehicle.id_veiculo;
+          }
+        } else if (assetType === 'EQUIPAMENTO' && veiculoRef.current) {
+          const equipData = (veiculoRef.current as any).getData();
+          if (equipData.nome_peca) {
+            const newEquip = await EquipamentoService.create({
+              ...equipData,
+              id_cliente: finalClientId
+            });
+            finalEquipId = newEquip.id_equipamento;
+          }
         }
       }
 
       // Pós-criação: abre modal de decisão
       if (!isEditMode && finalClientId) {
         toast.success("Cadastro realizado! O que deseja fazer?");
+        
+        // Se for equipamento, podemos passar o nome da peça para o modal de decisão
+        let assetName = undefined;
+        if (assetType === 'VEICULO') {
+            const vData = (veiculoRef.current as any)?.getData();
+            if (vData?.placa || vData?.modelo) assetName = `${vData.modelo} - ${vData.placa}`;
+        } else {
+            const eData = (veiculoRef.current as any)?.getData();
+            if (eData?.nome_peca) assetName = eData.nome_peca;
+        }
+
         setSavedData({
           clientId: finalClientId,
           vehicleId: finalVehicleId,
+          equipId: finalEquipId,
           clientName:
             clienteData.tipoPessoa === "PF"
               ? clienteData.nome
               : clienteData.razaoSocial,
-          vehicleName:
-            veiculoData?.placa || veiculoData?.modelo
-              ? `${veiculoData.modelo} - ${veiculoData.placa}`
-              : undefined,
+          vehicleName: assetName,
         });
         setDecisionModalOpen(true);
       }
@@ -22700,36 +22882,32 @@ export const CadastroUnificadoPage = () => {
     }
   };
 
-  // ─── Veículos (modo edição) ────────────────────────────────────────────────
+  // ─── Ativos (modo edição) ──────────────────────────────────────────────────
 
-  const handleDeleteVehicle = async () => {
-    if (!confirmDeleteVehicle) return;
+  const handleDeleteAsset = async () => {
+    if (!confirmDeleteAsset) return;
     try {
-      await VeiculoService.delete(confirmDeleteVehicle);
-      setVeiculos((prev) =>
-        prev.filter((v) => v.id_veiculo !== confirmDeleteVehicle),
-      );
-      setConfirmDeleteVehicle(null);
-      toast.success("Veículo removido com sucesso!");
+      if (confirmDeleteAsset.type === 'VEICULO') {
+        await VeiculoService.delete(confirmDeleteAsset.id);
+        setVeiculos((prev) => prev.filter((v) => v.id_veiculo !== confirmDeleteAsset.id));
+      } else {
+        await EquipamentoService.delete(confirmDeleteAsset.id);
+        setEquipamentos((prev) => prev.filter((e) => e.id_equipamento !== confirmDeleteAsset.id));
+      }
+      setConfirmDeleteAsset(null);
+      toast.success(`${confirmDeleteAsset.type === 'VEICULO' ? 'Veículo' : 'Peça'} removido(a) com sucesso!`);
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message ||
-          error.response?.data?.error ||
-          "Erro ao remover veículo.",
-      );
-      setConfirmDeleteVehicle(null);
+      toast.error("Erro ao remover item.");
+      setConfirmDeleteAsset(null);
     }
   };
 
-  const handleVeiculoSuccess = useCallback(() => {
-    setShowVehicleModal(false);
+  const handleAssetSuccess = useCallback(() => {
+    setShowAssetModal(false);
     loadClienteData();
-    toast.success("Veículo salvo com sucesso!");
+    toast.success("Salvo com sucesso!");
   }, [loadClienteData]);
 
-  const handleVeiculoCancel = useCallback(() => {
-    setShowVehicleModal(false);
-  }, []);
 
   // ─── OS navigation ─────────────────────────────────────────────────────────
 
@@ -22740,6 +22918,8 @@ export const CadastroUnificadoPage = () => {
       params.append("clientId", savedData.clientId.toString());
       if (savedData.vehicleId)
         params.append("vehicleId", savedData.vehicleId.toString());
+      if (savedData.equipId)
+        params.append("equipId", savedData.equipId.toString());
       params.append("initialStatus", status);
       navigate(`/ordem-de-servico?${params.toString()}`);
     },
@@ -22796,7 +22976,7 @@ export const CadastroUnificadoPage = () => {
                   <Car size={20} />
                 </div>
                 <h2 className="font-bold text-lg text-neutral-800">
-                  {isEditMode ? "Veículos Cadastrados" : "Dados do Veículo"}
+                  {isEditMode ? "Patrimônio (Veículos/Peças)" : "Vincular Ativo"}
                 </h2>
               </div>
               {isEditMode && (
@@ -22806,63 +22986,71 @@ export const CadastroUnificadoPage = () => {
                   icon={Plus}
                   type="button"
                   onClick={() => {
-                    setEditingVehicle(null);
-                    setShowVehicleModal(true);
+                    setEditingAsset(null);
+                    setAssetType('VEICULO'); // Default choice
+                    setShowAssetModal(true);
                   }}
                 >
-                  NOVO VEÍCULO
+                  + NOVO
                 </Button>
               )}
             </div>
 
             {isEditMode ? (
-              /* Lista de veículos (somente edit mode) */
-              <div className="space-y-3">
-                {veiculos.length > 0 ? (
-                  veiculos.map((v) => (
-                    <div
-                      key={v.id_veiculo}
-                      className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 flex justify-between items-center group hover:border-primary-300 hover:bg-neutral-25 transition-all"
-                    >
+              /* Lista hibrida (edit mode) */
+              <div className="space-y-6">
+                {/* Veículos */}
+                <div className="space-y-3">
+                   <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-widest pl-1">Veículos ({veiculos.length})</h4>
+                   {veiculos.map((v) => (
+                    <div key={v.id_veiculo} className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 flex justify-between items-center group hover:border-primary-300 hover:bg-neutral-25 transition-all">
                       <div>
-                        <p className="font-bold text-primary-900 uppercase font-mono">
-                          {v.placa}
-                        </p>
-                        <p className="text-xs font-bold text-neutral-500 uppercase">
-                          {v.marca} {v.modelo} • {v.cor}
-                        </p>
+                        <p className="font-bold text-primary-900 uppercase font-mono">{v.placa}</p>
+                        <p className="text-xs font-bold text-neutral-500 uppercase">{v.marca} {v.modelo}</p>
                       </div>
                       <div className="flex gap-1">
-                        <ActionButton
-                          icon={Edit}
-                          label="Editar"
-                          variant="neutral"
-                          onClick={() => {
-                            setEditingVehicle(v);
-                            setShowVehicleModal(true);
-                          }}
-                        />
-                        <ActionButton
-                          icon={Trash2}
-                          label="Excluir"
-                          variant="danger"
-                          onClick={() => setConfirmDeleteVehicle(v.id_veiculo)}
-                        />
+                        <ActionButton icon={Edit} label="Editar" variant="neutral" onClick={() => { setEditingAsset({type: 'VEICULO', data: v}); setAssetType('VEICULO'); setShowAssetModal(true); }} />
+                        <ActionButton icon={Trash2} label="Excluir" variant="danger" onClick={() => setConfirmDeleteAsset({id: v.id_veiculo, type: 'VEICULO'})} />
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-neutral-400 italic text-sm">
-                    Nenhum veículo cadastrado.
-                  </div>
-                )}
+                  ))}
+                </div>
+
+                {/* Peças Avulsas */}
+                <div className="space-y-3 pt-4 border-t border-dashed border-neutral-200">
+                   <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-widest pl-1">Peças Avulsas ({equipamentos.length})</h4>
+                   {equipamentos.map((e) => (
+                    <div key={e.id_equipamento} className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 flex justify-between items-center group hover:border-blue-300 hover:bg-blue-25 transition-all">
+                      <div>
+                        <p className="font-bold text-blue-900 uppercase">{e.nome_peca}</p>
+                        <p className="text-xs font-bold text-neutral-500 uppercase">{e.fabricante || 'Fabricante N/I'}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <ActionButton icon={Edit} label="Editar" variant="neutral" onClick={() => { setEditingAsset({type: 'EQUIPAMENTO', data: e}); setAssetType('EQUIPAMENTO'); setShowAssetModal(true); }} />
+                        <ActionButton icon={Trash2} label="Excluir" variant="danger" onClick={() => setConfirmDeleteAsset({id: e.id_equipamento, type: 'EQUIPAMENTO' })} />
+                      </div>
+                    </div>
+                  ))}
+                  {equipamentos.length === 0 && <p className="text-center py-2 text-neutral-400 italic text-[11px]">Nenhuma peça cadastrada.</p>}
+                </div>
               </div>
             ) : (
-              /*
-               * VeiculoFormSection — memo + forwardRef.
-               * Mudanças em ClienteFormSection NÃO causam re-render aqui.
-               */
-              <VeiculoFormSection ref={veiculoRef} />
+              /* Toggle tipo ativo (creation mode) */
+              <div className="space-y-6">
+                 <div className="flex bg-neutral-100 p-1 rounded-lg w-full">
+                    {(['VEICULO', 'EQUIPAMENTO'] as const).map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setAssetType(t)}
+                        className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${assetType === t ? 'bg-white shadow text-primary-600' : 'text-neutral-500'}`}
+                      >
+                        {t === 'VEICULO' ? 'Vincular Veículo' : 'Vincular Peça Avulsa'}
+                      </button>
+                    ))}
+                 </div>
+                 {assetType === 'VEICULO' ? <VeiculoFormSection ref={veiculoRef} /> : <EquipamentoFormSection ref={veiculoRef as any} />}
+              </div>
             )}
           </div>
         </div>
@@ -22891,29 +23079,78 @@ export const CadastroUnificadoPage = () => {
         </div>
       </form>
 
-      {/* Modal: Editar / Criar Veículo (somente edit mode) */}
-      {showVehicleModal && clienteId && (
+      {/* Modal: Editar / Criar Ativo (somente edit mode) */}
+      {showAssetModal && clienteId && (
         <Modal
-          title={editingVehicle ? "Editar Veículo" : "Novo Veículo"}
-          onClose={handleVeiculoCancel}
+          title={editingAsset ? `Editar ${assetType === 'VEICULO' ? 'Veículo' : 'Peça'}` : `Novo(a) ${assetType === 'VEICULO' ? 'Veículo' : 'Peça'}`}
+          onClose={() => setShowAssetModal(false)}
         >
-          <VeiculoForm
-            clientId={Number(clienteId)}
-            vehicleId={editingVehicle?.id_veiculo}
-            initialData={editingVehicle}
-            onSuccess={handleVeiculoSuccess}
-            onCancel={handleVeiculoCancel}
-          />
+           {/* Seletor de tipo no modal de novo asset */}
+           {!editingAsset && (
+              <div className="flex bg-neutral-100 p-1 rounded-lg w-full mb-6">
+                {(['VEICULO', 'EQUIPAMENTO'] as const).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setAssetType(t)}
+                    className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${assetType === t ? 'bg-white shadow text-primary-600' : 'text-neutral-500'}`}
+                  >
+                    {t === 'VEICULO' ? 'Veículo' : 'Peça Avulsa'}
+                  </button>
+                ))}
+            </div>
+           )}
+
+           {assetType === 'VEICULO' ? (
+              <VeiculoForm
+                clientId={Number(clienteId)}
+                vehicleId={editingAsset?.data?.id_veiculo}
+                initialData={editingAsset?.data}
+                onSuccess={handleAssetSuccess}
+                onCancel={() => setShowAssetModal(false)}
+              />
+           ) : (
+              <div className="space-y-6">
+                <EquipamentoFormSection ref={veiculoRef as any} initialData={editingAsset?.data} />
+                <div className="flex gap-2 pt-4 border-t border-neutral-100">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowAssetModal(false)}>Cancelar</Button>
+                  <Button
+                    variant="primary"
+                    className="flex-1"
+                    icon={Save}
+                    isLoading={loading}
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const data = (veiculoRef.current as any).getData();
+                        if (editingAsset) {
+                          await EquipamentoService.update(editingAsset.data.id_equipamento, data);
+                        } else {
+                          await EquipamentoService.create({ ...data, id_cliente: Number(clienteId) });
+                        }
+                        handleAssetSuccess();
+                      } catch (err) {
+                        toast.error("Erro ao salvar equipamento.");
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    Salvar Peça
+                  </Button>
+                </div>
+              </div>
+           )}
         </Modal>
       )}
 
-      {/* Modal: Confirmar exclusão de veículo */}
+      {/* Modal: Confirmar exclusão */}
       <ConfirmModal
-        isOpen={!!confirmDeleteVehicle}
-        onClose={() => setConfirmDeleteVehicle(null)}
-        onConfirm={handleDeleteVehicle}
-        title="Excluir Veículo"
-        description="Tem certeza que deseja excluir este veículo?"
+        isOpen={!!confirmDeleteAsset}
+        onClose={() => setConfirmDeleteAsset(null)}
+        onConfirm={handleDeleteAsset}
+        title={`Excluir ${confirmDeleteAsset?.type === 'VEICULO' ? 'Veículo' : 'Peça'}`}
+        description={`Tem certeza que deseja excluir este item?`}
         variant="danger"
       />
 
@@ -24589,25 +24826,25 @@ export function DashboardPage() {
               />
             </div>
             <Button
-              variant="outline"
-              onClick={() => setIsLoosePartModalOpen(true)}
-              className="h-[42px] px-4 border-neutral-200 text-neutral-600 hover:text-primary-600 whitespace-nowrap font-bold"
-            >
-              🔧 Peça Avulsa
-            </Button>
-            <Button
               variant="primary"
               size="lg"
               icon={Plus}
               className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
               onClick={() => {
                 const input = document.querySelector(
-                  "input[placeholder*='Buscar por Placa']",
+                  "input[placeholder*='Buscar cliente, placa ou peça...']",
                 );
                 if (input) (input as HTMLElement).focus();
               }}
             >
               Nova OS
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsLoosePartModalOpen(true)}
+              className="h-[42px] px-4 border-neutral-200 text-neutral-600 hover:text-primary-600 whitespace-nowrap font-bold"
+            >
+              🔧 Peça Avulsa
             </Button>
           </div>
 
@@ -27702,6 +27939,7 @@ export const FinanceiroPage = () => {
 
 
 ================================================================================
+FILE PATH: client\src\pages\FornecedorPage.tsx
 ================================================================================
 import { useState, useEffect, useRef } from "react";
 import { FornecedorService } from "../services/fornecedor.service";
@@ -29542,6 +29780,8 @@ export const OrdemDeServicoDetalhePage = () => {
 
 
 ================================================================================
+FILE PATH: client\src\pages\OrdemDeServicoPage.tsx
+================================================================================
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -30142,334 +30382,6 @@ export const OrdemDeServicoPage = () => {
 ================================================================================
 FILE PATH: client\src\pages\OsPrintView.tsx
 ================================================================================
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { api } from "../services/api"; // Or useOrdemServico hook if available globally without layout
-import { format } from "date-fns";
-import { formatCurrency } from "../utils/formatCurrency";
-import {
-  ConfiguracaoService,
-  type Configuracao,
-} from "../services/ConfiguracaoService";
-
-export const OsPrintView = () => {
-  const { id } = useParams();
-  const [os, setOs] = useState<any>(null);
-  const [config, setConfig] = useState<Configuracao | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!id) return;
-    Promise.all([
-      api.get(`/ordem-de-servico/${id}`).then((res) => res.data),
-      ConfiguracaoService.get(),
-    ])
-      .then(([osData, configData]) => {
-        setOs(osData);
-        setConfig(configData);
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  useEffect(() => {
-    if (os && config && !loading) {
-      setTimeout(() => {
-        window.print();
-      }, 500);
-    }
-  }, [os, config, loading]);
-
-  if (loading) return <div className="p-8 text-center">Carregando...</div>;
-  if (!os) return <div className="p-8 text-center">OS não encontrada.</div>;
-
-  const isBudget = ["AGENDAMENTO", "ORCAMENTO", "ABERTA"].includes(os.status);
-
-  // Totals Calculation (if not present in OS object directly)
-  const totalPecas =
-    os.itens_os?.reduce(
-      (acc: number, item: any) => acc + Number(item.valor_total || 0),
-      0,
-    ) || 0;
-
-  const totalServicos =
-    os.servicos_mao_de_obra?.reduce(
-      (acc: number, item: any) => acc + Number(item.valor || 0),
-      0,
-    ) || 0;
-
-  const totalGeral = totalPecas + totalServicos;
-
-  return (
-    <div className="min-h-screen bg-white p-8 print:p-0 print:m-0 print:w-full print:absolute print:top-0 print:left-0">
-      {/* Print Controls - Hidden when printing */}
-      <div className="mb-8 flex gap-4 print:hidden"></div>
-      {/* Header with Config Data */}
-      <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
-        <div className="flex items-center gap-4">
-          {config?.logoUrl && (
-            <img
-              src={`${import.meta.env.VITE_API_URL}${config.logoUrl}`}
-              alt="Logo"
-              className="h-20 w-auto object-contain"
-            />
-          )}
-          <div>
-            <h1 className="text-xl font-black uppercase">
-              {config?.nomeFantasia || "Centro Automotivo"}
-            </h1>
-            <p className="text-sm font-bold">{config?.razaoSocial}</p>
-            <p className="text-xs">
-              CNPJ: {config?.cnpj || "-"}
-              {config?.inscricaoEstadual &&
-                ` • IE: ${config.inscricaoEstadual}`}
-            </p>
-            <p className="text-xs">
-              {config?.endereco || "Endereço não configurado"}
-            </p>
-            <p className="text-xs">Tel: {config?.telefone || "-"}</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <h2 className="text-3xl font-black text-neutral-800">
-            OS #{os.id_os}
-          </h2>
-          <p className="font-bold text-sm uppercase mt-1">{os.status}</p>
-          <p className="text-xs text-neutral-500">
-            {format(
-              new Date(os.dt_abertura || os.created_at || new Date()),
-              "dd/MM/yyyy HH:mm",
-            )}
-          </p>
-        </div>
-      </div>
-
-      {isBudget && (
-        <div className="border-2 border-red-500 bg-red-50 text-red-600 font-bold text-center p-2 mb-6 uppercase text-sm print:border-black print:text-neutral-800 print:bg-transparent">
-          DOCUMENTO SEM VALOR FISCAL - SERVIÇO NÃO REALIZADO / APENAS ORÇAMENTO
-        </div>
-      )}
-
-      {/* Info Grid */}
-      <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
-        <div className="border border-neutral-300 p-4 rounded-lg print:border-black">
-          <h3 className="font-bold uppercase border-b border-neutral-200 mb-2 pb-1 print:border-black">
-            Cliente
-          </h3>
-          <p>
-            <span className="font-bold">Nome:</span>{" "}
-            {os.cliente?.pessoa?.nome ||
-              os.cliente?.pessoa_fisica?.pessoa?.nome ||
-              os.cliente?.pessoa_juridica?.pessoa?.nome}
-          </p>
-          <p>
-            <span className="font-bold">CPF/CNPJ:</span>{" "}
-            {os.cliente?.pessoa?.cpf || os.cliente?.pessoa?.cnpj || "-"}
-          </p>
-          <p>
-            <span className="font-bold">Telefone:</span>{" "}
-            {os.cliente?.pessoa?.telefone || os.cliente?.telefone_1 || "-"}
-          </p>
-          <p>
-            <span className="font-bold">Endereço:</span>{" "}
-            {os.cliente?.logradouro}, {os.cliente?.nr_logradouro} -{" "}
-            {os.cliente?.cidade}/{os.cliente?.estado}
-          </p>
-        </div>
-        <div className="border border-neutral-300 p-4 rounded-lg print:border-black">
-          <h3 className="font-bold uppercase border-b border-neutral-200 mb-2 pb-1 print:border-black">
-            {os.veiculo ? "Veículo" : "Peça / Equipamento"}
-          </h3>
-          {os.veiculo && (
-            <>
-              <p>
-                <span className="font-bold">Modelo:</span> {os.veiculo.modelo}
-              </p>
-              <p>
-                <span className="font-bold">Placa:</span> {os.veiculo.placa}
-              </p>
-              <p>
-                <span className="font-bold">Marca/Cor:</span> {os.veiculo.marca} • {os.veiculo.cor}
-              </p>
-              {os.km_entrada && (
-                <p>
-                  <span className="font-bold">KM:</span> {os.km_entrada} km
-                </p>
-              )}
-            </>
-          )}
-          {os.equipamento && (
-            <div className={os.veiculo ? "mt-4 pt-2 border-t border-dotted border-neutral-300 print:border-black" : ""}>
-               {os.veiculo && <p className="text-[10px] font-black uppercase mb-1">Peça Avulsa Vinculada</p>}
-               <p>
-                <span className="font-bold">Peça:</span> {os.equipamento.nome_peca}
-              </p>
-              <p>
-                <span className="font-bold">Fabricante:</span> {os.equipamento.fabricante || "-"}
-              </p>
-              <p>
-                <span className="font-bold">Nº Série:</span> {os.equipamento.numeracao || "-"}
-              </p>
-            </div>
-          )}
-          {!os.veiculo && !os.equipamento && (
-             <p className="italic text-neutral-400">Nenhum veículo ou peça vinculado.</p>
-          )}
-        </div>
-      </div>
-
-      {/* Defeito / Diagnostico */}
-      <div className="mb-6 text-sm">
-        <div className="mb-4">
-          <h3 className="font-bold uppercase bg-neutral-100 p-1 mb-1 print:bg-transparent print:border-b print:border-black">
-            Defeito Relatado
-          </h3>
-          <p className="p-2 border border-neutral-200 rounded print:border-black min-h-[40px]">
-            {os.defeito_relatado || "-"}
-          </p>
-        </div>
-        {os.diagnostico && (
-          <div className="mb-4">
-            <h3 className="font-bold uppercase bg-neutral-100 p-1 mb-1 print:bg-transparent print:border-b print:border-black">
-              Diagnóstico Técnico
-            </h3>
-            <p className="p-2 border border-neutral-200 rounded print:border-black min-h-[40px]">
-              {os.diagnostico}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Items */}
-      <div className="mb-6">
-        <h3 className="font-bold uppercase bg-neutral-800 text-white p-2 mb-0 print:bg-transparent print:text-neutral-800 print:border-b-2 print:border-black">
-          Peças e Produtos
-        </h3>
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="bg-neutral-100 print:bg-transparent border-b border-black">
-              <th className="text-left p-2">Descrição</th>
-              <th className="text-center p-2 w-[80px]">Qtd</th>
-              <th className="text-right p-2 w-[100px]">Unit.</th>
-              <th className="text-right p-2 w-[100px]">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {os.itens_os?.map((item: any, idx: number) => (
-              <tr
-                key={idx}
-                className="border-b border-neutral-200 print:border-neutral-400"
-              >
-                <td className="p-2">
-                  {item.descricao || item.pecas_estoque?.nome}
-                </td>
-                <td className="text-center p-2">{item.quantidade}</td>
-                <td className="text-right p-2">
-                  {formatCurrency(Number(item.valor_venda))}
-                </td>
-                <td className="text-right p-2 font-bold">
-                  {formatCurrency(Number(item.valor_total))}
-                </td>
-              </tr>
-            ))}
-            {(!os.itens_os || os.itens_os.length === 0) && (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="p-4 text-center italic text-neutral-400"
-                >
-                  Nenhuma peça utilizada.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Services */}
-      <div className="mb-6">
-        <h3 className="font-bold uppercase bg-neutral-800 text-white p-2 mb-0 print:bg-transparent print:text-neutral-800 print:border-b-2 print:border-black">
-          Mão de Obra
-        </h3>
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="bg-neutral-100 print:bg-transparent border-b border-black">
-              <th className="text-left p-2">Descrição</th>
-              <th className="text-left p-2">Profissional</th>
-              <th className="text-right p-2 w-[100px]">Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {os.servicos_mao_de_obra?.map((svc: any, idx: number) => (
-              <tr
-                key={idx}
-                className="border-b border-neutral-200 print:border-neutral-400"
-              >
-                <td className="p-2">{svc.descricao || "Serviço"}</td>
-                <td className="p-2">
-                  {svc.funcionario?.pessoa_fisica?.pessoa?.nome || "-"}
-                </td>
-                <td className="text-right p-2 font-bold">
-                  {formatCurrency(Number(svc.valor))}
-                </td>
-              </tr>
-            ))}
-            {(!os.servicos_mao_de_obra ||
-              os.servicos_mao_de_obra.length === 0) && (
-              <tr>
-                <td
-                  colSpan={3}
-                  className="p-4 text-center italic text-neutral-400"
-                >
-                  Nenhum serviço lançado.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Totals */}
-      <div className="flex justify-end mb-12">
-        <div className="w-[300px]">
-          <div className="flex justify-between py-1 border-b border-neutral-200">
-            <span>Total Peças:</span>
-            <span>{formatCurrency(totalPecas)}</span>
-          </div>
-          <div className="flex justify-between py-1 border-b border-neutral-200">
-            <span>Total Serviços:</span>
-            <span>{formatCurrency(totalServicos)}</span>
-          </div>
-          <div className="flex justify-between py-2 border-t-2 border-black font-black text-xl mt-2">
-            <span>TOTAL GERAL:</span>
-            <span>{formatCurrency(totalGeral)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Signatures */}
-      <div className="grid grid-cols-2 gap-16 mt-20 pt-8 print:break-inside-avoid">
-        <div className="text-center border-t border-black pt-2">
-          <p className="font-bold">Assinatura do Cliente</p>
-          <p className="text-xs text-neutral-500">
-            Declaro estar ciente e de acordo com os serviços.
-          </p>
-        </div>
-        <div className="text-center border-t border-black pt-2">
-          <p className="font-bold">Responsável Técnico</p>
-          <p className="text-xs text-neutral-500">Centro Automotivo</p>
-        </div>
-      </div>
-
-      <div className="text-center text-sm text-neutral-400 mt-20 print:fixed print:bottom-0 print:left-0 print:w-full">
-        Gerado em {format(new Date(), "dd/MM/yyyy HH:mm:ss")}
-      </div>
-    </div>
-  );
-};
-
-
-
 ================================================================================
 FILE PATH: client\src\pages\PagamentoEquipePage.tsx
 ================================================================================
@@ -34864,6 +34776,40 @@ export const DashboardService = {
 
 
 ================================================================================
+FILE PATH: client\src\services\equipamento.service.ts
+================================================================================
+import { api } from "./api";
+import type { IEquipamentoCliente } from "../types/backend";
+
+export const EquipamentoService = {
+  getAllByCliente: async (clientId: number) => {
+    const response = await api.get<IEquipamentoCliente[]>(`/cliente/${clientId}/equipamento`);
+    return response.data;
+  },
+
+  getById: async (id: number) => {
+    const response = await api.get<IEquipamentoCliente>(`/equipamento/${id}`);
+    return response.data;
+  },
+
+  create: async (data: Partial<IEquipamentoCliente>) => {
+    const response = await api.post<IEquipamentoCliente>("/equipamento", data);
+    return response.data;
+  },
+
+  update: async (id: number, data: Partial<IEquipamentoCliente>) => {
+    const response = await api.put<IEquipamentoCliente>(`/equipamento/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    await api.delete(`/equipamento/${id}`);
+  },
+};
+
+
+
+================================================================================
 FILE PATH: client\src\services\estoque.service.ts
 ================================================================================
 import { api } from "./api";
@@ -36659,6 +36605,28 @@ export const formatPhone = (phone: string): string => {
 
 ================================================================================
 FILE PATH: client\src\utils\osUtils.ts
+================================================================================
+export const getStatusStyle = (status: string) => {
+  switch (status) {
+    case "FINALIZADA":
+      return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
+    case "FINANCEIRO":
+      return "bg-orange-100 text-orange-700 ring-1 ring-orange-200";
+    case "ABERTA":
+      return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
+    case "ORCAMENTO":
+      return "bg-neutral-100 text-neutral-700 ring-1 ring-neutral-200";
+    case "AGENDAMENTO":
+      return "bg-purple-100 text-purple-700 ring-1 ring-purple-200";
+    case "CANCELADA":
+      return "bg-red-100 text-red-700 ring-1 ring-red-200";
+    default:
+      return "bg-gray-50 text-gray-500 ring-1 ring-gray-200";
+  }
+};
+
+
+
 ================================================================================
 FILE PATH: server\.dockerignore
 ================================================================================
@@ -38605,7 +38573,6 @@ ALTER TABLE "itens_os" ADD COLUMN     "codigo_referencia" VARCHAR(50);
 ================================================================================
 FILE PATH: server\prisma\migrations\20251223140348_enable_unaccent\migration.sql
 ================================================================================
-CREATE EXTENSION IF NOT EXISTS unaccent;
 
 
 ================================================================================
@@ -38668,6 +38635,11 @@ ALTER TABLE "servico_mao_de_obra" ADD CONSTRAINT "servico_mao_de_obra_id_funcion
 ================================================================================
 FILE PATH: server\prisma\migrations\20251223143630_add_soft_delete_to_itens_os\migration.sql
 ================================================================================
+-- AlterTable
+ALTER TABLE "itens_os" ADD COLUMN     "deleted_at" TIMESTAMP;
+
+
+
 ================================================================================
 FILE PATH: server\prisma\migrations\20260103205456_add_indexes_os\migration.sql
 ================================================================================
@@ -39057,7 +39029,6 @@ ALTER TABLE "servico_mao_de_obra" ADD COLUMN     "categoria" VARCHAR(50) NOT NUL
 
 
 
-================================================================================
 FILE PATH: server\prisma\migrations\20260203182255_add_obs_pagamento_cliente\migration.sql
 ================================================================================
 -- AlterTable
@@ -39076,6 +39047,8 @@ ADD COLUMN "total_parcelas" INTEGER;
 
 
 
+================================================================================
+FILE PATH: server\prisma\migrations\202602190000_fix_drift\migration.sql
 ================================================================================
 -- DropIndex
 DROP INDEX "categoria_financeira_nome_key";
@@ -44623,780 +44596,6 @@ export class EquipamentoClienteRepository {
 
 
 ================================================================================
-FILE PATH: server\src\repositories\fechamentoFinanceiro.repository.ts
-================================================================================
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma.js";
-
-export class FechamentoFinanceiroRepository {
-  async create(data: Prisma.FechamentoFinanceiroCreateInput) {
-    return await prisma.fechamentoFinanceiro.create({
-      data,
-    });
-  }
-
-  async findAll() {
-    return await prisma.fechamentoFinanceiro.findMany({
-      include: {
-        ordem_de_servico: {
-          include: {
-            veiculo: true,
-            servicos_mao_de_obra: {
-              where: { deleted_at: null },
-              include: {
-                funcionario: {
-                  include: {
-                    pessoa_fisica: {
-                      include: {
-                        pessoa: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-  }
-
-  async findById(id: number) {
-    return await prisma.fechamentoFinanceiro.findUnique({
-      where: { id_fechamento_financeiro: id },
-      include: { ordem_de_servico: true },
-    });
-  }
-
-  async update(id: number, data: any) {
-    const { itemsPecas, ...fechamentoData } = data;
-
-    return await prisma.$transaction(async (tx) => {
-      // 1. Atualizar Fechamento
-      const fechamento = await tx.fechamentoFinanceiro.update({
-        where: { id_fechamento_financeiro: id },
-        data: fechamentoData,
-      });
-
-      // 2. Processar Pagamentos de Peças (UPSET em lote)
-      if (itemsPecas && itemsPecas.length > 0) {
-        for (const itemPeca of itemsPecas) {
-          const {
-            id_pagamento_peca,
-            id_item_os,
-            id_fornecedor,
-            custo_real,
-            pago_ao_fornecedor,
-          } = itemPeca;
-
-          if (id_pagamento_peca) {
-            await tx.pagamentoPeca.update({
-              where: { id_pagamento_peca },
-              data: {
-                id_fornecedor: Number(id_fornecedor),
-                custo_real: Number(custo_real),
-                pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
-              },
-            });
-          } else {
-            await tx.pagamentoPeca.create({
-              data: {
-                id_item_os: Number(id_item_os),
-                id_fornecedor: Number(id_fornecedor),
-                custo_real: Number(custo_real),
-                pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
-                data_compra: new Date(),
-              },
-            });
-          }
-        }
-      }
-
-      return fechamento;
-    });
-  }
-
-  async delete(id: number) {
-    return await prisma.fechamentoFinanceiro.delete({
-      where: { id_fechamento_financeiro: id },
-    });
-  }
-
-  /**
-   * Consolida uma OS financeiramente
-   * - Salva/Atualiza pagamentos de peças (PagamentoPeca)
-   * - Cria lançamentos no Livro Caixa para TODOS os pagamentos
-   * - PIX: Atualiza saldo bancário imediatamente
-   * - Dinheiro: Apenas lançamento no caixa
-   * - Débito/Crédito: Lançamento no caixa + cria recebível (NÃO atualiza saldo ainda)
-   */
-  async consolidarOS(
-    idOs: number,
-    custoTotalPecasReal: number,
-    itemsPecas?: any[],
-  ) {
-    return await prisma.$transaction(async (tx) => {
-      // 0. Processar Pagamentos de Peças (UPSET em lote dentro da transação)
-      if (itemsPecas && itemsPecas.length > 0) {
-        for (const itemPeca of itemsPecas) {
-          const {
-            id_pagamento_peca,
-            id_item_os,
-            id_fornecedor,
-            custo_real,
-            pago_ao_fornecedor,
-          } = itemPeca;
-
-          if (id_pagamento_peca) {
-            await tx.pagamentoPeca.update({
-              where: { id_pagamento_peca },
-              data: {
-                id_fornecedor: Number(id_fornecedor),
-                custo_real: Number(custo_real),
-                pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
-              },
-            });
-          } else {
-            await tx.pagamentoPeca.create({
-              data: {
-                id_item_os: Number(id_item_os),
-                id_fornecedor: Number(id_fornecedor),
-                custo_real: Number(custo_real),
-                pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
-                data_compra: new Date(),
-              },
-            });
-          }
-        }
-      }
-
-      // 1. Buscar OS com todos os pagamentos e detalhes para descrição e cálculo de lucro
-      const os = await tx.ordemDeServico.findUnique({
-        where: { id_os: idOs },
-        include: {
-          pagamentos_cliente: {
-            where: { deleted_at: null },
-          },
-          cliente: {
-            include: {
-              pessoa_fisica: { include: { pessoa: true } },
-              pessoa_juridica: true,
-            },
-          },
-          veiculo: true,
-          itens_os: {
-            where: { deleted_at: null },
-            include: { pecas_estoque: true },
-          },
-          servicos_mao_de_obra: {
-            where: { deleted_at: null },
-          },
-        },
-      });
-
-      if (!os) {
-        throw new Error("OS não encontrada");
-      }
-
-      if (os.status !== "FINANCEIRO") {
-        throw new Error("OS não está pronta para consolidação financeira");
-      }
-
-      // Buscar Categoria 'Serviços' (Filho de Receita)
-      const categoriaServicos = await tx.categoriaFinanceira.findFirst({
-        where: {
-          nome: "Serviços",
-          parent: { nome: "Receita" },
-        },
-      });
-
-      const idCategoriaServicos = categoriaServicos?.id_categoria;
-      const nomeCategoriaServicos = categoriaServicos?.nome || "Serviços";
-
-      // Formatar Descrição Padronizada
-      const nomeCliente =
-        os.cliente.pessoa_fisica?.pessoa.nome ||
-        os.cliente.pessoa_juridica?.nome_fantasia ||
-        "Cliente";
-      const veiculoDesc = os.veiculo ? `${os.veiculo.modelo}` : "Veículo";
-      const placa = os.veiculo?.placa || "S/Placa";
-      const cor = os.veiculo?.cor || "";
-
-      // "OS Nº {id} - {cliente} | {placa} | {veiculo} | {cor}"
-      const descricaoPadrao = `OS Nº ${idOs} - ${nomeCliente} | ${placa} | ${veiculoDesc} | ${cor}`;
-
-      // --- CÁLCULO DINÂMICO DE LUCRO ---
-      let lucroPecas = 0;
-      let lucroMaoDeObra = os.servicos_mao_de_obra.reduce(
-        (acc, s) => acc + Number(s.valor),
-        0,
-      );
-
-      // 1. Calcular Lucro e Prejuízo por Peça
-      for (const item of os.itens_os) {
-        const valorVenda = Number(item.valor_total);
-
-        // Fallback: Priorizar custoReal do payload itemsPecas se houver, senão banco de dados
-        const pecaPayload = itemsPecas?.find(
-          (p: any) => Number(p.id_item_os) === item.id_iten,
-        );
-        const custoReal =
-          pecaPayload?.custo_real !== undefined
-            ? Number(pecaPayload.custo_real)
-            : Number(item.pecas_estoque?.valor_custo || 0); // No ItemOS não tem valor_custo nativo, é no estoque ou via payload.
-
-        if (item.id_pecas_estoque) {
-          if (item.is_interno) {
-            // Peça de Estoque para Uso Interno -> Impacto Neutro
-            lucroPecas += 0;
-          } else {
-            // Peça de Estoque Vendida -> 100% lucro
-            lucroPecas += valorVenda;
-          }
-        } else if (item.is_interno) {
-          // Peça Externa para Uso Interno -> Subtrai o custo (prejuízo na OS)
-          lucroPecas -= custoReal;
-        } else {
-          // Peça Externa Comum -> Lucro = Venda - Custo
-          lucroPecas += valorVenda - custoReal;
-        }
-      }
-
-      // 2. Regra de Abatimento
-      if (lucroPecas < 0) {
-        const prejuizo = Math.abs(lucroPecas);
-        lucroMaoDeObra -= prejuizo;
-        lucroPecas = 0;
-      }
-
-      const lucroTotal = lucroPecas + lucroMaoDeObra;
-      // ---------------------------------
-
-      // 2. Criar ou Atualizar Fechamento Financeiro
-      let fechamento = await tx.fechamentoFinanceiro.findFirst({
-        where: { id_os: idOs },
-      });
-
-      if (fechamento) {
-        fechamento = await tx.fechamentoFinanceiro.update({
-          where: {
-            id_fechamento_financeiro: fechamento.id_fechamento_financeiro,
-          },
-          data: {
-            custo_total_pecas_real: custoTotalPecasReal,
-            lucro_pecas: lucroPecas,
-            lucro_mao_de_obra: lucroMaoDeObra,
-            lucro_total: lucroTotal,
-            data_fechamento_financeiro: new Date(),
-            deleted_at: null,
-          },
-        });
-      } else {
-        fechamento = await tx.fechamentoFinanceiro.create({
-          data: {
-            id_os: idOs,
-            custo_total_pecas_real: custoTotalPecasReal,
-            lucro_pecas: lucroPecas,
-            lucro_mao_de_obra: lucroMaoDeObra,
-            lucro_total: lucroTotal,
-            data_fechamento_financeiro: new Date(),
-          },
-        });
-      }
-
-      // 3. Processar cada pagamento do cliente (STRICT MODE)
-      console.log(
-        `🔍 [CONSOLIDAÇÃO STRICT] Processando ${os.pagamentos_cliente.length} pagamento(s) para OS #${idOs}`,
-      );
-
-      for (const pagamento of os.pagamentos_cliente) {
-        const metodo = (pagamento.metodo_pagamento || "").trim().toUpperCase();
-        const valorPagamento = Number(pagamento.valor);
-        const idContaBancaria = (pagamento as any).id_conta_bancaria;
-        const idOperadora = pagamento.id_operadora;
-        const idPagamentoCliente = pagamento.id_pagamento_cliente;
-
-        console.log(
-          `   🔸 Pagamento ${idPagamentoCliente}: ${metodo} | R$ ${valorPagamento}`,
-        );
-
-        // RE-FETCH Pagamento to ensure we have the latest id_livro_caixa (Paranoid Check)
-        const pagamentoFresh = await tx.pagamentoCliente.findUnique({
-          where: { id_pagamento_cliente: idPagamentoCliente },
-        });
-
-        if (!pagamentoFresh) continue;
-
-        const pIdLivroCaixa = pagamentoFresh.id_livro_caixa;
-        console.log(
-          `   🔸 Pagamento #${idPagamentoCliente} (Fresh): ID_LC=${pIdLivroCaixa} | Metodo=${metodo}`,
-        );
-
-        // VALIDAÇÃO PRÉVIA (FAIL FAST)
-        if ((metodo === "PIX" || metodo === "DINHEIRO") && !idContaBancaria) {
-          if (metodo === "PIX" && !idContaBancaria) {
-            // ... validation logic
-          }
-        }
-        if ((metodo === "CREDITO" || metodo === "DEBITO") && !idOperadora) {
-          throw new Error(
-            `Pagamento ${metodo} (R$ ${valorPagamento}) sem Operadora definida!`,
-          );
-        }
-
-        // --- SAFETY CHECK: Search for "Orphan" LivroCaixa to prevent Duplication ---
-        if (!pIdLivroCaixa) {
-          const potentialMatch = await tx.livroCaixa.findFirst({
-            where: {
-              valor: valorPagamento,
-              descricao: {
-                contains: `OS Nº ${idOs}`, // Matches both "OS Nº 5 - ..." and "Recebimento: OS Nº 5..."
-              },
-              dt_movimentacao: {
-                gte: new Date(new Date().getTime() - 24 * 60 * 60 * 1000), // Last 24h
-                lte: new Date(new Date().getTime() + 1 * 60 * 60 * 1000),
-              },
-              deleted_at: null,
-            },
-          });
-
-          if (potentialMatch) {
-            console.log(
-              `      ⚠️ Encontrado LivroCaixa Órfão (#${potentialMatch.id_livro_caixa}). Vinculando para evitar duplicidade.`,
-            );
-            // Link found record to payment
-            await tx.pagamentoCliente.update({
-              where: { id_pagamento_cliente: idPagamentoCliente },
-              data: { id_livro_caixa: potentialMatch.id_livro_caixa },
-            });
-            // Update local var to skip creation
-            // pIdLivroCaixa is const, so we just won't enter the creation blocks because we check it below?
-            // Wait, we need to update the flow logic.
-            // Let's assign to a let variable if we want to mutate, or just rely on the 'if' checks using 'pIdLivroCaixa' (which is stale now).
-            // Better: continue; or update pIdLivroCaixa (need to change to let)
-          }
-        }
-
-        // Re-read after potential link
-        const finalCheck = await tx.pagamentoCliente.findUnique({
-          where: { id_pagamento_cliente: idPagamentoCliente },
-        });
-        const finalLcId = finalCheck?.id_livro_caixa;
-
-        // --- FLUXO 1: PIX (IMEDIATO NO BANCO) ---
-        if (metodo === "PIX") {
-          // Check if already linked
-          if (finalLcId) {
-            console.log(
-              `      ⚠️ Pagamento #${idPagamentoCliente} já possui Livro Caixa (#${finalLcId}). Pulando criação.`,
-            );
-          } else {
-            // ... create
-            // 1.1 Criar LivroCaixa (Vinculado a Conta)
-            const livroCaixa = await tx.livroCaixa.create({
-              data: {
-                descricao: descricaoPadrao,
-                valor: valorPagamento,
-                tipo_movimentacao: "ENTRADA",
-                categoria: nomeCategoriaServicos, // Fallback string
-                id_categoria: idCategoriaServicos || null,
-                dt_movimentacao: new Date(),
-                origem: "AUTOMATICA",
-                id_conta_bancaria: idContaBancaria,
-              },
-            });
-
-            // 1.2 Atualizar Saldo Bancário
-            await tx.contaBancaria.update({
-              where: { id_conta: idContaBancaria },
-              data: { saldo_atual: { increment: valorPagamento } },
-            });
-
-            // 1.3 Vincular ao PagamentoCliente
-            await tx.pagamentoCliente.update({
-              where: { id_pagamento_cliente: idPagamentoCliente },
-              data: { id_livro_caixa: livroCaixa.id_livro_caixa },
-            });
-
-            console.log(
-              `      ✅ [PIX] Consolidado: LC #${livroCaixa.id_livro_caixa} | Saldo Atualizado.`,
-            );
-          }
-        }
-
-        // --- FLUXO 2: DINHEIRO (CAIXA MAS SEM EXTRATO BANCÁRIO DIGITAL) ---
-        else if (metodo === "DINHEIRO") {
-          if (finalLcId) {
-            console.log(
-              `      ⚠️ Pagamento #${idPagamentoCliente} já possui Livro Caixa (#${finalLcId}). Pulando criação.`,
-            );
-          } else {
-            // 2.1 Criar LivroCaixa
-            const livroCaixa = await tx.livroCaixa.create({
-              data: {
-                descricao: descricaoPadrao,
-                valor: valorPagamento,
-                tipo_movimentacao: "ENTRADA",
-                categoria: nomeCategoriaServicos,
-                id_categoria: idCategoriaServicos || null,
-                dt_movimentacao: new Date(),
-                origem: "AUTOMATICA",
-                id_conta_bancaria: null,
-              },
-            });
-
-            // 2.2 Vincular ao PagamentoCliente
-            await tx.pagamentoCliente.update({
-              where: { id_pagamento_cliente: idPagamentoCliente },
-              data: {
-                id_livro_caixa: livroCaixa.id_livro_caixa,
-              },
-            });
-
-            console.log(
-              `      ✅ [DINHEIRO] Livro Caixa gerado (Sem impacto no Saldo Bancário Digital)`,
-            );
-          }
-        }
-
-        // --- FLUXO 3: CARTÃO (DIFERIDO) ---
-        else if (metodo === "DEBITO" || metodo === "CREDITO") {
-          // Check if Livro Caixa exists
-          if (finalLcId) {
-            console.log(
-              `      ⚠️ Pagamento #${idPagamentoCliente} já possui Livro Caixa (#${finalLcId}). Pulando criação.`,
-            );
-          } else {
-            // Prepara nome da operadora para descrição
-            let operadoraNome = "";
-            if (idOperadora) {
-              const op = await tx.operadoraCartao.findUnique({
-                where: { id_operadora: idOperadora },
-              });
-              operadoraNome = op?.nome || "";
-            }
-
-            // 3.1 Criar LivroCaixa
-            const livroCaixa = await tx.livroCaixa.create({
-              data: {
-                descricao:
-                  descricaoPadrao +
-                  (operadoraNome ? ` (${operadoraNome})` : ""),
-                valor: valorPagamento,
-                tipo_movimentacao: "ENTRADA",
-                categoria: nomeCategoriaServicos,
-                id_categoria: idCategoriaServicos || null,
-                dt_movimentacao: new Date(),
-                origem: "AUTOMATICA",
-                id_conta_bancaria: null,
-              },
-            });
-
-            // 3.2 Vincular ao PagamentoCliente
-            await tx.pagamentoCliente.update({
-              where: { id_pagamento_cliente: idPagamentoCliente },
-              data: {
-                id_livro_caixa: (livroCaixa as any).id_livro_caixa,
-              } as any,
-            });
-          }
-
-          // 3.3 Check Recebíveis
-          // Recebíveis are linked to OS, not directly to Payment (Schema limitiation)
-          // But now we assume they are created at Payment Time.
-          // How to verify?
-          let existingRecebiveis = null;
-          if (idOperadora) {
-            existingRecebiveis = await tx.recebivelCartao.findFirst({
-              where: {
-                id_os: idOs,
-                id_operadora: Number(idOperadora),
-                valor_bruto: {
-                  equals: valorPagamento / (pagamento.qtd_parcelas || 1),
-                },
-              }, // Rough check
-            });
-          }
-
-          if (existingRecebiveis) {
-            console.log(
-              `      ⚠️ Pagamento #${idPagamentoCliente} parecem já existir recebíveis. Pulando.`,
-            );
-          } else {
-            // Existing generation logic...
-            if (idOperadora) {
-              const operadora = await tx.operadoraCartao.findUnique({
-                where: { id_operadora: idOperadora },
-                include: { taxas_cartao: true },
-              });
-
-              if (operadora) {
-                const qtdParcelas = pagamento.qtd_parcelas || 1;
-                const tipoParcelamento =
-                  (pagamento as any).tipo_parcelamento || "LOJA";
-
-                let taxa = 0;
-                let prazo = 0;
-
-                const modalidade = metodo === "DEBITO" ? "DEBITO" : "CREDITO";
-                const taxEntry = operadora.taxas_cartao?.find(
-                  (t) =>
-                    t.modalidade === modalidade &&
-                    t.num_parcelas === (metodo === "DEBITO" ? 1 : qtdParcelas),
-                );
-
-                if (taxEntry) {
-                  taxa = Number(taxEntry.taxa_total);
-                  prazo =
-                    modalidade === "DEBITO"
-                      ? Number(operadora.prazo_debito)
-                      : qtdParcelas === 1
-                        ? Number(operadora.prazo_credito_vista)
-                        : Number(operadora.prazo_credito_parc);
-                } else {
-                  // Fallback
-                  taxa =
-                    metodo === "DEBITO"
-                      ? Number(operadora.taxa_debito)
-                      : qtdParcelas === 1
-                        ? Number(operadora.taxa_credito_vista)
-                        : Number(operadora.taxa_credito_parc);
-
-                  prazo =
-                    metodo === "DEBITO"
-                      ? Number(operadora.prazo_debito)
-                      : qtdParcelas === 1
-                        ? Number(operadora.prazo_credito_vista)
-                        : Number(operadora.prazo_credito_parc);
-                }
-
-                if (
-                  tipoParcelamento === "CLIENTE" &&
-                  metodo === "CREDITO" &&
-                  qtdParcelas > 1
-                ) {
-                  const vistaRate = operadora.taxas_cartao?.find(
-                    (t) => t.modalidade === "CREDITO" && t.num_parcelas === 1,
-                  );
-                  if (vistaRate) taxa = Number(vistaRate.taxa_total);
-                  else taxa = Number(operadora.taxa_credito_vista);
-                }
-
-                const taxaAplicada = (valorPagamento * taxa) / 100;
-                const valorLiquido = valorPagamento - taxaAplicada;
-
-                const dataPrevistaBase = new Date();
-                if (operadora.antecipacao_auto) {
-                  dataPrevistaBase.setDate(dataPrevistaBase.getDate() + 1);
-                } else {
-                  dataPrevistaBase.setDate(dataPrevistaBase.getDate() + prazo);
-                }
-
-                const valorPorParcela = valorPagamento / qtdParcelas;
-                const valorLiquidoPorParcela = valorLiquido / qtdParcelas;
-                const taxaPorParcela = taxaAplicada / qtdParcelas;
-
-                for (let i = 1; i <= qtdParcelas; i++) {
-                  const dataPrevistaParcela = new Date(dataPrevistaBase);
-                  if (
-                    !operadora.antecipacao_auto &&
-                    modalidade === "CREDITO" &&
-                    qtdParcelas > 1
-                  ) {
-                    dataPrevistaParcela.setMonth(
-                      dataPrevistaParcela.getMonth() + (i - 1),
-                    );
-                  }
-
-                  await tx.recebivelCartao.create({
-                    data: {
-                      id_os: idOs,
-                      id_operadora: idOperadora,
-                      num_parcela: i,
-                      total_parcelas: qtdParcelas,
-                      valor_bruto: valorPorParcela,
-                      valor_liquido: valorLiquidoPorParcela,
-                      taxa_aplicada: taxaPorParcela,
-                      tipo_parcelamento: tipoParcelamento,
-                      data_venda: new Date(),
-                      data_prevista: dataPrevistaParcela,
-                      status: "PENDENTE",
-                    },
-                  });
-                }
-                console.log(
-                  `      ✅ [CARTÃO] ${qtdParcelas} parcela(s) criada(s) em Recebíveis (Taxa: ${taxa}%).`,
-                );
-              }
-            }
-          }
-        }
-      }
-
-      // 4. Lançamento de Saída (Custo) no Livro Caixa para Peças Externas
-      // Apenas peças não-estoque (id_pecas_estoque == null) geram saída imediata
-      let custoPecasExternas = 0;
-      for (const item of os.itens_os) {
-         if (!item.id_pecas_estoque) {
-            const pecaPayload = itemsPecas?.find(
-              (p: any) => Number(p.id_item_os) === item.id_iten,
-            );
-            const custoReal = pecaPayload?.custo_real !== undefined
-                ? Number(pecaPayload.custo_real)
-                : Number(item.pecas_estoque?.valor_custo || 0);
-
-            custoPecasExternas += custoReal;
-         }
-      }
-
-      if (custoPecasExternas > 0) {
-        // Buscar categoria 'Peças Externas' (Despesa)
-        const categoriaPecas = await tx.categoriaFinanceira.findFirst({
-           where: { nome: "Peças / Materiais", tipo: "DESPESA" }
-        });
-
-        await tx.livroCaixa.create({
-          data: {
-             descricao: `Custo de Peças Externas / Consumo Interno - OS #${idOs}`,
-             valor: custoPecasExternas,
-             tipo_movimentacao: "SAIDA",
-             categoria: categoriaPecas?.nome || "Despesas Gerais",
-             id_categoria: categoriaPecas?.id_categoria || null,
-             dt_movimentacao: new Date(),
-             origem: "AUTOMATICA"
-          }
-        });
-        console.log(`      ✅ [DESPESA LIVRO CAIXA] Lançado custo externo de R$ ${custoPecasExternas}`);
-      }
-
-      await tx.ordemDeServico.update({
-        where: { id_os: idOs },
-        data: { status: "FINALIZADA" },
-      });
-
-      return fechamento;
-    });
-  }
-
-  /**
-   * Reverte uma Consolidação Financeira
-   * - Bloqueia se houver comissões pagas ou recebíveis baixados
-   * - Desfaz lançamentos de LivroCaixa e Saldos
-   * - Remove Recebíveis
-   * - Exclui Fechamento
-   */
-  async reverterConsolidacao(idFechamento: number) {
-    return await prisma.$transaction(async (tx) => {
-      // 1. Buscar dados completos
-      const fechamento = await tx.fechamentoFinanceiro.findUnique({
-        where: { id_fechamento_financeiro: idFechamento },
-        include: {
-          ordem_de_servico: {
-            include: {
-              pagamentos_cliente: { where: { deleted_at: null } },
-              servicos_mao_de_obra: { where: { deleted_at: null } },
-              recebiveis_cartao: true, // Needed to check status
-            },
-          },
-        },
-      });
-
-      if (!fechamento) throw new Error("Fechamento não encontrado.");
-
-      const os = fechamento.ordem_de_servico;
-
-      // 2. BLOCKS DE SEGURANÇA
-
-      // 2.1 Verificar Comissões Pagas
-      const comissoesPagas = os.servicos_mao_de_obra.some(
-        (s) => s.status_pagamento === "PAGO",
-      );
-      if (comissoesPagas) {
-        throw new Error(
-          "Não é possível desconsolidar: Existem comissões já pagas aos funcionários nesta OS.",
-        );
-      }
-
-      // 2.2 Verificar Recebíveis Baixados
-      // We need to fetch RecebiveisCartao separately if not in include or if implicit relation
-      const recebiveis = await tx.recebivelCartao.findMany({
-        where: { id_os: os.id_os },
-      });
-      const recebiveisBaixados = recebiveis.some(
-        (r) => r.status === "RECEBIDO",
-      );
-      if (recebiveisBaixados) {
-        throw new Error(
-          "Não é possível desconsolidar: Existem recebíveis de cartão já confirmados/baixados.",
-        );
-      }
-
-      console.log(`↺ [REVERSÃO] Iniciando reversão da OS #${os.id_os}`);
-
-      // 3. EXECUTAR REVERSÃO
-
-      // 3.1 Estornar Pagamentos (Livro Caixa e Saldo)
-      for (const pag of os.pagamentos_cliente) {
-        const p = pag as any;
-
-        if (p.id_livro_caixa) {
-          // Buscar info do LivroCaixa pra saber valor exato lançado (segurança)
-          const lc = await tx.livroCaixa.findUnique({
-            where: { id_livro_caixa: p.id_livro_caixa },
-          });
-
-          if (lc) {
-            // Se PIX e tem conta, estornar saldo
-            if (lc.id_conta_bancaria && p.metodo_pagamento === "PIX") {
-              await tx.contaBancaria.update({
-                where: { id_conta: lc.id_conta_bancaria },
-                data: { saldo_atual: { decrement: Number(lc.valor) } },
-              });
-              console.log(
-                `   - Saldo estornado Conta #${lc.id_conta_bancaria}: -${lc.valor}`,
-              );
-            }
-
-            // Remover LivroCaixa
-            await tx.livroCaixa.delete({
-              where: { id_livro_caixa: p.id_livro_caixa },
-            });
-          }
-
-          // Desvincular do pagamento
-          await tx.pagamentoCliente.update({
-            where: { id_pagamento_cliente: p.id_pagamento_cliente },
-            data: { id_livro_caixa: null } as any,
-          });
-        }
-      }
-
-      // 3.2 Remover Recebíveis de Cartão
-      const deletedRecebiveis = await tx.recebivelCartao.deleteMany({
-        where: { id_os: os.id_os },
-      });
-      console.log(`   - Recebíveis removidos: ${deletedRecebiveis.count}`);
-
-      // 3.3 Remover Fechamento Financeiro
-      await tx.fechamentoFinanceiro.delete({
-        where: { id_fechamento_financeiro: idFechamento },
-      });
-
-      await tx.ordemDeServico.update({
-        where: { id_os: os.id_os },
-        data: { status: "FINANCEIRO" },
-      });
-
-      return { success: true, message: "Consolidação revertida com sucesso." };
-    });
-  }
-}
-
-
-
-================================================================================
-FILE PATH: server\src\repositories\fornecedor.repository.ts
-================================================================================
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 
@@ -45987,74 +45186,6 @@ export class OrdemDeServicoRepository {
 
 
 
-================================================================================
-FILE PATH: server\src\repositories\pagamentoCliente.repository.ts
-================================================================================
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma.js";
-
-export class PagamentoClienteRepository {
-  async create(data: Prisma.PagamentoClienteCreateInput) {
-    return await prisma.pagamentoCliente.create({ data });
-  }
-
-  async findAll() {
-    return await prisma.pagamentoCliente.findMany({
-      include: {
-        ordem_de_servico: {
-          include: {
-            veiculo: true,
-            cliente: {
-              include: {
-                pessoa_fisica: { include: { pessoa: true } },
-                pessoa_juridica: { include: { pessoa: true } },
-              },
-            },
-          },
-        },
-        // @ts-ignore
-        conta_bancaria: true,
-        // @ts-ignore
-        operadora: true,
-        livro_caixa: true,
-      },
-    });
-  }
-
-  async findById(id: number) {
-    return await prisma.pagamentoCliente.findUnique({
-      where: { id_pagamento_cliente: id },
-      include: { ordem_de_servico: true },
-    });
-  }
-
-  async update(id: number, data: Prisma.PagamentoClienteUpdateInput) {
-    // Extract obs/observacao from data to avoid Prisma error
-    const { obs, observacao, ...updateData } = data as any;
-    const finalObs = obs || observacao;
-
-    return await prisma.pagamentoCliente.update({
-      where: { id_pagamento_cliente: id },
-      data: {
-        ...updateData,
-        obs: finalObs || null,
-        // id_livro_caixa is NOT touched here anymore, it's handled by Consolidation
-      } as any,
-    });
-  }
-
-  async delete(id: number) {
-    return await prisma.pagamentoCliente.update({
-      where: { id_pagamento_cliente: id },
-      data: { deleted_at: new Date() } as any,
-    });
-  }
-}
-
-
-
-================================================================================
-FILE PATH: server\src\repositories\pagamentoPeca.repository.ts
 ================================================================================
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
@@ -48697,6 +47828,57 @@ main()
 
 
 
+================================================================================
+FILE PATH: server\src\scripts\fix_financial_consistency.ts
+================================================================================
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log("🔍 Looking for inconsistent OSs...");
+
+  const inconsistentOs = await prisma.ordemDeServico.findMany({
+    where: {
+      status: "FINALIZADA",
+      fechamento_financeiro: null,
+    },
+    select: {
+      id_os: true,
+      valor_total_cliente: true,
+      dt_entrega: true,
+      updated_at: true,
+    },
+  });
+
+  console.log(`Found ${inconsistentOs.length} OSs to fix.`);
+
+  for (const os of inconsistentOs) {
+    const dataFechamento = os.dt_entrega || os.updated_at || new Date();
+
+    // Create missing financial closure record
+    await prisma.fechamentoFinanceiro.create({
+      data: {
+        id_os: os.id_os,
+        data_fechamento_financeiro: dataFechamento,
+        custo_total_pecas_real: 0, // Simplified assumption for fix
+        // Other fields will be default or calculated by triggers if present
+      },
+    });
+
+    console.log(`✅ Fixed OS #${os.id_os} - Created FechamentoFinanceiro`);
+  }
+}
+
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
+
+
+
+================================================================================
+FILE PATH: server\src\scripts\inspect_test_data.ts
+================================================================================
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();

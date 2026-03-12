@@ -157,6 +157,7 @@ export class FechamentoFinanceiroRepository {
             },
           },
           veiculo: true,
+          equipamento: true,
           itens_os: {
             where: { deleted_at: null },
             include: { pecas_estoque: true },
@@ -191,12 +192,19 @@ export class FechamentoFinanceiroRepository {
         os.cliente.pessoa_fisica?.pessoa.nome ||
         os.cliente.pessoa_juridica?.nome_fantasia ||
         "Cliente";
-      const veiculoDesc = os.veiculo ? `${os.veiculo.modelo}` : "Veículo";
-      const placa = os.veiculo?.placa || "S/Placa";
+      const veiculoDesc = os.veiculo 
+        ? `${os.veiculo.modelo}` 
+        : os.equipamento 
+          ? `${os.equipamento.nome_peca}` 
+          : "Veículo/Peça";
+      
+      const placa = os.veiculo?.placa || os.equipamento?.numeracao || "S/Placa-Peça";
       const cor = os.veiculo?.cor || "";
+      
+      const identificador = os.veiculo ? placa : (os.equipamento?.numeracao || "Peça Avulsa");
 
-      // "OS Nº {id} - {cliente} | {placa} | {veiculo} | {cor}"
-      const descricaoPadrao = `OS Nº ${idOs} - ${nomeCliente} | ${placa} | ${veiculoDesc} | ${cor}`;
+      // "OS Nº {id} - {cliente} | {identificador} | {veiculoDesc} | {cor}"
+      const descricaoPadrao = `OS Nº ${idOs} - ${nomeCliente} | ${identificador} | ${veiculoDesc} ${cor ? `| ${cor}` : ""}`;
 
       // --- CÁLCULO DINÂMICO DE LUCRO ---
       let lucroPecas = 0;

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Modal, Button, Input, TextArea } from "../ui";
 import { Search, User, Plus, Wrench, ArrowRight } from "lucide-react";
 import { api } from "../../services/api";
+import { ClienteService } from "../../services/cliente.service";
 import { useNavigate } from "react-router-dom";
 
 interface LoosePartOsModalProps {
@@ -32,8 +33,8 @@ export const LoosePartOsModal = ({ isOpen, onClose }: LoosePartOsModalProps) => 
     }
     const timer = setTimeout(async () => {
       try {
-        const resp = await api.get(`/cliente?search=${searchQuery}`);
-        setClients(resp.data);
+        const data = await ClienteService.search(searchQuery);
+        setClients(data);
       } catch (err) {
         console.error(err);
       }
