@@ -88,7 +88,8 @@ export const OsTable = ({
                     {os.veiculo ? (
                       <>
                         <span className="text-neutral-600 text-base font-medium uppercase">
-                          {os.veiculo.marca} {os.veiculo.modelo} • {os.veiculo.cor}
+                          {os.veiculo.marca} {os.veiculo.modelo} •{" "}
+                          {os.veiculo.cor}
                         </span>
                         <span className="text-base text-primary-600 uppercase mt-0.5">
                           {os.veiculo.placa} - {os.veiculo.ano_modelo}
@@ -97,15 +98,19 @@ export const OsTable = ({
                     ) : os.equipamento ? (
                       <>
                         <span className="text-neutral-600 text-base font-medium uppercase">
-                           {os.equipamento.nome_peca}
+                          {os.equipamento.nome_peca}
                         </span>
                         <span className="text-sm text-neutral-400 mt-1 italic">
-                          {os.equipamento.fabricante && `Marca: ${os.equipamento.fabricante}`}
-                          {os.equipamento.numeracao && ` • S/N: ${os.equipamento.numeracao}`}
+                          {os.equipamento.fabricante &&
+                            `Marca: ${os.equipamento.fabricante}`}
+                          {os.equipamento.numeracao &&
+                            ` • S/N: ${os.equipamento.numeracao}`}
                         </span>
                       </>
                     ) : (
-                      <span className="text-neutral-300 italic">Serviço Avulso</span>
+                      <span className="text-neutral-300 italic">
+                        Serviço Avulso
+                      </span>
                     )}
                   </div>
                 </td>
@@ -185,15 +190,6 @@ export const OsTable = ({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ActionButton
-                      onClick={() => handleSendEmail(os.id_os)}
-                      icon={Mail}
-                      label="E-mail"
-                      variant="neutral"
-                      isLoading={loadingEmail === os.id_os}
-                      disabled={loadingEmail !== null}
-                    />
-
                     {renderActions ? (
                       renderActions(os)
                     ) : (

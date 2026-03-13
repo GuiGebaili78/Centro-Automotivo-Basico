@@ -1,5 +1,4 @@
 import nodemailer from "nodemailer";
-import { ConfiguracaoRepository } from "../repositories/configuracao.repository.js";
 
 /**
  * EmailService
@@ -10,15 +9,17 @@ import { ConfiguracaoRepository } from "../repositories/configuracao.repository.
  */
 export const EmailService = {
   /**
-   * Gets the SMTP transporter based on workshop configuration
+   * Gets the SMTP transporter based on environment variables
    */
   getTransporter: async () => {
-    const config = await ConfiguracaoRepository.get();
+    const host = process.env.SMTP_HOST || "smtp.gmail.com";
+    const port = Number(process.env.SMTP_PORT) || 587;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
 
-    const host = config?.smtpHost || "smtp.gmail.com";
-    const port = Number(config?.smtpPort) || 587;
-    const user = config?.smtpUser || "guilhermecorretor@gmail.com"; // Fallback for tests
-    const pass = config?.smtpPass || ""; // Needs to be configured via UI or Env
+    if (!user || !pass) {
+      console.warn("EmailService: SMTP_USER or SMTP_PASS not defined in environment variables.");
+    }
 
     return nodemailer.createTransport({
       host,
@@ -40,10 +41,9 @@ export const EmailService = {
   sendOsEmail: async (osData: any, remetenteEmail: string) => {
     try {
       const transporter = await EmailService.getTransporter();
-      const config = await ConfiguracaoRepository.get();
-
-      const workshopName = config?.nomeFantasia || "Centro Automotivo";
-      const user = config?.smtpUser || "guilhermecorretor@gmail.com";
+      
+      const workshopName = process.env.SMTP_FROM_NAME || "Centro Automotivo";
+      const user = process.env.SMTP_USER;
 
       const mailOptions = {
         from: `"${workshopName}" <${user}>`,
