@@ -1,0 +1,24 @@
+﻿scripts/seed_categories.ts(10,7): error TS2322: Type '{ nome: string; }' is not assignable to type 'CategoriaFinanceiraWhereUniqueInput'.
+  Type '{ nome: string; }' is not assignable to type '{ id_categoria: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; nome_parentId: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; } & { ...; }'.
+    Type '{ nome: string; }' is missing the following properties from type '{ id_categoria: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; nome_parentId: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; }': id_categoria, nome_parentId
+src/middlewares/authMiddleware.ts(25,7): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/scripts/check_inconsistency.ts(7,5): error TS2375: Type '{ status: string; fechamento_financeiro: undefined; }' is not assignable to type 'OrdemDeServicoWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'fechamento_financeiro' are incompatible.
+    Type 'undefined' is not assignable to type 'FechamentoFinanceiroListRelationFilter'.
+src/scripts/fix_financial_consistency.ts(9,5): error TS2375: Type '{ status: string; fechamento_financeiro: undefined; }' is not assignable to type 'OrdemDeServicoWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'fechamento_financeiro' are incompatible.
+    Type 'undefined' is not assignable to type 'FechamentoFinanceiroListRelationFilter'.
+src/scripts/inspect_test_data.ts(55,32): error TS2532: Object is possibly 'undefined'.
+src/scripts/inspect_test_data.ts(55,66): error TS2532: Object is possibly 'undefined'.
+src/scripts/inspect_test_data.ts(62,5): error TS2375: Type '{ status: string; fechamento_financeiro: undefined; }' is not assignable to type 'OrdemDeServicoWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'fechamento_financeiro' are incompatible.
+    Type 'undefined' is not assignable to type 'FechamentoFinanceiroListRelationFilter'.
+src/scripts/test_receivables_sync.ts(12,5): error TS2322: Type '{ tipo_pessoa: number; telefone_1: string; pessoa_fisica: { create: { pessoa: { create: { nome: string; }; }; }; }; }' is not assignable to type '(Without<ClienteCreateInput, ClienteUncheckedCreateInput> & ClienteUncheckedCreateInput) | (Without<...> & ClienteCreateInput)'.
+  Types of property 'pessoa_fisica' are incompatible.
+    Type '{ create: { pessoa: { create: { nome: string; }; }; }; }' is not assignable to type 'undefined'.
+src/services/DocumentoService.ts(133,91): error TS2551: Property 'equipamento' does not exist on type '{ servicos_mao_de_obra: ({ funcionario: { pessoa_fisica: { pessoa: { dt_cadastro: Date; obs: string | null; nome: string; genero: string | null; dt_nascimento: Date | null; is_cliente: boolean; is_fornecedor: boolean; is_colaborador: boolean; id_pessoa: number; }; } & { ...; }; } & { ...; }; } & { ...; })[]; cliente...'. Did you mean 'id_equipamento'?
+src/services/DocumentoService.ts(133,111): error TS2551: Property 'equipamento' does not exist on type '{ servicos_mao_de_obra: ({ funcionario: { pessoa_fisica: { pessoa: { dt_cadastro: Date; obs: string | null; nome: string; genero: string | null; dt_nascimento: Date | null; is_cliente: boolean; is_fornecedor: boolean; is_colaborador: boolean; id_pessoa: number; }; } & { ...; }; } & { ...; }; } & { ...; })[]; cliente...'. Did you mean 'id_equipamento'?
+src/test-email.ts(2,30): error TS2307: Cannot find module './services/email.service' or its corresponding type declarations.

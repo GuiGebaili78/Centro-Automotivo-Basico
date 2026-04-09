@@ -38,6 +38,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
     bairro: "",
     cidade: "",
     estado: "",
+    obs: "",
     isNew: true,
   });
 
@@ -48,6 +49,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
     modelo: "",
     cor: "",
     ano: new Date().getFullYear().toString(),
+    ano_fabricacao: new Date().getFullYear().toString(),
     combustivel: "FLEX",
     isNew: true,
   });
@@ -111,6 +113,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
       bairro: c.bairro || "",
       cidade: c.cidade || "",
       estado: c.estado || "",
+      obs: c.obs || "",
       isNew: false,
     });
     setClientQuery(nome);
@@ -151,6 +154,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
           bairro: clientData.bairro,
           cidade: clientData.cidade,
           estado: clientData.estado,
+          obs: clientData.obs, // Adding general obs to Pessoa
         },
         // Send vehicle if provided or if it's OFICINA mode
         vehicle: (osMode === "OFICINA" || vehicleData.placa) ? {
@@ -160,6 +164,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
           modelo: vehicleData.modelo,
           cor: vehicleData.cor || "BRANCO",
           ano_modelo: vehicleData.ano,
+          ano_fabricacao: vehicleData.ano_fabricacao,
           combustivel: vehicleData.combustivel,
         } : null,
         // Send equipment if AVULSO mode or if provided

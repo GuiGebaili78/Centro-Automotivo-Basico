@@ -52,7 +52,7 @@ async function main() {
 
     if (stuckOs.length > 0) {
       console.log(
-        `Sample Stuck OS ID: ${stuckOs[0].id_os}, Description: ${stuckOs[0].defeito_relatado}`,
+        `Sample Stuck OS ID: ${stuckOs[0]?.id_os}, Description: ${stuckOs[0]?.defeito_relatado}`,
       );
     }
   }
@@ -61,7 +61,7 @@ async function main() {
   const totalStuck = await prisma.ordemDeServico.count({
     where: {
       status: "FINALIZADA",
-      fechamento_financeiro: null,
+      fechamento_financeiro: { none: {} },
     },
   });
   console.log(

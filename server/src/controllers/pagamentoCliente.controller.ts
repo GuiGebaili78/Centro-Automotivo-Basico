@@ -107,11 +107,11 @@ export class PagamentoClienteController {
         if (
           id_operadora &&
           (data.metodo_pagamento === "CREDITO" ||
-            data.metodo_pagamento === "DEBITO")
+            data.metodo_pagamento === "DEBITO" || data.metodo_pagamento === "PIX")
         ) {
           const operadora = await tx.operadoraCartao.findUnique({
             where: { id_operadora: Number(id_operadora) },
-            include: { taxas_cartao: true },
+            include: { taxas_operadora: true },
           });
           if (!operadora) throw new Error("Operadora não encontrada");
 
@@ -123,70 +123,54 @@ export class PagamentoClienteController {
 
           const parcelas = data.qtd_parcelas || 1;
           const valorTotal = Number(data.valor);
-          const valorParcela = valorTotal / parcelas;
 
-          // Determine Rates & Deadlines (Logic preserved)
-          let taxa = 0;
+          // Determine Rates & Deadlines
+          let taxaBase = 0;
+          let taxaJuros = 0;
           let prazo = 0;
 
-          const modalidade =
-            data.metodo_pagamento === "DEBITO" ? "DEBITO" : "CREDITO";
+          // Note: "PIX" needs to be added properly
+          const modalidade = data.metodo_pagamento === "PIX" ? "PIX" : data.metodo_pagamento === "DEBITO" ? "DEBITO" : "CREDITO";
 
           // Try Granular Table first
-          const taxEntry = operadora.taxas_cartao.find(
+          const taxEntry = operadora.taxas_operadora.find(
             (t) =>
               t.modalidade === modalidade &&
-              t.num_parcelas === (modalidade === "DEBITO" ? 1 : parcelas),
+              t.parcela === (modalidade === "CREDITO" ? parcelas : 1),
           );
 
           if (taxEntry) {
-            taxa = Number(taxEntry.taxa_total);
-            prazo =
-              modalidade === "DEBITO"
-                ? operadora.prazo_debito
-                : parcelas === 1
-                  ? operadora.prazo_credito_vista
-                  : operadora.prazo_credito_parc;
+            taxaBase = Number(taxEntry.taxa_base_pct);
+            taxaJuros = Number(taxEntry.taxa_juros_pct);
+            prazo = modalidade === "DEBITO" || modalidade === "PIX" ? operadora.prazo_debito : parcelas === 1 ? operadora.prazo_credito_vista : operadora.prazo_credito_parc;
           } else {
-            // Fallback Legacy
-            if (data.metodo_pagamento === "DEBITO") {
-              taxa = Number(operadora.taxa_debito);
-              prazo = operadora.prazo_debito;
-            } else if (parcelas === 1) {
-              taxa = Number(operadora.taxa_credito_vista);
-              prazo = operadora.prazo_credito_vista;
-            } else {
-              taxa = Number(operadora.taxa_credito_parc);
-              prazo = operadora.prazo_credito_parc;
-            }
+             // Fallback Legacy Default Logic
+             if (modalidade === "DEBITO" || modalidade === "PIX") {
+               taxaBase = Number(operadora.taxa_debito);
+               prazo = operadora.prazo_debito;
+             } else if (parcelas === 1) {
+               taxaBase = Number(operadora.taxa_credito_vista);
+               prazo = operadora.prazo_credito_vista;
+             } else {
+               taxaBase = Number(operadora.taxa_credito_parc);
+               taxaJuros = Number(operadora.taxa_credito_parc) - Number(operadora.taxa_credito_vista);
+               prazo = operadora.prazo_credito_parc;
+             }
           }
 
-          // Adjust for "Client Pays Interest"
-          if (
-            data.tipo_parcelamento === "CLIENTE" &&
-            modalidade === "CREDITO" &&
-            parcelas > 1
-          ) {
-            const vistaRate = operadora.taxas_cartao?.find(
-              (t) => t.modalidade === "CREDITO" && t.num_parcelas === 1,
-            );
-            // Use Vista rate as base cost for store if client pays the rest?
-            // Or typically 0 cost for store on interest?
-            // Usually Store pays "Intermediation" (~2-3%) and Client pays "Interest".
-            // Let's assume Store pays 'Vista' rate or 0?
-            // Safe bet: Store pays 0 or base rate. Let's stick to previous logic: Taxa = 0 implies user receives full amount?
-            // Actually, usually acquirers deduct a base MDR.
-            // For now, keep existing logic:
-            // if (data.tipo_parcelamento === "CLIENTE") taxa = 0; // Or base MDR?
-            // Re-reading previous logic: "if (data.tipo_parcelamento === "CLIENTE") taxa = 0;"
-            // Let's refine: Use Vista Rate if available as base MDR, else 0.
-            if (vistaRate) taxa = Number(vistaRate.taxa_total);
-            else taxa = Number(operadora.taxa_credito_vista);
-          }
+          // Import CalculadoraPagamentoService dynamically or statically
+          const { CalculadoraPagamentoService } = await import("../services/CalculadoraPagamentoService.js");
 
-          // Create Receivables
-          const taxaAplicada = (valorTotal * taxa) / 100;
-          const valorLiquidoTotal = valorTotal - taxaAplicada;
+          const calcResult = CalculadoraPagamentoService.calcular(
+              valorTotal,
+              taxaBase,
+              taxaJuros,
+              data.tipo_parcelamento || 'LOJA'
+          );
+
+          const valorPorParcela = calcResult.valorPagoPeloCliente / parcelas;
+          const valorLiquidoPorParcela = calcResult.valorLiquidoLojista / parcelas;
+          const taxaPorParcela = calcResult.descontoLojistaTotal / parcelas;
 
           // Data base para vencimento
           const dataPrevistaBase = new Date();
@@ -195,10 +179,6 @@ export class PagamentoClienteController {
           } else {
             dataPrevistaBase.setDate(dataPrevistaBase.getDate() + prazo);
           }
-
-          const valorPorParcela = valorTotal / parcelas;
-          const valorLiquidoPorParcela = valorLiquidoTotal / parcelas;
-          const taxaPorParcela = taxaAplicada / parcelas;
 
           for (let i = 1; i <= parcelas; i++) {
             const dataPrevistaParcela = new Date(dataPrevistaBase);

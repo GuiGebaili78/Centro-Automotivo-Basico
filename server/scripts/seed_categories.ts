@@ -6,7 +6,7 @@ async function main() {
   const systemCategories = ['FORNECEDOR', 'RECEITA_SERVICO', 'OUTROS', 'EQUIPE'];
 
   for (const nome of systemCategories) {
-    const exists = await prisma.categoriaFinanceira.findUnique({
+    const exists = await prisma.categoriaFinanceira.findFirst({
       where: { nome }
     });
 

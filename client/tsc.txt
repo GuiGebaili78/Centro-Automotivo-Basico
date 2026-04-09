@@ -1,0 +1,4 @@
+﻿src/components/os/Forms/UnifiedOsForm.tsx(155,27): error TS2339: Property 'obs' does not exist on type '{ id_cliente: string; nome: string; telefone: string; cep: string; logradouro: string; numero: string; bairro: string; cidade: string; estado: string; isNew: boolean; }'.
+src/components/os/OsTable.tsx(1,1): error TS6133: 'useState' is declared but its value is never read.
+src/components/os/OsTable.tsx(5,1): error TS6133: 'ActionButton' is declared but its value is never read.
+src/components/os/OsTable.tsx(7,1): error TS6133: 'OsService' is declared but its value is never read.

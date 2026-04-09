@@ -245,7 +245,7 @@ export class RelatorioController {
 
       // --- RANKING DE FORNECEDORES ---
       const entradasPorFornecedor = await prisma.entradaEstoque.groupBy({
-        by: ["id_fornecedor"],
+        by: ["id_pessoa"],
         where: {
           data_compra: { gte: start, lte: end },
         },
@@ -253,10 +253,11 @@ export class RelatorioController {
         _count: { id_entrada: true },
       });
 
-      const fornecedores = await prisma.fornecedor.findMany({
+      const fornecedores = await prisma.pessoa.findMany({
         where: {
-          id_fornecedor: {
-            in: entradasPorFornecedor.map((e) => e.id_fornecedor),
+          is_fornecedor: true,
+          id_pessoa: {
+            in: entradasPorFornecedor.map((e) => e.id_pessoa),
           },
         },
       });
@@ -264,7 +265,7 @@ export class RelatorioController {
       const rankingFornecedores = entradasPorFornecedor
         .map((entrada) => {
           const forn = fornecedores.find(
-            (f) => f.id_fornecedor === entrada.id_fornecedor,
+            (f) => f.id_pessoa === entrada.id_pessoa,
           );
           return {
             nome: forn?.nome || "Desconhecido",

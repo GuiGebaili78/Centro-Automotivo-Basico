@@ -66,7 +66,7 @@ export class FechamentoFinanceiroRepository {
             await tx.pagamentoPeca.update({
               where: { id_pagamento_peca },
               data: {
-                id_fornecedor: Number(id_fornecedor),
+                id_pessoa: Number(id_fornecedor),
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
               },
@@ -75,7 +75,7 @@ export class FechamentoFinanceiroRepository {
             await tx.pagamentoPeca.create({
               data: {
                 id_item_os: Number(id_item_os),
-                id_fornecedor: Number(id_fornecedor),
+                id_pessoa: Number(id_fornecedor),
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
                 data_compra: new Date(),
@@ -124,7 +124,7 @@ export class FechamentoFinanceiroRepository {
             await tx.pagamentoPeca.update({
               where: { id_pagamento_peca },
               data: {
-                id_fornecedor: Number(id_fornecedor),
+                id_pessoa: Number(id_fornecedor),
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
               },
@@ -133,7 +133,7 @@ export class FechamentoFinanceiroRepository {
             await tx.pagamentoPeca.create({
               data: {
                 id_item_os: Number(id_item_os),
-                id_fornecedor: Number(id_fornecedor),
+                id_pessoa: Number(id_fornecedor),
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
                 data_compra: new Date(),
@@ -508,7 +508,7 @@ export class FechamentoFinanceiroRepository {
             if (idOperadora) {
               const operadora = await tx.operadoraCartao.findUnique({
                 where: { id_operadora: idOperadora },
-                include: { taxas_cartao: true },
+                include: { taxas_operadora: true },
               });
 
               if (operadora) {
@@ -516,18 +516,20 @@ export class FechamentoFinanceiroRepository {
                 const tipoParcelamento =
                   (pagamento as any).tipo_parcelamento || "LOJA";
 
-                let taxa = 0;
+                let taxaBase = 0;
+                let taxaJuros = 0;
                 let prazo = 0;
 
                 const modalidade = metodo === "DEBITO" ? "DEBITO" : "CREDITO";
-                const taxEntry = operadora.taxas_cartao?.find(
-                  (t) =>
+                const taxEntry = operadora.taxas_operadora?.find(
+                  (t: any) =>
                     t.modalidade === modalidade &&
-                    t.num_parcelas === (metodo === "DEBITO" ? 1 : qtdParcelas),
+                    t.parcela === (modalidade === "CREDITO" ? qtdParcelas : 1),
                 );
 
                 if (taxEntry) {
-                  taxa = Number(taxEntry.taxa_total);
+                  taxaBase = Number(taxEntry.taxa_base_pct);
+                  taxaJuros = Number(taxEntry.taxa_juros_pct);
                   prazo =
                     modalidade === "DEBITO"
                       ? Number(operadora.prazo_debito)
@@ -536,35 +538,28 @@ export class FechamentoFinanceiroRepository {
                         : Number(operadora.prazo_credito_parc);
                 } else {
                   // Fallback
-                  taxa =
-                    metodo === "DEBITO"
-                      ? Number(operadora.taxa_debito)
-                      : qtdParcelas === 1
-                        ? Number(operadora.taxa_credito_vista)
-                        : Number(operadora.taxa_credito_parc);
-
-                  prazo =
-                    metodo === "DEBITO"
-                      ? Number(operadora.prazo_debito)
-                      : qtdParcelas === 1
-                        ? Number(operadora.prazo_credito_vista)
-                        : Number(operadora.prazo_credito_parc);
+                  if (metodo === "DEBITO") {
+                    taxaBase = Number(operadora.taxa_debito);
+                    prazo = Number(operadora.prazo_debito);
+                  } else if (qtdParcelas === 1) {
+                    taxaBase = Number(operadora.taxa_credito_vista);
+                    prazo = Number(operadora.prazo_credito_vista);
+                  } else {
+                    taxaBase = Number(operadora.taxa_credito_parc);
+                    taxaJuros = Number(operadora.taxa_credito_parc) - Number(operadora.taxa_credito_vista);
+                    prazo = Number(operadora.prazo_credito_parc);
+                  }
                 }
 
-                if (
-                  tipoParcelamento === "CLIENTE" &&
-                  metodo === "CREDITO" &&
-                  qtdParcelas > 1
-                ) {
-                  const vistaRate = operadora.taxas_cartao?.find(
-                    (t) => t.modalidade === "CREDITO" && t.num_parcelas === 1,
-                  );
-                  if (vistaRate) taxa = Number(vistaRate.taxa_total);
-                  else taxa = Number(operadora.taxa_credito_vista);
-                }
+                // Import Calculator
+                const { CalculadoraPagamentoService } = await import("../services/CalculadoraPagamentoService.js");
 
-                const taxaAplicada = (valorPagamento * taxa) / 100;
-                const valorLiquido = valorPagamento - taxaAplicada;
+                const calcResult = CalculadoraPagamentoService.calcular(
+                    valorPagamento,
+                    taxaBase,
+                    taxaJuros,
+                    tipoParcelamento
+                );
 
                 const dataPrevistaBase = new Date();
                 if (operadora.antecipacao_auto) {
@@ -573,9 +568,9 @@ export class FechamentoFinanceiroRepository {
                   dataPrevistaBase.setDate(dataPrevistaBase.getDate() + prazo);
                 }
 
-                const valorPorParcela = valorPagamento / qtdParcelas;
-                const valorLiquidoPorParcela = valorLiquido / qtdParcelas;
-                const taxaPorParcela = taxaAplicada / qtdParcelas;
+                const valorPorParcela = calcResult.valorPagoPeloCliente / qtdParcelas;
+                const valorLiquidoPorParcela = calcResult.valorLiquidoLojista / qtdParcelas;
+                const taxaPorParcela = calcResult.descontoLojistaTotal / qtdParcelas;
 
                 for (let i = 1; i <= qtdParcelas; i++) {
                   const dataPrevistaParcela = new Date(dataPrevistaBase);
@@ -606,7 +601,7 @@ export class FechamentoFinanceiroRepository {
                   });
                 }
                 console.log(
-                  `      ✅ [CARTÃO] ${qtdParcelas} parcela(s) criada(s) em Recebíveis (Taxa: ${taxa}%).`,
+                  `      ✅ [CARTÃO/PIX] ${qtdParcelas} parcela(s) criada(s) em Recebíveis (Taxa Base: ${taxaBase}%, Juros: ${taxaJuros}%).`,
                 );
               }
             }

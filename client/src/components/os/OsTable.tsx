@@ -1,12 +1,7 @@
-import { useState } from "react";
-import { Phone, Wrench, Mail } from "lucide-react";
+import { Phone, Wrench } from "lucide-react";
 import { getStatusStyle } from "../../utils/osUtils";
 import { formatPhone } from "../../utils/normalize";
-import { ActionButton } from "../ui";
 import type { IOrdemDeServico } from "../../types/backend";
-import { OsService } from "../../services/os.service";
-import { toast } from "react-toastify";
-
 interface OsTableProps {
   oss: IOrdemDeServico[];
   onRowClick: (os: IOrdemDeServico) => void;
@@ -21,19 +16,6 @@ export const OsTable = ({
   renderActions,
   emptyMessage = "Nenhum registro encontrado.",
 }: OsTableProps) => {
-  const [loadingEmail, setLoadingEmail] = useState<number | null>(null);
-
-  const handleSendEmail = async (osId: number) => {
-    setLoadingEmail(osId);
-    try {
-      await OsService.sendEmail(osId);
-      toast.success("E-mail enviado com sucesso!");
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Erro ao enviar e-mail.");
-    } finally {
-      setLoadingEmail(null);
-    }
-  };
   return (
     <div className="overflow-x-auto">
       <table className="tabela-limpa w-full">

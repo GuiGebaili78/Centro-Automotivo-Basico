@@ -6,7 +6,7 @@ async function main() {
   const inconsistentOs = await prisma.ordemDeServico.findMany({
     where: {
       status: "FINALIZADA",
-      fechamento_financeiro: null,
+      fechamento_financeiro: { none: {} },
     },
     select: {
       id_os: true,

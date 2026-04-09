@@ -26,7 +26,7 @@ async function main() {
   await prisma.tipo.deleteMany(); // Limpa Tipos de cliente
   await prisma.funcionario.deleteMany();
   await prisma.pecasEstoque.deleteMany();
-  await prisma.fornecedor.deleteMany();
+
   // Limpar Pessoas é delicado pois pode ter outros vinculos, mas vamos limpar os criados pelo seed
   await prisma.pessoaFisica.deleteMany();
   await prisma.pessoa.deleteMany();
@@ -129,10 +129,16 @@ async function main() {
   });
 
   // 3. Fornecedor
-  const fornecedor = await prisma.fornecedor.create({
+  const fornecedor = await prisma.pessoa.create({
     data: {
       nome: "Auto Peças Zé",
-      tipo_pessoa: "JURIDICA",
+      is_fornecedor: true,
+      pessoa_juridica: {
+        create: {
+          cnpj: "00000000000000",
+          razao_social: "Auto Peças Zé LTDA"
+        }
+      }
     },
   });
 
@@ -213,7 +219,7 @@ async function main() {
     await prisma.pagamentoPeca.create({
       data: {
         id_item_os: itemPecaDireta.id_iten, // Note: id_iten based on schema
-        id_fornecedor: fornecedor.id_fornecedor,
+        id_pessoa: fornecedor.id_pessoa,
         custo_real: 250.0,
         data_compra: dtEvento,
       },

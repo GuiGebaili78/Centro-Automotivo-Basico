@@ -6,11 +6,18 @@ export const getAll = async (req: Request, res: Response) => {
     const operadoras = await prisma.operadoraCartao.findMany({
       include: {
         conta_destino: true,
-        taxas_cartao: true,
+        taxas_operadora: true,
       },
       orderBy: { id_operadora: "desc" },
     });
-    res.json(operadoras);
+    
+    // Map for frontend compatibility
+    const mapped = operadoras.map(op => ({
+      ...op,
+      taxas_cartao: op.taxas_operadora,
+    }));
+    
+    res.json(mapped);
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar operadoras" });
   }
@@ -65,7 +72,7 @@ const getValidData = (body: any) => {
 export const create = async (req: Request, res: Response) => {
   try {
     const data = getValidData(req.body);
-    const taxas = req.body.taxas_cartao; // Extract taxas array
+    const taxas = req.body.taxas_cartao || req.body.taxas_operadora;
 
     // Validate Account Existence
     if (data.id_conta_destino) {
@@ -87,21 +94,29 @@ export const create = async (req: Request, res: Response) => {
     const operadora = await prisma.operadoraCartao.create({
       data: {
         ...data,
-        taxas_cartao:
+        taxas_operadora:
           taxas && Array.isArray(taxas)
             ? {
                 create: taxas.map((t: any) => ({
                   modalidade: t.modalidade,
-                  num_parcelas: Number(t.num_parcelas),
-                  taxa_total: Number(t.taxa_total),
+                  parcela: Number(t.num_parcelas || t.parcela || 1),
+                  taxa_base_pct: Number(t.taxa_total || t.taxa_base_pct || 0),
+                  taxa_juros_pct: Number(t.taxa_juros_pct || 0),
                   taxa_antecipacao: Number(t.taxa_antecipacao || 0),
                 })),
               }
             : undefined,
       },
-      include: { taxas_cartao: true },
+      include: { taxas_operadora: true },
     });
-    res.status(201).json(operadora);
+    
+    // Fallback format
+    const mapped = {
+      ...operadora,
+      taxas_cartao: operadora.taxas_operadora
+    };
+    
+    res.status(201).json(mapped);
   } catch (error: any) {
     console.error("Erro ao criar operadora:", error);
     res.status(500).json({ error: error.message || "Erro ao criar operadora" });
@@ -111,7 +126,7 @@ export const create = async (req: Request, res: Response) => {
 export const update = async (req: Request, res: Response) => {
   const { id } = req.params;
   const idOperadora = Number(id);
-  const taxas = req.body.taxas_cartao;
+  const taxas = req.body.taxas_cartao || req.body.taxas_operadora;
 
   if (isNaN(idOperadora)) {
     return res.status(400).json({ error: "ID inválido" });
@@ -147,17 +162,18 @@ export const update = async (req: Request, res: Response) => {
 
       // 2. Handle Taxas (Delete all and recreate needed ones if provided)
       if (taxas && Array.isArray(taxas)) {
-        await tx.taxaCartao.deleteMany({
+        await tx.taxaOperadoraCartao.deleteMany({
           where: { id_operadora: idOperadora },
         });
 
         if (taxas.length > 0) {
-          await tx.taxaCartao.createMany({
+          await tx.taxaOperadoraCartao.createMany({
             data: taxas.map((t: any) => ({
               id_operadora: idOperadora,
               modalidade: t.modalidade,
-              num_parcelas: Number(t.num_parcelas),
-              taxa_total: Number(t.taxa_total),
+              parcela: Number(t.num_parcelas || t.parcela || 1),
+              taxa_base_pct: Number(t.taxa_total || t.taxa_base_pct || 0),
+              taxa_juros_pct: Number(t.taxa_juros_pct || 0),
               taxa_antecipacao: Number(t.taxa_antecipacao || 0),
             })),
           });
@@ -166,11 +182,16 @@ export const update = async (req: Request, res: Response) => {
 
       return tx.operadoraCartao.findUnique({
         where: { id_operadora: idOperadora },
-        include: { taxas_cartao: true, conta_destino: true },
+        include: { taxas_operadora: true, conta_destino: true },
       });
     });
 
-    res.json(operadora);
+    const mapped = {
+        ...operadora,
+        taxas_cartao: operadora?.taxas_operadora
+    };
+
+    res.json(mapped);
   } catch (error: any) {
     console.error("Erro ao atualizar operadora:", error);
     res

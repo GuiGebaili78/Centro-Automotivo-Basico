@@ -3,10 +3,10 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const fornecedores = await prisma.fornecedor.count();
+  const fornecedores = await prisma.pessoa.count({ where: { is_fornecedor: true } });
   const funcionarios = await prisma.funcionario.count();
   const bancos = await prisma.contaBancaria.count();
-  const operadoras = await prisma.operadora.count();
+  const operadoras = await prisma.operadoraCartao.count();
   const os = await prisma.ordemDeServico.count();
   const osFinalizadas = await prisma.ordemDeServico.count({
     where: { status: "FINALIZADA" },

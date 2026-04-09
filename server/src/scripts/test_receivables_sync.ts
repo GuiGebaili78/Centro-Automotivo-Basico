@@ -8,19 +8,25 @@ async function main() {
   const timestamp = Date.now();
 
   // 1. Criar Dados de Teste (Cliente com Pessoa, Veículo, OS)
+  const pessoa = await prisma.pessoa.create({
+    data: {
+      nome: "Teste Sync " + timestamp,
+      is_cliente: true,
+    }
+  });
+
+  const pf = await prisma.pessoaFisica.create({
+    data: {
+      id_pessoa: pessoa.id_pessoa,
+      cpf: "000000000" + timestamp.toString().slice(-2),
+    }
+  });
+
   const cliente = await prisma.cliente.create({
     data: {
       tipo_pessoa: 1, // Fisica
       telefone_1: "11999999999",
-      pessoa_fisica: {
-        create: {
-          pessoa: {
-            create: {
-              nome: "Teste Sync " + timestamp,
-            },
-          },
-        },
-      },
+      id_pessoa_fisica: pf.id_pessoa_fisica,
     },
   });
 
@@ -41,8 +47,6 @@ async function main() {
       id_cliente: cliente.id_cliente,
       id_veiculo: veiculo.id_veiculo,
       status: "ABERTA",
-      dt_abertura: new Date(),
-      km_atual: 10000,
       km_entrada: 10000,
       parcelas: 1,
     },

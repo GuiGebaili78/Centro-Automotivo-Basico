@@ -8,8 +8,8 @@ export class PessoaRepository {
     });
   }
 
-  async findAll() {
-    return await prisma.pessoa.findMany();
+  async findAll(where: Prisma.PessoaWhereInput = {}) {
+    return await prisma.pessoa.findMany({ where });
   }
 
   async findById(id: number) {

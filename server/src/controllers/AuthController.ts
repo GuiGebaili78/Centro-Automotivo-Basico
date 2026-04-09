@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { UsuarioRepository } from "../repositories/UsuarioRepository";
+import { UsuarioRepository } from "../repositories/UsuarioRepository.js";
 
 const usuarioRepository = new UsuarioRepository();
 
@@ -73,7 +73,7 @@ export class AuthController {
 
       const token = jwt.sign(
         { id_usuario: usuario.id_usuario, perfil: usuario.perfil },
-        process.env.JWT_SECRET ||
+        (process.env.JWT_SECRET as string) ||
           "insira_uma_chave_aleatoria_super_segura_aqui",
         { expiresIn: "1d" },
       );

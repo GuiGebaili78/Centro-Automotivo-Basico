@@ -68,7 +68,7 @@ export class PecasEstoqueRepository {
   }
 
   async createEntry(data: {
-    id_fornecedor: number;
+    id_pessoa: number;
     nota_fiscal?: string;
     data_compra?: Date;
     obs?: string;
@@ -87,7 +87,7 @@ export class PecasEstoqueRepository {
       // 1. Create Entry Header
       const entrada = await tx.entradaEstoque.create({
         data: {
-          id_fornecedor: data.id_fornecedor,
+          id_pessoa: data.id_pessoa,
           nota_fiscal: data.nota_fiscal || null,
           data_compra: data.data_compra || new Date(),
           valor_total: data.itens.reduce(

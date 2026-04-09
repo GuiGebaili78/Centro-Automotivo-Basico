@@ -18,7 +18,14 @@ export class PessoaController {
 
   async findAll(req: Request, res: Response) {
     try {
-      const pessoas = await repository.findAll();
+      const { is_fornecedor, is_cliente, is_colaborador } = req.query;
+      const where: any = {};
+      
+      if (is_fornecedor === "true") where.is_fornecedor = true;
+      if (is_cliente === "true") where.is_cliente = true;
+      if (is_colaborador === "true") where.is_colaborador = true;
+
+      const pessoas = await repository.findAll(where);
       res.json(pessoas);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch Pessoas" });

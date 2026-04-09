@@ -1,0 +1,48 @@
+﻿prisma/seed_financial.ts(29,16): error TS2339: Property 'fornecedor' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+prisma/seed_financial.ts(132,35): error TS2339: Property 'fornecedor' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+prisma/seed_financial.ts(216,9): error TS2561: Object literal may only specify known properties, but 'id_fornecedor' does not exist in type 'Without<PagamentoPecaCreateInput, PagamentoPecaUncheckedCreateInput> & PagamentoPecaUncheckedCreateInput'. Did you mean to write 'fornecedor'?
+scripts/seed_categories.ts(10,7): error TS2322: Type '{ nome: string; }' is not assignable to type 'CategoriaFinanceiraWhereUniqueInput'.
+  Type '{ nome: string; }' is not assignable to type '{ id_categoria: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; nome_parentId: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; } & { ...; }'.
+    Type '{ nome: string; }' is missing the following properties from type '{ id_categoria: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; nome_parentId: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; }': id_categoria, nome_parentId
+src/controllers/AuthController.ts(4,35): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../repositories/UsuarioRepository.js'?
+src/controllers/livroCaixa.controller.ts(33,9): error TS2375: Type '{ descricao: any; valor: any; tipo_movimentacao: any; categoria: any; id_categoria: number | undefined; obs: any; origem: any; id_conta_bancaria: number | null; }' is not assignable to type 'Exact<(Without<LivroCaixaCreateInput, LivroCaixaUncheckedCreateInput> & LivroCaixaUncheckedCreateInput) | (Without<...> & LivroCaixaCreateInput), (Without<...> & LivroCaixaUncheckedCreateInput) | (Without<...> & LivroCaixaCreateInput)>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type '{ descricao: any; valor: any; tipo_movimentacao: any; categoria: any; id_categoria: number | undefined; obs: any; origem: any; id_conta_bancaria: number | null; }' is not assignable to type '(Without<LivroCaixaCreateInput, LivroCaixaUncheckedCreateInput> & LivroCaixaUncheckedCreateInput) | { ...; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Type '{ descricao: any; valor: any; tipo_movimentacao: any; categoria: any; id_categoria: number | undefined; obs: any; origem: any; id_conta_bancaria: number | null; }' is not assignable to type '{ conta?: never; categoria_financeira?: never; pagamento_equipe?: never; id_livro_caixa?: number; descricao: string; valor: Exact<string | number | Decimal | DecimalJsLike, string | ... 2 more ... | DecimalJsLike>; ... 10 more ...; pagamento_peca?: PagamentoPecaUncheckedCreateNestedManyWithoutLivro_caixaInput | { .....' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Types of property 'id_categoria' are incompatible.
+        Type 'number | undefined' is not assignable to type 'number | null'.
+          Type 'undefined' is not assignable to type 'number | null'.
+src/controllers/livroCaixa.controller.ts(83,7): error TS2375: Type '{ descricao: any; valor: any; tipo_movimentacao: any; categoria: any; id_categoria: number | undefined; obs: any; }' is not assignable to type 'Exact<(Without<LivroCaixaUpdateInput, LivroCaixaUncheckedUpdateInput> & LivroCaixaUncheckedUpdateInput) | (Without<...> & LivroCaixaUpdateInput), (Without<...> & LivroCaixaUncheckedUpdateInput) | (Without<...> & LivroCaixaUpdateInput)>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type '{ descricao: any; valor: any; tipo_movimentacao: any; categoria: any; id_categoria: number | undefined; obs: any; }' is not assignable to type '{ id_categoria?: never; id_pagamento_equipe?: never; id_livro_caixa?: never; id_conta_bancaria?: never; descricao?: string | StringFieldUpdateOperationsInput | { ...; }; ... 11 more ...; categoria_financeira?: CategoriaFinanceiraUpdateOneWithoutMovimentacoesNestedInput | { ...; }; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Types of property 'id_categoria' are incompatible.
+      Type 'number | undefined' is not assignable to type 'never'.
+        Type 'undefined' is not assignable to type 'never'.
+src/controllers/RelatorioController.ts(248,9): error TS2322: Type '"id_fornecedor"[]' is not assignable to type 'Exact<EntradaEstoqueScalarFieldEnum | EntradaEstoqueScalarFieldEnum[], EntradaEstoqueScalarFieldEnum | EntradaEstoqueScalarFieldEnum[]>'.
+  Type '"id_fornecedor"[]' is not assignable to type 'EntradaEstoqueScalarFieldEnum[]'.
+    Type '"id_fornecedor"' is not assignable to type 'EntradaEstoqueScalarFieldEnum'.
+src/controllers/RelatorioController.ts(256,41): error TS2339: Property 'fornecedor' does not exist on type 'DynamicClientExtensionThis<TypeMap<InternalArgs & { result: {}; model: {}; query: {}; client: {}; }, PrismaClientOptions>, TypeMapCb, { result: {}; model: {}; query: {}; client: {}; }, {}>'.
+src/controllers/RelatorioController.ts(259,52): error TS2339: Property 'id_fornecedor' does not exist on type '{}'.
+src/controllers/RelatorioController.ts(267,14): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/controllers/RelatorioController.ts(267,48): error TS2339: Property 'id_fornecedor' does not exist on type '{}'.
+src/controllers/RelatorioController.ts(271,42): error TS2339: Property '_sum' does not exist on type '{}'.
+src/controllers/RelatorioController.ts(272,40): error TS2339: Property '_count' does not exist on type '{}'.
+src/middlewares/authMiddleware.ts(25,7): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/repositories/pecasEstoque.repository.ts(90,11): error TS2561: Object literal may only specify known properties, but 'id_fornecedor' does not exist in type 'Exact<(Without<EntradaEstoqueCreateInput, EntradaEstoqueUncheckedCreateInput> & EntradaEstoqueUncheckedCreateInput) | (Without<...> & EntradaEstoqueCreateInput), (Without<...> & EntradaEstoqueUncheckedCreateInput) | (Without<...> & EntradaEstoqueCreateInput)>'. Did you mean to write 'fornecedor'?
+src/routes/auth.routes.ts(2,32): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../controllers/AuthController.js'?
+src/scripts/check_counts.ts(6,37): error TS2339: Property 'fornecedor' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/scripts/check_counts.ts(9,35): error TS2339: Property 'operadora' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/scripts/check_inconsistency.ts(9,7): error TS2322: Type 'null' is not assignable to type 'FechamentoFinanceiroListRelationFilter | undefined'.
+src/scripts/fix_financial_consistency.ts(11,7): error TS2322: Type 'null' is not assignable to type 'FechamentoFinanceiroListRelationFilter | undefined'.
+src/scripts/inspect_test_data.ts(55,32): error TS2532: Object is possibly 'undefined'.
+src/scripts/inspect_test_data.ts(55,66): error TS2532: Object is possibly 'undefined'.
+src/scripts/inspect_test_data.ts(64,7): error TS2322: Type 'null' is not assignable to type 'FechamentoFinanceiroListRelationFilter | undefined'.
+src/scripts/test_receivables_sync.ts(12,5): error TS2322: Type '{ tipo_pessoa: number; telefone_1: string; pessoa_fisica: { create: { pessoa: { create: { nome: string; }; }; }; }; }' is not assignable to type '(Without<ClienteCreateInput, ClienteUncheckedCreateInput> & ClienteUncheckedCreateInput) | (Without<...> & ClienteCreateInput)'.
+  Types of property 'pessoa_fisica' are incompatible.
+    Type '{ create: { pessoa: { create: { nome: string; }; }; }; }' is not assignable to type 'undefined'.
+src/scripts/test_receivables_sync.ts(45,7): error TS2353: Object literal may only specify known properties, and 'km_atual' does not exist in type 'Without<OrdemDeServicoCreateInput, OrdemDeServicoUncheckedCreateInput> & OrdemDeServicoUncheckedCreateInput'.
+src/services/DocumentoService.ts(133,30): error TS18047: 'os.veiculo' is possibly 'null'.
+src/services/DocumentoService.ts(133,53): error TS18047: 'os.veiculo' is possibly 'null'.
+src/services/DocumentoService.ts(278,35): error TS18047: 'os.veiculo' is possibly 'null'.
+src/test-email.ts(2,30): error TS2307: Cannot find module './services/email.service' or its corresponding type declarations.

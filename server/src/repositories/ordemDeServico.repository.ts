@@ -98,7 +98,8 @@ export class OrdemDeServicoRepository {
                          marca: data.vehicle.marca,
                          modelo: data.vehicle.modelo,
                          cor: data.vehicle.cor || 'BRANCO',
-                         ano_modelo: data.vehicle.ano,
+                         ano_modelo: data.vehicle.ano_modelo,
+                         ano_fabricacao: data.vehicle.ano_fabricacao,
                          combustivel: data.vehicle.combustivel || 'FLEX'
                      }
                  });

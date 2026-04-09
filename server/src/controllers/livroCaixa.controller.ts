@@ -35,8 +35,8 @@ export const create = async (req: Request, res: Response) => {
           valor,
           tipo_movimentacao,
           categoria,
-          id_categoria: id_categoria ? Number(id_categoria) : undefined,
-          obs,
+          id_categoria: id_categoria ? Number(id_categoria) : null,
+          obs: obs ?? null,
           origem: origem || "MANUAL",
           id_conta_bancaria: id_conta_bancaria
             ? Number(id_conta_bancaria)
@@ -85,8 +85,8 @@ export const update = async (req: Request, res: Response) => {
         valor,
         tipo_movimentacao,
         categoria,
-        id_categoria: id_categoria ? Number(id_categoria) : undefined,
-        obs,
+        id_categoria: id_categoria ? Number(id_categoria) : null,
+        obs: obs ?? null,
       },
     });
     res.json(registro);
@@ -103,7 +103,7 @@ export const softDelete = async (req: Request, res: Response) => {
       where: { id_livro_caixa: Number(id) },
       data: {
         deleted_at: new Date(),
-        obs: obs, // Update obs if provided
+        obs: obs ?? null, // Update obs if provided
       },
     });
     res.json(registro);

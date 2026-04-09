@@ -18,12 +18,12 @@ export function authMiddleware(
     return res.status(401).json({ error: "Formato de token inválido." });
   }
 
-  const token = parts[1];
+  const token = parts[1] as string;
 
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || "insira_uma_chave_aleatoria_super_segura_aqui",
+      (process.env.JWT_SECRET || "insira_uma_chave_aleatoria_super_segura_aqui") as string,
     );
     // Injeta os dados do usuário na requisição para uso posterior nas rotas protegidas
     (req as any).usuario = decoded;

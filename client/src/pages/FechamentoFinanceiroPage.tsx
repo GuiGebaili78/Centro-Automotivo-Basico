@@ -212,7 +212,7 @@ export const FechamentoFinanceiroPage = () => {
                         <div className="text-base text-primary-600 font-normal uppercase">
                           {os.veiculo?.placa || os.equipamento?.numeracao || "SEM PLACA/REF"}
                         </div>
-                        <div className="text-base text-neutral-600 font-normal uppercase text-sm">
+                        <div className="text-neutral-600 font-normal uppercase text-sm">
                           {os.veiculo ? `${os.veiculo.marca} ${os.veiculo.modelo}` : (os.equipamento?.nome_peca || "Peça Avulsa")}
                         </div>
                         <div className="text-sm text-neutral-500 font-normal uppercase min-h-[1.25rem]">
@@ -352,7 +352,7 @@ export const FechamentoFinanceiroPage = () => {
                         <div className="text-base text-primary-600 font-normal uppercase">
                           {fech.ordem_de_servico?.veiculo?.placa || fech.ordem_de_servico?.equipamento?.numeracao || "SEM PLACA/REF"}
                         </div>
-                        <div className="text-base text-neutral-600 font-normal uppercase text-sm">
+                        <div className="text-neutral-600 font-normal uppercase text-sm">
                           {fech.ordem_de_servico?.veiculo 
                             ? `${fech.ordem_de_servico.veiculo.marca} ${fech.ordem_de_servico.veiculo.modelo}` 
                             : (fech.ordem_de_servico?.equipamento?.nome_peca || "Peça Avulsa")}

@@ -14,9 +14,14 @@ model Pessoa {
   genero          String?         @db.VarChar(20)
   dt_nascimento   DateTime?       @db.Date
   obs             String?         @db.VarChar(500)
+  is_cliente      Boolean         @default(false)
+  is_fornecedor   Boolean         @default(false)
+  is_colaborador  Boolean         @default(false)
   dt_cadastro     DateTime        @default(now()) @db.Timestamp(6)
   pessoa_fisica   PessoaFisica?
   pessoa_juridica PessoaJuridica?
+  entradas_estoque EntradaEstoque[]
+  pagamentos_peca PagamentoPeca[]
 
   @@map("pessoa")
 }
@@ -176,6 +181,7 @@ model Veiculo {
   modelo            String           @db.VarChar(50)
   versao            String?          @db.VarChar(50)
   ano_modelo        String           @db.VarChar(10)
+  ano_fabricacao    String?          @db.VarChar(10)
   cor               String           @db.VarChar(30)
   combustivel       String           @db.VarChar(20)
   obs               String?          @db.VarChar(500)
@@ -249,43 +255,12 @@ model ItensOs {
   @@map("itens_os")
 }
 
-model Fornecedor {
-  id_fornecedor       Int              @id @default(autoincrement())
-  nome                String           @db.VarChar(100)
-  documento           String?          @db.VarChar(20)
-  contato             String?          @db.VarChar(100)
-  dt_cadastro         DateTime         @default(now()) @db.Timestamp(6)
-  agencia             String?          @db.VarChar(20)
-  bairro              String?          @db.VarChar(100)
-  banco               String?          @db.VarChar(50)
-  categoria_produto   String?          @db.VarChar(100)
-  cep                 String?          @db.VarChar(10)
-  chave_pix           String?          @db.VarChar(100)
-  cidade              String?          @db.VarChar(100)
-  complemento         String?          @db.VarChar(100)
-  condicoes_pagamento String?          @db.VarChar(100)
-  conta               String?          @db.VarChar(20)
-  email               String?          @db.VarChar(100)
-  inscricao_estadual  String?          @db.VarChar(50)
-  inscricao_municipal String?          @db.VarChar(50)
-  logradouro          String?          @db.VarChar(150)
-  nome_fantasia       String?          @db.VarChar(100)
-  numero              String?          @db.VarChar(20)
-  obs                 String?          @db.VarChar(500)
-  telefone            String?          @db.VarChar(20)
-  tipo_pessoa         String?          @default("JURIDICA") @db.VarChar(20)
-  uf                  String?          @db.Char(2)
-  whatsapp            String?          @db.VarChar(20)
-  entradas_estoque    EntradaEstoque[]
-  pagamentos_peca     PagamentoPeca[]
 
-  @@map("fornecedor")
-}
 
 model PagamentoPeca {
   id_pagamento_peca         Int         @id @default(autoincrement())
   id_item_os                Int
-  id_fornecedor             Int
+  id_pessoa                 Int
   custo_real                Decimal     @db.Decimal(10, 2)
   valor_desconto_rateado    Decimal?    @db.Decimal(10, 2)
   data_compra               DateTime    @db.Timestamp(6)
@@ -293,7 +268,7 @@ model PagamentoPeca {
   pago_ao_fornecedor        Boolean     @default(false)
   deleted_at                DateTime?   @db.Timestamp(6)
   id_livro_caixa            Int?
-  fornecedor                Fornecedor  @relation(fields: [id_fornecedor], references: [id_fornecedor])
+  fornecedor                Pessoa      @relation(fields: [id_pessoa], references: [id_pessoa])
   item_os                   ItensOs     @relation(fields: [id_item_os], references: [id_iten])
   livro_caixa               LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
 
@@ -458,13 +433,13 @@ model CategoriaFinanceira {
 
 model EntradaEstoque {
   id_entrada    Int           @id @default(autoincrement())
-  id_fornecedor Int
+  id_pessoa     Int
   nota_fiscal   String?       @db.VarChar(50)
   data_compra   DateTime      @default(now()) @db.Timestamp(6)
   valor_total   Decimal       @db.Decimal(10, 2)
   obs           String?       @db.VarChar(500)
   created_at    DateTime      @default(now()) @db.Timestamp(6)
-  fornecedor    Fornecedor    @relation(fields: [id_fornecedor], references: [id_fornecedor])
+  fornecedor    Pessoa        @relation(fields: [id_pessoa], references: [id_pessoa])
   itens         ItemEntrada[]
 
   @@map("entrada_estoque")
@@ -520,22 +495,23 @@ model OperadoraCartao {
   conta_destino       ContaBancaria      @relation(fields: [id_conta_destino], references: [id_conta])
   pagamentos_cliente  PagamentoCliente[]
   recebivel_cartao    RecebivelCartao[]
-  taxas_cartao        TaxaCartao[]
+  taxas_operadora     TaxaOperadoraCartao[]
 
   @@map("operadora_cartao")
 }
 
-model TaxaCartao {
+model TaxaOperadoraCartao {
   id_taxa          Int             @id @default(autoincrement())
   id_operadora     Int
-  modalidade       String          @db.VarChar(20) // 'DEBITO', 'CREDITO'
-  num_parcelas     Int // 1 for Debit/Sight(1x), 2-18 for installments
-  taxa_total       Decimal         @db.Decimal(5, 2) // Total fee deducted (Intermediation + Installment Interest)
-  taxa_antecipacao Decimal?        @default(0) @db.Decimal(5, 2) // Monthly rate for anticipation calculation
+  modalidade       String          @db.VarChar(20) // 'DEBITO', 'CREDITO', 'PIX'
+  parcela          Int
+  taxa_base_pct    Decimal         @default(0) @db.Decimal(5, 2) // Fixa
+  taxa_juros_pct   Decimal         @default(0) @db.Decimal(5, 2) // Juros
+  taxa_antecipacao Decimal?        @default(0) @db.Decimal(5, 2)
   operadora        OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
 
-  @@unique([id_operadora, modalidade, num_parcelas])
-  @@map("taxa_cartao")
+  @@unique([id_operadora, modalidade, parcela])
+  @@map("taxa_operadora_cartao")
 }
 
 model RecebivelCartao {

@@ -106,6 +106,7 @@ export class DocumentoService {
             },
           },
           veiculo: true,
+          equipamento: true,
           itens_os: true,
           servicos_mao_de_obra: {
             where: { deleted_at: null },
@@ -130,7 +131,7 @@ export class DocumentoService {
       const clienteDoc = formatDoc(
         os.cliente.pessoa_fisica?.cpf || os.cliente.pessoa_juridica?.cnpj || "",
       );
-      const veiculoDesc = `${os.veiculo.modelo} - ${os.veiculo.placa}`;
+      const veiculoDesc = os.veiculo ? `${os.veiculo.modelo} - ${os.veiculo.placa}` : (os.equipamento ? `${os.equipamento.nome_peca}` : "Veículo/Peça Diversa");
 
       const totalPecas = os.itens_os
         .filter((item) => !item.is_interno)
@@ -275,7 +276,7 @@ export class DocumentoService {
                     margin: [0, 5, 0, 2],
                   },
                   { text: `Veículo: ${veiculoDesc}` },
-                  { text: `Cor: ${os.veiculo.cor}` },
+                  { text: `Cor: ${os.veiculo?.cor || "N/A"}` },
                   { text: `KM: ${os.km_entrada}` },
                 ],
               },

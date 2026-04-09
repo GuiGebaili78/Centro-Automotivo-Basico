@@ -26,9 +26,8 @@ export class PagamentoPecaRepository {
           id_livro_caixa: true,
           fornecedor: {
             select: {
-              id_fornecedor: true,
+              id_pessoa: true,
               nome: true,
-              nome_fantasia: true,
             },
           },
           item_os: {
@@ -134,8 +133,7 @@ export class PagamentoPecaRepository {
       // FORMATAR DESCRIÇÃO
       // "Pg. Peças - OS Nº {id} - {fornecedor_fantasia} | {nome_peca}"
       const idOs = pagamento.item_os.ordem_de_servico.id_os;
-      const fornecedor =
-        pagamento.fornecedor.nome_fantasia || pagamento.fornecedor.nome;
+      const fornecedor = pagamento.fornecedor.nome;
       const nomePeca = pagamento.item_os.descricao;
       const descricao = `Pg. Peças - OS Nº ${idOs} - ${fornecedor} | ${nomePeca}`;
 
@@ -307,7 +305,7 @@ export class PagamentoPecaRepository {
       const fornecedoresUnicos = [
         ...new Set(
           pagamentos.map(
-            (p) => p.fornecedor.nome_fantasia || p.fornecedor.nome,
+            (p) => p.fornecedor.nome,
           ),
         ),
       ];

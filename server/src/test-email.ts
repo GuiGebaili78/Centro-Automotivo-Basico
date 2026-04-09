@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { EmailService } from "./services/email.service";
+import { EmailService } from "./services/email.service.js";
 
 async function testEmail() {
   console.log("--- Teste de Integração SMTP ---");
