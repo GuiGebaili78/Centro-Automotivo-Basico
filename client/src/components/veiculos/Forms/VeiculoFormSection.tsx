@@ -25,6 +25,7 @@ export interface VeiculoFormData {
   marca: string;
   modelo: string;
   cor: string;
+  anoFabricacao: string;
   anoModelo: string;
   combustivel: string;
   chassi: string;
@@ -51,6 +52,7 @@ export const VeiculoFormSection = memo(
       const [marca, setMarca] = useState(initialData?.marca ?? "");
       const [modelo, setModelo] = useState(initialData?.modelo ?? "");
       const [cor, setCor] = useState(initialData?.cor ?? "");
+      const [anoFabricacao, setAnoFabricacao] = useState(initialData?.anoFabricacao ?? "");
       const [anoModelo, setAnoModelo] = useState(initialData?.anoModelo ?? "");
       const [combustivel, setCombustivel] = useState(
         initialData?.combustivel ?? "Flex",
@@ -64,10 +66,9 @@ export const VeiculoFormSection = memo(
         if (initialData.marca !== undefined) setMarca(initialData.marca);
         if (initialData.modelo !== undefined) setModelo(initialData.modelo);
         if (initialData.cor !== undefined) setCor(initialData.cor);
-        if (initialData.anoModelo !== undefined)
-          setAnoModelo(initialData.anoModelo);
-        if (initialData.combustivel !== undefined)
-          setCombustivel(initialData.combustivel);
+        if (initialData.anoFabricacao !== undefined) setAnoFabricacao(initialData.anoFabricacao);
+        if (initialData.anoModelo !== undefined) setAnoModelo(initialData.anoModelo);
+        if (initialData.combustivel !== undefined) setCombustivel(initialData.combustivel);
         if (initialData.chassi !== undefined) setChassi(initialData.chassi);
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [initialData]);
@@ -81,12 +82,13 @@ export const VeiculoFormSection = memo(
             marca,
             modelo,
             cor,
+            anoFabricacao,
             anoModelo,
             combustivel,
             chassi,
           }),
         }),
-        [placa, marca, modelo, cor, anoModelo, combustivel, chassi],
+        [placa, marca, modelo, cor, anoFabricacao, anoModelo, combustivel, chassi],
       );
 
       // ─── Render ───────────────────────────────────────────────────────────
@@ -153,15 +155,27 @@ export const VeiculoFormSection = memo(
               className="bg-neutral-25"
             />
 
-            {/* Ano */}
-            <Input
-              label="Ano"
-              icon={Calendar}
-              type="number"
-              value={anoModelo}
-              onChange={(e) => setAnoModelo(e.target.value)}
-              className="bg-neutral-25"
-            />
+            {/* Ano Fabricação + Ano Modelo lado a lado */}
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                label="Ano Fabricação"
+                icon={Calendar}
+                type="number"
+                value={anoFabricacao}
+                onChange={(e) => setAnoFabricacao(e.target.value)}
+                placeholder="2015"
+                className="bg-neutral-25"
+              />
+              <Input
+                label="Ano Modelo"
+                icon={Calendar}
+                type="number"
+                value={anoModelo}
+                onChange={(e) => setAnoModelo(e.target.value)}
+                placeholder="2016"
+                className="bg-neutral-25"
+              />
+            </div>
 
             {/* Combustível */}
             <div className="col-span-2">
