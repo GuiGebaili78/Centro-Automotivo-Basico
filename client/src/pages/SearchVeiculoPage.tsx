@@ -10,6 +10,7 @@ interface IVeiculo {
   marca: string;
   modelo: string;
   cor: string;
+  ano_fabricacao?: string;
   ano_modelo?: string;
   combustivel?: string;
   chassi?: string;
