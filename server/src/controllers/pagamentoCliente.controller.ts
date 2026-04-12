@@ -7,7 +7,7 @@ const repository = new PagamentoClienteRepository();
 export class PagamentoClienteController {
   async create(req: Request, res: Response) {
     try {
-      const { id_operadora, ...data } = req.body;
+      const { id_operadora, pix_destino, subtipo_credito, ...data } = req.body;
 
       const result = await prisma.$transaction(async (tx) => {
         // 0. IDEMPOTENCY CHECK (Prevent Double Click Submission)
@@ -97,17 +97,27 @@ export class PagamentoClienteController {
 
         // 2.1 Update Balance for PIX immediately
         if (data.metodo_pagamento === "PIX" && data.id_conta_bancaria) {
+          // PIX Banco: full value, no fees — just update balance
           await tx.contaBancaria.update({
             where: { id_conta: Number(data.id_conta_bancaria) },
             data: { saldo_atual: { increment: Number(data.valor) } },
           });
+
+          // PIX Banco: skip receivables entirely
+          if (!pix_destino || pix_destino === "BANCO") {
+            return pagamento;
+          }
+          // PIX Máquina: falls through to receivables creation below
         }
 
-        // 3. If Operator selected (Card), create Receivables
+        // 3. If Operator selected (Card / PIX Máquina), create Receivables
         if (
           id_operadora &&
-          (data.metodo_pagamento === "CREDITO" ||
-            data.metodo_pagamento === "DEBITO" || data.metodo_pagamento === "PIX")
+          (
+            data.metodo_pagamento === "CREDITO" ||
+            data.metodo_pagamento === "DEBITO" ||
+            (data.metodo_pagamento === "PIX" && pix_destino === "MAQUINA")
+          )
         ) {
           const operadora = await tx.operadoraCartao.findUnique({
             where: { id_operadora: Number(id_operadora) },
@@ -124,15 +134,29 @@ export class PagamentoClienteController {
           const parcelas = data.qtd_parcelas || 1;
           const valorTotal = Number(data.valor);
 
-          // Determine Rates & Deadlines
+          // Determine modalidade da taxa:
+          // CREDITO_AVISTA = crédito à vista (recebimento antecipado, sem parcelamento)
+          // CREDITO = crédito parcelado (1x a 18x com prazo)
+          // DEBITO = débito
+          // PIX (com pix_destino=MAQUINA) = usa taxa de modalidade PIX
+          let modalidade: string;
+          if (data.metodo_pagamento === "PIX") {
+            modalidade = "PIX";
+          } else if (data.metodo_pagamento === "DEBITO") {
+            modalidade = "DEBITO";
+          } else if (data.metodo_pagamento === "CREDITO") {
+            modalidade = subtipo_credito === "AVISTA" ? "CREDITO_AVISTA" : "CREDITO";
+          } else {
+            modalidade = data.metodo_pagamento;
+          }
+
+          // Resolve Tax Rates
           let taxaBase = 0;
           let taxaJuros = 0;
           let prazo = 0;
+          let taxaBaseClientePct: number | null = null; // Taxa quando CLIENTE assume os juros
 
-          // Note: "PIX" needs to be added properly
-          const modalidade = data.metodo_pagamento === "PIX" ? "PIX" : data.metodo_pagamento === "DEBITO" ? "DEBITO" : "CREDITO";
-
-          // Try Granular Table first
+          // Try Granular Table first (single source of truth)
           const taxEntry = operadora.taxas_operadora.find(
             (t) =>
               t.modalidade === modalidade &&
@@ -142,20 +166,30 @@ export class PagamentoClienteController {
           if (taxEntry) {
             taxaBase = Number(taxEntry.taxa_base_pct);
             taxaJuros = Number(taxEntry.taxa_juros_pct);
-            prazo = modalidade === "DEBITO" || modalidade === "PIX" ? operadora.prazo_debito : parcelas === 1 ? operadora.prazo_credito_vista : operadora.prazo_credito_parc;
+            taxaBaseClientePct = taxEntry.taxa_base_cliente_pct != null
+              ? Number(taxEntry.taxa_base_cliente_pct)
+              : null;
+            prazo =
+              modalidade === "DEBITO" || modalidade === "PIX"
+                ? operadora.prazo_debito
+                : parcelas === 1
+                  ? operadora.prazo_credito_vista
+                  : operadora.prazo_credito_parc;
           } else {
-             // Fallback Legacy Default Logic
-             if (modalidade === "DEBITO" || modalidade === "PIX") {
-               taxaBase = Number(operadora.taxa_debito);
-               prazo = operadora.prazo_debito;
-             } else if (parcelas === 1) {
-               taxaBase = Number(operadora.taxa_credito_vista);
-               prazo = operadora.prazo_credito_vista;
-             } else {
-               taxaBase = Number(operadora.taxa_credito_parc);
-               taxaJuros = Number(operadora.taxa_credito_parc) - Number(operadora.taxa_credito_vista);
-               prazo = operadora.prazo_credito_parc;
-             }
+            // Fallback Legacy Defaults (preservado para compatibilidade com dados antigos)
+            if (modalidade === "DEBITO" || modalidade === "PIX") {
+              taxaBase = Number(operadora.taxa_debito);
+              prazo = operadora.prazo_debito;
+            } else if (modalidade === "CREDITO_AVISTA" || parcelas === 1) {
+              taxaBase = Number(operadora.taxa_credito_vista);
+              prazo = operadora.prazo_credito_vista;
+            } else {
+              taxaBase = Number(operadora.taxa_credito_parc);
+              taxaJuros =
+                Number(operadora.taxa_credito_parc) -
+                Number(operadora.taxa_credito_vista);
+              prazo = operadora.prazo_credito_parc;
+            }
           }
 
           // Import CalculadoraPagamentoService dynamically or statically
@@ -165,8 +199,10 @@ export class PagamentoClienteController {
               valorTotal,
               taxaBase,
               taxaJuros,
-              data.tipo_parcelamento || 'LOJA'
+              data.tipo_parcelamento || 'LOJA',
+              taxaBaseClientePct  // Taxa máquina específica para quando o cliente assume os juros
           );
+
 
           const valorPorParcela = calcResult.valorPagoPeloCliente / parcelas;
           const valorLiquidoPorParcela = calcResult.valorLiquidoLojista / parcelas;

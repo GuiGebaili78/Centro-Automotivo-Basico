@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 04/09/2026 19:09:02
+PROJECT DUMP GENERATED ON 04/12/2026 14:11:18
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -106,6 +106,23 @@ api-1  | [2026-03-08T21:30:16.327Z] GET /api/ordem-de-servico/24?includeInternal
 api-1  | [2026-03-08T21:30:16.330Z] GET /api/fornecedor
 api-1  | [2026-03-08T21:30:16.331Z] GET /api/funcionario
 api-1  | [2026-03-08T21:30:16.340Z] GET /api/ordem-de-servico/24?includeInternal=true
+
+
+
+================================================================================
+FILE PATH: client_logs.txt
+================================================================================
+client-1  | 
+client-1  | > client@0.0.0 dev
+client-1  | > vite --host
+client-1  | 
+client-1  | 
+client-1  |   VITE v7.3.1  ready in 1867 ms
+client-1  | 
+client-1  |   �ף  Local:   http://localhost:5173/
+client-1  |   �ף  Network: http://172.18.0.4:5173/
+client-1  | Files in the public directory are served at the root path.
+client-1  | Instead of /public/favicon.png, use /favicon.png.
 
 
 
@@ -2819,6 +2836,376 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
 ================================================================================
 FILE PATH: client\src\components\clientes\Forms\ClienteFormSection.tsx
 ================================================================================
+/**
+ * ClienteFormSection
+ *
+ * Responsabilidades:
+ *  - Gerenciar o estado interno de TODOS os campos do cliente.
+ *  - Expor `getData()` via useImperativeHandle para que a página pai
+ *    colete os dados SOMENTE no momento do submit (sem prop drilling de state).
+ *  - Usar React.memo + forwardRef, eliminando re-renderizações causadas
+ *    pelo estado de componentes irmãos (ex: VeiculoFormSection).
+ *
+ * Padrão adoptado: estado totalmente local + imperativeHandle (pull on submit)
+ */
+import {
+  memo,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+  useCallback,
+  useEffect,
+} from "react";
+import {
+  User,
+  Phone,
+  Mail,
+  Search,
+  MapPin,
+  Building2,
+  Hash,
+} from "lucide-react";
+import { Input } from "../../ui/Input";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface ClienteFormData {
+  tipoPessoa: "PF" | "PJ";
+  nome: string;
+  cpf: string;
+  razaoSocial: string;
+  nomeFantasia: string;
+  cnpj: string;
+  ie: string;
+  telefone: string;
+  telefone2: string;
+  email: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complLogradouro: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+}
+
+export interface ClienteFormSectionRef {
+  getData: () => ClienteFormData;
+}
+
+interface ClienteFormSectionProps {
+  /** Dados iniciais (edição). Em modo criação, pode ser omitido. */
+  initialData?: Partial<ClienteFormData>;
+  /** Em modo de edição, campos do nome/tipo ficam desabilitados. */
+  isEditMode?: boolean;
+  /** Ref para o input "nome" principal para autoFocus no modo criação. */
+  nameInputRef?: React.RefObject<HTMLInputElement | null>;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export const ClienteFormSection = memo(
+  forwardRef<ClienteFormSectionRef, ClienteFormSectionProps>(
+    ({ initialData, isEditMode = false, nameInputRef }, ref) => {
+      // ── Local state (não sobe para o pai até o submit) ──
+      const [tipoPessoa, setTipoPessoa] = useState<"PF" | "PJ">(
+        initialData?.tipoPessoa ?? "PF",
+      );
+      const [nome, setNome] = useState(initialData?.nome ?? "");
+      const [cpf, setCpf] = useState(initialData?.cpf ?? "");
+      const [razaoSocial, setRazaoSocial] = useState(
+        initialData?.razaoSocial ?? "",
+      );
+      const [nomeFantasia, setNomeFantasia] = useState(
+        initialData?.nomeFantasia ?? "",
+      );
+      const [cnpj, setCnpj] = useState(initialData?.cnpj ?? "");
+      const [ie, setIe] = useState(initialData?.ie ?? "");
+      const [telefone, setTelefone] = useState(initialData?.telefone ?? "");
+      const [telefone2, setTelefone2] = useState(initialData?.telefone2 ?? "");
+      const [email, setEmail] = useState(initialData?.email ?? "");
+      const [cep, setCep] = useState(initialData?.cep ?? "");
+      const [logradouro, setLogradouro] = useState(
+        initialData?.logradouro ?? "",
+      );
+      const [numero, setNumero] = useState(initialData?.numero ?? "");
+      const [complLogradouro, setComplLogradouro] = useState(
+        initialData?.complLogradouro ?? "",
+      );
+      const [bairro, setBairro] = useState(initialData?.bairro ?? "");
+      const [cidade, setCidade] = useState(initialData?.cidade ?? "São Paulo");
+      const [estado, setEstado] = useState(initialData?.estado ?? "SP");
+
+      // Sincroniza quando os dados iniciais chegam (modo edição assíncrono)
+      useEffect(() => {
+        if (!initialData) return;
+        if (initialData.tipoPessoa) setTipoPessoa(initialData.tipoPessoa);
+        if (initialData.nome !== undefined) setNome(initialData.nome);
+        if (initialData.cpf !== undefined) setCpf(initialData.cpf);
+        if (initialData.razaoSocial !== undefined)
+          setRazaoSocial(initialData.razaoSocial);
+        if (initialData.nomeFantasia !== undefined)
+          setNomeFantasia(initialData.nomeFantasia);
+        if (initialData.cnpj !== undefined) setCnpj(initialData.cnpj);
+        if (initialData.ie !== undefined) setIe(initialData.ie);
+        if (initialData.telefone !== undefined)
+          setTelefone(initialData.telefone);
+        if (initialData.telefone2 !== undefined)
+          setTelefone2(initialData.telefone2);
+        if (initialData.email !== undefined) setEmail(initialData.email);
+        if (initialData.cep !== undefined) setCep(initialData.cep);
+        if (initialData.logradouro !== undefined)
+          setLogradouro(initialData.logradouro);
+        if (initialData.numero !== undefined) setNumero(initialData.numero);
+        if (initialData.complLogradouro !== undefined)
+          setComplLogradouro(initialData.complLogradouro);
+        if (initialData.bairro !== undefined) setBairro(initialData.bairro);
+        if (initialData.cidade !== undefined) setCidade(initialData.cidade);
+        if (initialData.estado !== undefined) setEstado(initialData.estado);
+        // Dependência intencional: só roda quando initialData mudar de referência
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [initialData]);
+
+      // ── Expõe getData() para a página pai ──
+      useImperativeHandle(
+        ref,
+        () => ({
+          getData: () => ({
+            tipoPessoa,
+            nome,
+            cpf,
+            razaoSocial,
+            nomeFantasia,
+            cnpj,
+            ie,
+            telefone,
+            telefone2,
+            email,
+            cep,
+            logradouro,
+            numero,
+            complLogradouro,
+            bairro,
+            cidade,
+            estado,
+          }),
+        }),
+        [
+          tipoPessoa,
+          nome,
+          cpf,
+          razaoSocial,
+          nomeFantasia,
+          cnpj,
+          ie,
+          telefone,
+          telefone2,
+          email,
+          cep,
+          logradouro,
+          numero,
+          complLogradouro,
+          bairro,
+          cidade,
+          estado,
+        ],
+      );
+
+      // ── Busca de CEP ViaCEP ──
+      const handleCepBlur = useCallback(async () => {
+        const cepRaw = cep.replace(/\D/g, "");
+        if (cepRaw.length !== 8) return;
+        try {
+          const res = await fetch(`https://viacep.com.br/ws/${cepRaw}/json/`);
+          const data = await res.json();
+          if (!data.erro) {
+            setLogradouro(data.logradouro ?? "");
+            setBairro(data.bairro ?? "");
+            setCidade(data.localidade ?? "");
+            setEstado(data.uf ?? "");
+            // Foca no campo "Número" após autocomplete
+            document.getElementById("nr_logradouro")?.focus();
+          }
+        } catch {
+          // silently fail — user can fill manually
+        }
+      }, [cep]);
+
+      // ─── Render ───────────────────────────────────────────────────────────
+      return (
+        <div className="bg-neutral-25 p-6 rounded-2xl border border-neutral-200 shadow-sm space-y-6">
+          {/* Header */}
+          <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
+            <div className="bg-primary-100 p-2 rounded-lg text-primary-600">
+              <User size={20} />
+            </div>
+            <h2 className="font-bold text-lg text-neutral-800">
+              Dados do Cliente
+            </h2>
+          </div>
+
+          {/* Tipo Pessoa Toggle */}
+          <div className="flex bg-neutral-100 p-1 rounded-lg w-fit">
+            {(["PF", "PJ"] as const).map((tipo) => (
+              <button
+                key={tipo}
+                type="button"
+                disabled={isEditMode}
+                onClick={() => !isEditMode && setTipoPessoa(tipo)}
+                className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${
+                  tipoPessoa === tipo
+                    ? "bg-neutral-25 shadow text-primary-600"
+                    : "text-neutral-500"
+                } ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {tipo === "PF" ? "Pessoa Física" : "Pessoa Jurídica"}
+              </button>
+            ))}
+          </div>
+
+          {/* Campos de identificação (PF / PJ) */}
+          <div className="grid grid-cols-1 gap-4">
+            {tipoPessoa === "PF" ? (
+              <>
+                <Input
+                  label="Nome Completo *"
+                  icon={User}
+                  ref={nameInputRef as React.Ref<HTMLInputElement>}
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Nome do cliente"
+                  required
+                  disabled={isEditMode}
+                />
+                <Input
+                  label="CPF"
+                  icon={Hash}
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value)}
+                  placeholder="000.000.000-00"
+                  disabled={isEditMode}
+                />
+              </>
+            ) : (
+              <>
+                <Input
+                  label="Razão Social *"
+                  icon={Building2}
+                  ref={nameInputRef as React.Ref<HTMLInputElement>}
+                  value={razaoSocial}
+                  onChange={(e) => setRazaoSocial(e.target.value)}
+                  placeholder="Nome da Empresa"
+                  required
+                  disabled={isEditMode}
+                />
+                <Input
+                  label="Nome Fantasia"
+                  value={nomeFantasia}
+                  onChange={(e) => setNomeFantasia(e.target.value)}
+                  placeholder="Nome Comercial"
+                  disabled={isEditMode}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="CNPJ"
+                    value={cnpj}
+                    onChange={(e) => setCnpj(e.target.value)}
+                    placeholder="00.000.000/0000-00"
+                  />
+                  <Input
+                    label="IE"
+                    value={ie}
+                    onChange={(e) => setIe(e.target.value)}
+                    placeholder="Inscrição Estadual"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Contato */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-100">
+            <Input
+              label="Telefone Principal *"
+              icon={Phone}
+              value={telefone}
+              onChange={(e) => setTelefone(e.target.value)}
+              placeholder="(00) 00000-0000"
+              required
+            />
+            <Input
+              label="Telefone 2"
+              icon={Phone}
+              value={telefone2}
+              onChange={(e) => setTelefone2(e.target.value)}
+              placeholder="(00) 00000-0000"
+            />
+            <div className="sm:col-span-2">
+              <Input
+                label="Email"
+                icon={Mail}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="cliente@email.com"
+              />
+            </div>
+          </div>
+
+          {/* Endereço */}
+          <div className="space-y-4 pt-4 border-t border-neutral-100">
+            <div className="grid grid-cols-3 gap-4">
+              <Input
+                label="CEP"
+                icon={Search}
+                value={cep}
+                onChange={(e) => setCep(e.target.value)}
+                onBlur={handleCepBlur}
+                placeholder="00000-000"
+              />
+              <div className="col-span-2">
+                <Input
+                  label="Logradouro"
+                  icon={MapPin}
+                  value={logradouro}
+                  onChange={(e) => setLogradouro(e.target.value)}
+                />
+              </div>
+              <Input
+                id="nr_logradouro"
+                label="Número"
+                value={numero}
+                onChange={(e) => setNumero(e.target.value)}
+              />
+              <div className="col-span-2">
+                <Input
+                  label="Complemento"
+                  value={complLogradouro}
+                  onChange={(e) => setComplLogradouro(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Bairro"
+                value={bairro}
+                onChange={(e) => setBairro(e.target.value)}
+              />
+              <Input
+                label="Cidade"
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    },
+  ),
+);
+
+ClienteFormSection.displayName = "ClienteFormSection";
+
 
 
 ================================================================================
@@ -5934,7 +6321,6 @@ export const EstoqueTable = ({
 
 
 
-================================================================================
 FILE PATH: client\src\components\estoque\Forms\PecasEstoqueForm.tsx
 ================================================================================
 import { useState } from "react";
@@ -19081,6 +19467,136 @@ export const ReportFilter = ({ onFilterChange }: ReportFilterProps) => {
 FILE PATH: client\src\components\ui\ActionButton.tsx
 ================================================================================
 import React from "react";
+import { type LucideIcon } from "lucide-react";
+
+interface ActionButtonProps {
+  icon: LucideIcon;
+  label: string;
+  onClick: (e: React.MouseEvent) => void;
+  variant?: "primary" | "danger" | "accent" | "neutral";
+  className?: string;
+  disabled?: boolean;
+  isLoading?: boolean;
+}
+
+export const ActionButton = ({
+  icon: Icon,
+  label,
+  onClick,
+  variant = "neutral",
+  className = "",
+  disabled = false,
+  isLoading = false,
+}: ActionButtonProps) => {
+  const variants = {
+    primary: "text-primary-600 hover:bg-primary-50 hover:text-primary-700",
+    accent: "text-blue-600 hover:bg-blue-50 hover:text-blue-700",
+    danger: "text-red-500 hover:bg-red-50 hover:text-red-600",
+    neutral: "text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600",
+  };
+
+  const isBtnDisabled = disabled || isLoading;
+
+  return (
+    <div
+      className={`group/action relative inline-flex items-center justify-center ${className} ${isBtnDisabled ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`}
+    >
+      <button
+        type="button"
+        disabled={isBtnDisabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick(e);
+        }}
+        className={`p-2 rounded-lg transition-all duration-200 ${variants[variant]}`}
+      >
+        <Icon size={18} className={isLoading ? "animate-spin" : ""} />
+      </button>
+
+      {/* TOOLTIP: Otimizado */}
+      <div className="absolute bottom-full mb-2 hidden group-hover/action:flex flex-col items-center pointer-events-none z-100 animate-in fade-in zoom-in-95 duration-200">
+        <span className="px-2 py-1 text-sm font-bold text-white bg-neutral-800 rounded shadow-md whitespace-nowrap uppercase tracking-wider">
+          {label}
+        </span>
+        {/* Triângulo invertido */}
+        <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-neutral-800" />
+      </div>
+    </div>
+  );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\components\ui\Badge.tsx
+================================================================================
+import React from "react";
+
+// Definindo os tipos de status que fazem sentido para sua oficina
+export type BadgeVariant =
+  | "primary"
+  | "accent"
+  | "success"
+  | "danger"
+  | "warning"
+  | "warning"
+  | "neutral"
+  | "secondary";
+
+interface BadgeProps {
+  children: React.ReactNode;
+  variant?: BadgeVariant;
+  className?: string;
+}
+
+export const Badge = ({
+  children,
+  variant = "neutral",
+  className = "",
+}: BadgeProps) => {
+  // Aqui usamos o que você aprendeu: cores sólidas para o texto e opacidade (/10 ou /20) para o fundo
+  const variants = {
+    // Laranja (Primary)
+    primary: "bg-primary-500/10 text-primary-700 border-primary-500/20",
+
+    // Cyan (Accent)
+    accent: "bg-accent-500/10 text-accent-700 border-accent-500/20",
+
+    // Verde (Sucesso)
+    success: "bg-green-500/10 text-green-700 border-green-500/20",
+
+    // Vermelho (Erro/Atenção)
+    danger: "bg-red-500/10 text-red-700 border-red-500/20",
+
+    // Amarelo/Dourado (Aviso)
+    warning: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
+
+    // Cinza (Neutro)
+    neutral: "bg-neutral-500/10 text-neutral-700 border-neutral-500/20",
+
+    // Laranja (Secondary)
+    secondary: "bg-secondary-500/10 text-secondary-700 border-secondary-500/20",
+  };
+
+  return (
+    <span
+      className={`
+      inline-flex items-center px-2.5 py-0.5 
+      rounded-full text-sm font-bold uppercase tracking-wider 
+      border ${variants[variant]} ${className}
+    `}
+    >
+      {children}
+    </span>
+  );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\components\ui\Button.tsx
+================================================================================
+import React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:
@@ -19267,96 +19783,6 @@ Checkbox.displayName = "Checkbox";
 
 ================================================================================
 FILE PATH: client\src\components\ui\ConfirmModal.tsx
-================================================================================
-import { useEffect } from "react";
-import { createPortal } from "react-dom";
-import { AlertTriangle, Info } from "lucide-react";
-import { Button } from "./Button";
-
-interface ConfirmModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  description: React.ReactNode; // Changed from string to ReactNode
-  variant?: "danger" | "primary";
-  confirmText?: string;
-  cancelText?: string;
-}
-
-export const ConfirmModal = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  title,
-  description,
-  variant = "danger",
-  confirmText,
-  cancelText = "Cancelar",
-}: ConfirmModalProps) => {
-  // Close on Escape key
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) {
-      window.addEventListener("keydown", handleEsc);
-    }
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  const isDanger = variant === "danger";
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
-        onClick={onClose}
-      />
-
-      {/* Modal Content */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200 z-10">
-        {/* Icon & Header */}
-        <div className="flex items-start gap-4">
-          <div
-            className={`p-3 rounded-full ${isDanger ? "bg-red-50 text-red-600" : "bg-primary-50 text-primary-600"}`}
-          >
-            {isDanger ? <AlertTriangle size={24} /> : <Info size={24} />}
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-bold text-neutral-900 leading-6">
-              {title}
-            </h3>
-            <div className="mt-2 text-sm text-neutral-500 leading-relaxed">
-              {description}
-            </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 mt-4">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="hover:bg-neutral-50"
-          >
-            {cancelText}
-          </Button>
-          <Button variant={isDanger ? "danger" : "primary"} onClick={onConfirm}>
-            {confirmText || (isDanger ? "Excluir" : "Confirmar")}
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-};
-
-
-
 ================================================================================
 FILE PATH: client\src\components\ui\FilterButton.tsx
 ================================================================================
@@ -19814,9 +20240,6 @@ export function MessagesContainer({ children }: MessagesContainerProps) {
 
 
 
-================================================================================
-FILE PATH: client\src\components\ui\Modals\DocumentoModal.tsx
-================================================================================
 import { useState, useEffect } from "react";
 import { Button, Input } from "..";
 import { Modal } from "../Modal";
@@ -22898,6 +23321,310 @@ export const CategoriasPage = () => {
 
 
 ================================================================================
+FILE PATH: client\src\pages\ClientePage.tsx
+================================================================================
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { Search, Plus } from "lucide-react";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import { OsCreationModal } from "../components/os/OsCreationModal";
+
+import { ClienteService } from "../services/cliente.service";
+import { ClientesTable } from "../components/clientes/ClientesTable";
+import type { ICliente } from "../types/cliente.types";
+
+export const ClientePage = () => {
+  const navigate = useNavigate();
+  const [clientes, setClientes] = useState<ICliente[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // OS Modal State
+  const [showOsModeModal, setShowOsModeModal] = useState(false);
+  const [pendingOsData, setPendingOsData] = useState<{
+    clientId: number;
+    vehicleId: number;
+  } | null>(null);
+
+  useEffect(() => {
+    loadClientes();
+    if (searchInputRef.current) searchInputRef.current.focus();
+  }, []);
+
+  const loadClientes = async () => {
+    try {
+      setLoading(true);
+      const data = await ClienteService.getAll();
+      setClientes(data);
+    } catch (error) {
+      toast.error("Erro ao carregar clientes.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteClient = async (id: number) => {
+    try {
+      await ClienteService.delete(id);
+      toast.success("Cliente removido com sucesso!");
+      setClientes((prev) => prev.filter((c) => c.id_cliente !== id));
+    } catch (error: any) {
+      console.error(error);
+      toast.error(
+        "Erro ao excluir cliente: " +
+          (error.response?.data?.error || "Verifique se existem dependências."),
+      );
+    }
+  };
+
+  const getNome = (c: any) =>
+    c.pessoa_fisica?.pessoa.nome ||
+    c.pessoa_juridica?.razao_social ||
+    "Nome Indisponível";
+
+  const filteredClientes = clientes.filter((c) => {
+    const s = searchTerm.toLowerCase();
+    const nome = getNome(c).toLowerCase();
+    const email = (c.email || "").toLowerCase();
+    const cidade = (c.cidade || "").toLowerCase();
+    const estado = (c.estado || "").toLowerCase();
+    const telefone1 = (c.telefone_1 || "").toLowerCase();
+    const tipo = c.id_pessoa_juridica ? "juridica jurídica" : "fisica física";
+
+    return (
+      nome.includes(s) ||
+      email.includes(s) ||
+      cidade.includes(s) ||
+      estado.includes(s) ||
+      telefone1.includes(s) ||
+      tipo.includes(s)
+    );
+  });
+
+  return (
+    <PageLayout
+      title="Gestão de Clientes"
+      actions={
+        <Button
+          variant="primary"
+          icon={Plus}
+          onClick={() => navigate("/novo-cadastro")}
+        >
+          Novo Cliente
+        </Button>
+      }
+    >
+      <div className="mb-8">
+        <Input
+          label=""
+          ref={searchInputRef}
+          icon={Search}
+          placeholder="Buscar por nome, email ou localização..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      <Card className="p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <ClientesTable
+            clientes={filteredClientes}
+            loading={loading}
+            onDelete={handleDeleteClient}
+            onOpenOsModal={(clientId, vehicleId) => {
+              setPendingOsData({ clientId, vehicleId });
+              setShowOsModeModal(true);
+            }}
+          />
+        </div>
+      </Card>
+
+      {/* Modal de Criação de OS */}
+      <OsCreationModal
+        isOpen={showOsModeModal}
+        onClose={() => setShowOsModeModal(false)}
+        onSelect={(type) => {
+          setShowOsModeModal(false);
+          if (pendingOsData) {
+            navigate(
+              `/ordem-de-servico?clientId=${pendingOsData.clientId}&vehicleId=${pendingOsData.vehicleId}&initialStatus=${type}`,
+            );
+            setPendingOsData(null);
+          }
+        }}
+      />
+    </PageLayout>
+  );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\pages\ColaboradoresPage.tsx
+================================================================================
+import { useState, useEffect, useRef } from "react";
+import { ColaboradorService } from "../services/colaborador.service";
+import { Button, Input, ConfirmModal, PageLayout, Card } from "../components/ui";
+import { FuncionarioForm } from "../components/colaboradores/Forms/FuncionarioForm";
+import { ColaboradoresTable } from "../components/colaboradores/ColaboradoresTable";
+import { Plus, Search, Users } from "lucide-react";
+import type { IFuncionario } from "../types/colaborador.types";
+import { toast } from "react-toastify";
+
+export const FuncionarioPage = () => {
+  const [view, setView] = useState<"list" | "form">("list");
+  const [funcionarios, setFuncionarios] = useState<IFuncionario[]>([]);
+  const [editData, setEditData] = useState<IFuncionario | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean;
+    id: number | null;
+  }>({ open: false, id: null });
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (view === "list") {
+      loadFuncionarios();
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }, 100);
+    }
+  }, [view]);
+
+  const loadFuncionarios = async () => {
+    try {
+      const data = await ColaboradorService.getAll();
+      setFuncionarios(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao carregar colaboradores.");
+    }
+  };
+
+  const handleRequestDelete = (id: number) => {
+    setDeleteModal({ open: true, id });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
+    try {
+      await ColaboradorService.delete(deleteModal.id);
+      toast.success("Colaborador removido.");
+      loadFuncionarios();
+      setDeleteModal({ open: false, id: null });
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao remover colaborador.");
+    }
+  };
+
+  const handleNew = () => {
+    setEditData(null);
+    setView("form");
+  };
+
+  const handleEdit = (func: IFuncionario) => {
+    setEditData(func);
+    setView("form");
+  };
+
+  const handleFormSuccess = () => {
+    toast.success(
+      editData ? "Cadastro atualizado!" : "Novo colaborador cadastrado!",
+    );
+    setView("list");
+    setEditData(null);
+  };
+
+  const filteredFuncionarios = funcionarios.filter((f) => {
+    const s = searchTerm.toLowerCase();
+    const terms = s.split(" ").filter((t) => t.length > 0);
+
+    const nome = (f.pessoa_fisica?.pessoa?.nome || "").toLowerCase();
+    const cpf = (f.pessoa_fisica?.cpf || "").toLowerCase();
+    const cargo = (f.cargo || "").toLowerCase();
+    const especialidade = (f.especialidade || "").toLowerCase();
+
+    const fullStr = `${nome} ${cpf} ${cargo} ${especialidade}`;
+
+    return terms.every((term) => fullStr.includes(term));
+  });
+
+  // RENDER FORM
+  if (view === "form") {
+    return (
+      <FuncionarioForm
+        initialData={editData}
+        onSuccess={handleFormSuccess}
+        onCancel={() => {
+          setView("list");
+          setEditData(null);
+        }}
+      />
+    );
+  }
+
+  // RENDER LIST
+  return (
+    <PageLayout
+      title="Equipe & MEI"
+      actions={
+        <Button variant="primary" icon={Plus} onClick={handleNew}>
+          Novo Colaborador
+        </Button>
+      }
+    >
+      <div className="mb-6">
+        <Input
+          ref={searchInputRef}
+          icon={Search}
+          placeholder="Buscar por nome, CPF ou cargo..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      <Card className="p-0 overflow-hidden">
+        {filteredFuncionarios.length === 0 ? (
+          <div className="p-12 text-center text-neutral-400">
+            <div className="flex flex-col items-center gap-4">
+              <div className="bg-neutral-50 p-6 rounded-full text-neutral-300">
+                <Users size={40} />
+              </div>
+              <p className="font-medium">Nenhum colaborador encontrado.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <ColaboradoresTable
+              funcionarios={filteredFuncionarios}
+              onEdit={handleEdit}
+              onDelete={handleRequestDelete}
+            />
+          </div>
+        )}
+      </Card>
+
+      <ConfirmModal
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, id: null })}
+        onConfirm={confirmDelete}
+        title="Remover Colaborador"
+        description="Tem certeza que deseja remover este colaborador? Esta ação não pode ser desfeita."
+        variant="danger"
+      />
+    </PageLayout>
+  );
+};
+
 
 
 ================================================================================
@@ -26706,7 +27433,7 @@ export const FechamentoFinanceiroPage = () => {
                         <div className="text-base text-primary-600 font-normal uppercase">
                           {os.veiculo?.placa || os.equipamento?.numeracao || "SEM PLACA/REF"}
                         </div>
-                        <div className="text-base text-neutral-600 font-normal uppercase text-sm">
+                        <div className="text-neutral-600 font-normal uppercase text-sm">
                           {os.veiculo ? `${os.veiculo.marca} ${os.veiculo.modelo}` : (os.equipamento?.nome_peca || "Peça Avulsa")}
                         </div>
                         <div className="text-sm text-neutral-500 font-normal uppercase min-h-[1.25rem]">
@@ -26846,7 +27573,7 @@ export const FechamentoFinanceiroPage = () => {
                         <div className="text-base text-primary-600 font-normal uppercase">
                           {fech.ordem_de_servico?.veiculo?.placa || fech.ordem_de_servico?.equipamento?.numeracao || "SEM PLACA/REF"}
                         </div>
-                        <div className="text-base text-neutral-600 font-normal uppercase text-sm">
+                        <div className="text-neutral-600 font-normal uppercase text-sm">
                           {fech.ordem_de_servico?.veiculo 
                             ? `${fech.ordem_de_servico.veiculo.marca} ${fech.ordem_de_servico.veiculo.modelo}` 
                             : (fech.ordem_de_servico?.equipamento?.nome_peca || "Peça Avulsa")}
@@ -27153,174 +27880,6 @@ export const FinanceiroPage = () => {
 ================================================================================
 FILE PATH: client\src\pages\FornecedorPage.tsx
 ================================================================================
-import { useState, useEffect, useRef } from "react";
-import { FornecedorService } from "../services/fornecedor.service";
-import type { IFornecedor } from "../types/fornecedor.types";
-import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
-import { FornecedoresTable } from "../components/fornecedores/FornecedoresTable";
-import { Button, Input, ConfirmModal, PageLayout, Card } from "../components/ui";
-import { Plus, Search, Truck } from "lucide-react";
-import { toast } from "react-toastify";
-
-export const FornecedorPage = () => {
-  const [view, setView] = useState<"list" | "form">("list");
-  const [fornecedores, setFornecedores] = useState<IFornecedor[]>([]);
-  const [editData, setEditData] = useState<IFornecedor | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [deleteModal, setDeleteModal] = useState<{
-    open: boolean;
-    id: number | null;
-  }>({ open: false, id: null });
-
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (view === "list") {
-      loadFornecedores();
-      // Focus on search input when returning to list
-      setTimeout(() => {
-        if (searchInputRef.current) {
-          searchInputRef.current.focus();
-        }
-      }, 100);
-    }
-  }, [view]);
-
-  const loadFornecedores = async () => {
-    try {
-      const data = await FornecedorService.getAll();
-      setFornecedores(data);
-    } catch (error) {
-      toast.error("Erro ao carregar lista de fornecedores.");
-    }
-  };
-
-  const handleRequestDelete = (id: number) => {
-    setDeleteModal({ open: true, id });
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteModal.id) return;
-    try {
-      await FornecedorService.delete(deleteModal.id);
-      toast.success("Fornecedor removido com sucesso!");
-      loadFornecedores();
-      setDeleteModal({ open: false, id: null });
-    } catch (error: any) {
-      const msg = error.response?.data?.error || "Erro ao deletar fornecedor.";
-      toast.error(msg);
-    }
-  };
-
-  const handleNew = () => {
-    setEditData(null);
-    setView("form");
-  };
-
-  const handleEdit = (f: IFornecedor) => {
-    setEditData(f);
-    setView("form");
-  };
-
-  const handleFormSuccess = () => {
-    toast.success(
-      editData ? "Fornecedor atualizado!" : "Fornecedor cadastrado!",
-    );
-    setView("list");
-    setEditData(null);
-  };
-
-  const filteredFornecedores = fornecedores.filter((f) => {
-    if (!searchTerm) return true;
-    const s = searchTerm.toLowerCase();
-    const terms = s.split(" ").filter((t) => t.length > 0);
-
-    // Concatenating fields for global search
-    const nome = (f.nome || "").toLowerCase();
-    const fantasia = (f.nome_fantasia || "").toLowerCase();
-    const doc = (f.documento || "").toLowerCase();
-    const cidade = (f.cidade || "").toLowerCase();
-    const estado = (f.uf || "").toLowerCase();
-    const contato = (f.contato || "").toLowerCase();
-    const produto = (f.categoria_produto || "").toLowerCase();
-    const logradouro = (f.logradouro || "").toLowerCase();
-    const bairro = (f.bairro || "").toLowerCase();
-    const email = (f.email || "").toLowerCase();
-
-    const fullStr = `${nome} ${fantasia} ${doc} ${cidade} ${estado} ${contato} ${produto} ${logradouro} ${bairro} ${email}`;
-
-    return terms.every((term) => fullStr.includes(term));
-  });
-
-  // RENDER: FORM VIEW
-  if (view === "form") {
-    return (
-      <FornecedorForm
-        initialData={editData}
-        onSuccess={handleFormSuccess}
-        onCancel={() => {
-          setView("list");
-          setEditData(null);
-        }}
-      />
-    );
-  }
-
-  // RENDER: LIST VIEW
-  return (
-    <PageLayout
-      title="Gestão de Fornecedores"
-      actions={
-        <Button variant="primary" icon={Plus} onClick={handleNew}>
-          Novo Fornecedor
-        </Button>
-      }
-    >
-      <div className="mb-6">
-        <Input
-          ref={searchInputRef}
-          value={searchTerm}
-          icon={Search}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Buscar por nome, documento, endereço ou contato..."
-        />
-      </div>
-
-      <Card className="p-0 overflow-hidden">
-        <div className="overflow-x-auto">
-          {filteredFornecedores.length === 0 ? (
-            <div className="p-12 text-center text-neutral-400">
-              <div className="flex flex-col items-center gap-4">
-                <div className="bg-neutral-50 p-6 rounded-full text-neutral-300">
-                  <Truck size={40} />
-                </div>
-                <p className="font-medium">Nenhum fornecedor encontrado.</p>
-              </div>
-            </div>
-          ) : (
-            <FornecedoresTable
-              fornecedores={filteredFornecedores}
-              onEdit={handleEdit}
-              onDelete={handleRequestDelete}
-            />
-          )}
-        </div>
-      </Card>
-
-      <ConfirmModal
-        isOpen={deleteModal.open}
-        onClose={() => setDeleteModal({ open: false, id: null })}
-        onConfirm={confirmDelete}
-        title="Excluir Fornecedor"
-        description="Tem certeza que deseja excluir este fornecedor? Esta ação não pode ser desfeita."
-        variant="danger"
-      />
-    </PageLayout>
-  );
-};
-
-
-
 ================================================================================
 FILE PATH: client\src\pages\ItensOsPage.tsx
 ================================================================================
@@ -29878,6 +30437,724 @@ export const OsPrintView = () => {
 
 ================================================================================
 FILE PATH: client\src\pages\PagamentoEquipePage.tsx
+================================================================================
+import { useState, useEffect, useMemo } from "react";
+import { formatCurrency } from "../utils/formatCurrency";
+import { getStatusStyle } from "../utils/osUtils";
+import { FinanceiroService } from "../services/financeiro.service";
+import { ColaboradorService } from "../services/colaborador.service";
+import { Button, Input, FilterButton, Select } from "../components/ui";
+import { Plus, Search, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { toast } from "react-toastify";
+
+export const PagamentoEquipePage = () => {
+  const navigate = useNavigate();
+  // --- STATE ---
+  const [selectedFuncId, setSelectedFuncId] = useState("");
+  const [activeTab, setActiveTab] = useState<"PENDENTE" | "PAGO">("PENDENTE");
+
+  // Data States
+  const [funcionarios, setFuncionarios] = useState<any[]>([]);
+  const [pendentes, setPendentes] = useState<any[]>([]);
+  const [valesPendentes, setValesPendentes] = useState<any[]>([]);
+  const [historico, setHistorico] = useState<any[]>([]);
+
+  // Filters (History Tab)
+  // Default to "WEEK" logic if desired, or keep generic dates. User asked for "hj, semana e mes" filters.
+  const [activeFilter, setActiveFilter] = useState<
+    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
+  >("WEEK");
+  const [filterHistStart, setFilterHistStart] = useState("");
+  const [filterHistEnd, setFilterHistEnd] = useState("");
+  const [historySearchTerm, setHistorySearchTerm] = useState("");
+
+  // --- EFFECTS ---
+  useEffect(() => {
+    loadFuncionarios();
+    // Initialize Week Filter
+    applyQuickFilter("WEEK");
+  }, []);
+
+  useEffect(() => {
+    if (!selectedFuncId) {
+      setPendentes([]);
+      setValesPendentes([]);
+      setHistorico([]);
+      return;
+    }
+
+    if (activeTab === "PENDENTE") {
+      loadPendentes(selectedFuncId);
+      loadVales(selectedFuncId);
+    } else {
+      loadHistorico(selectedFuncId);
+    }
+  }, [selectedFuncId, activeTab]);
+
+  // --- LOADERS ---
+  const loadFuncionarios = async () => {
+    try {
+      const data = await ColaboradorService.getAll();
+      setFuncionarios(data);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar colaboradores.");
+    }
+  };
+
+  const loadPendentes = async (id: string) => {
+    try {
+      const data = await FinanceiroService.getPendenciasColaborador(id);
+      setPendentes(data);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar pendências.");
+    }
+  };
+
+  const loadVales = async (id: string) => {
+    try {
+      const data = await FinanceiroService.getValesPendentes(id);
+      setValesPendentes(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadHistorico = async (id: string) => {
+    try {
+      const data = await FinanceiroService.getPagamentosColaborador({
+        id_funcionario: id,
+      });
+      setHistorico(data);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar histórico.");
+    }
+  };
+
+  // --- HELPERS ---
+  const getComissaoInfo = (funcId: any, valorTotal: number) => {
+    const func = funcionarios.find(
+      (f) => String(f.id_funcionario) === String(funcId),
+    );
+    const porcentagem = func?.comissao || 0;
+    const valorComissao = (valorTotal * porcentagem) / 100;
+    return { porcentagem, valorComissao };
+  };
+
+  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
+    setActiveFilter(type);
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("en-CA");
+
+    if (type === "TODAY") {
+      setFilterHistStart(todayStr);
+      setFilterHistEnd(todayStr);
+    } else if (type === "WEEK") {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      setFilterHistStart(weekAgo.toLocaleDateString("en-CA"));
+      setFilterHistEnd(todayStr);
+    } else if (type === "MONTH") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFilterHistStart(firstDay.toLocaleDateString("en-CA"));
+      setFilterHistEnd(todayStr);
+    }
+  };
+
+  // --- FILTERS & FLATTENING ---
+  const flattenedHistorico = useMemo(() => {
+    const flatList: any[] = [];
+
+    historico.forEach((h) => {
+      const dtPagamento = h.dt_pagamento ? h.dt_pagamento.split("T")[0] : "";
+
+      // Check Date Range Filter
+      if (filterHistStart && dtPagamento < filterHistStart) return;
+      if (filterHistEnd && dtPagamento > filterHistEnd) return;
+
+      // 1. Add Commission Items (OSs)
+      if (h.servicos_pagos && h.servicos_pagos.length > 0) {
+        h.servicos_pagos.forEach((s: any) => {
+          flatList.push({
+            type: "COMISSAO",
+            id: s.id_servico_mao_de_obra,
+            date: h.dt_pagamento,
+            os: s.ordem_de_servico,
+            value: s.valor, // Base labor value
+            commissionValue: getComissaoInfo(selectedFuncId, Number(s.valor))
+              .valorComissao,
+            percentage: getComissaoInfo(selectedFuncId, Number(s.valor))
+              .porcentagem,
+            paymentId: h.id_pagamento_equipe,
+            paymentMethod: h.forma_pagamento,
+          });
+        });
+      }
+
+      // 2. Add Bonus (Prêmio) if exists
+      if (Number(h.premio_valor) > 0) {
+        flatList.push({
+          type: "PREMIO",
+          id: `premio-${h.id_pagamento_equipe}`,
+          date: h.dt_pagamento,
+          description: h.premio_descricao || "Prêmio / Bônus",
+          value: Number(h.premio_valor),
+          paymentId: h.id_pagamento_equipe,
+          paymentMethod: h.forma_pagamento,
+        });
+      }
+
+      // 3. Add Vales (Adiantamentos) paid
+      if (h.tipo_lancamento === "VALE") {
+        flatList.push({
+          type: "VALE",
+          id: `vale-${h.id_pagamento_equipe}`,
+          date: h.dt_pagamento,
+          description: `Adiantamento (Vale)${h.obs ? " - " + h.obs : ""}`,
+          value: Number(h.valor_total),
+          paymentId: h.id_pagamento_equipe,
+          paymentMethod: h.forma_pagamento,
+        });
+      }
+
+      // 4. Add Salary/Other Check (Residual Value)
+      // If the payment total is greater than the sum of commissions + bonuses, the remainder is Salário/Contrato
+      const commissionTotal = h.servicos_pagos
+        ? h.servicos_pagos.reduce(
+            (acc: number, s: any) => acc + Number(s.valor),
+            0,
+          )
+        : 0;
+      const premioVal = Number(h.premio_valor) || 0;
+
+      // If it is NOT a Vale record, we check for residuals
+      if (h.tipo_lancamento !== "VALE") {
+        const totalExplained = commissionTotal + premioVal;
+        const residual = Number(h.valor_total) - totalExplained;
+
+        if (residual > 0.05) {
+          // Tolerance for float math
+          flatList.push({
+            type: "SALARIO",
+            id: `salario-${h.id_pagamento_equipe}`,
+            date: h.dt_pagamento,
+            description: h.obs || "Pagamento / Salário",
+            value: residual,
+            paymentId: h.id_pagamento_equipe,
+            paymentMethod: h.forma_pagamento,
+          });
+        }
+      }
+    });
+
+    // Search Filter
+    if (!historySearchTerm) return flatList;
+
+    const lowSearch = historySearchTerm.toLowerCase();
+
+    return flatList.filter((item) => {
+      // Common fields
+      if (item.date && item.date.includes(lowSearch)) return true;
+      if (String(item.value).includes(lowSearch)) return true;
+      if (
+        item.paymentMethod &&
+        item.paymentMethod.toLowerCase().includes(lowSearch)
+      )
+        return true;
+
+      // OS Specific
+      if (item.type === "COMISSAO" && item.os) {
+        if (String(item.os.id_os).includes(lowSearch)) return true;
+        if (item.os.veiculo?.placa?.toLowerCase().includes(lowSearch))
+          return true;
+        if (item.os.veiculo?.modelo?.toLowerCase().includes(lowSearch))
+          return true;
+        if (item.os.veiculo?.cor?.toLowerCase().includes(lowSearch))
+          return true;
+        if (
+          item.os.cliente?.pessoa_fisica?.pessoa?.nome
+            ?.toLowerCase()
+            .includes(lowSearch)
+        )
+          return true;
+        if (
+          item.os.cliente?.pessoa_juridica?.razao_social
+            ?.toLowerCase()
+            .includes(lowSearch)
+        )
+          return true;
+      }
+
+      // Description Specific (Vale/Premio)
+      if (
+        item.description &&
+        item.description.toLowerCase().includes(lowSearch)
+      )
+        return true;
+
+      return false;
+    });
+  }, [
+    historico,
+    filterHistStart,
+    filterHistEnd,
+    historySearchTerm,
+    selectedFuncId,
+    funcionarios,
+  ]);
+
+  // Recalculate total based on filtered view
+  const totalHistorico = useMemo(() => {
+    return flattenedHistorico.reduce((acc, item) => {
+      if (item.type === "COMISSAO") return acc + (item.commissionValue || 0);
+      return acc + (item.value || 0);
+    }, 0);
+  }, [flattenedHistorico]);
+
+  return (
+    <PageLayout
+      title="Pagamentos de Equipe"
+      subtitle="Gestão individual de comissões e pagamentos."
+      actions={
+        <Button
+          onClick={() =>
+            navigate("/pagamento-equipe/novo", {
+              state: { funcionarioId: selectedFuncId },
+            })
+          }
+          variant="primary"
+          icon={Plus}
+          disabled={!selectedFuncId}
+          title={!selectedFuncId ? "Selecione um colaborador primeiro" : ""}
+        >
+          Novo Pagamento
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {/* SELEÇÃO COLABORADOR */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-200">
+          <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest block mb-2">
+            Selecione o Colaborador
+          </label>
+          <div className="relative max-w-md">
+            <Select
+              value={selectedFuncId}
+              onChange={(e) => setSelectedFuncId(e.target.value)}
+            >
+              <option value="">Selecione um colaborador...</option>
+              {funcionarios.map((f: any) => (
+                <option key={f.id_funcionario} value={f.id_funcionario}>
+                  {f.pessoa_fisica?.pessoa?.nome}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        {selectedFuncId ? (
+          <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+            {/* ACTION & TABS */}
+            <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
+              <div className="flex bg-neutral-50 p-1 rounded-lg w-fit border border-neutral-200 gap-1">
+                <FilterButton
+                  active={activeTab === "PENDENTE"}
+                  onClick={() => setActiveTab("PENDENTE")}
+                >
+                  Visão Geral / Pendências
+                </FilterButton>
+                <FilterButton
+                  active={activeTab === "PAGO"}
+                  onClick={() => setActiveTab("PAGO")}
+                >
+                  Histórico (Pagos)
+                </FilterButton>
+              </div>
+            </div>
+
+            {/* TAB: PENDENTE */}
+            {activeTab === "PENDENTE" && (
+              <Card className="p-0 overflow-hidden">
+                {/* ADIANTAMENTOS EM ABERTO */}
+                {valesPendentes.length > 0 && (
+                  <div className="border-b border-neutral-100">
+                    <div className="px-6 py-4 bg-amber-50/50 flex items-center gap-2">
+                      <AlertCircle size={16} className="text-amber-500" />
+                      <h3 className="text-xs font-bold text-amber-700 uppercase tracking-widest">
+                        Adiantamentos (Vales) em Aberto
+                      </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="tabela-limpa w-full">
+                        <thead>
+                          <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th className="text-right">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {valesPendentes.map((vale, idx) => (
+                            <tr
+                              key={`vale-${idx}`}
+                              className="group hover:bg-neutral-50 transition-colors"
+                            >
+                              <td className="font-bold text-neutral-600">
+                                {new Date(
+                                  vale.dt_pagamento,
+                                ).toLocaleDateString()}
+                                <div className="text-sm font-normal text-neutral-400">
+                                  {new Date(
+                                    vale.dt_pagamento,
+                                  ).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </div>
+                              </td>
+                              <td className="text-neutral-600">
+                                {vale.obs || "Adiantamento (Sem descrição)"}
+                              </td>
+                              <td className="text-right font-bold text-orange-600">
+                                {formatCurrency(Number(vale.valor_total))}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="px-6 py-4 bg-neutral-50/50 border-b border-neutral-100">
+                  <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                    Comissões Pendentes
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="tabela-limpa w-full">
+                    <thead>
+                      <tr>
+                        <th className="text-left p-4">OS / Data</th>
+                        <th className="text-left p-4">Veículo / Cliente / Diagnóstico</th>
+                        <th className="text-left p-4">Valor Serviço</th>
+                        <th className="text-left p-4">%</th>
+                        <th className="text-left p-4">Valor A Receber</th>
+                        <th className="text-left p-4">Status OS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {pendentes.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="p-12 text-center text-neutral-400 font-bold"
+                          >
+                            Nenhuma comissão pendente encontrada.
+                          </td>
+                        </tr>
+                      ) : (
+                        pendentes.map((item, idx) => {
+                          const { porcentagem, valorComissao } =
+                            getComissaoInfo(selectedFuncId, Number(item.valor));
+                          return (
+                            <tr
+                              key={`${item.id_os}-${idx}`}
+                              className="group hover:bg-neutral-50 transition-colors"
+                            >
+                              <td className="p-4">
+                                <div className="flex flex-col">
+                                  <div className="text-base text-neutral-900 font-normal">
+                                    OS | {item.id_os}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal mt-1">
+                                    {new Date(item.ordem_de_servico?.dt_abertura).toLocaleDateString("pt-BR")}
+                                  </div>
+                                  <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">
+                                    {item.ordem_de_servico?.dt_abertura ? new Date(item.ordem_de_servico.dt_abertura).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : '\u00A0'}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="text-base text-neutral-900 font-normal uppercase">
+                                    {item.ordem_de_servico?.veiculo?.modelo} {item.ordem_de_servico?.veiculo?.placa ? `- ${item.ordem_de_servico.veiculo.placa}` : ""}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal truncate max-w-[200px]">
+                                    {item.ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome || item.ordem_de_servico?.cliente?.pessoa_juridica?.razao_social || "N/A"}
+                                  </div>
+                                  <div className="text-sm text-neutral-500 font-normal italic truncate max-w-[250px] min-h-[1.25rem]">
+                                    Def: {item.ordem_de_servico?.defeito_relatado || item.ordem_de_servico?.diagnostico || "N/A"}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-neutral-900">
+                                  {formatCurrency(Number(item.valor))}
+                                </span>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-neutral-900 bg-neutral-100 px-2 py-1 rounded">
+                                  {porcentagem ? porcentagem : "0"}%
+                                </span>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                                  {formatCurrency(valorComissao)}
+                                </span>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span
+                                  className={`px-3 py-1 rounded-md text-sm font-bold uppercase whitespace-nowrap ${getStatusStyle(item.ordem_de_servico?.status || "")}`}
+                                >
+                                  {item.ordem_de_servico?.status
+                                    ? item.ordem_de_servico.status ===
+                                        "PRONTO_PARA_FINANCEIRO" ||
+                                      item.ordem_de_servico.status ===
+                                        "PRONTO PARA FINANCEIRO"
+                                      ? "FINANCEIRO"
+                                      : item.ordem_de_servico.status.replace(
+                                          /_/g,
+                                          " ",
+                                        )
+                                    : "N/A"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
+            {/* TAB: PAGO (HISTORICO) */}
+            {activeTab === "PAGO" && (
+              <>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+                  <div className="flex-1 w-full relative">
+                    <Input
+                      placeholder="Buscar por OS, Placa, Cliente..."
+                      value={historySearchTerm}
+                      onChange={(e) => setHistorySearchTerm(e.target.value)}
+                      icon={Search}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+                    <div className="flex bg-neutral-50 p-1 rounded-xl border border-neutral-100 gap-1 shrink-0">
+                      {["TODAY", "WEEK", "MONTH"].map((f) => (
+                        <FilterButton
+                          key={f}
+                          active={activeFilter === f}
+                          onClick={() => applyQuickFilter(f as any)}
+                        >
+                          {f === "TODAY"
+                            ? "Hoje"
+                            : f === "WEEK"
+                              ? "Semana"
+                              : "Mês"}
+                        </FilterButton>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 items-center px-4 border-l border-neutral-200 ml-2">
+                      <Input
+                        type="date"
+                        value={filterHistStart}
+                        onChange={(e) => {
+                          setFilterHistStart(e.target.value);
+                          setActiveFilter("CUSTOM");
+                        }}
+                        className={`h-9 text-xs ${
+                          activeFilter === "CUSTOM"
+                            ? "border-blue-300 text-blue-700"
+                            : ""
+                        }`}
+                      />
+                      <Input
+                        type="date"
+                        value={filterHistEnd}
+                        onChange={(e) => {
+                          setFilterHistEnd(e.target.value);
+                          setActiveFilter("CUSTOM");
+                        }}
+                        className={`h-9 text-xs ${
+                          activeFilter === "CUSTOM"
+                            ? "border-blue-300 text-blue-700"
+                            : ""
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Card className="p-0 overflow-hidden">
+                  <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex justify-between items-center">
+                    <span className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+                      Histórico de Pagamentos
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold uppercase tracking-widest text-neutral-400">
+                        Total Pago no Período:
+                      </span>
+                      <span className="text-lg font-bold text-neutral-800 bg-white px-3 py-1 rounded border border-neutral-200 shadow-sm">
+                        {formatCurrency(totalHistorico)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="tabela-limpa w-full">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-4">OS / Data</th>
+                          <th className="text-left p-4">Tipo</th>
+                          <th className="text-left p-4">Diagnóstico</th>
+                          <th className="text-left p-4">Veículo</th>
+                          <th className="text-left p-4">Cliente</th>
+                          <th className="text-left p-4">Valor Pago</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {flattenedHistorico.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={6}
+                              className="p-12 text-center text-neutral-400 font-bold"
+                            >
+                              Nenhum histórico encontrado.
+                            </td>
+                          </tr>
+                        ) : (
+                          flattenedHistorico.map((item, idx) => (
+                            <tr
+                              key={`${item.id}-${idx}`}
+                              className="group hover:bg-neutral-50 transition-colors"
+                            >
+                              <td className="p-4">
+                                <div className="flex flex-col">
+                                  <div className="text-base text-neutral-900 font-normal">
+                                    {item.type === "COMISSAO" ? `OS | ${item.os.id_os}` : "N/A"}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal mt-1">
+                                    {new Date(item.date).toLocaleDateString("pt-BR")}
+                                  </div>
+                                  <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">
+                                    {new Date(item.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                <span
+                                  className={`px-2 py-1 rounded text-sm font-bold uppercase tracking-wider ${
+                                    item.type === "COMISSAO"
+                                      ? "bg-emerald-50 text-emerald-600"
+                                      : item.type === "VALE"
+                                        ? "bg-amber-50 text-amber-600"
+                                        : "bg-blue-50 text-blue-600"
+                                  }`}
+                                >
+                                  {item.type}
+                                </span>
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                {item.type === "COMISSAO" ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 truncate max-w-[200px]" title={item.os?.defeito_relatado || item.os?.diagnostico || "N/A"}>
+                                      {item.os?.defeito_relatado || item.os?.diagnostico || "Sem diagnóstico"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-base font-normal text-neutral-900">
+                                      {item.description}
+                                    </span>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                {item.type === "COMISSAO" ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 uppercase">
+                                      {item.os.veiculo?.modelo || "N/A"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 uppercase">
+                                      {item.os.veiculo?.placa || "SEM PLACA"}
+                                    </div>
+                                    <div className="text-sm font-normal text-neutral-500 uppercase min-h-[1.25rem]">
+                                      {item.os.veiculo?.cor || "\u00A0"}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash mt-3"></span>
+                                )}
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                {item.type === "COMISSAO" ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 truncate max-w-[150px]">
+                                      {item.os.cliente?.pessoa_fisica?.pessoa?.nome || item.os.cliente?.pessoa_juridica?.razao_social || "N/I"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                                ) : (
+                                  <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash mt-3"></span>
+                                )}
+                              </td>
+                              <td className="p-4 align-top pt-5 text-left">
+                                <div className="text-base font-normal text-neutral-900">
+                                  {formatCurrency(item.type === "COMISSAO" ? item.commissionValue : item.value)}
+                                </div>
+                                {item.type === "COMISSAO" && (
+                                  <div className="text-base font-normal text-neutral-600">
+                                    ({item.percentage}%)
+                                  </div>
+                                )}
+                                <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </>
+            )}
+          </div>
+        ) : (
+          // EMPTY STATE
+          <div className="bg-surface rounded-xl border border-dashed border-neutral-200 p-12 flex flex-col items-center justify-center text-center mt-6">
+            <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-500 mb-4">
+              <Plus size={32} />
+            </div>
+            <h3 className="font-bold text-lg text-neutral-600">
+              Nenhum Colaborador Selecionado
+            </h3>
+            <p className="text-neutral-500 max-w-sm mt-2">
+              Selecione um colaborador na lista acima para visualizar suas
+              comissões, histórico e realizar pagamentos.
+            </p>
+          </div>
+        )}
+      </div>
+    </PageLayout>
+  );
+};
+
 
 
 ================================================================================
@@ -31232,217 +32509,6 @@ export const PessoaPage = () => {
 
 
 
-================================================================================
-FILE PATH: client\src\pages\RecebiveisPage.tsx
-================================================================================
-import { PageLayout } from "../components/ui";
-import { RecebiveisTab } from "../components/financeiro/RecebiveisTab";
-
-export const RecebiveisPage = () => {
-  return (
-    <PageLayout
-      title="Recebíveis"
-      subtitle="Controle e conciliação de recebimentos de cartão."
-    >
-      <RecebiveisTab />
-    </PageLayout>
-  );
-};
-
-
-
-================================================================================
-FILE PATH: client\src\pages\RelatoriosFinanceirosPage.tsx
-================================================================================
-import { useEffect, useState } from "react";
-import {
-  Card,
-  Grid,
-  Title,
-  Text,
-  TabGroup,
-  TabList,
-  Tab,
-  AreaChart,
-  Metric,
-  BadgeDelta,
-  Flex,
-  ProgressBar,
-  DonutChart,
-  BarList,
-  DateRangePicker,
-  Subtitle,
-} from "@tremor/react";
-import { api } from "../services/api";
-import { StatusBanner } from "../components/ui";
-
-// Formatador BRL
-const valueFormatter = (number: number) =>
-  `R$ ${new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2 }).format(number)}`;
-
-export function RelatoriosFinanceirosPage() {
-  const [error, setError] = useState("");
-  const [data, setData] = useState<any>(null);
-  const [selectedIndex, setSelectedIndex] = useState(0); // 0 = Visão Gerencial
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    try {
-      const response = await api.get("/relatorios/financeiro/dashboard"); // Certifique-se da rota
-      setData(response.data);
-    } catch (err) {
-      console.error(err);
-      setError("Não foi possível carregar os indicadores financeiros.");
-    }
-  }
-
-  // Dados seguros (fallback para zero)
-  const kpis = data?.kpis || {
-    receita: 0,
-    despesa: 0,
-    lucro: 0,
-    margem: 0,
-    ticket: 0,
-  };
-  const fluxo = data?.fluxo_caixa || [];
-  const categorias = data?.categorias || [];
-
-  return (
-    <div className="p-6 md:p-10 bg-slate-50 min-h-screen">
-      {/* 1. HEADER E FILTROS */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <Title className="text-2xl font-bold text-slate-800">
-            Inteligência Financeira
-          </Title>
-          <Subtitle>Acompanhe a saúde da sua oficina em tempo real</Subtitle>
-        </div>
-
-        <div className="flex gap-2 w-full md:w-auto">
-          <DateRangePicker
-            className="max-w-md mx-auto"
-            placeholder="Selecionar Período"
-            enableSelect={false}
-          />
-        </div>
-      </div>
-
-      {error && (
-        <StatusBanner
-          msg={{ type: "error", text: error }}
-          onClose={() => setError("")}
-        />
-      )}
-
-      {/* 2. ABAS DE NAVEGAÇÃO */}
-      <TabGroup index={selectedIndex} onIndexChange={setSelectedIndex}>
-        <TabList className="mb-8">
-          <Tab>Visão Gerencial</Tab>
-          <Tab>Detalhamento de Despesas</Tab>
-        </TabList>
-
-        {/* CONTEÚDO DA ABA 1: VISÃO GERAL */}
-        <div className={selectedIndex === 0 ? "block" : "hidden"}>
-          {/* CARDS DE KPI */}
-          <Grid numItems={1} numItemsSm={2} numItemsLg={4} className="gap-6">
-            <Card decoration="top" decorationColor="emerald">
-              <Text>Faturamento Total</Text>
-              <Metric>{valueFormatter(kpis.receita)}</Metric>
-              <BadgeDelta
-                deltaType="moderateIncrease"
-                isIncreasePositive={true}
-                className="mt-2"
-              >
-                +12% vs Mês Anterior
-              </BadgeDelta>
-            </Card>
-
-            <Card decoration="top" decorationColor="rose">
-              <Text>Despesas Totais</Text>
-              <Metric>{valueFormatter(kpis.despesa)}</Metric>
-              <Text className="mt-2 text-sm text-slate-400">
-                Custos Fixos + Variáveis
-              </Text>
-            </Card>
-
-            <Card decoration="top" decorationColor="indigo">
-              <Text>Lucro Líquido</Text>
-              <Metric>{valueFormatter(kpis.lucro)}</Metric>
-              <Flex className="mt-4">
-                <Text>Margem: {kpis.margem.toFixed(1)}%</Text>
-                <Text>Meta: 30%</Text>
-              </Flex>
-              <ProgressBar
-                value={kpis.margem}
-                color="indigo"
-                className="mt-2"
-              />
-            </Card>
-
-            <Card decoration="top" decorationColor="amber">
-              <Text>Ticket Médio</Text>
-              <Metric>{valueFormatter(kpis.ticket)}</Metric>
-              <Text className="mt-2 text-sm text-slate-400">
-                Por Ordem de Serviço
-              </Text>
-            </Card>
-          </Grid>
-
-          {/* GRÁFICO DE FLUXO DE CAIXA */}
-          <div className="mt-8">
-            <Card>
-              <Title>Fluxo de Caixa (Regime de Competência)</Title>
-              <Text>
-                Evolução de Receitas e Despesas no período selecionado
-              </Text>
-              <AreaChart
-                className="h-80 mt-4"
-                data={fluxo}
-                index="date"
-                categories={["Receitas", "Despesas"]}
-                colors={["emerald", "rose"]}
-                valueFormatter={valueFormatter}
-                yAxisWidth={80}
-                showAnimation={true}
-                curveType="monotone"
-              />
-            </Card>
-          </div>
-        </div>
-
-        {/* CONTEÚDO DA ABA 2: DESPESAS */}
-        <div className={selectedIndex === 1 ? "block" : "hidden"}>
-          <Grid numItems={1} numItemsLg={3} className="gap-6">
-            <Card className="col-span-1">
-              <Title>Distribuição de Gastos</Title>
-              <DonutChart
-                className="mt-6 h-60"
-                data={categorias}
-                category="value"
-                index="name"
-                valueFormatter={valueFormatter}
-                colors={["rose", "cyan", "amber", "purple", "indigo"]}
-              />
-            </Card>
-            <Card className="col-span-1 lg:col-span-2">
-              <Title>Top Categorias de Despesa</Title>
-              <div className="mt-6">
-                <BarList data={categorias} valueFormatter={valueFormatter} />
-              </div>
-            </Card>
-          </Grid>
-        </div>
-      </TabGroup>
-    </div>
-  );
-}
-
-
-
-================================================================================
 FILE PATH: client\src\pages\RelatoriosPage.tsx
 ================================================================================
 import { useState, useEffect } from "react";
@@ -35408,40 +36474,6 @@ export const getStatusStyle = (status: string) => {
 ================================================================================
 FILE PATH: server\.dockerignore
 ================================================================================
-node_modules
-npm-debug.log
-dist
-build
-.git
-.gitignore
-README.md
-
-
-================================================================================
-FILE PATH: server\Dockerfile
-================================================================================
-# Usa uma imagem base Node.js (Debian-based para melhor compatibilidade c/ Prisma)
-FROM node:20
-
-# Define o diretório de trabalho dentro do contêiner
-WORKDIR /app/server
-
-# Copia os arquivos de configuração de dependências
-COPY package*.json ./
-
-# Instala as dependências (incluindo o Prisma, express, etc.)
-RUN npm install
-
-# Copia o restante do código para o diretório de trabalho
-COPY . .
-
-# Comando de inicialização não é o principal, pois o Docker Compose o sobrescreve
-CMD [ "npm", "run", "dev" ]
-
-
-================================================================================
-FILE PATH: server\package.json
-================================================================================
 {
   "name": "server",
   "version": "1.0.0",
@@ -35492,6 +36524,36 @@ FILE PATH: server\package.json
     "seed": "tsx prisma/seed.ts"
   }
 }
+
+
+
+================================================================================
+FILE PATH: server\tsc.txt
+================================================================================
+scripts/seed_categories.ts(10,7): error TS2322: Type '{ nome: string; }' is not assignable to type 'CategoriaFinanceiraWhereUniqueInput'.
+  Type '{ nome: string; }' is not assignable to type '{ id_categoria: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; nome_parentId: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; } & { ...; }'.
+    Type '{ nome: string; }' is missing the following properties from type '{ id_categoria: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; nome_parentId: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; }': id_categoria, nome_parentId
+src/middlewares/authMiddleware.ts(25,7): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/scripts/check_inconsistency.ts(7,5): error TS2375: Type '{ status: string; fechamento_financeiro: undefined; }' is not assignable to type 'OrdemDeServicoWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'fechamento_financeiro' are incompatible.
+    Type 'undefined' is not assignable to type 'FechamentoFinanceiroListRelationFilter'.
+src/scripts/fix_financial_consistency.ts(9,5): error TS2375: Type '{ status: string; fechamento_financeiro: undefined; }' is not assignable to type 'OrdemDeServicoWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'fechamento_financeiro' are incompatible.
+    Type 'undefined' is not assignable to type 'FechamentoFinanceiroListRelationFilter'.
+src/scripts/inspect_test_data.ts(55,32): error TS2532: Object is possibly 'undefined'.
+src/scripts/inspect_test_data.ts(55,66): error TS2532: Object is possibly 'undefined'.
+src/scripts/inspect_test_data.ts(62,5): error TS2375: Type '{ status: string; fechamento_financeiro: undefined; }' is not assignable to type 'OrdemDeServicoWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'fechamento_financeiro' are incompatible.
+    Type 'undefined' is not assignable to type 'FechamentoFinanceiroListRelationFilter'.
+src/scripts/test_receivables_sync.ts(12,5): error TS2322: Type '{ tipo_pessoa: number; telefone_1: string; pessoa_fisica: { create: { pessoa: { create: { nome: string; }; }; }; }; }' is not assignable to type '(Without<ClienteCreateInput, ClienteUncheckedCreateInput> & ClienteUncheckedCreateInput) | (Without<...> & ClienteCreateInput)'.
+  Types of property 'pessoa_fisica' are incompatible.
+    Type '{ create: { pessoa: { create: { nome: string; }; }; }; }' is not assignable to type 'undefined'.
+src/services/DocumentoService.ts(133,91): error TS2551: Property 'equipamento' does not exist on type '{ servicos_mao_de_obra: ({ funcionario: { pessoa_fisica: { pessoa: { dt_cadastro: Date; obs: string | null; nome: string; genero: string | null; dt_nascimento: Date | null; is_cliente: boolean; is_fornecedor: boolean; is_colaborador: boolean; id_pessoa: number; }; } & { ...; }; } & { ...; }; } & { ...; })[]; cliente...'. Did you mean 'id_equipamento'?
+src/services/DocumentoService.ts(133,111): error TS2551: Property 'equipamento' does not exist on type '{ servicos_mao_de_obra: ({ funcionario: { pessoa_fisica: { pessoa: { dt_cadastro: Date; obs: string | null; nome: string; genero: string | null; dt_nascimento: Date | null; is_cliente: boolean; is_fornecedor: boolean; is_colaborador: boolean; id_pessoa: number; }; } & { ...; }; } & { ...; }; } & { ...; })[]; cliente...'. Did you mean 'id_equipamento'?
+src/test-email.ts(2,30): error TS2307: Cannot find module './services/email.service' or its corresponding type declarations.
 
 
 
@@ -36549,281 +37611,6 @@ main()
 ================================================================================
 FILE PATH: server\prisma\seed_faker.ts
 ================================================================================
-import { PrismaClient } from "@prisma/client";
-import { fakerPT_BR as faker } from "@faker-js/faker";
-
-const prisma = new PrismaClient();
-
-const SERVICOS_LISTA = [
-  "Troca de Óleo",
-  "Alinhamento",
-  "Balanceamento",
-  "Troca de Pastilha de Freio",
-  "Revisão Geral",
-  "Troca de Filtros",
-  "Limpeza de Bicos",
-  "Troca de Amortecedor",
-  "Regulagem Eletrônica",
-  "Troca de Correia Dentada",
-];
-
-const DESCRICOES_CONTAS = [
-  "Conta de Luz",
-  "Conta de Água",
-  "Aluguel do Galpão",
-  "Internet e Telefone",
-  "Fornecedor de Peças A",
-  "Fornecedor de Óleos",
-  "Serviço de Limpeza",
-  "Manutenção Elevador",
-  "Compra de Ferramentas",
-  "Impostos Mensais",
-];
-
-async function main() {
-  console.log("🌱 Iniciando o seed massivo com Faker...");
-
-  // 1. Garantir Dependências Básicas
-  // ==========================================
-
-  // 1.1 Tipo de Cliente
-  let tipoCliente = await prisma.tipo.findFirst();
-  if (!tipoCliente) {
-    tipoCliente = await prisma.tipo.create({
-      data: { funcao: "Cliente Padrão" },
-    });
-    console.log("✅ Tipo de cliente criado.");
-  }
-
-  // 1.2 Funcionário (Necessário para OS)
-  let funcionario = await prisma.funcionario.findFirst();
-  if (!funcionario) {
-    // Criar toda a cadeia de Pessoa -> PessoaFisica -> Funcionario
-    const pessoa = await prisma.pessoa.create({
-      data: {
-        nome: "Mecânico Chefe Faker",
-        genero: "Masculino",
-        pessoa_fisica: {
-          create: {
-            cpf: faker.string.numeric(11),
-            funcionario: {
-              create: {
-                ativo: "S",
-                cargo: "Mecânico Líder",
-                salario: 3500.0,
-                dt_admissao: new Date(),
-              },
-            },
-          },
-        },
-      },
-      include: {
-        pessoa_fisica: {
-          include: {
-            funcionario: true,
-          },
-        },
-      },
-    });
-    funcionario = pessoa.pessoa_fisica!.funcionario!;
-    console.log("✅ Funcionário padrão criado.");
-  }
-
-  // 2. Contas a Pagar (50 registros)
-  // ==========================================
-  console.log("💸 Gerando Contas a Pagar...");
-  const contasPromises = Array.from({ length: 50 }).map(() => {
-    const dataVencimento = faker.date.between({
-      from: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 ano atrás
-      to: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 ano futuro
-    });
-
-    const isPast = dataVencimento < new Date();
-    // Se passado, 80% chance de pago, 20% atrasado. Se futuro, Pendente.
-    let status = "PENDENTE";
-    let dtPagamento = null;
-
-    if (isPast) {
-      if (Math.random() > 0.2) {
-        status = "PAGO";
-        dtPagamento = dataVencimento; // Pagou no dia
-      } else {
-        status = "ATRASADO";
-      }
-    }
-
-    return prisma.contasPagar.create({
-      data: {
-        descricao: faker.helpers.arrayElement(DESCRICOES_CONTAS),
-        valor: faker.number.float({ min: 100, max: 5000, fractionDigits: 2 }),
-        dt_vencimento: dataVencimento,
-        dt_pagamento: dtPagamento,
-        status: status,
-        categoria: "Despesas Operacionais",
-        credor: faker.company.name(),
-      },
-    });
-  });
-
-  await Promise.all(contasPromises);
-  console.log("✅ 50 Contas a Pagar geradas.");
-
-  // 3. Ordens de Serviço (50 registros)
-  // ==========================================
-  console.log("🔧 Gerando Ordens de Serviço...");
-
-  for (let i = 0; i < 50; i++) {
-    // 3.1 Criar Cliente
-    const sexo = faker.person.sexType();
-    const nomeCliente = faker.person.fullName({ sex: sexo });
-
-    const pessoaCliente = await prisma.pessoa.create({
-      data: {
-        nome: nomeCliente.slice(0, 100),
-        genero: sexo,
-        pessoa_fisica: {
-          create: {
-            cpf: faker.string.numeric(11),
-            clientes: {
-              create: {
-                tipo_pessoa: tipoCliente!.id_tipo,
-                telefone_1: faker.phone
-                  .number({ style: "national" })
-                  .slice(0, 15),
-                email: faker.internet.email().slice(0, 100),
-                logradouro: faker.location.street().slice(0, 150),
-                nr_logradouro: faker.location.buildingNumber().slice(0, 10),
-                bairro: faker.location.secondaryAddress().slice(0, 100),
-                cidade: faker.location.city().slice(0, 100),
-                estado: faker.location.state({ abbreviated: true }).slice(0, 2),
-              },
-            },
-          },
-        },
-      },
-      include: {
-        pessoa_fisica: {
-          include: {
-            clientes: true,
-          },
-        },
-      },
-    });
-
-    const cliente = pessoaCliente.pessoa_fisica!.clientes[0];
-
-    // 3.2 Criar Veículo
-    const veiculo = await prisma.veiculo.create({
-      data: {
-        id_cliente: cliente!.id_cliente,
-        placa: faker.vehicle.vrm(), // Gera placa aleatória
-        marca: faker.vehicle.manufacturer(),
-        modelo: faker.vehicle.model(),
-        cor: faker.vehicle.color(),
-        ano_modelo: String(faker.date.past({ years: 10 }).getFullYear()),
-        combustivel: faker.helpers.arrayElement([
-          "Flex",
-          "Gasolina",
-          "Etanol",
-          "Diesel",
-        ]),
-      },
-    });
-
-    // 3.3 Gerar Datas da OS
-    const dataAbertura = faker.date.between({
-      from: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
-      to: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-    });
-
-    const diasParaEntregar = faker.number.int({ min: 2, max: 5 });
-    const dataPrevisao = new Date(dataAbertura);
-    dataPrevisao.setDate(dataPrevisao.getDate() + diasParaEntregar);
-
-    // Determinar Status
-    const isPast = dataPrevisao < new Date();
-    let statusOs = "ORCAMENTO";
-    let dataEntrega = null;
-
-    if (isPast) {
-      statusOs = "FINALIZADA";
-      dataEntrega = dataPrevisao;
-    } else if (dataAbertura < new Date() && dataPrevisao > new Date()) {
-      statusOs = "ABERTA";
-    } else {
-      statusOs = "AGENDAMENTO";
-    }
-
-    // 3.4 Criar OS
-    const os = await prisma.ordemDeServico.create({
-      data: {
-        id_cliente: cliente!.id_cliente,
-        id_veiculo: veiculo.id_veiculo,
-        id_funcionario: funcionario!.id_funcionario,
-        dt_abertura: dataAbertura,
-        dt_entrega: dataEntrega,
-        km_entrada: faker.number.int({ min: 10000, max: 150000 }),
-        status: statusOs,
-        defeito_relatado: "Barulho estranho no motor e luz de óleo acesa.",
-        diagnostico: "Necessário troca de óleo e filtros.",
-        parcelas: 1,
-      },
-    });
-
-    // 3.5 Inserir Serviços na OS
-    const qtdServicos = faker.number.int({ min: 1, max: 3 });
-    const servicosEscolhidos = faker.helpers.arrayElements(
-      SERVICOS_LISTA,
-      qtdServicos,
-    );
-
-    let totalMaoDeObra = 0;
-
-    for (const servicoDesc of servicosEscolhidos) {
-      const valorServico = faker.number.float({
-        min: 50,
-        max: 800,
-        fractionDigits: 2,
-      });
-      totalMaoDeObra += valorServico;
-
-      await prisma.servicoMaoDeObra.create({
-        data: {
-          id_os: os.id_os,
-          id_funcionario: funcionario!.id_funcionario,
-          descricao: servicoDesc,
-          valor: valorServico,
-          status_pagamento: "PENDENTE",
-        },
-      });
-    }
-
-    // Atualizar valor total da OS (Simplificado, sem peças por enquanto)
-    await prisma.ordemDeServico.update({
-      where: { id_os: os.id_os },
-      data: {
-        valor_mao_de_obra: totalMaoDeObra,
-        valor_total_cliente: totalMaoDeObra,
-        valor_final: totalMaoDeObra,
-      },
-    });
-  }
-
-  console.log("✅ 50 Ordens de Serviço geradas.");
-}
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
-
-
-
-================================================================================
 FILE PATH: server\prisma\seed_financial.ts
 ================================================================================
 import { PrismaClient } from "@prisma/client";
@@ -36854,7 +37641,7 @@ async function main() {
   await prisma.tipo.deleteMany(); // Limpa Tipos de cliente
   await prisma.funcionario.deleteMany();
   await prisma.pecasEstoque.deleteMany();
-  await prisma.fornecedor.deleteMany();
+
   // Limpar Pessoas é delicado pois pode ter outros vinculos, mas vamos limpar os criados pelo seed
   await prisma.pessoaFisica.deleteMany();
   await prisma.pessoa.deleteMany();
@@ -36957,10 +37744,16 @@ async function main() {
   });
 
   // 3. Fornecedor
-  const fornecedor = await prisma.fornecedor.create({
+  const fornecedor = await prisma.pessoa.create({
     data: {
       nome: "Auto Peças Zé",
-      tipo_pessoa: "JURIDICA",
+      is_fornecedor: true,
+      pessoa_juridica: {
+        create: {
+          cnpj: "00000000000000",
+          razao_social: "Auto Peças Zé LTDA"
+        }
+      }
     },
   });
 
@@ -37041,7 +37834,7 @@ async function main() {
     await prisma.pagamentoPeca.create({
       data: {
         id_item_os: itemPecaDireta.id_iten, // Note: id_iten based on schema
-        id_fornecedor: fornecedor.id_fornecedor,
+        id_pessoa: fornecedor.id_pessoa,
         custo_real: 250.0,
         data_compra: dtEvento,
       },
@@ -37151,6 +37944,249 @@ FILE PATH: server\prisma\migrations\migration_lock.toml
 provider = "postgresql"
 
 
+================================================================================
+FILE PATH: server\prisma\migrations\20251208001043_init_full_schema\migration.sql
+================================================================================
+-- CreateTable
+CREATE TABLE "pessoa" (
+    "id_pessoa" SERIAL NOT NULL,
+    "nome" VARCHAR(100) NOT NULL,
+    "genero" VARCHAR(20),
+    "dt_nascimento" DATE,
+    "obs" VARCHAR(500),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "pessoa_pkey" PRIMARY KEY ("id_pessoa")
+);
+
+-- CreateTable
+CREATE TABLE "pessoa_fisica" (
+    "id_pessoa_fisica" SERIAL NOT NULL,
+    "id_pessoa" INTEGER NOT NULL,
+    "cpf" VARCHAR(11),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "pessoa_fisica_pkey" PRIMARY KEY ("id_pessoa_fisica")
+);
+
+-- CreateTable
+CREATE TABLE "pessoa_juridica" (
+    "id_pessoa_juridica" SERIAL NOT NULL,
+    "id_pessoa" INTEGER NOT NULL,
+    "razao_social" VARCHAR(100) NOT NULL,
+    "nome_fantasia" VARCHAR(100),
+    "cnpj" VARCHAR(14),
+    "inscricao_estadual" VARCHAR(50),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "pessoa_juridica_pkey" PRIMARY KEY ("id_pessoa_juridica")
+);
+
+-- CreateTable
+CREATE TABLE "tipo" (
+    "id_tipo" SERIAL NOT NULL,
+    "funcao" VARCHAR(50),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "tipo_pkey" PRIMARY KEY ("id_tipo")
+);
+
+-- CreateTable
+CREATE TABLE "cliente" (
+    "id_cliente" SERIAL NOT NULL,
+    "id_pessoa_fisica" INTEGER,
+    "id_pessoa_juridica" INTEGER,
+    "tipo_pessoa" INTEGER NOT NULL,
+    "telefone_1" VARCHAR(15) NOT NULL,
+    "telefone_2" VARCHAR(15),
+    "telefone_3" VARCHAR(15),
+    "email" VARCHAR(100),
+    "logradouro" VARCHAR(150) NOT NULL,
+    "nr_logradouro" VARCHAR(10) NOT NULL,
+    "compl_logradouro" VARCHAR(50),
+    "bairro" VARCHAR(100) NOT NULL,
+    "cidade" VARCHAR(100) NOT NULL,
+    "estado" CHAR(2) NOT NULL,
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "cliente_pkey" PRIMARY KEY ("id_cliente")
+);
+
+-- CreateTable
+CREATE TABLE "funcionario" (
+    "id_funcionario" SERIAL NOT NULL,
+    "id_pessoa_fisica" INTEGER NOT NULL,
+    "ativo" CHAR(1) NOT NULL,
+    "cargo" VARCHAR(50) NOT NULL,
+    "salario" DECIMAL(10,2),
+    "comissao" INTEGER,
+    "dt_admissao" TIMESTAMP NOT NULL,
+    "dt_recisao" TIMESTAMP,
+    "motivo_saida" VARCHAR(200),
+    "obs" VARCHAR(500),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "funcionario_pkey" PRIMARY KEY ("id_funcionario")
+);
+
+-- CreateTable
+CREATE TABLE "pecas_estoque" (
+    "id_pecas_estoque" SERIAL NOT NULL,
+    "fabricante" VARCHAR(50),
+    "nome" VARCHAR(255) NOT NULL,
+    "descricao" VARCHAR(255) NOT NULL,
+    "valor_custo" DECIMAL(10,2) NOT NULL,
+    "valor_venda" DECIMAL(10,2) NOT NULL,
+    "estoque_atual" INTEGER NOT NULL,
+    "unidade_medida" VARCHAR(20),
+    "dt_ultima_compra" TIMESTAMP,
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "pecas_estoque_pkey" PRIMARY KEY ("id_pecas_estoque")
+);
+
+-- CreateTable
+CREATE TABLE "veiculo" (
+    "id_veiculo" SERIAL NOT NULL,
+    "id_cliente" INTEGER NOT NULL,
+    "placa" VARCHAR(8) NOT NULL,
+    "chassi" VARCHAR(20),
+    "marca" VARCHAR(50) NOT NULL,
+    "modelo" VARCHAR(50) NOT NULL,
+    "versao" VARCHAR(50),
+    "ano_modelo" VARCHAR(10) NOT NULL,
+    "cor" VARCHAR(30) NOT NULL,
+    "combustivel" VARCHAR(20) NOT NULL,
+    "obs" VARCHAR(500),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "veiculo_pkey" PRIMARY KEY ("id_veiculo")
+);
+
+-- CreateTable
+CREATE TABLE "ordem_de_servico" (
+    "id_os" SERIAL NOT NULL,
+    "id_cliente" INTEGER NOT NULL,
+    "id_veiculo" INTEGER NOT NULL,
+    "id_funcionario" INTEGER NOT NULL,
+    "dt_abertura" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "dt_entrega" TIMESTAMP,
+    "km_entrada" INTEGER NOT NULL,
+    "status" VARCHAR(20) NOT NULL,
+    "defeito_relatado" VARCHAR(500),
+    "diagnostico" VARCHAR(500),
+    "valor_servico" DECIMAL(10,2),
+    "valor_pecas" DECIMAL(10,2),
+    "valor_final" DECIMAL(12,2),
+    "modo_pagamento" VARCHAR(50),
+    "cod_pagamento" VARCHAR(80),
+    "parcelas" INTEGER NOT NULL,
+    "obs" VARCHAR(500),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ordem_de_servico_pkey" PRIMARY KEY ("id_os")
+);
+
+-- CreateTable
+CREATE TABLE "itens_os" (
+    "id_iten" SERIAL NOT NULL,
+    "id_os" INTEGER NOT NULL,
+    "id_pecas_estoque" INTEGER,
+    "descricao" VARCHAR(500) NOT NULL,
+    "qtd" INTEGER NOT NULL,
+    "valor_unt" DECIMAL(10,2) NOT NULL,
+    "valor_total" DECIMAL(12,2) NOT NULL,
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "itens_os_pkey" PRIMARY KEY ("id_iten")
+);
+
+-- CreateTable
+CREATE TABLE "finalizacao" (
+    "id_finalizacao" SERIAL NOT NULL,
+    "id_os" INTEGER NOT NULL,
+    "valor_peca_entrada" DECIMAL(10,2),
+    "valor_peca_saida" DECIMAL(10,2),
+    "valor_pago_funcionario" DECIMAL(10,2),
+    "obs" VARCHAR(500),
+    "dt_cadastro" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "finalizacao_pkey" PRIMARY KEY ("id_finalizacao")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "pessoa_fisica_id_pessoa_key" ON "pessoa_fisica"("id_pessoa");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "pessoa_fisica_cpf_key" ON "pessoa_fisica"("cpf");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "pessoa_juridica_id_pessoa_key" ON "pessoa_juridica"("id_pessoa");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "pessoa_juridica_cnpj_key" ON "pessoa_juridica"("cnpj");
+
+-- CreateIndex
+CREATE INDEX "cliente_id_pessoa_fisica_idx" ON "cliente"("id_pessoa_fisica");
+
+-- CreateIndex
+CREATE INDEX "cliente_id_pessoa_juridica_idx" ON "cliente"("id_pessoa_juridica");
+
+-- CreateIndex
+CREATE INDEX "cliente_tipo_pessoa_idx" ON "cliente"("tipo_pessoa");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "funcionario_id_pessoa_fisica_key" ON "funcionario"("id_pessoa_fisica");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "veiculo_placa_key" ON "veiculo"("placa");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "finalizacao_id_os_key" ON "finalizacao"("id_os");
+
+-- AddForeignKey
+ALTER TABLE "pessoa_fisica" ADD CONSTRAINT "pessoa_fisica_id_pessoa_fkey" FOREIGN KEY ("id_pessoa") REFERENCES "pessoa"("id_pessoa") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "pessoa_juridica" ADD CONSTRAINT "pessoa_juridica_id_pessoa_fkey" FOREIGN KEY ("id_pessoa") REFERENCES "pessoa"("id_pessoa") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cliente" ADD CONSTRAINT "cliente_id_pessoa_fisica_fkey" FOREIGN KEY ("id_pessoa_fisica") REFERENCES "pessoa_fisica"("id_pessoa_fisica") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cliente" ADD CONSTRAINT "cliente_id_pessoa_juridica_fkey" FOREIGN KEY ("id_pessoa_juridica") REFERENCES "pessoa_juridica"("id_pessoa_juridica") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cliente" ADD CONSTRAINT "cliente_tipo_pessoa_fkey" FOREIGN KEY ("tipo_pessoa") REFERENCES "tipo"("id_tipo") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "funcionario" ADD CONSTRAINT "funcionario_id_pessoa_fisica_fkey" FOREIGN KEY ("id_pessoa_fisica") REFERENCES "pessoa_fisica"("id_pessoa_fisica") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "veiculo" ADD CONSTRAINT "veiculo_id_cliente_fkey" FOREIGN KEY ("id_cliente") REFERENCES "cliente"("id_cliente") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ordem_de_servico" ADD CONSTRAINT "ordem_de_servico_id_cliente_fkey" FOREIGN KEY ("id_cliente") REFERENCES "cliente"("id_cliente") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ordem_de_servico" ADD CONSTRAINT "ordem_de_servico_id_veiculo_fkey" FOREIGN KEY ("id_veiculo") REFERENCES "veiculo"("id_veiculo") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ordem_de_servico" ADD CONSTRAINT "ordem_de_servico_id_funcionario_fkey" FOREIGN KEY ("id_funcionario") REFERENCES "funcionario"("id_funcionario") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "itens_os" ADD CONSTRAINT "itens_os_id_os_fkey" FOREIGN KEY ("id_os") REFERENCES "ordem_de_servico"("id_os") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "itens_os" ADD CONSTRAINT "itens_os_id_pecas_estoque_fkey" FOREIGN KEY ("id_pecas_estoque") REFERENCES "pecas_estoque"("id_pecas_estoque") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "finalizacao" ADD CONSTRAINT "finalizacao_id_os_fkey" FOREIGN KEY ("id_os") REFERENCES "ordem_de_servico"("id_os") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+
+
+================================================================================
+FILE PATH: server\prisma\migrations\20251216160147_init_v3\migration.sql
 ================================================================================
 /*
   Warnings:
@@ -38008,7 +39044,7 @@ async function main() {
   const systemCategories = ['FORNECEDOR', 'RECEITA_SERVICO', 'OUTROS', 'EQUIPE'];
 
   for (const nome of systemCategories) {
-    const exists = await prisma.categoriaFinanceira.findUnique({
+    const exists = await prisma.categoriaFinanceira.findFirst({
       where: { nome }
     });
 
@@ -38155,7 +39191,7 @@ app.listen(PORT, () => {
 FILE PATH: server\src\test-email.ts
 ================================================================================
 import "dotenv/config";
-import { EmailService } from "./services/email.service";
+import { EmailService } from "./services/email.service.js";
 
 async function testEmail() {
   console.log("--- Teste de Integração SMTP ---");
@@ -38259,7 +39295,7 @@ FILE PATH: server\src\controllers\AuthController.ts
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { UsuarioRepository } from "../repositories/UsuarioRepository";
+import { UsuarioRepository } from "../repositories/UsuarioRepository.js";
 
 const usuarioRepository = new UsuarioRepository();
 
@@ -38331,7 +39367,7 @@ export class AuthController {
 
       const token = jwt.sign(
         { id_usuario: usuario.id_usuario, perfil: usuario.perfil },
-        process.env.JWT_SECRET ||
+        (process.env.JWT_SECRET as string) ||
           "insira_uma_chave_aleatoria_super_segura_aqui",
         { expiresIn: "1d" },
       );
@@ -39810,7 +40846,7 @@ export const create = async (req: Request, res: Response) => {
           tipo_movimentacao,
           categoria,
           id_categoria: id_categoria ? Number(id_categoria) : null,
-          obs,
+          obs: obs ?? null,
           origem: origem || "MANUAL",
           id_conta_bancaria: id_conta_bancaria
             ? Number(id_conta_bancaria)
@@ -39860,7 +40896,7 @@ export const update = async (req: Request, res: Response) => {
         tipo_movimentacao,
         categoria,
         id_categoria: id_categoria ? Number(id_categoria) : null,
-        obs,
+        obs: obs ?? null,
       },
     });
     res.json(registro);
@@ -39877,7 +40913,7 @@ export const softDelete = async (req: Request, res: Response) => {
       where: { id_livro_caixa: Number(id) },
       data: {
         deleted_at: new Date(),
-        obs: obs, // Update obs if provided
+        obs: obs ?? null, // Update obs if provided
       },
     });
     res.json(registro);
@@ -42733,12 +43769,12 @@ export function authMiddleware(
     return res.status(401).json({ error: "Formato de token inválido." });
   }
 
-  const token = parts[1];
+  const token = parts[1] as string;
 
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || "insira_uma_chave_aleatoria_super_segura_aqui",
+      (process.env.JWT_SECRET || "insira_uma_chave_aleatoria_super_segura_aqui") as string,
     );
     // Injeta os dados do usuário na requisição para uso posterior nas rotas protegidas
     (req as any).usuario = decoded;
@@ -44812,6 +45848,75 @@ export class OrdemDeServicoRepository {
 
 
 
+================================================================================
+FILE PATH: server\src\repositories\pagamentoCliente.repository.ts
+================================================================================
+import { Prisma } from "@prisma/client";
+import { prisma } from "../prisma.js";
+
+export class PagamentoClienteRepository {
+  async create(data: Prisma.PagamentoClienteCreateInput) {
+    return await prisma.pagamentoCliente.create({ data });
+  }
+
+  async findAll() {
+    return await prisma.pagamentoCliente.findMany({
+      include: {
+        ordem_de_servico: {
+          include: {
+            veiculo: true,
+            cliente: {
+              include: {
+                pessoa_fisica: { include: { pessoa: true } },
+                pessoa_juridica: { include: { pessoa: true } },
+              },
+            },
+          },
+        },
+        // @ts-ignore
+        conta_bancaria: true,
+        // @ts-ignore
+        operadora: true,
+        livro_caixa: true,
+      },
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.pagamentoCliente.findUnique({
+      where: { id_pagamento_cliente: id },
+      include: { ordem_de_servico: true },
+    });
+  }
+
+  async update(id: number, data: Prisma.PagamentoClienteUpdateInput) {
+    // Extract obs/observacao from data to avoid Prisma error
+    const { obs, observacao, ...updateData } = data as any;
+    const finalObs = obs || observacao;
+
+    return await prisma.pagamentoCliente.update({
+      where: { id_pagamento_cliente: id },
+      data: {
+        ...updateData,
+        obs: finalObs || null,
+        // id_livro_caixa is NOT touched here anymore, it's handled by Consolidation
+      } as any,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.pagamentoCliente.update({
+      where: { id_pagamento_cliente: id },
+      data: { deleted_at: new Date() } as any,
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\pagamentoPeca.repository.ts
+================================================================================
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 
@@ -46432,7 +47537,7 @@ export class VeiculoRepository {
 FILE PATH: server\src\routes\auth.routes.ts
 ================================================================================
 import { Router } from "express";
-import { AuthController } from "../controllers/AuthController";
+import { AuthController } from "../controllers/AuthController.js";
 
 const authRoutes = Router();
 const authController = new AuthController();
@@ -47032,10 +48137,10 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const fornecedores = await prisma.fornecedor.count();
+  const fornecedores = await prisma.pessoa.count({ where: { is_fornecedor: true } });
   const funcionarios = await prisma.funcionario.count();
   const bancos = await prisma.contaBancaria.count();
-  const operadoras = await prisma.operadora.count();
+  const operadoras = await prisma.operadoraCartao.count();
   const os = await prisma.ordemDeServico.count();
   const osFinalizadas = await prisma.ordemDeServico.count({
     where: { status: "FINALIZADA" },
@@ -47066,7 +48171,7 @@ async function main() {
   const inconsistentOs = await prisma.ordemDeServico.findMany({
     where: {
       status: "FINALIZADA",
-      fechamento_financeiro: null,
+      fechamento_financeiro: { none: {} },
     },
     select: {
       id_os: true,
@@ -47443,7 +48548,7 @@ async function main() {
   const inconsistentOs = await prisma.ordemDeServico.findMany({
     where: {
       status: "FINALIZADA",
-      fechamento_financeiro: null,
+      fechamento_financeiro: { none: {} },
     },
     select: {
       id_os: true,
@@ -47535,7 +48640,7 @@ async function main() {
 
     if (stuckOs.length > 0) {
       console.log(
-        `Sample Stuck OS ID: ${stuckOs[0].id_os}, Description: ${stuckOs[0].defeito_relatado}`,
+        `Sample Stuck OS ID: ${stuckOs[0]?.id_os}, Description: ${stuckOs[0]?.defeito_relatado}`,
       );
     }
   }
@@ -47544,7 +48649,7 @@ async function main() {
   const totalStuck = await prisma.ordemDeServico.count({
     where: {
       status: "FINALIZADA",
-      fechamento_financeiro: null,
+      fechamento_financeiro: { none: {} },
     },
   });
   console.log(
@@ -47784,19 +48889,25 @@ async function main() {
   const timestamp = Date.now();
 
   // 1. Criar Dados de Teste (Cliente com Pessoa, Veículo, OS)
+  const pessoa = await prisma.pessoa.create({
+    data: {
+      nome: "Teste Sync " + timestamp,
+      is_cliente: true,
+    }
+  });
+
+  const pf = await prisma.pessoaFisica.create({
+    data: {
+      id_pessoa: pessoa.id_pessoa,
+      cpf: "000000000" + timestamp.toString().slice(-2),
+    }
+  });
+
   const cliente = await prisma.cliente.create({
     data: {
       tipo_pessoa: 1, // Fisica
       telefone_1: "11999999999",
-      pessoa_fisica: {
-        create: {
-          pessoa: {
-            create: {
-              nome: "Teste Sync " + timestamp,
-            },
-          },
-        },
-      },
+      id_pessoa_fisica: pf.id_pessoa_fisica,
     },
   });
 
@@ -47817,8 +48928,6 @@ async function main() {
       id_cliente: cliente.id_cliente,
       id_veiculo: veiculo.id_veiculo,
       status: "ABERTA",
-      dt_abertura: new Date(),
-      km_atual: 10000,
       km_entrada: 10000,
       parcelas: 1,
     },
@@ -48152,6 +49261,7 @@ export class DocumentoService {
             },
           },
           veiculo: true,
+          equipamento: true,
           itens_os: true,
           servicos_mao_de_obra: {
             where: { deleted_at: null },
@@ -48176,7 +49286,7 @@ export class DocumentoService {
       const clienteDoc = formatDoc(
         os.cliente.pessoa_fisica?.cpf || os.cliente.pessoa_juridica?.cnpj || "",
       );
-      const veiculoDesc = `${os.veiculo.modelo} - ${os.veiculo.placa}`;
+      const veiculoDesc = os.veiculo ? `${os.veiculo.modelo} - ${os.veiculo.placa}` : (os.equipamento ? `${os.equipamento.nome_peca}` : "Veículo/Peça Diversa");
 
       const totalPecas = os.itens_os
         .filter((item) => !item.is_interno)
@@ -48321,7 +49431,7 @@ export class DocumentoService {
                     margin: [0, 5, 0, 2],
                   },
                   { text: `Veículo: ${veiculoDesc}` },
-                  { text: `Cor: ${os.veiculo.cor}` },
+                  { text: `Cor: ${os.veiculo?.cor || "N/A"}` },
                   { text: `KM: ${os.km_entrada}` },
                 ],
               },

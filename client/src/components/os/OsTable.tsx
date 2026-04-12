@@ -74,7 +74,7 @@ export const OsTable = ({
                           {os.veiculo.cor}
                         </span>
                         <span className="text-base text-primary-600 uppercase mt-0.5">
-                          {os.veiculo.placa} - {os.veiculo.ano_modelo}
+                          {os.veiculo.placa} - {os.veiculo.ano_fabricacao && os.veiculo.ano_modelo ? `${os.veiculo.ano_fabricacao}/${os.veiculo.ano_modelo}` : os.veiculo.ano_fabricacao || os.veiculo.ano_modelo || "---"}
                         </span>
                       </>
                     ) : os.equipamento ? (

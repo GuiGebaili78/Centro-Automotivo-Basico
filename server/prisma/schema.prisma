@@ -501,14 +501,15 @@ model OperadoraCartao {
 }
 
 model TaxaOperadoraCartao {
-  id_taxa          Int             @id @default(autoincrement())
-  id_operadora     Int
-  modalidade       String          @db.VarChar(20) // 'DEBITO', 'CREDITO', 'PIX'
-  parcela          Int
-  taxa_base_pct    Decimal         @default(0) @db.Decimal(5, 2) // Fixa
-  taxa_juros_pct   Decimal         @default(0) @db.Decimal(5, 2) // Juros
-  taxa_antecipacao Decimal?        @default(0) @db.Decimal(5, 2)
-  operadora        OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
+  id_taxa                Int             @id @default(autoincrement())
+  id_operadora           Int
+  modalidade             String          @db.VarChar(20) // 'DEBITO', 'CREDITO', 'CREDITO_AVISTA', 'PIX'
+  parcela                Int
+  taxa_base_pct          Decimal         @default(0) @db.Decimal(5, 2) // Taxa máquina quando LOJA assume os juros
+  taxa_juros_pct         Decimal         @default(0) @db.Decimal(5, 2) // Juros do parcelamento (repassados ao cliente ou absorvidos pela loja)
+  taxa_base_cliente_pct  Decimal?        @default(0) @db.Decimal(5, 2) // Taxa máquina quando CLIENTE assume os juros
+  taxa_antecipacao       Decimal?        @default(0) @db.Decimal(5, 2)
+  operadora              OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
 
   @@unique([id_operadora, modalidade, parcela])
   @@map("taxa_operadora_cartao")

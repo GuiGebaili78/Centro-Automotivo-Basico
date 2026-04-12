@@ -47,6 +47,7 @@ interface IVeiculo {
   marca: string;
   modelo: string;
   cor: string;
+  ano_fabricacao?: string;
   ano_modelo?: string;
 }
 
@@ -279,7 +280,7 @@ export const SearchClientePage = () => {
                               {veiculo.marca} {veiculo.modelo}
                             </p>
                             <p className="text-xs text-slate-500">
-                              {veiculo.cor} • {veiculo.ano_modelo || "Ano N/A"}
+                              {veiculo.cor} • {veiculo.ano_fabricacao && veiculo.ano_modelo ? `${veiculo.ano_fabricacao}/${veiculo.ano_modelo}` : veiculo.ano_fabricacao || veiculo.ano_modelo || "Ano N/A"}
                             </p>
                           </div>
                         </div>

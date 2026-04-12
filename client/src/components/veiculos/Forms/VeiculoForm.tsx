@@ -62,6 +62,7 @@ export const VeiculoForm = memo(
     const [modelo, setModelo] = useState("");
     const [cor, setCor] = useState("");
     const [anoModelo, setAnoModelo] = useState("");
+    const [anoFabricacao, setAnoFabricacao] = useState("");
     const [combustivel, setCombustivel] = useState("Flex");
     const [chassi, setChassi] = useState("");
 
@@ -78,6 +79,7 @@ export const VeiculoForm = memo(
         setModelo(initialData.modelo || "");
         setCor(initialData.cor || "");
         setAnoModelo(initialData.ano_modelo || "");
+        setAnoFabricacao(initialData.ano_fabricacao || "");
         setCombustivel(initialData.combustivel || "Flex");
         setChassi(initialData.chassi || "");
       }
@@ -168,6 +170,7 @@ export const VeiculoForm = memo(
           marca,
           modelo,
           cor,
+          ano_fabricacao: anoFabricacao || null,
           ano_modelo: anoModelo,
           combustivel,
           chassi,
@@ -357,10 +360,20 @@ export const VeiculoForm = memo(
             </div>
             <div>
               <Input
+                label="Ano Fabricação (YYYY)"
+                type="number"
+                value={anoFabricacao}
+                onChange={(e) => setAnoFabricacao(e.target.value)}
+                placeholder="2015"
+              />
+            </div>
+            <div>
+              <Input
                 label="Ano Modelo (YYYY)"
                 type="number"
                 value={anoModelo}
                 onChange={(e) => setAnoModelo(e.target.value)}
+                placeholder="2016"
               />
             </div>
             <div>

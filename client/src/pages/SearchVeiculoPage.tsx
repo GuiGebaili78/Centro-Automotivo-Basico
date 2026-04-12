@@ -122,7 +122,7 @@ export const SearchVeiculoPage = () => {
                   {veiculo.marca} {veiculo.modelo}
                 </p>
                 <p className="text-blue-200 text-sm">
-                  {veiculo.cor} • {veiculo.ano_modelo || "Ano N/A"}
+                  {veiculo.cor} • {veiculo.ano_fabricacao && veiculo.ano_modelo ? `${veiculo.ano_fabricacao}/${veiculo.ano_modelo}` : veiculo.ano_fabricacao || veiculo.ano_modelo || "Ano N/A"}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -163,7 +163,7 @@ export const SearchVeiculoPage = () => {
                 {veiculo.ano_modelo && (
                   <div>
                     <label className="text-xs text-slate-500">Ano/Modelo</label>
-                    <p className="font-medium">{veiculo.ano_modelo}</p>
+                  <p className="font-medium">{veiculo.ano_fabricacao && veiculo.ano_modelo ? `${veiculo.ano_fabricacao}/${veiculo.ano_modelo}` : veiculo.ano_fabricacao || veiculo.ano_modelo || "N/A"}</p>
                   </div>
                 )}
                 {veiculo.combustivel && (

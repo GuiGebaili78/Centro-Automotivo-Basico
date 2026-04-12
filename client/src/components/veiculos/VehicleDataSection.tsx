@@ -13,6 +13,8 @@ interface VehicleDataSectionProps {
   setCor: (val: string) => void;
   anoModelo: string;
   setAnoModelo: (val: string) => void;
+  anoFabricacao: string;
+  setAnoFabricacao: (val: string) => void;
   combustivel: string;
   setCombustivel: (val: string) => void;
   chassi: string;
@@ -32,6 +34,8 @@ export const VehicleDataSection = memo(
     setCor,
     anoModelo,
     setAnoModelo,
+    anoFabricacao,
+    setAnoFabricacao,
     combustivel,
     setCombustivel,
     chassi,
@@ -96,14 +100,27 @@ export const VehicleDataSection = memo(
             required={!!placa}
             className="bg-neutral-25"
           />
-          <Input
-            label="Ano"
-            icon={Calendar}
-            type="number"
-            value={anoModelo}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAnoModelo(e.target.value)}
-            className="bg-neutral-25"
-          />
+          {/* Ano Fabricação e Ano Modelo lado a lado */}
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              label="Ano Fabricação"
+              icon={Calendar}
+              type="number"
+              value={anoFabricacao}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAnoFabricacao(e.target.value)}
+              placeholder="2015"
+              className="bg-neutral-25"
+            />
+            <Input
+              label="Ano Modelo"
+              icon={Calendar}
+              type="number"
+              value={anoModelo}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAnoModelo(e.target.value)}
+              placeholder="2016"
+              className="bg-neutral-25"
+            />
+          </div>
           <div className="col-span-2">
             <label className="text-sm font-semibold text-neutral-700 ml-1 mb-1 block">
               Combustível

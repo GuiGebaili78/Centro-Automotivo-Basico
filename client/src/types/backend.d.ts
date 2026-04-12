@@ -134,6 +134,7 @@ export interface IVeiculo {
   marca: string;
   modelo: string;
   versao?: string | null;
+  ano_fabricacao?: string | null;
   ano_modelo: string;
   cor: string;
   combustivel: string;
@@ -213,6 +214,9 @@ export interface IPagamentoCliente {
   bandeira_cartao?: string | null;
   codigo_transacao?: string | null;
   qtd_parcelas: number;
+  tipo_parcelamento?: string | null; // 'LOJA' | 'CLIENTE'
+  pix_destino?: 'BANCO' | 'MAQUINA' | null;
+  subtipo_credito?: 'AVISTA' | 'PARCELADO' | null;
   deleted_at?: string | null;
 
   id_operadora?: number | null;
@@ -345,11 +349,16 @@ export interface IContaBancaria {
 export interface ITaxaCartao {
   id_taxa?: number;
   id_operadora?: number;
-  modalidade: "DEBITO" | "CREDITO";
-  num_parcelas: number;
-  taxa_total: number;
+  modalidade: 'DEBITO' | 'CREDITO' | 'CREDITO_AVISTA' | 'PIX';
+  parcela: number;
+  num_parcelas?: number; // legado
+  taxa_base_pct: number;           // Taxa máquina quando LOJA assume os juros
+  taxa_juros_pct: number;          // Juros do parcelamento
+  taxa_base_cliente_pct?: number;  // Taxa máquina quando CLIENTE assume os juros
+  taxa_total?: number;             // legado/computed
   taxa_antecipacao?: number;
 }
+
 
 export interface IOperadoraCartao {
   id_operadora: number;

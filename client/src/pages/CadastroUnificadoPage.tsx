@@ -221,10 +221,12 @@ export const CadastroUnificadoPage = () => {
               marca: veiculoData.marca,
               modelo: veiculoData.modelo,
               cor: veiculoData.cor,
+              ano_fabricacao: veiculoData.anoFabricacao || null,
               ano_modelo: veiculoData.anoModelo,
               combustivel: veiculoData.combustivel,
               chassi: veiculoData.chassi,
             });
+
             finalVehicleId = newVehicle.id_veiculo;
           }
         } else if (assetType === 'EQUIPAMENTO' && veiculoRef.current) {
