@@ -31,8 +31,13 @@ export const Login: React.FC = () => {
         throw new Error(data.error || "Erro ao realizar login");
       }
 
-      login(data.token, data.usuario);
-      navigate("/"); // Redireciona para a Home/Dashboard do sistema
+      const mustChange = Boolean(data.must_change_password);
+      login(data.token, data.usuario, mustChange);
+      if (mustChange) {
+        navigate("/alterar-senha", { replace: true });
+      } else {
+        navigate("/"); // Redireciona para a Home/Dashboard do sistema
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {

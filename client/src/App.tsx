@@ -43,6 +43,7 @@ import { ContasBancariasPage } from "./pages/ContasBancariasPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { Login } from "./pages/Login";
+import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -52,6 +53,9 @@ const router = createBrowserRouter(
 
       {/* Rotas Protegidas (Sobe o PrivateRoute encobrindo o Layout inteiro) */}
       <Route element={<PrivateRoute />}>
+        {/* Alterar senha: protegida, porém fora do MainLayout para
+            permitir que o usuário obrigado a trocar a senha acesse a tela */}
+        <Route path="/alterar-senha" element={<ChangePasswordPage />} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<DashboardPage />} />
           {/* Páginas Modernizadas */}

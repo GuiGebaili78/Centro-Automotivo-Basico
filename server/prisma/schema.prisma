@@ -564,11 +564,12 @@ enum PerfilAcesso {
 }
 
 model Usuario {
-  id_usuario Int          @id @default(autoincrement())
-  nome       String
-  email      String       @unique
-  senha_hash String
-  perfil     PerfilAcesso
-  created_at DateTime     @default(now())
-  updated_at DateTime     @updatedAt
+  id_usuario            Int          @id @default(autoincrement())
+  nome                  String
+  email                 String       @unique
+  senha_hash            String
+  perfil                PerfilAcesso
+  must_change_password  Boolean      @default(false)
+  created_at            DateTime     @default(now())
+  updated_at            DateTime     @updatedAt
 }

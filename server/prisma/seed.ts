@@ -1,9 +1,30 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+const DEFAULT_ADMIN_EMAIL = 'admin@xera.com.br';
+const DEFAULT_ADMIN_SENHA = 'X3r4@2026$';
+
 async function main() {
   console.log('🌱 Starting seed...');
+
+  // 0. Admin inicial (apenas no primeiro run, quando não existe nenhum usuário)
+  const totalUsuarios = await prisma.usuario.count();
+  if (totalUsuarios === 0) {
+    console.log('👑 Criando usuário admin inicial...');
+    const senha_hash = await bcrypt.hash(DEFAULT_ADMIN_SENHA, 10);
+    await prisma.usuario.create({
+      data: {
+        nome: 'Administrador',
+        email: DEFAULT_ADMIN_EMAIL,
+        senha_hash,
+        perfil: 'ADMIN',
+        must_change_password: true,
+      },
+    });
+    console.log(`✅ Admin criado: ${DEFAULT_ADMIN_EMAIL} (senha temporária — troca obrigatória no primeiro login).`);
+  }
 
   // 1. Seed Tipos
   const tipos = [
