@@ -35,7 +35,7 @@ export const ChangePasswordPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:3000/api/auth/change-password",
+        "https://hapi.gunz.com.br/api/auth/change-password",
         {
           method: "POST",
           headers: {
