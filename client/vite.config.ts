@@ -7,14 +7,14 @@ export default defineConfig({
   server: {
     host: true, // Listen on all addresses
     strictPort: true,
-    port: 5173,
+    port: 8080,
     watch: {
       usePolling: true,
       interval: 1000, // Check files every 1000ms (Reduced Load)
       binaryInterval: 2000, // Check binary files less often
     },
     hmr: {
-      clientPort: 5173, // Ensures simple WebSocket connection from browser
+      clientPort: 8080, // Ensures simple WebSocket connection from browser
     },
   },
 });
