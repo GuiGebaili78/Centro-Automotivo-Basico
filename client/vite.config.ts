@@ -8,6 +8,7 @@ export default defineConfig({
     host: true, // Listen on all addresses
     strictPort: true,
     port: 8080,
+    allowedHosts: ["painel.gunz.com.br"],
     watch: {
       usePolling: true,
       interval: 1000, // Check files every 1000ms (Reduced Load)
