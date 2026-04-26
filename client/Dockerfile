@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Expõe a porta padrão do Vite
-EXPOSE 5173
+EXPOSE 80
 
 # Inicia o servidor de desenvolvimento com host 0.0.0.0 para acesso externo
 CMD ["npm", "run", "dev", "--", "--host"]
