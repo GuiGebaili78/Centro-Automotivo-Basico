@@ -1,6 +1,5 @@
 import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+import { API_BASE } from "./api";
 
 export type Configuracao = {
   id?: string;
@@ -20,12 +19,12 @@ export type Configuracao = {
 
 export const ConfiguracaoService = {
   get: async (): Promise<Configuracao | null> => {
-    const response = await axios.get(`${API_URL}/api/configuracao`);
+    const response = await axios.get(`${API_BASE}/configuracao`);
     return response.data;
   },
 
   save: async (formData: FormData): Promise<Configuracao> => {
-    const response = await axios.post(`${API_URL}/api/configuracao`, formData, {
+    const response = await axios.post(`${API_BASE}/configuracao`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },

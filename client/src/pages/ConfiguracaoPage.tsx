@@ -7,6 +7,7 @@ import {
   ConfiguracaoService,
   type Configuracao,
 } from "../services/ConfiguracaoService";
+import { STATIC_BASE } from "../services/api";
 import { toast } from "react-toastify";
 import {
   Save,
@@ -58,9 +59,7 @@ export const ConfiguracaoPage = () => {
       if (config) {
         setFormData(config);
         if (config.logoUrl) {
-          const apiUrl =
-            import.meta.env.VITE_API_URL || "http://localhost:3000";
-          setLogoPreview(`${apiUrl}${config.logoUrl}?t=${Date.now()}`);
+          setLogoPreview(`${STATIC_BASE}${config.logoUrl}?t=${Date.now()}`);
           setIsNewUpload(false);
         }
       }
@@ -202,8 +201,7 @@ export const ConfiguracaoPage = () => {
 
       // Update preview with new URL from server
       if (updatedConfig.logoUrl) {
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-        setLogoPreview(`${apiUrl}${updatedConfig.logoUrl}?t=${Date.now()}`);
+        setLogoPreview(`${STATIC_BASE}${updatedConfig.logoUrl}?t=${Date.now()}`);
         setIsNewUpload(false);
         // Reset zoom and position after save
         setLogoZoom(100);

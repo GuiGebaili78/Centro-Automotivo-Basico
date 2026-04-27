@@ -3,6 +3,7 @@ import {
   ConfiguracaoService,
   type Configuracao,
 } from "../../../services/ConfiguracaoService";
+import { STATIC_BASE } from "../../../services/api";
 import {
   Wrench,
   Package,
@@ -103,9 +104,8 @@ export const Sidebar = () => {
     if (!url) return "";
     // Se já for uma URL completa, retorna ela
     if (url.startsWith("http")) return url;
-    // Se começar com /, é um caminho relativo do backend
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-    return `${apiUrl}${url}`;
+    // Se começar com /, é um caminho relativo do backend (servido em /uploads)
+    return `${STATIC_BASE}${url}`;
   };
 
   return (

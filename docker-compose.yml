@@ -1,5 +1,5 @@
 services:
-  # 1. Serviço do Banco de Dados PostgreSQL
+  # 1. Banco PostgreSQL
   centroautomotivo_db:
     image: postgres:16
     restart: always
@@ -10,7 +10,7 @@ services:
     ports:
       - "5434:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U user -d automotivo_db" ]
+      test: ["CMD-SHELL", "pg_isready -U user -d automotivo_db"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -19,7 +19,7 @@ services:
     networks:
       - app-network
 
-  # 2. Serviço da API (Backend Node/Express)
+  # 2. API (Node/Express) — PROD
   api:
     build:
       context: ./server
@@ -33,6 +33,7 @@ services:
       PORT: 3000
       NODE_ENV: development
       NODE_OPTIONS: "--max-old-space-size=2048"
+      FRONTEND_URL: https://painel.gunz.com.br
     depends_on:
       centroautomotivo_db:
         condition: service_healthy
@@ -42,7 +43,7 @@ services:
     networks:
       - app-network
 
-  # 3. Serviço do Frontend (React + Vite)
+  # 3. Frontend (React + Vite) — PROD
   client:
     build:
       context: ./client
@@ -51,7 +52,14 @@ services:
     ports:
       - "8080:8080"
     environment:
-      VITE_API_URL: https://hapi.gunz.com.br
+      # API base já com /api no fim
+      VITE_API_URL: https://hapi.gunz.com.br/api
+      # Vite escuta na 8080 dentro do container (atrás do NPM)
+      VITE_PORT: "8080"
+      VITE_ALLOWED_HOSTS: painel.gunz.com.br
+      VITE_HMR_HOST: painel.gunz.com.br
+      VITE_HMR_PROTOCOL: wss
+      VITE_HMR_CLIENT_PORT: "443"
       NODE_OPTIONS: "--max-old-space-size=2048"
     volumes:
       - ./client:/app/client

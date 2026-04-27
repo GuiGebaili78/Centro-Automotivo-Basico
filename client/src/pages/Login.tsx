@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { API_BASE } from "../services/api";
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -17,7 +18,7 @@ export const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("https://hapi.gunz.com.br/api/auth/login", {
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

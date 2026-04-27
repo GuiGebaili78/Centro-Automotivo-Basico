@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { API_BASE } from "../services/api";
 
 export const ChangePasswordPage: React.FC = () => {
   const [senhaAtual, setSenhaAtual] = useState("");
@@ -35,7 +36,7 @@ export const ChangePasswordPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "https://hapi.gunz.com.br/api/auth/change-password",
+        `${API_BASE}/auth/change-password`,
         {
           method: "POST",
           headers: {
