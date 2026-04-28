@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { ArrowDownCircle } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { ArrowDownCircle, Check } from "lucide-react";
 
 interface Category {
   id_categoria: number;
@@ -70,6 +70,29 @@ export const CategorySelector = ({
     return filteredCats.filter((c) => c.parentId === Number(selectedParentId));
   }, [filteredCats, selectedParentId]);
 
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Auto-open subcategory dropdown
+  useEffect(() => {
+    if (selectedParentId && children.length > 0) {
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  }, [selectedParentId, children.length]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleParentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const pId = Number(e.target.value);
     setSelectedParentId(pId);
@@ -124,27 +147,55 @@ export const CategorySelector = ({
 
       {/* Child Selector (Only if parent selected and has children) */}
       {selectedParentId && children.length > 0 && (
-        <div className="animate-in slide-in-from-top-2 duration-200">
+        <div className="animate-in slide-in-from-top-2 duration-200" ref={dropdownRef}>
           <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
             Subcategoria
           </label>
           <div className="relative">
-            <select
-              value={selectedChildId}
-              onChange={handleChildChange}
-              required={required}
-              className="w-full bg-white border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer text-primary-700"
+            <button
+              type="button"
+              onClick={() => setIsOpen(!isOpen)}
+              className="w-full text-left bg-white border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all cursor-pointer text-primary-700 relative"
             >
-              <option value="">Selecione a Subcategoria...</option>
-              {children.map((c) => (
-                <option key={c.id_categoria} value={c.id_categoria}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-              <ArrowDownCircle size={14} />
-            </div>
+              <span className="block truncate">
+                {selectedChildId
+                  ? categories.find((c) => c.id_categoria === selectedChildId)?.nome
+                  : "Selecione a Subcategoria..."}
+              </span>
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-neutral-500">
+                <ArrowDownCircle size={14} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+              </span>
+            </button>
+            
+            {isOpen && (
+              <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 text-base shadow-xl ring-1 ring-black/5 focus:outline-none sm:text-sm custom-scrollbar border border-neutral-100 animate-in fade-in slide-in-from-top-1 duration-150">
+                {children.map((c) => {
+                  const isSelected = c.id_categoria === selectedChildId;
+                  return (
+                    <div
+                      key={c.id_categoria}
+                      onClick={() => {
+                        setSelectedChildId(c.id_categoria);
+                        setIsOpen(false);
+                        onChange(c.id_categoria, c.nome);
+                      }}
+                      className={`relative cursor-pointer select-none py-2.5 pl-10 pr-4 transition-colors hover:bg-primary-50 hover:text-primary-900 ${
+                        isSelected ? "bg-primary-50 text-primary-900" : "text-neutral-700 font-medium"
+                      }`}
+                    >
+                      <span className={`block truncate ${isSelected ? "font-bold text-primary-700" : "font-medium"}`}>
+                        {c.nome}
+                      </span>
+                      {isSelected && (
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary-600">
+                          <Check size={16} />
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

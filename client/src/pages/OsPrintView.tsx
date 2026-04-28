@@ -184,16 +184,7 @@ export const OsPrintView = () => {
             {os.defeito_relatado || "-"}
           </p>
         </div>
-        {os.diagnostico && (
-          <div className="mb-4">
-            <h3 className="font-bold uppercase bg-neutral-100 p-1 mb-1 print:bg-transparent print:border-b print:border-black">
-              Diagnóstico Técnico
-            </h3>
-            <p className="p-2 border border-neutral-200 rounded print:border-black min-h-[40px]">
-              {os.diagnostico}
-            </p>
-          </div>
-        )}
+
       </div>
 
       {/* Items */}

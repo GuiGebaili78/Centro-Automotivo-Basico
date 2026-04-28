@@ -232,7 +232,7 @@ export const OrdemDeServicoPage = () => {
           <Button
             variant="primary"
             icon={Plus}
-            onClick={() => setOsCreationModalOpen(true)}
+            onClick={() => navigate("/", { state: { focusSearch: true } })}
           >
             Novo Cadastro
           </Button>

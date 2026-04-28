@@ -71,3 +71,30 @@ export const formatPhone = (phone: string): string => {
 
   return phone;
 };
+
+export const formatCpf = (cpf: string): string => {
+  const digits = cpf.replace(/\D/g, "");
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
+
+export const formatCnpj = (cnpj: string): string => {
+  const digits = cnpj.replace(/\D/g, "");
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+};
+
+export const formatRg = (rg: string): string => {
+  const digits = rg.replace(/\D/g, "");
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4");
+};
+
+export const formatCep = (cep: string): string => {
+  const digits = cep.replace(/\D/g, "");
+  return digits.replace(/(\d{5})(\d{3})/, "$1-$2");
+};
+
+/**
+ * Remove any non-digit character to send to the backend
+ */
+export const unmask = (value: string): string => {
+  return value ? value.replace(/\D/g, "") : "";
+};

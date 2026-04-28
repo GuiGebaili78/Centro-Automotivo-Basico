@@ -3,6 +3,7 @@ import { ClienteDataForm } from "./ClienteDataForm";
 import { Button } from "../../ui";
 import { Save } from "lucide-react";
 import { ClienteService } from "../../../services/cliente.service";
+import { unmask } from "../../../utils/normalize";
 import { toast } from "react-toastify";
 
 interface ClienteFormProps {
@@ -64,11 +65,11 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
         nome,
         razao_social: razaoSocial,
         nome_fantasia: nomeFantasia,
-        cpf,
-        cnpj,
+        cpf: unmask(cpf),
+        cnpj: unmask(cnpj),
         inscricao_estadual: ie,
-        telefone_1: telefone,
-        telefone_2: telefone2,
+        telefone_1: unmask(telefone),
+        telefone_2: unmask(telefone2),
         email,
         logradouro,
         nr_logradouro: numero,
@@ -76,7 +77,7 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
         bairro,
         cidade,
         estado: "SP", // Default or form does not allow changing state easily? Added static for now in state
-        cep,
+        cep: unmask(cep),
       });
       toast.success("Cliente cadastrado com sucesso!");
       onSuccess(newClient);

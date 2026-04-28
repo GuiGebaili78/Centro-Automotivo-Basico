@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 
 import { OsStatus } from "../types/os.types";
@@ -16,6 +16,7 @@ import type { IDashboardStats } from "../types/dashboard.types";
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [decisionModalOpen, setDecisionModalOpen] = useState(false);
   const [isLoosePartModalOpen, setIsLoosePartModalOpen] = useState(false);
@@ -47,6 +48,21 @@ export function DashboardPage() {
 
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (location.state?.focusSearch) {
+      // Pequeno delay para garantir que o componente de busca foi renderizado
+      setTimeout(() => {
+        const input = document.querySelector(
+          "input[placeholder*='Buscar cliente, placa ou peça...']",
+        );
+        if (input) (input as HTMLElement).focus();
+      }, 100);
+
+      // Limpa o state para não focar novamente se der refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
 
   const fetchData = async () => {
     try {

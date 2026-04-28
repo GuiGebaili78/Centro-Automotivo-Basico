@@ -14,6 +14,7 @@ import {
 import type { IFornecedor } from "../../../types/backend";
 import { Button, Input } from "../../ui";
 import { toast } from "react-toastify";
+import { formatCnpj, formatCpf, formatCep, formatPhone, unmask } from "../../../utils/normalize";
 
 interface FornecedorFormProps {
   initialData?: IFornecedor | null;
@@ -133,7 +134,13 @@ export const FornecedorForm = ({
     try {
       let res;
       // Map formData to IFornecedorPayload
-      const payload: any = { ...formData }; // Simple casting as fields match
+      const payload: any = {
+        ...formData,
+        documento: unmask(formData.documento),
+        cep: unmask(formData.cep),
+        telefone: unmask(formData.telefone),
+        whatsapp: unmask(formData.whatsapp),
+      };
 
       if (initialData?.id_fornecedor) {
         res = await FornecedorService.update(
@@ -248,7 +255,14 @@ export const FornecedorForm = ({
                   <Input
                     label={formData.tipo_pessoa === "JURIDICA" ? "CNPJ" : "CPF"}
                     value={formData.documento}
-                    onChange={(e) => handleChange("documento", e.target.value)}
+                    onChange={(e) =>
+                      handleChange(
+                        "documento",
+                        formData.tipo_pessoa === "JURIDICA"
+                          ? formatCnpj(e.target.value)
+                          : formatCpf(e.target.value),
+                      )
+                    }
                     placeholder="Apenas números"
                   />
                 </div>
@@ -293,7 +307,7 @@ export const FornecedorForm = ({
                   <Input
                     label="CEP"
                     value={formData.cep}
-                    onChange={(e) => handleChange("cep", e.target.value)}
+                    onChange={(e) => handleChange("cep", formatCep(e.target.value))}
                     onBlur={handleCepBlur}
                     placeholder="00000-000"
                     icon={Search}
@@ -386,14 +400,14 @@ export const FornecedorForm = ({
                   <Input
                     label="Telefone Fixo"
                     value={formData.telefone}
-                    onChange={(e) => handleChange("telefone", e.target.value)}
+                    onChange={(e) => handleChange("telefone", formatPhone(e.target.value))}
                   />
                 </div>
                 <div>
                   <Input
                     label="WhatsApp / Celular"
                     value={formData.whatsapp}
-                    onChange={(e) => handleChange("whatsapp", e.target.value)}
+                    onChange={(e) => handleChange("whatsapp", formatPhone(e.target.value))}
                   />
                 </div>
                 <div>

@@ -121,58 +121,6 @@ export const OperadoraCartaoPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 pl-4">
-              <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-100/50">
-                <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
-                  Débito
-                </p>
-                <div className="flex items-baseline gap-1">
-                  <span className="font-black text-lg text-neutral-900">
-                    {op.taxa_debito}
-                  </span>
-                  <span className="text-xs font-bold text-neutral-400">%</span>
-                </div>
-                <p className="text-sm font-bold text-neutral-500 mt-1 bg-neutral-100 w-fit px-1.5 py-0.5 rounded">
-                  D+{op.prazo_debito}
-                </p>
-              </div>
-              <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-100/50">
-                <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
-                  Créd. Vista
-                </p>
-                <div className="flex items-baseline gap-1">
-                  <span className="font-black text-lg text-neutral-900">
-                    {op.taxa_credito_vista}
-                  </span>
-                  <span className="text-xs font-bold text-neutral-400">%</span>
-                </div>
-                <p className="text-sm font-bold text-neutral-500 mt-1 bg-neutral-100 w-fit px-1.5 py-0.5 rounded">
-                  D+{op.prazo_credito_vista}
-                </p>
-              </div>
-              <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-100/50">
-                <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
-                  Créd. Parc
-                </p>
-                <div className="flex items-baseline gap-1">
-                  <span className="font-black text-lg text-neutral-900">
-                    {op.taxa_credito_parc}
-                  </span>
-                  <span className="text-xs font-bold text-neutral-400">%</span>
-                </div>
-                <p className="text-sm font-bold text-neutral-500 mt-1 bg-neutral-100 w-fit px-1.5 py-0.5 rounded">
-                  D+{op.prazo_credito_parc}
-                </p>
-              </div>
-            </div>
-
-            {op.antecipacao_auto && (
-              <div className="mt-5 pl-4 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-primary-700 bg-primary-50 w-fit px-3 py-1.5 rounded-full border border-primary-100">
-                <span className="flex items-center gap-1.5">
-                  Antecipação Automática: {op.taxa_antecipacao}%
-                </span>
-              </div>
-            )}
           </div>
         ))}
 

@@ -9,6 +9,7 @@ import {
   Hash,
 } from "lucide-react";
 import { Button, Input } from "../../ui";
+import { formatCpf, formatCnpj, formatCep, formatPhone } from "../../../utils/normalize";
 
 interface ClienteDataFormProps {
   tipoPessoa: "PF" | "PJ";
@@ -146,7 +147,7 @@ export const ClienteDataForm = memo(
                 label="CPF"
                 icon={Hash}
                 value={cpf}
-                onChange={(e) => setCpf(e.target.value)}
+                onChange={(e) => setCpf(formatCpf(e.target.value))}
                 placeholder="000.000.000-00"
                 disabled={isEditMode}
               />
@@ -174,7 +175,7 @@ export const ClienteDataForm = memo(
                 <Input
                   label="CNPJ"
                   value={cnpj}
-                  onChange={(e) => setCnpj(e.target.value)}
+                  onChange={(e) => setCnpj(formatCnpj(e.target.value))}
                   placeholder="00.000.000/0000-00"
                 />
                 <Input
@@ -193,7 +194,7 @@ export const ClienteDataForm = memo(
             label="Telefone Principal *"
             icon={Phone}
             value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
+            onChange={(e) => setTelefone(formatPhone(e.target.value))}
             placeholder="(00) 00000-0000"
             required
           />
@@ -201,7 +202,7 @@ export const ClienteDataForm = memo(
             label="Telefone 2"
             icon={Phone}
             value={telefone2}
-            onChange={(e) => setTelefone2(e.target.value)}
+            onChange={(e) => setTelefone2(formatPhone(e.target.value))}
             placeholder="(00) 00000-0000"
           />
           <div className="sm:col-span-2">
@@ -222,7 +223,7 @@ export const ClienteDataForm = memo(
               label="CEP"
               icon={Search}
               value={cep}
-              onChange={(e) => setCep(e.target.value)}
+              onChange={(e) => setCep(formatCep(e.target.value))}
               onBlur={handleCepBlur}
               placeholder="00000-000"
             />

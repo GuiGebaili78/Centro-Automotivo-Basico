@@ -15,6 +15,7 @@ import { ModalPagamentoUnificado } from "../components/financeiro/ModalPagamento
 import { UniversalFilters } from "../components/common/UniversalFilters";
 import type { UniversalFiltersState } from "../components/common/UniversalFilters";
 import { useUniversalFilter } from "../hooks/useUniversalFilter";
+import { formatNameTitleCase } from "../utils/normalize";
 import { toast } from "react-toastify";
 import {
   Plus,
@@ -321,7 +322,7 @@ export const ContasAPagarPage = () => {
                   </td>
                   <td className="p-4">
                     <div className="flex flex-col">
-                       <div className="text-base text-neutral-900 font-normal lowercase">{conta.categoria || "\u00A0"}</div>
+                       <div className="text-base text-neutral-900 font-normal">{conta.categoria ? formatNameTitleCase(conta.categoria) : "\u00A0"}</div>
                        <div className="text-sm text-neutral-500 font-normal min-h-[1.5rem] mt-1">&nbsp;</div>
                        <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                     </div>

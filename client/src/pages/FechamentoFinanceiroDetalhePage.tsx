@@ -757,7 +757,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 <div className="p-1.5 bg-red-100 rounded-lg text-red-600">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
                 </div>
-                Defeito Relatado
+                Defeito Relatado (Impressão para o Cliente)
               </label>
               <textarea
                 className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-base font-medium text-neutral-700 h-32 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
@@ -775,7 +775,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
                   <BadgeCheck size={18} />
                 </div>
-                Diagnóstico Técnico
+                Diagnóstico (apenas informações internas da oficina)
               </label>
               <textarea
                 className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-base font-medium text-neutral-700 h-32 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"

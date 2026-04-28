@@ -581,7 +581,7 @@ export const FechamentoFinanceiroForm = ({
                 <div className="lg:col-span-4 space-y-4 lg:border-l lg:border-gray-100 lg:pl-8 lg:border-dashed">
                   <div>
                     <p className="text-sm font-black text-red-400 uppercase mb-1 tracking-wider flex items-center gap-2">
-                      <AlertCircle size={12} /> Defeito Relatado
+                      <AlertCircle size={12} /> Defeito Relatado (Impressão para o Cliente)
                     </p>
                     <div className="text-sm font-medium text-gray-700 leading-relaxed bg-red-50/30 p-3 rounded-lg border border-red-50">
                       {osData.defeito_relatado || (
@@ -593,7 +593,7 @@ export const FechamentoFinanceiroForm = ({
                   </div>
                   <div>
                     <p className="text-sm font-black text-blue-400 uppercase mb-1 tracking-wider flex items-center gap-2">
-                      <Wrench size={12} /> Diagnóstico Técnico
+                      <Wrench size={12} /> Diagnóstico (apenas informações internas da oficina)
                     </p>
                     <div className="text-sm font-medium text-gray-700 leading-relaxed bg-blue-50/30 p-3 rounded-lg border border-blue-50">
                       {osData.diagnostico || (

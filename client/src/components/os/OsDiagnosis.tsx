@@ -24,7 +24,7 @@ export const OsDiagnosis = ({
           <div className="p-1.5 bg-red-100 rounded-lg text-red-600">
             <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
           </div>
-          DEFEITO RELATADO
+          DEFEITO RELATADO (IMPRESSÃO PARA O CLIENTE)
         </label>
         <textarea
           className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-base text-gray-900 h-32 outline-none focus:border-red-300 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm placeholder:text-gray-400"
@@ -39,7 +39,7 @@ export const OsDiagnosis = ({
           <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
           </div>
-          DIAGNÓSTICO TÉCNICO
+          DIAGNÓSTICO (APENAS INFORMAÇÕES INTERNAS DA OFICINA)
         </label>
         <textarea
           className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-base text-gray-900 h-32 outline-none focus:border-neutral-200 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm placeholder:text-gray-400"
