@@ -99,7 +99,7 @@ export const RecebiveisTab = () => {
 
   const executeConciliacao = async () => {
     try {
-      await FinanceiroService.confirmarRecebiveis(selectedIds);
+      await FinanceiroService.confirmarRecebiveis(selectedIds, new Date().toISOString());
       toast.success("Recebimentos confirmados e conciliados!");
       setSelectedIds([]);
       loadData(universalFilters.startDate, universalFilters.endDate);
@@ -328,11 +328,14 @@ export const RecebiveisTab = () => {
                       {formatCurrency(Number(r.valor_bruto))}
                     </td>
                     <td className="p-4 text-right">
-                      <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg">
-                        {/* Ajuste o '2' para quantas casas decimais você deseja */}
-                        - {Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}
-                        %
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg">
+                          - {Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}%
+                        </span>
+                        <span className="text-xs text-neutral-500 font-medium">
+                          {formatCurrency(Number(r.valor_bruto) - Number(r.valor_liquido))}
+                        </span>
+                      </div>
                     </td>
                     <td className="p-4 text-right">
                       <span className="text-base text-gray-900 font-medium">
@@ -345,11 +348,12 @@ export const RecebiveisTab = () => {
                           <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
                             <CheckCircle size={12} /> Recebido
                           </span>
-                          {r.data_recebimento && (
-                            <span className="text-sm text-neutral-400 font-bold mt-1">
-                              {new Date(r.data_recebimento).toLocaleDateString(
-                                "pt-BR",
-                              )}
+                          {(r.confirmado_em || r.data_recebimento) && (
+                            <span className="text-sm text-neutral-400 font-bold mt-1 text-center leading-tight">
+                              {new Date(r.confirmado_em || r.data_recebimento!).toLocaleDateString("pt-BR")}<br />
+                              <span className="text-xs font-medium opacity-75">
+                                {r.confirmado_em ? new Date(r.confirmado_em).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }) : "23:59"}
+                              </span>
                             </span>
                           )}
                         </div>

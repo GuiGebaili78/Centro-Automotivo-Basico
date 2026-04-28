@@ -125,8 +125,11 @@ export class FinanceiroService {
     return response.data;
   }
 
-  static async confirmarRecebiveis(ids: number[]): Promise<void> {
-    await api.post("/recebivel-cartao/confirmar", { ids });
+  static async confirmarRecebiveis(ids: number[], data_recebimento?: string): Promise<void> {
+    await api.post("/recebivel-cartao/confirmar", { 
+      ids, 
+      data_recebimento: data_recebimento || new Date().toISOString() 
+    });
   }
 
   // --- CATEGORIAS FINANCEIRAS ---
