@@ -1,0 +1,1 @@
+ssh -p 9055 root@201.17.19.150 "docker exec -t centro-automotivo-basico-centroautomotivo_db-1 pg_dump -U user -d automotivo_db" > backup_automotivo.sql
