@@ -4,6 +4,8 @@
 
 services:
   api:
+    ports:
+      - "3000:3000"
     environment:
       FRONTEND_URL: http://localhost:5173
 
@@ -13,8 +15,14 @@ services:
     environment:
       VITE_API_URL: http://localhost:3000/api
       VITE_PORT: "5173"
-      # Em dev libera qualquer host
       VITE_ALLOWED_HOSTS: ""
       VITE_HMR_HOST: ""
       VITE_HMR_PROTOCOL: ws
       VITE_HMR_CLIENT_PORT: "5173"
+
+  # Em dev não precisa do reverse proxy. O profile "never" não é ativado por
+  # ./dev.sh, então o nginx não sobe localmente (e libera as portas 80/443
+  # do host).
+  nginx:
+    profiles:
+      - never
