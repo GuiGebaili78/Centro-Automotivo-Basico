@@ -98,3 +98,11 @@ export const formatCep = (cep: string): string => {
 export const unmask = (value: string): string => {
   return value ? value.replace(/\D/g, "") : "";
 };
+
+/**
+ * Formata Inscrição Estadual (IE) adicionando pontos a cada 3 dígitos da direita para a esquerda
+ */
+export const formatIE = (ie: string): string => {
+  const digits = ie.replace(/\D/g, "");
+  return digits.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+};

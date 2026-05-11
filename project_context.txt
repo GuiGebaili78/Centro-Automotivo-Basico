@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 04/27/2026 19:02:50
+PROJECT DUMP GENERATED ON 05/11/2026 20:32:51
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -1100,8 +1100,6 @@ services:
       VITE_HMR_PROTOCOL: ws
       VITE_HMR_CLIENT_PORT: "5173"
 
-
-
 ================================================================================
 FILE PATH: docker-compose.yml
 ================================================================================
@@ -2054,6 +2052,9 @@ FILE PATH: client\src\index.css
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   html,
   body {
     @apply antialiased text-slate-800 bg-slate-50 font-sans;
@@ -2524,6 +2525,7 @@ import {
   Hash,
 } from "lucide-react";
 import { Button, Input } from "../../ui";
+import { formatCpf, formatCnpj, formatCep, formatPhone } from "../../../utils/normalize";
 
 interface ClienteDataFormProps {
   tipoPessoa: "PF" | "PJ";
@@ -2661,7 +2663,7 @@ export const ClienteDataForm = memo(
                 label="CPF"
                 icon={Hash}
                 value={cpf}
-                onChange={(e) => setCpf(e.target.value)}
+                onChange={(e) => setCpf(formatCpf(e.target.value))}
                 placeholder="000.000.000-00"
                 disabled={isEditMode}
               />
@@ -2689,7 +2691,7 @@ export const ClienteDataForm = memo(
                 <Input
                   label="CNPJ"
                   value={cnpj}
-                  onChange={(e) => setCnpj(e.target.value)}
+                  onChange={(e) => setCnpj(formatCnpj(e.target.value))}
                   placeholder="00.000.000/0000-00"
                 />
                 <Input
@@ -2708,7 +2710,7 @@ export const ClienteDataForm = memo(
             label="Telefone Principal *"
             icon={Phone}
             value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
+            onChange={(e) => setTelefone(formatPhone(e.target.value))}
             placeholder="(00) 00000-0000"
             required
           />
@@ -2716,7 +2718,7 @@ export const ClienteDataForm = memo(
             label="Telefone 2"
             icon={Phone}
             value={telefone2}
-            onChange={(e) => setTelefone2(e.target.value)}
+            onChange={(e) => setTelefone2(formatPhone(e.target.value))}
             placeholder="(00) 00000-0000"
           />
           <div className="sm:col-span-2">
@@ -2737,7 +2739,7 @@ export const ClienteDataForm = memo(
               label="CEP"
               icon={Search}
               value={cep}
-              onChange={(e) => setCep(e.target.value)}
+              onChange={(e) => setCep(formatCep(e.target.value))}
               onBlur={handleCepBlur}
               placeholder="00000-000"
             />
@@ -2791,6 +2793,7 @@ import { ClienteDataForm } from "./ClienteDataForm";
 import { Button } from "../../ui";
 import { Save } from "lucide-react";
 import { ClienteService } from "../../../services/cliente.service";
+import { unmask } from "../../../utils/normalize";
 import { toast } from "react-toastify";
 
 interface ClienteFormProps {
@@ -2852,11 +2855,11 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
         nome,
         razao_social: razaoSocial,
         nome_fantasia: nomeFantasia,
-        cpf,
-        cnpj,
+        cpf: unmask(cpf),
+        cnpj: unmask(cnpj),
         inscricao_estadual: ie,
-        telefone_1: telefone,
-        telefone_2: telefone2,
+        telefone_1: unmask(telefone),
+        telefone_2: unmask(telefone2),
         email,
         logradouro,
         nr_logradouro: numero,
@@ -2864,7 +2867,7 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
         bairro,
         cidade,
         estado: "SP", // Default or form does not allow changing state easily? Added static for now in state
-        cep,
+        cep: unmask(cep),
       });
       toast.success("Cliente cadastrado com sucesso!");
       onSuccess(newClient);
@@ -2966,6 +2969,7 @@ import {
   Hash,
 } from "lucide-react";
 import { Input } from "../../ui/Input";
+import { formatCpf, formatCnpj, formatCep, formatPhone, unmask } from "../../../utils/normalize";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -3073,15 +3077,15 @@ export const ClienteFormSection = memo(
           getData: () => ({
             tipoPessoa,
             nome,
-            cpf,
+            cpf: unmask(cpf),
             razaoSocial,
             nomeFantasia,
-            cnpj,
+            cnpj: unmask(cnpj),
             ie,
-            telefone,
-            telefone2,
+            telefone: unmask(telefone),
+            telefone2: unmask(telefone2),
             email,
-            cep,
+            cep: unmask(cep),
             logradouro,
             numero,
             complLogradouro,
@@ -3181,7 +3185,7 @@ export const ClienteFormSection = memo(
                   label="CPF"
                   icon={Hash}
                   value={cpf}
-                  onChange={(e) => setCpf(e.target.value)}
+                  onChange={(e) => setCpf(formatCpf(e.target.value))}
                   placeholder="000.000.000-00"
                   disabled={isEditMode}
                 />
@@ -3209,7 +3213,7 @@ export const ClienteFormSection = memo(
                   <Input
                     label="CNPJ"
                     value={cnpj}
-                    onChange={(e) => setCnpj(e.target.value)}
+                    onChange={(e) => setCnpj(formatCnpj(e.target.value))}
                     placeholder="00.000.000/0000-00"
                   />
                   <Input
@@ -3229,7 +3233,7 @@ export const ClienteFormSection = memo(
               label="Telefone Principal *"
               icon={Phone}
               value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
+              onChange={(e) => setTelefone(formatPhone(e.target.value))}
               placeholder="(00) 00000-0000"
               required
             />
@@ -3237,7 +3241,7 @@ export const ClienteFormSection = memo(
               label="Telefone 2"
               icon={Phone}
               value={telefone2}
-              onChange={(e) => setTelefone2(e.target.value)}
+              onChange={(e) => setTelefone2(formatPhone(e.target.value))}
               placeholder="(00) 00000-0000"
             />
             <div className="sm:col-span-2">
@@ -3259,7 +3263,7 @@ export const ClienteFormSection = memo(
                 label="CEP"
                 icon={Search}
                 value={cep}
-                onChange={(e) => setCep(e.target.value)}
+                onChange={(e) => setCep(formatCep(e.target.value))}
                 onBlur={handleCepBlur}
                 placeholder="00000-000"
               />
@@ -3533,6 +3537,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { IFuncionario } from "../../../types/backend";
+import { formatCpf, formatCnpj, formatRg, formatCep, formatPhone, unmask } from "../../../utils/normalize";
 
 import { Button, Input, Select, TextArea, ConfirmModal } from "../../ui";
 
@@ -3731,19 +3736,19 @@ export const FuncionarioForm = ({
         // MEI
         razao_social: formData.razao_social || null,
         nome_fantasia: formData.nome_fantasia || null,
-        cnpj_mei: formData.cnpj_mei || null,
+        cnpj_mei: unmask(formData.cnpj_mei) || null,
         inscricao_municipal: formData.inscricao_municipal || null,
 
         // Personal / Address
-        rg: formData.rg || null,
-        cep: formData.cep || null,
+        rg: unmask(formData.rg) || null,
+        cep: unmask(formData.cep) || null,
         logradouro: formData.logradouro || null,
         numero: formData.numero || null,
         complemento: formData.complemento || null,
         bairro: formData.bairro || null,
         cidade: formData.cidade || null,
         uf: formData.uf || null,
-        telefone_pessoal: formData.telefone_pessoal || null,
+        telefone_pessoal: unmask(formData.telefone_pessoal) || null,
         email_pessoal: formData.email_pessoal || null,
 
         especialidade: formData.especialidade || null,
@@ -3785,7 +3790,7 @@ export const FuncionarioForm = ({
         await ColaboradorService.create(
           getFuncionarioPayload(),
           pessoaCreateData,
-          formData.cpf,
+          unmask(formData.cpf),
         );
       }
 
@@ -3867,7 +3872,7 @@ export const FuncionarioForm = ({
                   <Input
                     label="CPF *"
                     value={formData.cpf}
-                    onChange={(e) => handleChange("cpf", e.target.value)}
+                    onChange={(e) => handleChange("cpf", formatCpf(e.target.value))}
                     placeholder="000.000.000-00"
                     required={!initialData}
                     disabled={!!initialData}
@@ -3877,7 +3882,7 @@ export const FuncionarioForm = ({
                   <Input
                     label="RG"
                     value={formData.rg}
-                    onChange={(e) => handleChange("rg", e.target.value)}
+                    onChange={(e) => handleChange("rg", formatRg(e.target.value))}
                   />
                 </div>
                 <div>
@@ -3938,7 +3943,7 @@ export const FuncionarioForm = ({
                   <Input
                     label="CNPJ MEI"
                     value={formData.cnpj_mei}
-                    onChange={(e) => handleChange("cnpj_mei", e.target.value)}
+                    onChange={(e) => handleChange("cnpj_mei", formatCnpj(e.target.value))}
                   />
                 </div>
                 <div>
@@ -3968,7 +3973,7 @@ export const FuncionarioForm = ({
                   <Input
                     label="CEP"
                     value={formData.cep}
-                    onChange={(e) => handleChange("cep", e.target.value)}
+                    onChange={(e) => handleChange("cep", formatCep(e.target.value))}
                     onBlur={handleCepBlur}
                     placeholder="00000-000"
                     icon={Search}
@@ -4048,7 +4053,7 @@ export const FuncionarioForm = ({
                     label="Telefone / WhatsApp"
                     value={formData.telefone_pessoal}
                     onChange={(e) =>
-                      handleChange("telefone_pessoal", e.target.value)
+                      handleChange("telefone_pessoal", formatPhone(e.target.value))
                     }
                   />
                 </div>
@@ -5779,8 +5784,6 @@ export const EntradaFornecedorForm = ({
   );
 };
 
-
-
 ================================================================================
 FILE PATH: client\src\components\estoque\EntradaItensForm.tsx
 ================================================================================
@@ -7034,8 +7037,8 @@ export const CategoryManager = ({
 ================================================================================
 FILE PATH: client\src\components\financeiro\CategorySelector.tsx
 ================================================================================
-import { useState, useEffect, useMemo } from "react";
-import { ArrowDownCircle } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { ArrowDownCircle, Check } from "lucide-react";
 
 interface Category {
   id_categoria: number;
@@ -7106,6 +7109,29 @@ export const CategorySelector = ({
     return filteredCats.filter((c) => c.parentId === Number(selectedParentId));
   }, [filteredCats, selectedParentId]);
 
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Auto-open subcategory dropdown
+  useEffect(() => {
+    if (selectedParentId && children.length > 0) {
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  }, [selectedParentId, children.length]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleParentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const pId = Number(e.target.value);
     setSelectedParentId(pId);
@@ -7160,27 +7186,55 @@ export const CategorySelector = ({
 
       {/* Child Selector (Only if parent selected and has children) */}
       {selectedParentId && children.length > 0 && (
-        <div className="animate-in slide-in-from-top-2 duration-200">
+        <div className="animate-in slide-in-from-top-2 duration-200" ref={dropdownRef}>
           <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
             Subcategoria
           </label>
           <div className="relative">
-            <select
-              value={selectedChildId}
-              onChange={handleChildChange}
-              required={required}
-              className="w-full bg-white border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer text-primary-700"
+            <button
+              type="button"
+              onClick={() => setIsOpen(!isOpen)}
+              className="w-full text-left bg-white border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all cursor-pointer text-primary-700 relative"
             >
-              <option value="">Selecione a Subcategoria...</option>
-              {children.map((c) => (
-                <option key={c.id_categoria} value={c.id_categoria}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-              <ArrowDownCircle size={14} />
-            </div>
+              <span className="block truncate">
+                {selectedChildId
+                  ? categories.find((c) => c.id_categoria === selectedChildId)?.nome
+                  : "Selecione a Subcategoria..."}
+              </span>
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-neutral-500">
+                <ArrowDownCircle size={14} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+              </span>
+            </button>
+            
+            {isOpen && (
+              <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 text-base shadow-xl ring-1 ring-black/5 focus:outline-none sm:text-sm custom-scrollbar border border-neutral-100 animate-in fade-in slide-in-from-top-1 duration-150">
+                {children.map((c) => {
+                  const isSelected = c.id_categoria === selectedChildId;
+                  return (
+                    <div
+                      key={c.id_categoria}
+                      onClick={() => {
+                        setSelectedChildId(c.id_categoria);
+                        setIsOpen(false);
+                        onChange(c.id_categoria, c.nome);
+                      }}
+                      className={`relative cursor-pointer select-none py-2.5 pl-10 pr-4 transition-colors hover:bg-primary-50 hover:text-primary-900 ${
+                        isSelected ? "bg-primary-50 text-primary-900" : "text-neutral-700 font-medium"
+                      }`}
+                    >
+                      <span className={`block truncate ${isSelected ? "font-bold text-primary-700" : "font-medium"}`}>
+                        {c.nome}
+                      </span>
+                      {isSelected && (
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary-600">
+                          <Check size={16} />
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -10608,11 +10662,6 @@ export const OperadorasTab = () => {
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {operadoras.map((op) => {
-          const taxas = op.taxas_cartao || [];
-          const taxaPix = getTaxa(taxas, "PIX", 1);
-          const taxaDebito = getTaxa(taxas, "DEBITO", 1);
-          const taxaAvista = getTaxa(taxas, "CREDITO_AVISTA", 1);
-          const parceladas = taxas.filter((t: any) => t.modalidade === "CREDITO");
           const contaDestino = contas.find((c) => c.id_conta === op.id_conta_destino);
 
           return (
@@ -10656,56 +10705,6 @@ export const OperadorasTab = () => {
                 </div>
               </div>
 
-              {/* Seção A: Taxas imediatas */}
-              <div className="grid grid-cols-3 gap-2 pl-4 mb-4">
-                <div className="bg-violet-50 border border-violet-100 p-3 rounded-xl">
-                  <p className="text-[10px] font-black text-violet-500 uppercase mb-1 flex items-center gap-1">
-                    <Wifi size={10} /> PIX Máquina
-                  </p>
-                  <p className="text-sm font-bold text-violet-700">
-                    {taxaPix ? `${Number(taxaPix.taxa_base_pct).toFixed(2)}%` : "—"}
-                  </p>
-                </div>
-                <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl">
-                  <p className="text-[10px] font-black text-blue-500 uppercase mb-1">Débito</p>
-                  <p className="text-sm font-bold text-blue-700">
-                    {taxaDebito ? `${Number(taxaDebito.taxa_base_pct).toFixed(2)}%` : "—"}
-                  </p>
-                </div>
-                <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
-                  <p className="text-[10px] font-black text-emerald-500 uppercase mb-1">Créd. Vista</p>
-                  <p className="text-sm font-bold text-emerald-700">
-                    {taxaAvista ? `${Number(taxaAvista.taxa_base_pct).toFixed(2)}%` : "—"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Seção B: Parcelamento resumido */}
-              {parceladas.length > 0 && (
-                <div className="pl-4">
-                  <p className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <ArrowRightLeft size={10} /> Parcelado ({parceladas.length}x configuradas)
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {parceladas
-                      .sort((a: any, b: any) => a.parcela - b.parcela)
-                      .slice(0, 9)
-                      .map((t: any) => (
-                        <span
-                          key={t.parcela}
-                          className="text-[10px] font-bold bg-neutral-100 text-neutral-600 px-2 py-1 rounded"
-                        >
-                          {t.parcela}x = {(Number(t.taxa_base_pct) + Number(t.taxa_juros_pct)).toFixed(2)}%
-                        </span>
-                      ))}
-                    {parceladas.length > 9 && (
-                      <span className="text-[10px] text-neutral-400 italic px-2 py-1">
-                        +{parceladas.length - 9} mais
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}
@@ -12509,7 +12508,7 @@ export const RecebiveisTab = () => {
 
   const executeConciliacao = async () => {
     try {
-      await FinanceiroService.confirmarRecebiveis(selectedIds);
+      await FinanceiroService.confirmarRecebiveis(selectedIds, new Date().toISOString());
       toast.success("Recebimentos confirmados e conciliados!");
       setSelectedIds([]);
       loadData(universalFilters.startDate, universalFilters.endDate);
@@ -12738,11 +12737,14 @@ export const RecebiveisTab = () => {
                       {formatCurrency(Number(r.valor_bruto))}
                     </td>
                     <td className="p-4 text-right">
-                      <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg">
-                        {/* Ajuste o '2' para quantas casas decimais você deseja */}
-                        - {Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}
-                        %
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg">
+                          - {Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}%
+                        </span>
+                        <span className="text-xs text-neutral-500 font-medium">
+                          {formatCurrency(Number(r.valor_bruto) - Number(r.valor_liquido))}
+                        </span>
+                      </div>
                     </td>
                     <td className="p-4 text-right">
                       <span className="text-base text-gray-900 font-medium">
@@ -12755,11 +12757,12 @@ export const RecebiveisTab = () => {
                           <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
                             <CheckCircle size={12} /> Recebido
                           </span>
-                          {r.data_recebimento && (
-                            <span className="text-sm text-neutral-400 font-bold mt-1">
-                              {new Date(r.data_recebimento).toLocaleDateString(
-                                "pt-BR",
-                              )}
+                          {(r.confirmado_em || r.data_recebimento) && (
+                            <span className="text-sm text-neutral-400 font-bold mt-1 text-center leading-tight">
+                              {new Date(r.confirmado_em || r.data_recebimento!).toLocaleDateString("pt-BR")}<br />
+                              <span className="text-xs font-medium opacity-75">
+                                {r.confirmado_em ? new Date(r.confirmado_em).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }) : "23:59"}
+                              </span>
                             </span>
                           )}
                         </div>
@@ -13421,7 +13424,7 @@ export const FechamentoFinanceiroForm = ({
                 <div className="lg:col-span-4 space-y-4 lg:border-l lg:border-gray-100 lg:pl-8 lg:border-dashed">
                   <div>
                     <p className="text-sm font-black text-red-400 uppercase mb-1 tracking-wider flex items-center gap-2">
-                      <AlertCircle size={12} /> Defeito Relatado
+                      <AlertCircle size={12} /> Defeito Relatado (Impressão para o Cliente)
                     </p>
                     <div className="text-sm font-medium text-gray-700 leading-relaxed bg-red-50/30 p-3 rounded-lg border border-red-50">
                       {osData.defeito_relatado || (
@@ -13433,7 +13436,7 @@ export const FechamentoFinanceiroForm = ({
                   </div>
                   <div>
                     <p className="text-sm font-black text-blue-400 uppercase mb-1 tracking-wider flex items-center gap-2">
-                      <Wrench size={12} /> Diagnóstico Técnico
+                      <Wrench size={12} /> Diagnóstico (apenas informações internas da oficina)
                     </p>
                     <div className="text-sm font-medium text-gray-700 leading-relaxed bg-blue-50/30 p-3 rounded-lg border border-blue-50">
                       {osData.diagnostico || (
@@ -14978,6 +14981,7 @@ import {
 import type { IFornecedor } from "../../../types/backend";
 import { Button, Input } from "../../ui";
 import { toast } from "react-toastify";
+import { formatCnpj, formatCpf, formatCep, formatPhone, unmask } from "../../../utils/normalize";
 
 interface FornecedorFormProps {
   initialData?: IFornecedor | null;
@@ -15096,21 +15100,41 @@ export const FornecedorForm = ({
     setLoading(true);
     try {
       let res;
-      // Map formData to IFornecedorPayload
-      const payload: any = { ...formData }; // Simple casting as fields match
+      const isUpdate = !!initialData?.id_fornecedor;
 
-      if (initialData?.id_fornecedor) {
-        res = await FornecedorService.update(
-          initialData.id_fornecedor,
-          payload,
-        );
+      // Monta o payload base apenas com campos existentes na tabela Pessoa
+      const payload: any = {
+        nome: formData.nome,
+        obs: formData.obs || null,
+        is_fornecedor: true,
+      };
+
+      // Adiciona o relacionamento correto dependendo do tipo de pessoa
+      if (formData.tipo_pessoa === "JURIDICA") {
+        const pjData = {
+          razao_social: formData.nome,
+          nome_fantasia: formData.nome_fantasia || null,
+          cnpj: unmask(formData.documento) || null,
+          inscricao_estadual: formData.inscricao_estadual || null,
+        };
+        payload.pessoa_juridica = isUpdate ? { update: pjData } : { create: pjData };
+      } else {
+        const pfData = {
+          cpf: unmask(formData.documento) || null,
+        };
+        payload.pessoa_fisica = isUpdate ? { update: pfData } : { create: pfData };
+      }
+
+      if (isUpdate) {
+        res = await FornecedorService.update(initialData.id_fornecedor, payload);
       } else {
         res = await FornecedorService.create(payload);
       }
+      
       onSuccess(res);
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao salvar fornecedor.");
+      toast.error("Erro ao salvar fornecedor. Verifique os dados enviados.");
     } finally {
       setLoading(false);
     }
@@ -15212,7 +15236,14 @@ export const FornecedorForm = ({
                   <Input
                     label={formData.tipo_pessoa === "JURIDICA" ? "CNPJ" : "CPF"}
                     value={formData.documento}
-                    onChange={(e) => handleChange("documento", e.target.value)}
+                    onChange={(e) =>
+                      handleChange(
+                        "documento",
+                        formData.tipo_pessoa === "JURIDICA"
+                          ? formatCnpj(e.target.value)
+                          : formatCpf(e.target.value),
+                      )
+                    }
                     placeholder="Apenas números"
                   />
                 </div>
@@ -15257,7 +15288,7 @@ export const FornecedorForm = ({
                   <Input
                     label="CEP"
                     value={formData.cep}
-                    onChange={(e) => handleChange("cep", e.target.value)}
+                    onChange={(e) => handleChange("cep", formatCep(e.target.value))}
                     onBlur={handleCepBlur}
                     placeholder="00000-000"
                     icon={Search}
@@ -15350,14 +15381,14 @@ export const FornecedorForm = ({
                   <Input
                     label="Telefone Fixo"
                     value={formData.telefone}
-                    onChange={(e) => handleChange("telefone", e.target.value)}
+                    onChange={(e) => handleChange("telefone", formatPhone(e.target.value))}
                   />
                 </div>
                 <div>
                   <Input
                     label="WhatsApp / Celular"
                     value={formData.whatsapp}
-                    onChange={(e) => handleChange("whatsapp", e.target.value)}
+                    onChange={(e) => handleChange("whatsapp", formatPhone(e.target.value))}
                   />
                 </div>
                 <div>
@@ -16774,7 +16805,7 @@ export const OsDiagnosis = ({
           <div className="p-1.5 bg-red-100 rounded-lg text-red-600">
             <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
           </div>
-          DEFEITO RELATADO
+          DEFEITO RELATADO (IMPRESSÃO PARA O CLIENTE)
         </label>
         <textarea
           className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-base text-gray-900 h-32 outline-none focus:border-red-300 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm placeholder:text-gray-400"
@@ -16789,7 +16820,7 @@ export const OsDiagnosis = ({
           <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
           </div>
-          DIAGNÓSTICO TÉCNICO
+          DIAGNÓSTICO (APENAS INFORMAÇÕES INTERNAS DA OFICINA)
         </label>
         <textarea
           className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-base text-gray-900 h-32 outline-none focus:border-neutral-200 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm placeholder:text-gray-400"
@@ -20328,6 +20359,41 @@ export const StatusBanner = ({ msg, onClose }: StatusBannerProps) => {
 ================================================================================
 FILE PATH: client\src\components\ui\TextArea.tsx
 ================================================================================
+import React, { forwardRef } from "react";
+
+interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string;
+  error?: string;
+}
+
+export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
+  ({ label, error, className = "", ...props }, ref) => {
+    return (
+      <div className="flex flex-col gap-1.5 w-full">
+        {label && (
+          <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+            {label}
+          </label>
+        )}
+        <textarea
+          {...props}
+          ref={ref}
+          className={`
+            w-full bg-white border rounded-xl py-2.5 px-4 text-sm transition-all outline-none
+            ${error ? "border-red-500 focus:ring-red-100" : "border-slate-200 focus:ring-primary-100 focus:border-primary-600"}
+            ${className}
+          `}
+        />
+        {error && (
+          <span className="text-xs text-red-500 font-medium">{error}</span>
+        )}
+      </div>
+    );
+  },
+);
+
+TextArea.displayName = "TextArea";
+
 
 
 ================================================================================
@@ -20340,7 +20406,7 @@ export function MainLayout() {
   return (
     <div className="flex bg-background min-h-screen w-full">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto print:m-0 print:w-full print:p-0 print:ml-0">
+      <main className="flex-1 ml-64 p-8 print:m-0 print:w-full print:p-0 print:ml-0">
         <div className="w-full">
           {/* Breadcrumbs ou Header Global poderiam entrar aqui */}
           <Outlet />
@@ -20959,6 +21025,438 @@ export const VehicleDataSection = memo(
           </div>
         </div>
       </div>
+    );
+  },
+);
+
+
+
+================================================================================
+FILE PATH: client\src\components\veiculos\Forms\VeiculoForm.tsx
+================================================================================
+import { useState, useEffect, useRef, memo } from "react";
+import type { FormEvent } from "react";
+import { VeiculoService } from "../../../services/veiculo.service";
+import { ClienteService } from "../../../services/cliente.service";
+import { normalizePlate } from "../../../utils/normalize";
+import { toast } from "react-toastify";
+import { Car, Search, User, Check, X, Save } from "lucide-react";
+import { Button, Input, Select, ActionButton } from "../../ui";
+
+interface VeiculoFormProps {
+  clientId?: number | null;
+  vehicleId?: number;
+  initialData?: any;
+  onSuccess: (newItem: any) => void;
+  onCancel: () => void;
+  onCreateClient?: () => void;
+}
+
+interface ClientResult {
+  id_cliente: number;
+  email: string;
+  telefone_1: string;
+  pessoa_fisica?: {
+    pessoa: { nome: string };
+    cpf: string;
+  };
+  pessoa_juridica?: {
+    razao_social: string;
+    nome_fantasia: string;
+    cnpj: string;
+  };
+}
+
+export const VeiculoForm = memo(
+  ({
+    clientId,
+    vehicleId,
+    initialData,
+    onSuccess,
+    onCancel,
+    onCreateClient,
+  }: VeiculoFormProps) => {
+    const [loading, setLoading] = useState(false);
+
+    // Vehicle Search State
+    // Removed vehicle automation states
+
+    // Client Search State
+    const [clientSearchTerm, setClientSearchTerm] = useState("");
+    const [clientResults, setClientResults] = useState<ClientResult[]>([]);
+    const [selectedOwner, setSelectedOwner] = useState<{
+      id: number;
+      name: string;
+    } | null>(null);
+    const [isSearchingClient, setIsSearchingClient] = useState(false);
+
+    const firstInputRef = useRef<HTMLInputElement>(null);
+
+    // Form States
+    const [placa, setPlaca] = useState("");
+    const [marca, setMarca] = useState("");
+    const [modelo, setModelo] = useState("");
+    const [cor, setCor] = useState("");
+    const [anoModelo, setAnoModelo] = useState("");
+    const [anoFabricacao, setAnoFabricacao] = useState("");
+    const [combustivel, setCombustivel] = useState("Flex");
+    const [chassi, setChassi] = useState("");
+
+    useEffect(() => {
+      if (firstInputRef.current) {
+        firstInputRef.current.focus();
+      }
+    }, [clientId, vehicleId]);
+
+    useEffect(() => {
+      if (initialData) {
+        setPlaca(initialData.placa || "");
+        setMarca(initialData.marca || "");
+        setModelo(initialData.modelo || "");
+        setCor(initialData.cor || "");
+        setAnoModelo(initialData.ano_modelo || "");
+        setAnoFabricacao(initialData.ano_fabricacao || "");
+        setCombustivel(initialData.combustivel || "Flex");
+        setChassi(initialData.chassi || "");
+      }
+    }, [initialData]);
+
+    const [clientActiveIndex, setClientActiveIndex] = useState(-1);
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setClientResults([]);
+        setClientActiveIndex(-1);
+        return;
+      }
+
+      if (clientResults.length === 0) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const next =
+          clientActiveIndex + 1 >= clientResults.length
+            ? 0
+            : clientActiveIndex + 1;
+        setClientActiveIndex(next);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prev =
+          clientActiveIndex - 1 < 0
+            ? clientResults.length - 1
+            : clientActiveIndex - 1;
+        setClientActiveIndex(prev);
+      } else if (e.key === "Enter" && clientActiveIndex !== -1) {
+        e.preventDefault();
+        selectClient(clientResults[clientActiveIndex]);
+      }
+    };
+
+    // --- Vehicle Lookup Logic ---
+    // Removed handlePlateBlur
+
+    const handleSearchClient = async (term: string) => {
+      setClientSearchTerm(term);
+      setClientActiveIndex(-1);
+      if (term.length < 3) {
+        setClientResults([]);
+        return;
+      }
+
+      setIsSearchingClient(true);
+      try {
+        const results = await ClienteService.search(term);
+        setClientResults(results as any); // Cast because types might slightly differ but payload matches
+      } catch (error) {
+        console.error("Erro ao buscar clientes", error);
+      } finally {
+        setIsSearchingClient(false);
+      }
+    };
+
+    const selectClient = (client: ClientResult) => {
+      const name =
+        client.pessoa_fisica?.pessoa?.nome ||
+        client.pessoa_juridica?.nome_fantasia ||
+        client.pessoa_juridica?.razao_social ||
+        "Cliente Sem Nome";
+
+      setSelectedOwner({ id: client.id_cliente, name });
+      setClientResults([]);
+      setClientSearchTerm("");
+      setClientActiveIndex(-1);
+    };
+
+    const handleSubmit = async (e: FormEvent) => {
+      e.preventDefault();
+
+      const finalClientId = clientId || selectedOwner?.id;
+
+      // For creation, clientId is required.
+      if (!vehicleId && !finalClientId) {
+        toast.error("É necessário selecionar um proprietário.");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const payload = {
+          id_cliente: finalClientId,
+          placa: normalizePlate(placa),
+          marca,
+          modelo,
+          cor,
+          ano_fabricacao: anoFabricacao || null,
+          ano_modelo: anoModelo,
+          combustivel,
+          chassi,
+        };
+
+        if (vehicleId) {
+          const newItem = await VeiculoService.update(vehicleId, payload);
+          onSuccess(newItem);
+        } else {
+          const newItem = await VeiculoService.create(payload);
+          onSuccess(newItem);
+        }
+      } catch (error: any) {
+        console.error(error);
+        toast.error(
+          "Erro ao salvar veículo: " +
+            (error.response?.data?.error || error.message),
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Helper to determine if we need to show client selection
+    const needsClientSelection = !vehicleId && !clientId;
+
+    // Smart ReadOnly Logic:
+    // Removed isSmartReadOnly helper
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-6 text-neutral-900">
+        {/* 1. Client Selection Section (Only for new vehicles where ID isn't pre-injected) */}
+        {needsClientSelection && (
+          <div className="space-y-3 p-4 bg-neutral-25 rounded-3xl border border-neutral-200">
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-neutral-100">
+              <User className="text-primary-600" size={20} />
+              <h3 className="font-bold text-neutral-500">
+                Proprietário do Veículo
+              </h3>
+            </div>
+
+            {!selectedOwner ? (
+              <div className="relative">
+                <Input
+                  ref={firstInputRef}
+                  icon={Search}
+                  placeholder="Buscar cliente por nome..."
+                  value={clientSearchTerm}
+                  onChange={(e) => handleSearchClient(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="bg-neutral-25"
+                />
+
+                {/* Results Dropdown */}
+                {clientResults.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {clientResults.map((client, idx) => {
+                      const name =
+                        client.pessoa_fisica?.pessoa?.nome ||
+                        client.pessoa_juridica?.nome_fantasia ||
+                        client.pessoa_juridica?.razao_social;
+                      const contact =
+                        client.telefone_1 || client.email || "Sem Contato";
+                      return (
+                        <Button
+                          key={client.id_cliente}
+                          type="button"
+                          variant="ghost"
+                          onClick={() => selectClient(client)}
+                          className={`w-full !justify-start !text-left p-3 !h-auto !rounded-none border-b border-neutral-100 last:border-0 ${idx === clientActiveIndex ? "bg-primary-50" : ""}`}
+                        >
+                          <div>
+                            <div className="font-bold text-sm text-neutral-700 normal-case">
+                              {name}
+                            </div>
+                            <div className="text-xs text-neutral-400 normal-case">
+                              {contact}
+                            </div>
+                          </div>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+                {clientSearchTerm.length > 2 &&
+                  clientResults.length === 0 &&
+                  !isSearchingClient && (
+                    <div className="mt-2 text-center">
+                      <p className="text-xs text-neutral-500 mb-2">
+                        Nenhum cliente encontrado.
+                      </p>
+                      {onCreateClient && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={onCreateClient}
+                          className="!text-primary-600 font-bold"
+                        >
+                          + Cadastrar Novo Cliente
+                        </Button>
+                      )}
+                    </div>
+                  )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between bg-primary-50 p-3 rounded-xl border border-primary-100">
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary-600 text-white p-2 rounded-full">
+                    <Check size={16} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-primary-600 font-bold uppercase tracking-widest">
+                      Cliente Selecionado
+                    </p>
+                    <p className="font-bold text-primary-900 leading-tight">
+                      {selectedOwner.name}
+                    </p>
+                  </div>
+                </div>
+                <ActionButton
+                  icon={X}
+                  label="Alterar Cliente"
+                  onClick={() => setSelectedOwner(null)}
+                  variant="primary"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 2. Vehicle Info Section */}
+        <div className="bg-neutral-25 p-6 rounded-3xl border border-neutral-200 relative">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-neutral-100">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-primary-50 text-primary-600 rounded-xl">
+                <Car size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-neutral-500 text-lg">
+                  Dados do Veículo
+                </h3>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="relative">
+              <Input
+                label="Placa *"
+                ref={needsClientSelection ? null : firstInputRef}
+                value={placa}
+                onChange={(e) => {
+                  const val = e.target.value.toUpperCase();
+                  setPlaca(val);
+                }}
+                maxLength={7}
+                placeholder="ABC1234"
+                required
+                className="font-mono uppercase tracking-wider"
+              />
+            </div>
+            <div>
+              <Input
+                label="Marca *"
+                value={marca}
+                onChange={(e) => setMarca(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Input
+                label="Modelo *"
+                value={modelo}
+                onChange={(e) => setModelo(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Input
+                label="Cor *"
+                value={cor}
+                onChange={(e) => setCor(e.target.value)}
+                required
+                placeholder="Ex: Prata, Branco..."
+              />
+            </div>
+            <div>
+              <Input
+                label="Ano Fabricação (YYYY)"
+                type="number"
+                value={anoFabricacao}
+                onChange={(e) => setAnoFabricacao(e.target.value)}
+                placeholder="2015"
+              />
+            </div>
+            <div>
+              <Input
+                label="Ano Modelo (YYYY)"
+                type="number"
+                value={anoModelo}
+                onChange={(e) => setAnoModelo(e.target.value)}
+                placeholder="2016"
+              />
+            </div>
+            <div>
+              <Select
+                label="Combustível"
+                value={combustivel}
+                onChange={(e) => setCombustivel(e.target.value)}
+              >
+                <option value="Flex">Flex</option>
+                <option value="Gasolina">Gasolina</option>
+                <option value="Etanol">Etanol</option>
+                <option value="Diesel">Diesel</option>
+                <option value="GNV">GNV</option>
+                <option value="Elétrico">Elétrico</option>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Input
+                label="Chassi"
+                value={chassi}
+                onChange={(e) => setChassi(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-4 border-t border-neutral-100">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            className="flex-1"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={loading || (!clientId && !selectedOwner && !vehicleId)}
+            className="flex-1"
+            icon={Save}
+            isLoading={loading}
+          >
+            {vehicleId ? "Salvar Alterações" : "Salvar Veículo"}
+          </Button>
+        </div>
+      </form>
     );
   },
 );
@@ -22047,8 +22545,174 @@ export const useOsEmployees = () => {
 
 
 
+import { useState, useEffect, useCallback } from "react";
+import { OsItemsService } from "../../services/osItems.service";
+import { toast } from "react-toastify";
+
+export interface NewItemState {
+  id_pecas_estoque: string;
+  quantidade: string;
+  valor_venda: string;
+  descricao: string;
+  codigo_referencia: string;
+  id_fornecedor: string;
+}
+
+export const useOsItems = (osId: string | undefined) => {
+  const [items, setItems] = useState<any[]>([]); // Using 'any' compatible with current codebase structure, ideally IItensOs
+  const [loading, setLoading] = useState(false);
+
+  // Search
+  const [partSearchResults, setPartSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const loadItems = useCallback(async () => {
+    if (!osId) return;
+    setLoading(true);
+    try {
+      const data = await OsItemsService.getByOsId(Number(osId));
+      setItems(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao carregar itens.");
+    } finally {
+      setLoading(false);
+    }
+  }, [osId]);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
+
+  const searchParts = async (query: string) => {
+    if (query.length < 2) {
+      setPartSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const [stockRes, historyRes] = await Promise.all([
+        OsItemsService.searchStock(query),
+        OsItemsService.search(query),
+      ]);
+
+      const historyFormatted = historyRes.map((h: any) => ({
+        id_pecas_estoque: null,
+        nome: h.descricao,
+        valor_venda: h.valor_venda,
+        fabricante: "Histórico",
+        isHistory: true,
+      }));
+
+      const combined = [...stockRes, ...historyFormatted];
+      // Dedup
+      const unique = combined.filter(
+        (v, i, a) => a.findIndex((t) => t.nome === v.nome) === i,
+      );
+      setPartSearchResults(unique);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const addItem = async (itemData: any) => {
+    if (!osId) return false;
+    try {
+      // Logic from original handleAddItem
+      const payload = {
+        id_os: Number(osId),
+        id_pecas_estoque: itemData.id_pecas_estoque
+          ? Number(itemData.id_pecas_estoque)
+          : null,
+        descricao: itemData.descricao,
+        quantidade: Number(itemData.quantidade),
+        valor_venda: Number(itemData.valor_venda),
+        valor_total: Number(itemData.quantidade) * Number(itemData.valor_venda),
+        codigo_referencia: itemData.codigo_referencia,
+        id_fornecedor: itemData.id_fornecedor
+          ? Number(itemData.id_fornecedor)
+          : null,
+      };
+
+      await OsItemsService.create(payload);
+      toast.success("Item adicionado!");
+      loadItems();
+      return true;
+    } catch (error) {
+      toast.error("Erro ao adicionar item.");
+      return false;
+    }
+  };
+
+  const updateItem = async (itemId: number, itemData: any) => {
+    try {
+      await OsItemsService.update(itemId, {
+        descricao: itemData.descricao,
+        quantidade: Number(itemData.quantidade),
+        valor_venda: Number(itemData.valor_venda),
+        valor_total: Number(itemData.quantidade) * Number(itemData.valor_venda),
+        codigo_referencia: itemData.codigo_referencia,
+        id_fornecedor: itemData.id_fornecedor
+          ? Number(itemData.id_fornecedor)
+          : null,
+        id_pecas_estoque: itemData.id_pecas_estoque
+          ? Number(itemData.id_pecas_estoque)
+          : null,
+      });
+      toast.success("Item atualizado!");
+      loadItems();
+      return true;
+    } catch (e) {
+      toast.error("Erro ao atualizar item.");
+      return false;
+    }
+  };
+
+  const deleteItem = async (itemId: number) => {
+    try {
+      await OsItemsService.delete(itemId);
+      loadItems();
+      toast.success("Item removido.");
+      return true;
+    } catch (e) {
+      toast.error("Erro ao remover item.");
+      return false;
+    }
+  };
+
+  const checkStockAvailability = async (id_pecas_estoque: string | number) => {
+    try {
+      const data = await OsItemsService.checkAvailability(
+        Number(id_pecas_estoque),
+      );
+      return data;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+
+  return {
+    items,
+    loading,
+    partSearchResults,
+    setPartSearchResults,
+    searchParts,
+    addItem,
+    updateItem,
+    deleteItem,
+    checkStockAvailability,
+    refetch: loadItems,
+    isSearching,
+  };
+};
+
+
+
 ================================================================================
-FILE PATH: client\src\hooks\os\useOsItems.ts
+FILE PATH: client\src\hooks\os\useOsParts.ts
 ================================================================================
 import { useState, useEffect } from "react";
 import { api } from "../../services/api";
@@ -23981,6 +24645,8 @@ export const ConfiguracaoPage = () => {
 
 
 ================================================================================
+FILE PATH: client\src\pages\ContasAPagarPage.tsx
+================================================================================
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { FinanceiroService } from "../services/financeiro.service";
@@ -23998,6 +24664,7 @@ import { ModalPagamentoUnificado } from "../components/financeiro/ModalPagamento
 import { UniversalFilters } from "../components/common/UniversalFilters";
 import type { UniversalFiltersState } from "../components/common/UniversalFilters";
 import { useUniversalFilter } from "../hooks/useUniversalFilter";
+import { formatNameTitleCase } from "../utils/normalize";
 import { toast } from "react-toastify";
 import {
   Plus,
@@ -24304,7 +24971,7 @@ export const ContasAPagarPage = () => {
                   </td>
                   <td className="p-4">
                     <div className="flex flex-col">
-                       <div className="text-base text-neutral-900 font-normal lowercase">{conta.categoria || "\u00A0"}</div>
+                       <div className="text-base text-neutral-900 font-normal">{conta.categoria ? formatNameTitleCase(conta.categoria) : "\u00A0"}</div>
                        <div className="text-sm text-neutral-500 font-normal min-h-[1.5rem] mt-1">&nbsp;</div>
                        <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                     </div>
@@ -24434,7 +25101,7 @@ FILE PATH: client\src\pages\DashboardPage.tsx
 ================================================================================
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 
 import { OsStatus } from "../types/os.types";
@@ -24450,6 +25117,7 @@ import type { IDashboardStats } from "../types/dashboard.types";
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [decisionModalOpen, setDecisionModalOpen] = useState(false);
   const [isLoosePartModalOpen, setIsLoosePartModalOpen] = useState(false);
@@ -24481,6 +25149,21 @@ export function DashboardPage() {
 
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (location.state?.focusSearch) {
+      // Pequeno delay para garantir que o componente de busca foi renderizado
+      setTimeout(() => {
+        const input = document.querySelector(
+          "input[placeholder*='Buscar cliente, placa ou peça...']",
+        );
+        if (input) (input as HTMLElement).focus();
+      }, 100);
+
+      // Limpa o state para não focar novamente se der refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
 
   const fetchData = async () => {
     try {
@@ -26228,7 +26911,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 <div className="p-1.5 bg-red-100 rounded-lg text-red-600">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
                 </div>
-                Defeito Relatado
+                Defeito Relatado (Impressão para o Cliente)
               </label>
               <textarea
                 className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-base font-medium text-neutral-700 h-32 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
@@ -26246,7 +26929,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
                   <BadgeCheck size={18} />
                 </div>
-                Diagnóstico Técnico
+                Diagnóstico (apenas informações internas da oficina)
               </label>
               <textarea
                 className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-base font-medium text-neutral-700 h-32 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
@@ -29150,58 +29833,6 @@ export const OperadoraCartaoPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 pl-4">
-              <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-100/50">
-                <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
-                  Débito
-                </p>
-                <div className="flex items-baseline gap-1">
-                  <span className="font-black text-lg text-neutral-900">
-                    {op.taxa_debito}
-                  </span>
-                  <span className="text-xs font-bold text-neutral-400">%</span>
-                </div>
-                <p className="text-sm font-bold text-neutral-500 mt-1 bg-neutral-100 w-fit px-1.5 py-0.5 rounded">
-                  D+{op.prazo_debito}
-                </p>
-              </div>
-              <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-100/50">
-                <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
-                  Créd. Vista
-                </p>
-                <div className="flex items-baseline gap-1">
-                  <span className="font-black text-lg text-neutral-900">
-                    {op.taxa_credito_vista}
-                  </span>
-                  <span className="text-xs font-bold text-neutral-400">%</span>
-                </div>
-                <p className="text-sm font-bold text-neutral-500 mt-1 bg-neutral-100 w-fit px-1.5 py-0.5 rounded">
-                  D+{op.prazo_credito_vista}
-                </p>
-              </div>
-              <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-100/50">
-                <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
-                  Créd. Parc
-                </p>
-                <div className="flex items-baseline gap-1">
-                  <span className="font-black text-lg text-neutral-900">
-                    {op.taxa_credito_parc}
-                  </span>
-                  <span className="text-xs font-bold text-neutral-400">%</span>
-                </div>
-                <p className="text-sm font-bold text-neutral-500 mt-1 bg-neutral-100 w-fit px-1.5 py-0.5 rounded">
-                  D+{op.prazo_credito_parc}
-                </p>
-              </div>
-            </div>
-
-            {op.antecipacao_auto && (
-              <div className="mt-5 pl-4 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-primary-700 bg-primary-50 w-fit px-3 py-1.5 rounded-full border border-primary-100">
-                <span className="flex items-center gap-1.5">
-                  Antecipação Automática: {op.taxa_antecipacao}%
-                </span>
-              </div>
-            )}
           </div>
         ))}
 
@@ -29743,7 +30374,7 @@ export const OrdemDeServicoPage = () => {
           <Button
             variant="primary"
             icon={Plus}
-            onClick={() => setOsCreationModalOpen(true)}
+            onClick={() => navigate("/", { state: { focusSearch: true } })}
           >
             Novo Cadastro
           </Button>
@@ -30249,16 +30880,7 @@ export const OsPrintView = () => {
             {os.defeito_relatado || "-"}
           </p>
         </div>
-        {os.diagnostico && (
-          <div className="mb-4">
-            <h3 className="font-bold uppercase bg-neutral-100 p-1 mb-1 print:bg-transparent print:border-b print:border-black">
-              Diagnóstico Técnico
-            </h3>
-            <p className="p-2 border border-neutral-200 rounded print:border-black min-h-[40px]">
-              {os.diagnostico}
-            </p>
-          </div>
-        )}
+
       </div>
 
       {/* Items */}
@@ -30393,6 +31015,7 @@ export const OsPrintView = () => {
 
 ================================================================================
 FILE PATH: client\src\pages\PagamentoEquipePage.tsx
+================================================================================
 
 
 ================================================================================
@@ -31978,6 +32601,7 @@ import type {
   EvolucaoMensal,
   EvolucaoDespesa,
   EvolucaoDespesaTemporal,
+  OperadoraStats,
 } from "../types/relatorios.types";
 import { RelatoriosService } from "../services/relatorios.service";
 import { FinanceiroService } from "../services/financeiro.service";
@@ -32028,6 +32652,20 @@ export const RelatoriosPage = () => {
   const [evolucaoDespesas, setEvolucaoDespesas] = useState<EvolucaoDespesa[]>(
     [],
   );
+  const [operadorasStats, setOperadorasStats] = useState<OperadoraStats[]>([]);
+  const [categoriasFinanceiras, setCategoriasFinanceiras] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchCategorias = async () => {
+      try {
+        const data = await FinanceiroService.getCategoriasFinanceiras();
+        setCategoriasFinanceiras(data);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchCategorias();
+  }, []);
 
   // Estado localizado — Evolução Financeira
   const [evolucao, setEvolucao] = useState<EvolucaoMensal[]>([]);
@@ -32052,14 +32690,16 @@ export const RelatoriosPage = () => {
   const fetchReports = async (startDate: string, endDate: string) => {
     setLoading(true);
     try {
-      const [resumoData, equipeData, evolucaoDespesasData] = await Promise.all([
+      const [resumoData, equipeData, evolucaoDespesasData, operadorasData] = await Promise.all([
         RelatoriosService.getResumoFinanceiro(startDate, endDate),
         RelatoriosService.getPerformanceEquipe(startDate, endDate),
         RelatoriosService.getEvolucaoDespesas(startDate, endDate),
+        RelatoriosService.getOperadorasCartao(startDate, endDate),
       ]);
       setResumo(resumoData);
       setEquipe(equipeData);
       setEvolucaoDespesas(evolucaoDespesasData);
+      setOperadorasStats(operadorasData);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar relatórios.");
@@ -32151,6 +32791,37 @@ export const RelatoriosPage = () => {
       ].filter((d) => d.value > 0)
     : [];
 
+  // ── Cálculos: Despesas Bancárias e Taxas ──────────────────────────────────────────────
+  const valorA = operadorasStats.reduce(
+    (acc, op) => acc + Number(op.totalTaxas || 0),
+    0
+  );
+
+  const getValorB = () => {
+    if (!resumo || categoriasFinanceiras.length === 0) return { total: 0, missingCategoria: false };
+    const parent = categoriasFinanceiras.find((c) => c.nome === "Taxas e Tarifas");
+    if (!parent) return { total: 0, missingCategoria: true }; // Se não existir, avisa
+
+    const validNames = [
+      parent.nome,
+      ...categoriasFinanceiras
+        .filter((c) => c.parentId === parent.id_categoria)
+        .map((c) => c.nome),
+    ];
+
+    let totalB = 0;
+    resumo.despesasPorCategoria.forEach((cat) => {
+      if (validNames.includes(cat.categoria)) {
+        totalB += Number(cat.valor || 0);
+      }
+    });
+    return { total: totalB, missingCategoria: false };
+  };
+
+  const valorBInfo = getValorB();
+  const valorB = valorBInfo.total;
+  const totalDespesasBancarias = valorA + valorB;
+
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <PageLayout
@@ -32170,6 +32841,42 @@ export const RelatoriosPage = () => {
           </div>
         ) : (
           <>
+            {/* ── Despesas Bancárias e Taxas ── */}
+            {resumo && (
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-100 mb-6 flex flex-col md:flex-row items-center justify-between gap-4 animate-in zoom-in-95 duration-300">
+                <div className="flex items-center gap-4">
+                  <div className="bg-red-50 p-4 rounded-xl text-red-500 border border-red-100">
+                    <TrendingDown size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-neutral-800 tracking-tight">Despesas Bancárias e Taxas</h3>
+                    <p className="text-sm text-neutral-500">
+                      Consolidação de descontos em maquininhas e tarifas de Livro Caixa.
+                    </p>
+                    {valorBInfo.missingCategoria && (
+                      <p className="text-xs text-amber-600 font-medium mt-1">
+                        Aviso: A categoria "Taxas e Tarifas" não foi encontrada. Crie ela nas configurações financeiras para mapear o Valor B.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-8 text-right">
+                  <div className="hidden lg:block">
+                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">Valor A (Operadoras)</p>
+                    <p className="text-lg font-semibold text-neutral-700">{formatCurrency(valorA)}</p>
+                  </div>
+                  <div className="hidden lg:block">
+                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">Valor B (Tarifas)</p>
+                    <p className="text-lg font-semibold text-neutral-700">{formatCurrency(valorB)}</p>
+                  </div>
+                  <div className="border-l border-neutral-200 pl-8">
+                    <p className="text-xs font-black text-red-400 uppercase tracking-wider mb-1">Total Consolidado</p>
+                    <p className="text-3xl font-black text-red-600 tracking-tighter">{formatCurrency(totalDespesasBancarias)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ── Row 1: 4 KPI Cards ── */}
             {resumo && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -34284,8 +34991,11 @@ export class FinanceiroService {
     return response.data;
   }
 
-  static async confirmarRecebiveis(ids: number[]): Promise<void> {
-    await api.post("/recebivel-cartao/confirmar", { ids });
+  static async confirmarRecebiveis(ids: number[], data_recebimento?: string): Promise<void> {
+    await api.post("/recebivel-cartao/confirmar", { 
+      ids, 
+      data_recebimento: data_recebimento || new Date().toISOString() 
+    });
   }
 
   // --- CATEGORIAS FINANCEIRAS ---
@@ -34820,6 +35530,52 @@ export const fetchVehicleData = async (placa: string): Promise<VehicleData> => {
 
 
 ================================================================================
+FILE PATH: client\src\services\veiculo.service.ts
+================================================================================
+import { api } from "./api";
+import type { IVeiculo } from "../types/backend";
+
+export const VeiculoService = {
+  getAll: async () => {
+    const response = await api.get<IVeiculo[]>("/veiculo");
+    return response.data;
+  },
+
+  getById: async (id: number) => {
+    const response = await api.get<IVeiculo>(`/veiculo/${id}`);
+    return response.data;
+  },
+
+  create: async (data: Partial<IVeiculo>) => {
+    const response = await api.post<IVeiculo>("/veiculo", data);
+    return response.data;
+  },
+
+  update: async (id: number, data: Partial<IVeiculo>) => {
+    const response = await api.put<IVeiculo>(`/veiculo/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    await api.delete(`/veiculo/${id}`);
+  },
+
+  search: async (term: string) => {
+    const response = await api.get<IVeiculo[]>(`/veiculo/search?q=${term}`);
+    return response.data;
+  },
+
+  getByClienteId: async (_clienteId: number) => {
+    // Assuming backend supports filtering or we misuse getAll for now
+    return [];
+  },
+};
+
+
+
+================================================================================
+FILE PATH: client\src\types\backend.d.ts
+================================================================================
 export interface IPessoa {
   id_pessoa: number;
   nome: string;
@@ -35221,6 +35977,8 @@ export interface IRecebivelCartao {
   data_venda: string;
   data_prevista: string;
   data_recebimento?: string | null;
+  confirmado_em?: string | null;
+  confirmado_por?: string | null;
 
   status: string; // 'PENDENTE', 'RECEBIDO'
 
@@ -35865,6 +36623,33 @@ export const formatPhone = (phone: string): string => {
   }
 
   return phone;
+};
+
+export const formatCpf = (cpf: string): string => {
+  const digits = cpf.replace(/\D/g, "");
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
+
+export const formatCnpj = (cnpj: string): string => {
+  const digits = cnpj.replace(/\D/g, "");
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+};
+
+export const formatRg = (rg: string): string => {
+  const digits = rg.replace(/\D/g, "");
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4");
+};
+
+export const formatCep = (cep: string): string => {
+  const digits = cep.replace(/\D/g, "");
+  return digits.replace(/(\d{5})(\d{3})/, "$1-$2");
+};
+
+/**
+ * Remove any non-digit character to send to the backend
+ */
+export const unmask = (value: string): string => {
+  return value ? value.replace(/\D/g, "") : "";
 };
 
 
@@ -38786,6 +39571,30 @@ ALTER TABLE "Usuario" ADD COLUMN "must_change_password" BOOLEAN NOT NULL DEFAULT
 
 
 ================================================================================
+FILE PATH: server\prisma\migrations\20260510193751_add_pessoa_contact_address_fields\migration.sql
+================================================================================
+-- AlterTable
+ALTER TABLE "pessoa" ADD COLUMN     "agencia" VARCHAR(20),
+ADD COLUMN     "bairro" VARCHAR(100),
+ADD COLUMN     "banco" VARCHAR(50),
+ADD COLUMN     "categoria_produto" VARCHAR(100),
+ADD COLUMN     "cep" VARCHAR(10),
+ADD COLUMN     "chave_pix" VARCHAR(100),
+ADD COLUMN     "cidade" VARCHAR(100),
+ADD COLUMN     "complemento" VARCHAR(100),
+ADD COLUMN     "condicoes_pagamento" VARCHAR(100),
+ADD COLUMN     "conta" VARCHAR(20),
+ADD COLUMN     "contato" VARCHAR(100),
+ADD COLUMN     "email" VARCHAR(100),
+ADD COLUMN     "logradouro" VARCHAR(150),
+ADD COLUMN     "numero" VARCHAR(20),
+ADD COLUMN     "telefone" VARCHAR(20),
+ADD COLUMN     "uf" CHAR(2),
+ADD COLUMN     "whatsapp" VARCHAR(20);
+
+
+
+================================================================================
 FILE PATH: server\scripts\check_tipos.ts
 ================================================================================
 import { PrismaClient } from "@prisma/client";
@@ -40002,88 +40811,6 @@ export class DashboardController {
 
 
 ================================================================================
-FILE PATH: server\src\controllers\documento.controller.ts
-================================================================================
-import { Request, Response } from "express";
-import { DocumentoService } from "../services/DocumentoService.js";
-
-const service = new DocumentoService();
-
-export class DocumentoController {
-  async generatePdf(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "ID inválido" });
-      }
-
-      const pdfBuffer = await service.generatePdf(id);
-
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `inline; filename=os-${id}.pdf`);
-      res.send(pdfBuffer);
-    } catch (error: any) {
-      console.error("Erro ao gerar PDF:", error);
-      res.status(500).json({
-        error: "Erro ao gerar PDF",
-        details: error.message,
-      });
-    }
-  }
-
-  async sendEmail(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const { email } = req.body;
-
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "ID inválido" });
-      }
-
-      if (!email) {
-        return res.status(400).json({ error: "Email é obrigatório" });
-      }
-
-      const pdfBuffer = await service.generatePdf(id);
-      await service.sendEmail(pdfBuffer, email);
-
-      res.json({ success: true, message: "Email enviado com sucesso" });
-    } catch (error: any) {
-      console.error("Erro ao enviar email:", error);
-      res.status(500).json({
-        error: "Erro ao enviar email",
-        details: error.message,
-      });
-    }
-  }
-
-  async sendTelegram(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const { chatId } = req.body;
-
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "ID inválido" });
-      }
-
-      if (!chatId) {
-        return res.status(400).json({ error: "Chat ID é obrigatório" });
-      }
-
-      const pdfBuffer = await service.generatePdf(id);
-      await service.sendTelegram(pdfBuffer, chatId);
-
-      res.json({ success: true, message: "Telegram enviado com sucesso" });
-    } catch (error: any) {
-      console.error("Erro ao enviar telegram:", error);
-      res.status(500).json({
-        error: "Erro ao enviar telegram",
-        details: error.message,
-      });
-    }
-  }
-}
-
 
 
 ================================================================================
@@ -42251,67 +42978,6 @@ export class PessoaFisicaController {
 
 ================================================================================
 FILE PATH: server\src\controllers\pessoaJuridica.controller.ts
-================================================================================
-import { Request, Response } from 'express';
-import { PessoaJuridicaRepository } from '../repositories/pessoaJuridica.repository.js';
-
-const repository = new PessoaJuridicaRepository();
-
-export class PessoaJuridicaController {
-  async create(req: Request, res: Response) {
-    try {
-      const pessoaJuridica = await repository.create(req.body);
-      res.status(201).json(pessoaJuridica);
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to create PessoaJuridica', details: error });
-    }
-  }
-
-  async findAll(req: Request, res: Response) {
-    try {
-      const pessoasJuridicas = await repository.findAll();
-      res.json(pessoasJuridicas);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch PessoasJuridicas' });
-    }
-  }
-
-  async findById(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const pessoaJuridica = await repository.findById(id);
-      if (!pessoaJuridica) {
-        return res.status(404).json({ error: 'PessoaJuridica not found' });
-      }
-      res.json(pessoaJuridica);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch PessoaJuridica' });
-    }
-  }
-
-  async update(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const pessoaJuridica = await repository.update(id, req.body);
-      res.json(pessoaJuridica);
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to update PessoaJuridica' });
-    }
-  }
-
-  async delete(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      await repository.delete(id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to delete PessoaJuridica' });
-    }
-  }
-}
-
-
-
 ================================================================================
 FILE PATH: server\src\controllers\recebivelCartao.controller.ts
 ================================================================================
@@ -49037,11 +49703,6 @@ export class CalculadoraPagamentoService {
   }
 }
 
-
-
-================================================================================
-FILE PATH: server\src\services\DocumentoService.ts
-================================================================================
 import { NotificationService } from "./NotificationService.js";
 import { prisma } from "../prisma.js";
 

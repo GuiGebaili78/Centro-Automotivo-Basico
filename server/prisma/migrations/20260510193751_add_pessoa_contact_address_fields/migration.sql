@@ -1,0 +1,18 @@
+-- AlterTable
+ALTER TABLE "pessoa" ADD COLUMN     "agencia" VARCHAR(20),
+ADD COLUMN     "bairro" VARCHAR(100),
+ADD COLUMN     "banco" VARCHAR(50),
+ADD COLUMN     "categoria_produto" VARCHAR(100),
+ADD COLUMN     "cep" VARCHAR(10),
+ADD COLUMN     "chave_pix" VARCHAR(100),
+ADD COLUMN     "cidade" VARCHAR(100),
+ADD COLUMN     "complemento" VARCHAR(100),
+ADD COLUMN     "condicoes_pagamento" VARCHAR(100),
+ADD COLUMN     "conta" VARCHAR(20),
+ADD COLUMN     "contato" VARCHAR(100),
+ADD COLUMN     "email" VARCHAR(100),
+ADD COLUMN     "logradouro" VARCHAR(150),
+ADD COLUMN     "numero" VARCHAR(20),
+ADD COLUMN     "telefone" VARCHAR(20),
+ADD COLUMN     "uf" CHAR(2),
+ADD COLUMN     "whatsapp" VARCHAR(20);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
+import { formatPhone } from "../utils/normalize";
 import { getStatusStyle } from "../utils/osUtils";
 import { FinanceiroService } from "../services/financeiro.service";
 import { OsService } from "../services/os.service";
@@ -72,7 +73,15 @@ export const FechamentoFinanceiroPage = () => {
         OsService.getAll(),
       ]);
 
-      setFechamentos(fechamentosData);
+      const fechamentosWithOs = fechamentosData.map((f: IFechamentoFinanceiro) => {
+        const foundOs = allOss.find((os) => os.id_os === f.id_os);
+        return {
+          ...f,
+          ordem_de_servico: foundOs || f.ordem_de_servico,
+        };
+      });
+
+      setFechamentos(fechamentosWithOs);
 
       // Filter OSs pending closure
       const pending = allOss.filter(
@@ -202,7 +211,7 @@ export const FechamentoFinanceiroPage = () => {
                           {getClientName(os)}
                         </div>
                         <div className="text-base text-neutral-600 font-normal">
-                          {os.cliente?.telefone_1 || "Sem telefone"}
+                          {os.cliente?.telefone_1 ? formatPhone(os.cliente.telefone_1) : "Sem telefone"}
                         </div>
                         <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                       </div>
@@ -342,7 +351,7 @@ export const FechamentoFinanceiroPage = () => {
                           {getClientName(fech.ordem_de_servico)}
                         </div>
                         <div className="text-base text-neutral-600 font-normal">
-                          {fech.ordem_de_servico?.cliente?.telefone_1 || "Sem telefone"}
+                          {fech.ordem_de_servico?.cliente?.telefone_1 ? formatPhone(fech.ordem_de_servico.cliente.telefone_1) : "Sem telefone"}
                         </div>
                         <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                       </div>

@@ -9,7 +9,7 @@ import {
   Hash,
 } from "lucide-react";
 import { Button, Input } from "../../ui";
-import { formatCpf, formatCnpj, formatCep, formatPhone } from "../../../utils/normalize";
+import { formatCpf, formatCnpj, formatCep, formatPhone, formatIE } from "../../../utils/normalize";
 
 interface ClienteDataFormProps {
   tipoPessoa: "PF" | "PJ";
@@ -181,7 +181,7 @@ export const ClienteDataForm = memo(
                 <Input
                   label="IE"
                   value={ie}
-                  onChange={(e) => setIe(e.target.value)}
+                  onChange={(e) => setIe(formatIE(e.target.value))}
                   placeholder="Inscrição Estadual"
                 />
               </div>

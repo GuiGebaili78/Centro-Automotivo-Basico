@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { PageLayout } from "../components/ui/PageLayout";
 
 import { OsStatus } from "../types/os.types";
 import { UnifiedSearch } from "../components/dashboard/UnifiedSearch";
@@ -94,66 +95,58 @@ export function DashboardPage() {
     setDecisionModalOpen(false);
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="w-full flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
-          {/* Title / Welcome */}
-          <div className="shrink-0">
-            <h1 className="text-4xl font-black text-neutral-600 tracking-tight">
-              Monitor
-            </h1>
-            <p className="text-sm text-neutral-600 mt-1">
-              {currentDateTime.toLocaleDateString("pt-BR", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}{" "}
-              •{" "}
-              {currentDateTime.toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
-            </p>
-          </div>
-
-          {/* Search & Actions - MOVED TO MIDDLE */}
-          <div className="flex-1 w-full xl:max-w-3xl mx-auto flex items-center gap-3 order-2">
-            <div className="flex-1">
-              <UnifiedSearch
-                onSelect={handleSearchResultSelect}
-                onNewRecord={handleNewRecord}
-              />
-            </div>
-            <Button
-              variant="primary"
-              size="lg"
-              icon={Plus}
-              className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
-              onClick={() => {
-                const input = document.querySelector(
-                  "input[placeholder*='Buscar cliente, placa ou peça...']",
-                );
-                if (input) (input as HTMLElement).focus();
-              }}
-            >
-              Nova OS
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setIsLoosePartModalOpen(true)}
-              className="h-[42px] px-4 border-neutral-200 text-neutral-600 hover:text-primary-600 whitespace-nowrap font-bold"
-            >
-              🔧 Peça Avulsa
-            </Button>
-          </div>
-
-          {/* Stats 2x2 Grid - REMOVED FROM HERE */}
+    <PageLayout
+      title="Monitor"
+      subtitle={
+        <div className="flex items-center text-neutral-500 font-medium">
+          {currentDateTime.toLocaleDateString("pt-BR", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}{" "}
+          •{" "}
+          {currentDateTime.toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}
         </div>
-
-        <div className="mb-8 p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700">
+      }
+      actions={
+        <div className="flex-1 w-full xl:max-w-3xl mx-auto flex items-center gap-3 order-2">
+          <div className="flex-1">
+            <UnifiedSearch
+              onSelect={handleSearchResultSelect}
+              onNewRecord={handleNewRecord}
+            />
+          </div>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={Plus}
+            className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
+            onClick={() => {
+              const input = document.querySelector(
+                "input[placeholder*='Buscar cliente, placa ou peça...']",
+              );
+              if (input) (input as HTMLElement).focus();
+            }}
+          >
+            Nova OS
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsLoosePartModalOpen(true)}
+            className="h-[42px] px-4 border-neutral-200 text-neutral-600 hover:text-primary-600 whitespace-nowrap font-bold"
+          >
+            🔧 Peça Avulsa
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700">
           <DashboardMetrics stats={stats} />
         </div>
 
@@ -198,6 +191,6 @@ export function DashboardPage() {
         isOpen={isLoosePartModalOpen}
         onClose={() => setIsLoosePartModalOpen(false)}
       />
-    </div>
+    </PageLayout>
   );
 }

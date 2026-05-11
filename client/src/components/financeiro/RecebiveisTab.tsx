@@ -330,7 +330,7 @@ export const RecebiveisTab = () => {
                     <td className="p-4 text-right">
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg">
-                          - {Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}%
+                          - {Number(r.valor_bruto) > 0 ? (((Number(r.valor_bruto) - Number(r.valor_liquido)) / Number(r.valor_bruto)) * 100).toFixed(2).replace(".", ",") : Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}%
                         </span>
                         <span className="text-xs text-neutral-500 font-medium">
                           {formatCurrency(Number(r.valor_bruto) - Number(r.valor_liquido))}

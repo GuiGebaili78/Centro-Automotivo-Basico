@@ -14,7 +14,7 @@ import {
 import type { IFornecedor } from "../../../types/backend";
 import { Button, Input } from "../../ui";
 import { toast } from "react-toastify";
-import { formatCnpj, formatCpf, formatCep, formatPhone, unmask } from "../../../utils/normalize";
+import { formatCnpj, formatCpf, formatCep, formatPhone, unmask, formatIE } from "../../../utils/normalize";
 
 interface FornecedorFormProps {
   initialData?: IFornecedor | null;
@@ -148,7 +148,7 @@ export const FornecedorForm = ({
           razao_social: formData.nome,
           nome_fantasia: formData.nome_fantasia || null,
           cnpj: unmask(formData.documento) || null,
-          inscricao_estadual: formData.inscricao_estadual || null,
+          inscricao_estadual: unmask(formData.inscricao_estadual) || null,
         };
         payload.pessoa_juridica = isUpdate ? { update: pjData } : { create: pjData };
       } else {
@@ -286,7 +286,7 @@ export const FornecedorForm = ({
                     label="Inscrição Estadual"
                     value={formData.inscricao_estadual}
                     onChange={(e) =>
-                      handleChange("inscricao_estadual", e.target.value)
+                      handleChange("inscricao_estadual", formatIE(e.target.value))
                     }
                     placeholder="IE (Comércio)"
                   />

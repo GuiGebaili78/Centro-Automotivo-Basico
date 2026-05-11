@@ -67,7 +67,7 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
         nome_fantasia: nomeFantasia,
         cpf: unmask(cpf),
         cnpj: unmask(cnpj),
-        inscricao_estadual: ie,
+        inscricao_estadual: unmask(ie),
         telefone_1: unmask(telefone),
         telefone_2: unmask(telefone2),
         email,
