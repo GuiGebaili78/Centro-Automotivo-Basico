@@ -95,6 +95,7 @@ export function DashboardPage() {
     setDecisionModalOpen(false);
   };
 
+  return (
     <PageLayout
       title="Monitor"
       subtitle={

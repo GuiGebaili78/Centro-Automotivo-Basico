@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 05/11/2026 20:32:51
+PROJECT DUMP GENERATED ON 05/11/2026 21:16:36
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -1099,6 +1099,8 @@ services:
       VITE_HMR_HOST: ""
       VITE_HMR_PROTOCOL: ws
       VITE_HMR_CLIENT_PORT: "5173"
+
+
 
 ================================================================================
 FILE PATH: docker-compose.yml
@@ -2525,7 +2527,7 @@ import {
   Hash,
 } from "lucide-react";
 import { Button, Input } from "../../ui";
-import { formatCpf, formatCnpj, formatCep, formatPhone } from "../../../utils/normalize";
+import { formatCpf, formatCnpj, formatCep, formatPhone, formatIE } from "../../../utils/normalize";
 
 interface ClienteDataFormProps {
   tipoPessoa: "PF" | "PJ";
@@ -2697,7 +2699,7 @@ export const ClienteDataForm = memo(
                 <Input
                   label="IE"
                   value={ie}
-                  onChange={(e) => setIe(e.target.value)}
+                  onChange={(e) => setIe(formatIE(e.target.value))}
                   placeholder="Inscrição Estadual"
                 />
               </div>
@@ -2857,7 +2859,7 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
         nome_fantasia: nomeFantasia,
         cpf: unmask(cpf),
         cnpj: unmask(cnpj),
-        inscricao_estadual: ie,
+        inscricao_estadual: unmask(ie),
         telefone_1: unmask(telefone),
         telefone_2: unmask(telefone2),
         email,
@@ -5784,6 +5786,8 @@ export const EntradaFornecedorForm = ({
   );
 };
 
+
+
 ================================================================================
 FILE PATH: client\src\components\estoque\EntradaItensForm.tsx
 ================================================================================
@@ -7097,7 +7101,7 @@ export const CategorySelector = ({
           setSelectedChildId("");
         }
       }
-    } else {
+    } else if (value === undefined || value === null) {
       setSelectedParentId("");
       setSelectedChildId("");
     }
@@ -7147,7 +7151,6 @@ export const CategorySelector = ({
     } else {
       // If it has children, we MUST clear the current selection until a child is picked
       // This prevents the parent ID from being sent as the "final" category
-      // Pass 0 or check how parent handles "invalid"
       onChange(0, ""); // Clear selection
     }
   };
@@ -7160,10 +7163,10 @@ export const CategorySelector = ({
   };
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div className={`space-y-4 ${className}`}>
       {/* Parent Selector */}
       <div>
-        <label>Categoria</label>
+        <label className="block text-sm font-medium text-neutral-700 mb-1.5 ml-1">Categoria</label>
         <div className="relative">
           <select
             value={selectedParentId}
@@ -7186,55 +7189,27 @@ export const CategorySelector = ({
 
       {/* Child Selector (Only if parent selected and has children) */}
       {selectedParentId && children.length > 0 && (
-        <div className="animate-in slide-in-from-top-2 duration-200" ref={dropdownRef}>
-          <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
+        <div className="animate-in slide-in-from-top-2 duration-200">
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5 ml-1">
             Subcategoria
           </label>
           <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsOpen(!isOpen)}
-              className="w-full text-left bg-white border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all cursor-pointer text-primary-700 relative"
+            <select
+              value={selectedChildId}
+              onChange={handleChildChange}
+              required={required}
+              className="w-full bg-white border border-neutral-200 px-3 py-2.5 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer text-primary-700"
             >
-              <span className="block truncate">
-                {selectedChildId
-                  ? categories.find((c) => c.id_categoria === selectedChildId)?.nome
-                  : "Selecione a Subcategoria..."}
-              </span>
-              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-neutral-500">
-                <ArrowDownCircle size={14} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-              </span>
-            </button>
-            
-            {isOpen && (
-              <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 text-base shadow-xl ring-1 ring-black/5 focus:outline-none sm:text-sm custom-scrollbar border border-neutral-100 animate-in fade-in slide-in-from-top-1 duration-150">
-                {children.map((c) => {
-                  const isSelected = c.id_categoria === selectedChildId;
-                  return (
-                    <div
-                      key={c.id_categoria}
-                      onClick={() => {
-                        setSelectedChildId(c.id_categoria);
-                        setIsOpen(false);
-                        onChange(c.id_categoria, c.nome);
-                      }}
-                      className={`relative cursor-pointer select-none py-2.5 pl-10 pr-4 transition-colors hover:bg-primary-50 hover:text-primary-900 ${
-                        isSelected ? "bg-primary-50 text-primary-900" : "text-neutral-700 font-medium"
-                      }`}
-                    >
-                      <span className={`block truncate ${isSelected ? "font-bold text-primary-700" : "font-medium"}`}>
-                        {c.nome}
-                      </span>
-                      {isSelected && (
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary-600">
-                          <Check size={16} />
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+              <option value="">Selecione a Subcategoria...</option>
+              {children.map((c) => (
+                <option key={c.id_categoria} value={c.id_categoria}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
+              <ArrowDownCircle size={14} />
+            </div>
           </div>
         </div>
       )}
@@ -12739,7 +12714,7 @@ export const RecebiveisTab = () => {
                     <td className="p-4 text-right">
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg">
-                          - {Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}%
+                          - {Number(r.valor_bruto) > 0 ? (((Number(r.valor_bruto) - Number(r.valor_liquido)) / Number(r.valor_bruto)) * 100).toFixed(2).replace(".", ",") : Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}%
                         </span>
                         <span className="text-xs text-neutral-500 font-medium">
                           {formatCurrency(Number(r.valor_bruto) - Number(r.valor_liquido))}
@@ -14981,7 +14956,7 @@ import {
 import type { IFornecedor } from "../../../types/backend";
 import { Button, Input } from "../../ui";
 import { toast } from "react-toastify";
-import { formatCnpj, formatCpf, formatCep, formatPhone, unmask } from "../../../utils/normalize";
+import { formatCnpj, formatCpf, formatCep, formatPhone, unmask, formatIE } from "../../../utils/normalize";
 
 interface FornecedorFormProps {
   initialData?: IFornecedor | null;
@@ -15115,7 +15090,7 @@ export const FornecedorForm = ({
           razao_social: formData.nome,
           nome_fantasia: formData.nome_fantasia || null,
           cnpj: unmask(formData.documento) || null,
-          inscricao_estadual: formData.inscricao_estadual || null,
+          inscricao_estadual: unmask(formData.inscricao_estadual) || null,
         };
         payload.pessoa_juridica = isUpdate ? { update: pjData } : { create: pjData };
       } else {
@@ -15253,7 +15228,7 @@ export const FornecedorForm = ({
                     label="Inscrição Estadual"
                     value={formData.inscricao_estadual}
                     onChange={(e) =>
-                      handleChange("inscricao_estadual", e.target.value)
+                      handleChange("inscricao_estadual", formatIE(e.target.value))
                     }
                     placeholder="IE (Comércio)"
                   />
@@ -16119,7 +16094,7 @@ export const LoosePartOsModal = ({ isOpen, onClose }: LoosePartOsModalProps) => 
               {searchQuery.length >= 2 && clients.length === 0 && (
                 <div className="p-8 text-center bg-neutral-50 rounded-xl">
                   <p className="text-neutral-500 mb-4">Cliente não encontrado.</p>
-                  <Button variant="primary" icon={Plus} onClick={() => navigate("/cadastro-unificado")}>
+                  <Button variant="primary" icon={Plus} onClick={() => navigate("/novo-cadastro")}>
                     Cadastrar Novo Cliente
                   </Button>
                 </div>
@@ -16165,7 +16140,7 @@ export const LoosePartOsModal = ({ isOpen, onClose }: LoosePartOsModalProps) => 
               <Input
                 label="Numeração / Serial"
                 placeholder="Opcional"
-                value={equipData.numeracao}
+                value={equipData.numeracao || ""}
                 onChange={(e) => setEquipData({ ...equipData, numeracao: e.target.value })}
               />
             </div>
@@ -19320,6 +19295,7 @@ FILE PATH: client\src\components\pessoa\Forms\PessoaJuridicaForm.tsx
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { PessoaService } from "../../../services/pessoa.service";
+import { formatIE, unmask } from "../../../utils/normalize";
 import { Button, Input } from "../../ui";
 
 interface PessoaJuridicaFormProps {
@@ -19349,7 +19325,7 @@ export const PessoaJuridicaForm = ({
         razao_social: razaoSocial,
         nome_fantasia: nomeFantasia || null,
         cnpj: cnpj || null,
-        inscricao_estadual: inscricaoEstadual || null,
+        inscricao_estadual: unmask(inscricaoEstadual) || null,
       };
 
       const newItem = await PessoaService.createPessoaJuridica(payload);
@@ -19413,7 +19389,7 @@ export const PessoaJuridicaForm = ({
           <Input
             label="Inscrição Estadual"
             value={inscricaoEstadual}
-            onChange={(e) => setInscricaoEstadual(e.target.value)}
+            onChange={(e) => setInscricaoEstadual(formatIE(e.target.value))}
           />
         </div>
       </div>
@@ -20046,7 +20022,6 @@ export const FilterButton = ({
 
 ================================================================================
 FILE PATH: client\src\components\ui\FilterRadio.tsx
-================================================================================
 import React from "react";
 
 interface FilterRadioProps {
@@ -22545,6 +22520,9 @@ export const useOsEmployees = () => {
 
 
 
+================================================================================
+FILE PATH: client\src\hooks\os\useOsItems.ts
+================================================================================
 import { useState, useEffect, useCallback } from "react";
 import { OsItemsService } from "../../services/osItems.service";
 import { toast } from "react-toastify";
@@ -25103,6 +25081,7 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { PageLayout } from "../components/ui/PageLayout";
 
 import { OsStatus } from "../types/os.types";
 import { UnifiedSearch } from "../components/dashboard/UnifiedSearch";
@@ -25196,65 +25175,58 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="w-full flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
-          {/* Title / Welcome */}
-          <div className="shrink-0">
-            <h1 className="text-4xl font-black text-neutral-600 tracking-tight">
-              Monitor
-            </h1>
-            <p className="text-sm text-neutral-600 mt-1">
-              {currentDateTime.toLocaleDateString("pt-BR", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}{" "}
-              •{" "}
-              {currentDateTime.toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
-            </p>
-          </div>
-
-          {/* Search & Actions - MOVED TO MIDDLE */}
-          <div className="flex-1 w-full xl:max-w-3xl mx-auto flex items-center gap-3 order-2">
-            <div className="flex-1">
-              <UnifiedSearch
-                onSelect={handleSearchResultSelect}
-                onNewRecord={handleNewRecord}
-              />
-            </div>
-            <Button
-              variant="primary"
-              size="lg"
-              icon={Plus}
-              className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
-              onClick={() => {
-                const input = document.querySelector(
-                  "input[placeholder*='Buscar cliente, placa ou peça...']",
-                );
-                if (input) (input as HTMLElement).focus();
-              }}
-            >
-              Nova OS
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setIsLoosePartModalOpen(true)}
-              className="h-[42px] px-4 border-neutral-200 text-neutral-600 hover:text-primary-600 whitespace-nowrap font-bold"
-            >
-              🔧 Peça Avulsa
-            </Button>
-          </div>
-
-          {/* Stats 2x2 Grid - REMOVED FROM HERE */}
+    <PageLayout
+      title="Monitor"
+      subtitle={
+        <div className="flex items-center text-neutral-500 font-medium">
+          {currentDateTime.toLocaleDateString("pt-BR", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}{" "}
+          •{" "}
+          {currentDateTime.toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}
         </div>
-
-        <div className="mb-8 p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700">
+      }
+      actions={
+        <div className="flex-1 w-full xl:max-w-3xl mx-auto flex items-center gap-3 order-2">
+          <div className="flex-1">
+            <UnifiedSearch
+              onSelect={handleSearchResultSelect}
+              onNewRecord={handleNewRecord}
+            />
+          </div>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={Plus}
+            className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
+            onClick={() => {
+              const input = document.querySelector(
+                "input[placeholder*='Buscar cliente, placa ou peça...']",
+              );
+              if (input) (input as HTMLElement).focus();
+            }}
+          >
+            Nova OS
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsLoosePartModalOpen(true)}
+            className="h-[42px] px-4 border-neutral-200 text-neutral-600 hover:text-primary-600 whitespace-nowrap font-bold"
+          >
+            🔧 Peça Avulsa
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700">
           <DashboardMetrics stats={stats} />
         </div>
 
@@ -25299,7 +25271,7 @@ export function DashboardPage() {
         isOpen={isLoosePartModalOpen}
         onClose={() => setIsLoosePartModalOpen(false)}
       />
-    </div>
+    </PageLayout>
   );
 }
 
@@ -27686,6 +27658,7 @@ FILE PATH: client\src\pages\FechamentoFinanceiroPage.tsx
 ================================================================================
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
+import { formatPhone } from "../utils/normalize";
 import { getStatusStyle } from "../utils/osUtils";
 import { FinanceiroService } from "../services/financeiro.service";
 import { OsService } from "../services/os.service";
@@ -27758,7 +27731,15 @@ export const FechamentoFinanceiroPage = () => {
         OsService.getAll(),
       ]);
 
-      setFechamentos(fechamentosData);
+      const fechamentosWithOs = fechamentosData.map((f: IFechamentoFinanceiro) => {
+        const foundOs = allOss.find((os) => os.id_os === f.id_os);
+        return {
+          ...f,
+          ordem_de_servico: foundOs || f.ordem_de_servico,
+        };
+      });
+
+      setFechamentos(fechamentosWithOs);
 
       // Filter OSs pending closure
       const pending = allOss.filter(
@@ -27888,7 +27869,7 @@ export const FechamentoFinanceiroPage = () => {
                           {getClientName(os)}
                         </div>
                         <div className="text-base text-neutral-600 font-normal">
-                          {os.cliente?.telefone_1 || "Sem telefone"}
+                          {os.cliente?.telefone_1 ? formatPhone(os.cliente.telefone_1) : "Sem telefone"}
                         </div>
                         <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                       </div>
@@ -28028,7 +28009,7 @@ export const FechamentoFinanceiroPage = () => {
                           {getClientName(fech.ordem_de_servico)}
                         </div>
                         <div className="text-base text-neutral-600 font-normal">
-                          {fech.ordem_de_servico?.cliente?.telefone_1 || "Sem telefone"}
+                          {fech.ordem_de_servico?.cliente?.telefone_1 ? formatPhone(fech.ordem_de_servico.cliente.telefone_1) : "Sem telefone"}
                         </div>
                         <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                       </div>
@@ -31016,6 +30997,723 @@ export const OsPrintView = () => {
 ================================================================================
 FILE PATH: client\src\pages\PagamentoEquipePage.tsx
 ================================================================================
+import { useState, useEffect, useMemo } from "react";
+import { formatCurrency } from "../utils/formatCurrency";
+import { getStatusStyle } from "../utils/osUtils";
+import { FinanceiroService } from "../services/financeiro.service";
+import { ColaboradorService } from "../services/colaborador.service";
+import { Button, Input, FilterButton, Select } from "../components/ui";
+import { Plus, Search, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { toast } from "react-toastify";
+
+export const PagamentoEquipePage = () => {
+  const navigate = useNavigate();
+  // --- STATE ---
+  const [selectedFuncId, setSelectedFuncId] = useState("");
+  const [activeTab, setActiveTab] = useState<"PENDENTE" | "PAGO">("PENDENTE");
+
+  // Data States
+  const [funcionarios, setFuncionarios] = useState<any[]>([]);
+  const [pendentes, setPendentes] = useState<any[]>([]);
+  const [valesPendentes, setValesPendentes] = useState<any[]>([]);
+  const [historico, setHistorico] = useState<any[]>([]);
+
+  // Filters (History Tab)
+  // Default to "WEEK" logic if desired, or keep generic dates. User asked for "hj, semana e mes" filters.
+  const [activeFilter, setActiveFilter] = useState<
+    "TODAY" | "WEEK" | "MONTH" | "CUSTOM"
+  >("WEEK");
+  const [filterHistStart, setFilterHistStart] = useState("");
+  const [filterHistEnd, setFilterHistEnd] = useState("");
+  const [historySearchTerm, setHistorySearchTerm] = useState("");
+
+  // --- EFFECTS ---
+  useEffect(() => {
+    loadFuncionarios();
+    // Initialize Week Filter
+    applyQuickFilter("WEEK");
+  }, []);
+
+  useEffect(() => {
+    if (!selectedFuncId) {
+      setPendentes([]);
+      setValesPendentes([]);
+      setHistorico([]);
+      return;
+    }
+
+    if (activeTab === "PENDENTE") {
+      loadPendentes(selectedFuncId);
+      loadVales(selectedFuncId);
+    } else {
+      loadHistorico(selectedFuncId);
+    }
+  }, [selectedFuncId, activeTab]);
+
+  // --- LOADERS ---
+  const loadFuncionarios = async () => {
+    try {
+      const data = await ColaboradorService.getAll();
+      setFuncionarios(data);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar colaboradores.");
+    }
+  };
+
+  const loadPendentes = async (id: string) => {
+    try {
+      const data = await FinanceiroService.getPendenciasColaborador(id);
+      setPendentes(data);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar pendências.");
+    }
+  };
+
+  const loadVales = async (id: string) => {
+    try {
+      const data = await FinanceiroService.getValesPendentes(id);
+      setValesPendentes(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadHistorico = async (id: string) => {
+    try {
+      const data = await FinanceiroService.getPagamentosColaborador({
+        id_funcionario: id,
+      });
+      setHistorico(data);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar histórico.");
+    }
+  };
+
+  // --- HELPERS ---
+  const getComissaoInfo = (funcId: any, valorTotal: number) => {
+    const func = funcionarios.find(
+      (f) => String(f.id_funcionario) === String(funcId),
+    );
+    const porcentagem = func?.comissao || 0;
+    const valorComissao = (valorTotal * porcentagem) / 100;
+    return { porcentagem, valorComissao };
+  };
+
+  const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
+    setActiveFilter(type);
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("en-CA");
+
+    if (type === "TODAY") {
+      setFilterHistStart(todayStr);
+      setFilterHistEnd(todayStr);
+    } else if (type === "WEEK") {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      setFilterHistStart(weekAgo.toLocaleDateString("en-CA"));
+      setFilterHistEnd(todayStr);
+    } else if (type === "MONTH") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFilterHistStart(firstDay.toLocaleDateString("en-CA"));
+      setFilterHistEnd(todayStr);
+    }
+  };
+
+  // --- FILTERS & FLATTENING ---
+  const flattenedHistorico = useMemo(() => {
+    const flatList: any[] = [];
+
+    historico.forEach((h) => {
+      const dtPagamento = h.dt_pagamento ? h.dt_pagamento.split("T")[0] : "";
+
+      // Check Date Range Filter
+      if (filterHistStart && dtPagamento < filterHistStart) return;
+      if (filterHistEnd && dtPagamento > filterHistEnd) return;
+
+      // 1. Add Commission Items (OSs)
+      if (h.servicos_pagos && h.servicos_pagos.length > 0) {
+        h.servicos_pagos.forEach((s: any) => {
+          flatList.push({
+            type: "COMISSAO",
+            id: s.id_servico_mao_de_obra,
+            date: h.dt_pagamento,
+            os: s.ordem_de_servico,
+            value: s.valor, // Base labor value
+            commissionValue: getComissaoInfo(selectedFuncId, Number(s.valor))
+              .valorComissao,
+            percentage: getComissaoInfo(selectedFuncId, Number(s.valor))
+              .porcentagem,
+            paymentId: h.id_pagamento_equipe,
+            paymentMethod: h.forma_pagamento,
+          });
+        });
+      }
+
+      // 2. Add Bonus (Prêmio) if exists
+      if (Number(h.premio_valor) > 0) {
+        flatList.push({
+          type: "PREMIO",
+          id: `premio-${h.id_pagamento_equipe}`,
+          date: h.dt_pagamento,
+          description: h.premio_descricao || "Prêmio / Bônus",
+          value: Number(h.premio_valor),
+          paymentId: h.id_pagamento_equipe,
+          paymentMethod: h.forma_pagamento,
+        });
+      }
+
+      // 3. Add Vales (Adiantamentos) paid
+      if (h.tipo_lancamento === "VALE") {
+        flatList.push({
+          type: "VALE",
+          id: `vale-${h.id_pagamento_equipe}`,
+          date: h.dt_pagamento,
+          description: `Adiantamento (Vale)${h.obs ? " - " + h.obs : ""}`,
+          value: Number(h.valor_total),
+          paymentId: h.id_pagamento_equipe,
+          paymentMethod: h.forma_pagamento,
+        });
+      }
+
+      // 4. Add Salary/Other Check (Residual Value)
+      // If the payment total is greater than the sum of commissions + bonuses, the remainder is Salário/Contrato
+      const commissionTotal = h.servicos_pagos
+        ? h.servicos_pagos.reduce(
+            (acc: number, s: any) => acc + Number(s.valor),
+            0,
+          )
+        : 0;
+      const premioVal = Number(h.premio_valor) || 0;
+
+      // If it is NOT a Vale record, we check for residuals
+      if (h.tipo_lancamento !== "VALE") {
+        const totalExplained = commissionTotal + premioVal;
+        const residual = Number(h.valor_total) - totalExplained;
+
+        if (residual > 0.05) {
+          // Tolerance for float math
+          flatList.push({
+            type: "SALARIO",
+            id: `salario-${h.id_pagamento_equipe}`,
+            date: h.dt_pagamento,
+            description: h.obs || "Pagamento / Salário",
+            value: residual,
+            paymentId: h.id_pagamento_equipe,
+            paymentMethod: h.forma_pagamento,
+          });
+        }
+      }
+    });
+
+    // Search Filter
+    if (!historySearchTerm) return flatList;
+
+    const lowSearch = historySearchTerm.toLowerCase();
+
+    return flatList.filter((item) => {
+      // Common fields
+      if (item.date && item.date.includes(lowSearch)) return true;
+      if (String(item.value).includes(lowSearch)) return true;
+      if (
+        item.paymentMethod &&
+        item.paymentMethod.toLowerCase().includes(lowSearch)
+      )
+        return true;
+
+      // OS Specific
+      if (item.type === "COMISSAO" && item.os) {
+        if (String(item.os.id_os).includes(lowSearch)) return true;
+        if (item.os.veiculo?.placa?.toLowerCase().includes(lowSearch))
+          return true;
+        if (item.os.veiculo?.modelo?.toLowerCase().includes(lowSearch))
+          return true;
+        if (item.os.veiculo?.cor?.toLowerCase().includes(lowSearch))
+          return true;
+        if (
+          item.os.cliente?.pessoa_fisica?.pessoa?.nome
+            ?.toLowerCase()
+            .includes(lowSearch)
+        )
+          return true;
+        if (
+          item.os.cliente?.pessoa_juridica?.razao_social
+            ?.toLowerCase()
+            .includes(lowSearch)
+        )
+          return true;
+      }
+
+      // Description Specific (Vale/Premio)
+      if (
+        item.description &&
+        item.description.toLowerCase().includes(lowSearch)
+      )
+        return true;
+
+      return false;
+    });
+  }, [
+    historico,
+    filterHistStart,
+    filterHistEnd,
+    historySearchTerm,
+    selectedFuncId,
+    funcionarios,
+  ]);
+
+  // Recalculate total based on filtered view
+  const totalHistorico = useMemo(() => {
+    return flattenedHistorico.reduce((acc, item) => {
+      if (item.type === "COMISSAO") return acc + (item.commissionValue || 0);
+      return acc + (item.value || 0);
+    }, 0);
+  }, [flattenedHistorico]);
+
+  return (
+    <PageLayout
+      title="Pagamentos de Equipe"
+      subtitle="Gestão individual de comissões e pagamentos."
+      actions={
+        <Button
+          onClick={() =>
+            navigate("/pagamento-equipe/novo", {
+              state: { funcionarioId: selectedFuncId },
+            })
+          }
+          variant="primary"
+          icon={Plus}
+          disabled={!selectedFuncId}
+          title={!selectedFuncId ? "Selecione um colaborador primeiro" : ""}
+        >
+          Novo Pagamento
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {/* SELEÇÃO COLABORADOR */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-200">
+          <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest block mb-2">
+            Selecione o Colaborador
+          </label>
+          <div className="relative max-w-md">
+            <Select
+              value={selectedFuncId}
+              onChange={(e) => setSelectedFuncId(e.target.value)}
+            >
+              <option value="">Selecione um colaborador...</option>
+              {funcionarios.map((f: any) => (
+                <option key={f.id_funcionario} value={f.id_funcionario}>
+                  {f.pessoa_fisica?.pessoa?.nome}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        {selectedFuncId ? (
+          <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+            {/* ACTION & TABS */}
+            <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
+              <div className="flex bg-neutral-50 p-1 rounded-lg w-fit border border-neutral-200 gap-1">
+                <FilterButton
+                  active={activeTab === "PENDENTE"}
+                  onClick={() => setActiveTab("PENDENTE")}
+                >
+                  Visão Geral / Pendências
+                </FilterButton>
+                <FilterButton
+                  active={activeTab === "PAGO"}
+                  onClick={() => setActiveTab("PAGO")}
+                >
+                  Histórico (Pagos)
+                </FilterButton>
+              </div>
+            </div>
+
+            {/* TAB: PENDENTE */}
+            {activeTab === "PENDENTE" && (
+              <Card className="p-0 overflow-hidden">
+                {/* ADIANTAMENTOS EM ABERTO */}
+                {valesPendentes.length > 0 && (
+                  <div className="border-b border-neutral-100">
+                    <div className="px-6 py-4 bg-amber-50/50 flex items-center gap-2">
+                      <AlertCircle size={16} className="text-amber-500" />
+                      <h3 className="text-xs font-bold text-amber-700 uppercase tracking-widest">
+                        Adiantamentos (Vales) em Aberto
+                      </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="tabela-limpa w-full">
+                        <thead>
+                          <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th className="text-right">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {valesPendentes.map((vale, idx) => (
+                            <tr
+                              key={`vale-${idx}`}
+                              className="group hover:bg-neutral-50 transition-colors"
+                            >
+                              <td className="font-bold text-neutral-600">
+                                {new Date(
+                                  vale.dt_pagamento,
+                                ).toLocaleDateString()}
+                                <div className="text-sm font-normal text-neutral-400">
+                                  {new Date(
+                                    vale.dt_pagamento,
+                                  ).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </div>
+                              </td>
+                              <td className="text-neutral-600">
+                                {vale.obs || "Adiantamento (Sem descrição)"}
+                              </td>
+                              <td className="text-right font-bold text-orange-600">
+                                {formatCurrency(Number(vale.valor_total))}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="px-6 py-4 bg-neutral-50/50 border-b border-neutral-100">
+                  <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                    Comissões Pendentes
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="tabela-limpa w-full">
+                    <thead>
+                      <tr>
+                        <th className="text-left p-4">OS / Data</th>
+                        <th className="text-left p-4">Veículo / Cliente / Diagnóstico</th>
+                        <th className="text-left p-4">Valor Serviço</th>
+                        <th className="text-left p-4">%</th>
+                        <th className="text-left p-4">Valor A Receber</th>
+                        <th className="text-left p-4">Status OS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {pendentes.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="p-12 text-center text-neutral-400 font-bold"
+                          >
+                            Nenhuma comissão pendente encontrada.
+                          </td>
+                        </tr>
+                      ) : (
+                        pendentes.map((item, idx) => {
+                          const { porcentagem, valorComissao } =
+                            getComissaoInfo(selectedFuncId, Number(item.valor));
+                          return (
+                            <tr
+                              key={`${item.id_os}-${idx}`}
+                              className="group hover:bg-neutral-50 transition-colors"
+                            >
+                              <td className="p-4">
+                                <div className="flex flex-col">
+                                  <div className="text-base text-neutral-900 font-normal">
+                                    OS | {item.id_os}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal mt-1">
+                                    {new Date(item.ordem_de_servico?.dt_abertura).toLocaleDateString("pt-BR")}
+                                  </div>
+                                  <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">
+                                    {item.ordem_de_servico?.dt_abertura ? new Date(item.ordem_de_servico.dt_abertura).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : '\u00A0'}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="text-base text-neutral-900 font-normal uppercase">
+                                    {item.ordem_de_servico?.veiculo?.modelo} {item.ordem_de_servico?.veiculo?.placa ? `- ${item.ordem_de_servico.veiculo.placa}` : ""}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal truncate max-w-[200px]">
+                                    {item.ordem_de_servico?.cliente?.pessoa_fisica?.pessoa?.nome || item.ordem_de_servico?.cliente?.pessoa_juridica?.razao_social || "N/A"}
+                                  </div>
+                                  <div className="text-sm text-neutral-500 font-normal italic truncate max-w-[250px] min-h-[1.25rem]">
+                                    Def: {item.ordem_de_servico?.defeito_relatado || item.ordem_de_servico?.diagnostico || "N/A"}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-neutral-900">
+                                  {formatCurrency(Number(item.valor))}
+                                </span>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-neutral-900 bg-neutral-100 px-2 py-1 rounded">
+                                  {porcentagem ? porcentagem : "0"}%
+                                </span>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span className="text-base font-normal text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                                  {formatCurrency(valorComissao)}
+                                </span>
+                              </td>
+                              <td className="p-4 text-left align-top pt-5">
+                                <span
+                                  className={`px-3 py-1 rounded-md text-sm font-bold uppercase whitespace-nowrap ${getStatusStyle(item.ordem_de_servico?.status || "")}`}
+                                >
+                                  {item.ordem_de_servico?.status
+                                    ? item.ordem_de_servico.status ===
+                                        "PRONTO_PARA_FINANCEIRO" ||
+                                      item.ordem_de_servico.status ===
+                                        "PRONTO PARA FINANCEIRO"
+                                      ? "FINANCEIRO"
+                                      : item.ordem_de_servico.status.replace(
+                                          /_/g,
+                                          " ",
+                                        )
+                                    : "N/A"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
+            {/* TAB: PAGO (HISTORICO) */}
+            {activeTab === "PAGO" && (
+              <>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+                  <div className="flex-1 w-full relative">
+                    <Input
+                      placeholder="Buscar por OS, Placa, Cliente..."
+                      value={historySearchTerm}
+                      onChange={(e) => setHistorySearchTerm(e.target.value)}
+                      icon={Search}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+                    <div className="flex bg-neutral-50 p-1 rounded-xl border border-neutral-100 gap-1 shrink-0">
+                      {["TODAY", "WEEK", "MONTH"].map((f) => (
+                        <FilterButton
+                          key={f}
+                          active={activeFilter === f}
+                          onClick={() => applyQuickFilter(f as any)}
+                        >
+                          {f === "TODAY"
+                            ? "Hoje"
+                            : f === "WEEK"
+                              ? "Semana"
+                              : "Mês"}
+                        </FilterButton>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 items-center px-4 border-l border-neutral-200 ml-2">
+                      <Input
+                        type="date"
+                        value={filterHistStart}
+                        onChange={(e) => {
+                          setFilterHistStart(e.target.value);
+                          setActiveFilter("CUSTOM");
+                        }}
+                        className={`h-9 text-xs ${
+                          activeFilter === "CUSTOM"
+                            ? "border-blue-300 text-blue-700"
+                            : ""
+                        }`}
+                      />
+                      <Input
+                        type="date"
+                        value={filterHistEnd}
+                        onChange={(e) => {
+                          setFilterHistEnd(e.target.value);
+                          setActiveFilter("CUSTOM");
+                        }}
+                        className={`h-9 text-xs ${
+                          activeFilter === "CUSTOM"
+                            ? "border-blue-300 text-blue-700"
+                            : ""
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Card className="p-0 overflow-hidden">
+                  <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex justify-between items-center">
+                    <span className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+                      Histórico de Pagamentos
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold uppercase tracking-widest text-neutral-400">
+                        Total Pago no Período:
+                      </span>
+                      <span className="text-lg font-bold text-neutral-800 bg-white px-3 py-1 rounded border border-neutral-200 shadow-sm">
+                        {formatCurrency(totalHistorico)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="tabela-limpa w-full">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-4">OS / Data</th>
+                          <th className="text-left p-4">Tipo</th>
+                          <th className="text-left p-4">Diagnóstico</th>
+                          <th className="text-left p-4">Veículo</th>
+                          <th className="text-left p-4">Cliente</th>
+                          <th className="text-left p-4">Valor Pago</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {flattenedHistorico.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={6}
+                              className="p-12 text-center text-neutral-400 font-bold"
+                            >
+                              Nenhum histórico encontrado.
+                            </td>
+                          </tr>
+                        ) : (
+                          flattenedHistorico.map((item, idx) => (
+                            <tr
+                              key={`${item.id}-${idx}`}
+                              className="group hover:bg-neutral-50 transition-colors"
+                            >
+                              <td className="p-4">
+                                <div className="flex flex-col">
+                                  <div className="text-base text-neutral-900 font-normal">
+                                    {item.type === "COMISSAO" ? `OS | ${item.os.id_os}` : "N/A"}
+                                  </div>
+                                  <div className="text-base text-neutral-600 font-normal mt-1">
+                                    {new Date(item.date).toLocaleDateString("pt-BR")}
+                                  </div>
+                                  <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">
+                                    {new Date(item.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                <span
+                                  className={`px-2 py-1 rounded text-sm font-bold uppercase tracking-wider ${
+                                    item.type === "COMISSAO"
+                                      ? "bg-emerald-50 text-emerald-600"
+                                      : item.type === "VALE"
+                                        ? "bg-amber-50 text-amber-600"
+                                        : "bg-blue-50 text-blue-600"
+                                  }`}
+                                >
+                                  {item.type}
+                                </span>
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                {item.type === "COMISSAO" ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 truncate max-w-[200px]" title={item.os?.defeito_relatado || item.os?.diagnostico || "N/A"}>
+                                      {item.os?.defeito_relatado || item.os?.diagnostico || "Sem diagnóstico"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-base font-normal text-neutral-900">
+                                      {item.description}
+                                    </span>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                {item.type === "COMISSAO" ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 uppercase">
+                                      {item.os.veiculo?.modelo || "N/A"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 uppercase">
+                                      {item.os.veiculo?.placa || "SEM PLACA"}
+                                    </div>
+                                    <div className="text-sm font-normal text-neutral-500 uppercase min-h-[1.25rem]">
+                                      {item.os.veiculo?.cor || "\u00A0"}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash mt-3"></span>
+                                )}
+                              </td>
+                              <td className="p-4 align-top pt-5">
+                                {item.type === "COMISSAO" ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-base font-normal text-neutral-900 truncate max-w-[150px]">
+                                      {item.os.cliente?.pessoa_fisica?.pessoa?.nome || item.os.cliente?.pessoa_juridica?.razao_social || "N/I"}
+                                    </div>
+                                    <div className="text-base font-normal text-neutral-600 min-h-[1.5rem]">&nbsp;</div>
+                                    <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                                  </div>
+                                ) : (
+                                  <span className="text-neutral-300 transform scale-150 block w-4 h-px bg-neutral-200 is-dash mt-3"></span>
+                                )}
+                              </td>
+                              <td className="p-4 align-top pt-5 text-left">
+                                <div className="text-base font-normal text-neutral-900">
+                                  {formatCurrency(item.type === "COMISSAO" ? item.commissionValue : item.value)}
+                                </div>
+                                {item.type === "COMISSAO" && (
+                                  <div className="text-base font-normal text-neutral-600">
+                                    ({item.percentage}%)
+                                  </div>
+                                )}
+                                <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </>
+            )}
+          </div>
+        ) : (
+          // EMPTY STATE
+          <div className="bg-surface rounded-xl border border-dashed border-neutral-200 p-12 flex flex-col items-center justify-center text-center mt-6">
+            <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-500 mb-4">
+              <Plus size={32} />
+            </div>
+            <h3 className="font-bold text-lg text-neutral-600">
+              Nenhum Colaborador Selecionado
+            </h3>
+            <p className="text-neutral-500 max-w-sm mt-2">
+              Selecione um colaborador na lista acima para visualizar suas
+              comissões, histórico e realizar pagamentos.
+            </p>
+          </div>
+        )}
+      </div>
+    </PageLayout>
+  );
+};
+
 
 
 ================================================================================
@@ -34167,6 +34865,15 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import type { IVeiculo } from "../types/backend";
+import { formatPhone } from "../utils/normalize";
+
+interface IClienteParcial {
+  telefone_1?: string;
+  telefone_2?: string;
+  email?: string;
+  pessoa_fisica?: { pessoa?: { nome?: string } };
+  pessoa_juridica?: { nome_fantasia?: string; razao_social?: string };
+}
 import { ClienteForm } from "../components/clientes/Forms/ClienteForm";
 import { VeiculoForm } from "../components/veiculos/Forms/VeiculoForm";
 import { Modal } from "../components/ui/Modal";
@@ -34290,14 +34997,16 @@ export const VeiculoPage = () => {
     const cor = v.cor.toLowerCase();
 
     // Client data access
+    const client = v.cliente as IClienteParcial | undefined;
     const clientName = (
-      (v.cliente as any)?.pessoa_fisica?.pessoa?.nome ||
-      (v.cliente as any)?.pessoa_juridica?.nome_fantasia ||
+      client?.pessoa_fisica?.pessoa?.nome ||
+      client?.pessoa_juridica?.nome_fantasia ||
+      client?.pessoa_juridica?.razao_social ||
       ""
     ).toLowerCase();
-    const clientPhone1 = ((v.cliente as any)?.telefone_1 || "").toLowerCase();
-    const clientPhone2 = ((v.cliente as any)?.telefone_2 || "").toLowerCase();
-    const clientEmail = ((v.cliente as any)?.email || "").toLowerCase();
+    const clientPhone1 = (client?.telefone_1 || "").toLowerCase();
+    const clientPhone2 = (client?.telefone_2 || "").toLowerCase();
+    const clientEmail = (client?.email || "").toLowerCase();
 
     return (
       placa.includes(s) ||
@@ -34348,7 +35057,9 @@ export const VeiculoPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredVeiculos.map((v, idx) => (
+                {filteredVeiculos.map((v, idx) => {
+                  const client = v.cliente as IClienteParcial | undefined;
+                  return (
                   <tr
                     key={v.id_veiculo}
                     className={`transition-colors hover:bg-neutral-25 group ${
@@ -34374,9 +35085,9 @@ export const VeiculoPage = () => {
                     <td>
                       <div className="flex flex-col">
                         <span className="font-medium text-neutral-600 text-base">
-                          {(v.cliente as any)?.pessoa_fisica?.pessoa?.nome ||
-                            (v.cliente as any)?.pessoa_juridica
-                              ?.nome_fantasia ||
+                          {client?.pessoa_fisica?.pessoa?.nome ||
+                            client?.pessoa_juridica?.nome_fantasia ||
+                            client?.pessoa_juridica?.razao_social ||
                             "Cliente não identificado"}
                         </span>
                       </div>
@@ -34385,11 +35096,11 @@ export const VeiculoPage = () => {
                       <div className="flex flex-col gap-1">
                         <span className="flex items-center gap-2 text-base text-neutral-600 font-medium">
                           <Phone size={14} className="text-neutral-400" />
-                          {(v.cliente as any)?.telefone_1 || "-"}
+                          {client?.telefone_1 ? formatPhone(client.telefone_1) : "-"}
                         </span>
-                        {(v.cliente as any)?.email && (
+                        {client?.email && (
                           <span className="text-base text-neutral-500 pl-6">
-                            {(v.cliente as any)?.email}
+                            {client.email}
                           </span>
                         )}
                       </div>
@@ -34427,7 +35138,8 @@ export const VeiculoPage = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {filteredVeiculos.length === 0 && (
                   <tr>
                     <td
@@ -35187,24 +35899,22 @@ import type {
 
 export const FornecedorService = {
   getAll: async () => {
-    const response = await api.get<IFornecedor[]>("/pessoa?is_fornecedor=true");
+    const response = await api.get<IFornecedor[]>("/fornecedor");
     return response.data;
   },
 
   create: async (data: IFornecedorPayload) => {
-    // Inject the flag for backend
-    const payload = { ...data, is_fornecedor: true };
-    const response = await api.post<IFornecedor>("/pessoa", payload);
+    const response = await api.post<IFornecedor>("/fornecedor", data);
     return response.data;
   },
 
   update: async (id: number, data: IFornecedorPayload) => {
-    const response = await api.put<IFornecedor>(`/pessoa/${id}`, data);
+    const response = await api.put<IFornecedor>(`/fornecedor/${id}`, data);
     return response.data;
   },
 
   delete: async (id: number) => {
-    await api.delete(`/pessoa/${id}`);
+    await api.delete(`/fornecedor/${id}`);
   },
 };
 
@@ -36652,6 +37362,14 @@ export const unmask = (value: string): string => {
   return value ? value.replace(/\D/g, "") : "";
 };
 
+/**
+ * Formata Inscrição Estadual (IE) adicionando pontos a cada 3 dígitos da direita para a esquerda
+ */
+export const formatIE = (ie: string): string => {
+  const digits = ie.replace(/\D/g, "");
+  return digits.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+};
+
 
 
 ================================================================================
@@ -37110,6 +37828,7 @@ model PessoaFisica {
   cpf              String?      @db.VarChar(11)
   dt_cadastro      DateTime     @default(now()) @db.Timestamp(6)
   clientes         Cliente[]
+  fornecedores     Fornecedor[]
   funcionario      Funcionario?
   pessoa           Pessoa       @relation(fields: [id_pessoa], references: [id_pessoa])
 
@@ -37125,6 +37844,7 @@ model PessoaJuridica {
   inscricao_estadual String?   @db.VarChar(50)
   dt_cadastro        DateTime  @default(now()) @db.Timestamp(6)
   clientes           Cliente[]
+  fornecedores       Fornecedor[]
   pessoa             Pessoa    @relation(fields: [id_pessoa], references: [id_pessoa])
 
   @@map("pessoa_juridica")
@@ -37167,6 +37887,38 @@ model Cliente {
   @@index([id_pessoa_juridica])
   @@index([tipo_pessoa])
   @@map("cliente")
+}
+
+model Fornecedor {
+  id_fornecedor      Int              @id @default(autoincrement())
+  id_pessoa_fisica   Int?
+  id_pessoa_juridica Int?
+  tipo_pessoa        Int
+  contato            String?          @db.VarChar(100)
+  telefone           String?          @db.VarChar(15)
+  whatsapp           String?          @db.VarChar(15)
+  email              String?          @db.VarChar(100)
+  logradouro         String?          @db.VarChar(150)
+  numero             String?          @db.VarChar(20)
+  complemento        String?          @db.VarChar(100)
+  bairro             String?          @db.VarChar(100)
+  cidade             String?          @db.VarChar(100)
+  uf                 String?          @db.Char(2)
+  cep                String?          @db.VarChar(10)
+  banco              String?          @db.VarChar(50)
+  agencia            String?          @db.VarChar(20)
+  conta              String?          @db.VarChar(20)
+  chave_pix          String?          @db.VarChar(100)
+  condicoes_pagamento String?         @db.VarChar(100)
+  categoria_produto  String?          @db.VarChar(100)
+  dt_cadastro        DateTime         @default(now()) @db.Timestamp(6)
+
+  pessoa_fisica      PessoaFisica?    @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
+  pessoa_juridica    PessoaJuridica?  @relation(fields: [id_pessoa_juridica], references: [id_pessoa_juridica])
+
+  @@index([id_pessoa_fisica])
+  @@index([id_pessoa_juridica])
+  @@map("fornecedor")
 }
 
 model EquipamentoCliente {
@@ -38944,18 +39696,6 @@ ALTER TABLE "itens_os" ADD COLUMN     "deleted_at" TIMESTAMP;
 ================================================================================
 FILE PATH: server\prisma\migrations\20260103205456_add_indexes_os\migration.sql
 ================================================================================
--- CreateIndex
-CREATE INDEX "ordem_de_servico_id_cliente_idx" ON "ordem_de_servico"("id_cliente");
-
--- CreateIndex
-CREATE INDEX "ordem_de_servico_id_veiculo_idx" ON "ordem_de_servico"("id_veiculo");
-
--- CreateIndex
-CREATE INDEX "ordem_de_servico_status_idx" ON "ordem_de_servico"("status");
-
--- CreateIndex
-CREATE INDEX "ordem_de_servico_deleted_at_idx" ON "ordem_de_servico"("deleted_at");
-
 
 
 ================================================================================
@@ -40811,6 +41551,88 @@ export class DashboardController {
 
 
 ================================================================================
+FILE PATH: server\src\controllers\documento.controller.ts
+================================================================================
+import { Request, Response } from "express";
+import { DocumentoService } from "../services/DocumentoService.js";
+
+const service = new DocumentoService();
+
+export class DocumentoController {
+  async generatePdf(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "ID inválido" });
+      }
+
+      const pdfBuffer = await service.generatePdf(id);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename=os-${id}.pdf`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error("Erro ao gerar PDF:", error);
+      res.status(500).json({
+        error: "Erro ao gerar PDF",
+        details: error.message,
+      });
+    }
+  }
+
+  async sendEmail(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const { email } = req.body;
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "ID inválido" });
+      }
+
+      if (!email) {
+        return res.status(400).json({ error: "Email é obrigatório" });
+      }
+
+      const pdfBuffer = await service.generatePdf(id);
+      await service.sendEmail(pdfBuffer, email);
+
+      res.json({ success: true, message: "Email enviado com sucesso" });
+    } catch (error: any) {
+      console.error("Erro ao enviar email:", error);
+      res.status(500).json({
+        error: "Erro ao enviar email",
+        details: error.message,
+      });
+    }
+  }
+
+  async sendTelegram(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const { chatId } = req.body;
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "ID inválido" });
+      }
+
+      if (!chatId) {
+        return res.status(400).json({ error: "Chat ID é obrigatório" });
+      }
+
+      const pdfBuffer = await service.generatePdf(id);
+      await service.sendTelegram(pdfBuffer, chatId);
+
+      res.json({ success: true, message: "Telegram enviado com sucesso" });
+    } catch (error: any) {
+      console.error("Erro ao enviar telegram:", error);
+      res.status(500).json({
+        error: "Erro ao enviar telegram",
+        details: error.message,
+      });
+    }
+  }
+}
+
 
 
 ================================================================================
@@ -41135,6 +41957,75 @@ export class FinanceiroController {
     } catch (error) {
       console.error("Financeiro Evolution Error:", error);
       res.status(500).json({ error: "Failed to load evolution data" });
+    }
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\controllers\fornecedor.controller.ts
+================================================================================
+import { Request, Response } from "express";
+import { FornecedorRepository } from "../repositories/fornecedor.repository.js";
+
+const repository = new FornecedorRepository();
+
+export class FornecedorController {
+  async create(req: Request, res: Response) {
+    try {
+      const fornecedor = await repository.create(req.body);
+      res.status(201).json(fornecedor);
+    } catch (error: any) {
+      res
+        .status(400)
+        .json({ error: "Failed to create Fornecedor", details: error.message });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const fornecedores = await repository.findAll();
+      res.json(fornecedores);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Fornecedores" });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const fornecedor = await repository.findById(id);
+      if (!fornecedor) {
+        return res.status(404).json({ error: "Fornecedor not found" });
+      }
+      res.json(fornecedor);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Fornecedor" });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const fornecedor = await repository.update(id, req.body);
+      res.json(fornecedor);
+    } catch (error: any) {
+      res.status(400).json({ error: "Failed to update Fornecedor", details: error.message });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(400).json({
+        error: "Failed to delete Fornecedor",
+        message: error.message || "Unknown error",
+        details: error.code || "",
+      });
     }
   }
 }
@@ -42979,6 +43870,67 @@ export class PessoaFisicaController {
 ================================================================================
 FILE PATH: server\src\controllers\pessoaJuridica.controller.ts
 ================================================================================
+import { Request, Response } from 'express';
+import { PessoaJuridicaRepository } from '../repositories/pessoaJuridica.repository.js';
+
+const repository = new PessoaJuridicaRepository();
+
+export class PessoaJuridicaController {
+  async create(req: Request, res: Response) {
+    try {
+      const pessoaJuridica = await repository.create(req.body);
+      res.status(201).json(pessoaJuridica);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create PessoaJuridica', details: error });
+    }
+  }
+
+  async findAll(req: Request, res: Response) {
+    try {
+      const pessoasJuridicas = await repository.findAll();
+      res.json(pessoasJuridicas);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch PessoasJuridicas' });
+    }
+  }
+
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const pessoaJuridica = await repository.findById(id);
+      if (!pessoaJuridica) {
+        return res.status(404).json({ error: 'PessoaJuridica not found' });
+      }
+      res.json(pessoaJuridica);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch PessoaJuridica' });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const pessoaJuridica = await repository.update(id, req.body);
+      res.json(pessoaJuridica);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update PessoaJuridica' });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete PessoaJuridica' });
+    }
+  }
+}
+
+
+
+================================================================================
 FILE PATH: server\src\controllers\recebivelCartao.controller.ts
 ================================================================================
 import { Request, Response } from 'express';
@@ -44466,10 +45418,59 @@ export class ClienteRepository {
     });
   }
 
-  async update(id: number, data: Prisma.ClienteUpdateInput) {
-    return await prisma.cliente.update({
-      where: { id_cliente: id },
-      data,
+  async update(id: number, data: any) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Extract nested data
+      const {
+        nome, razao_social, nome_fantasia, cpf, cnpj, inscricao_estadual,
+        id_pessoa_fisica, id_pessoa_juridica, tipo_pessoa, tipo, ...clienteData
+      } = data;
+
+      // 2. Update Cliente base data
+      const cliente = await tx.cliente.update({
+        where: { id_cliente: id },
+        data: clienteData as Prisma.ClienteUpdateInput,
+        include: {
+          pessoa_fisica: true,
+          pessoa_juridica: true
+        }
+      });
+
+      // 3. Update PessoaFisica or PessoaJuridica if provided
+      if (cliente.pessoa_fisica) {
+        if (cpf !== undefined) {
+          await tx.pessoaFisica.update({
+            where: { id_pessoa_fisica: cliente.pessoa_fisica.id_pessoa_fisica },
+            data: { cpf }
+          });
+        }
+        if (nome !== undefined) {
+          await tx.pessoa.update({
+            where: { id_pessoa: cliente.pessoa_fisica.id_pessoa },
+            data: { nome }
+          });
+        }
+      } else if (cliente.pessoa_juridica) {
+        if (cnpj !== undefined || razao_social !== undefined || nome_fantasia !== undefined || inscricao_estadual !== undefined) {
+          await tx.pessoaJuridica.update({
+            where: { id_pessoa_juridica: cliente.pessoa_juridica.id_pessoa_juridica },
+            data: {
+              cnpj: cnpj !== undefined ? cnpj : undefined,
+              razao_social: razao_social !== undefined ? razao_social : undefined,
+              nome_fantasia: nome_fantasia !== undefined ? nome_fantasia : undefined,
+              inscricao_estadual: inscricao_estadual !== undefined ? inscricao_estadual : undefined,
+            }
+          });
+        }
+        if (nome !== undefined || razao_social !== undefined) {
+          await tx.pessoa.update({
+            where: { id_pessoa: cliente.pessoa_juridica.id_pessoa },
+            data: { nome: razao_social || nome }
+          });
+        }
+      }
+
+      return cliente;
     });
   }
 
@@ -45818,6 +46819,198 @@ export class FechamentoFinanceiroRepository {
 
 
 ================================================================================
+FILE PATH: server\src\repositories\fornecedor.repository.ts
+================================================================================
+import { Prisma } from "@prisma/client";
+import { prisma } from "../prisma.js";
+
+export class FornecedorRepository {
+  async create(data: any) {
+    console.log(
+      "📥 FornecedorRepository.create - Received data:",
+      JSON.stringify(data, null, 2)
+    );
+
+    // If 'nome' is provided and we don't have explicit foreign keys
+    if (data.nome && !data.id_pessoa_fisica && !data.id_pessoa_juridica) {
+      return await prisma.$transaction(async (tx) => {
+        // 1. Create Base Pessoa
+        const pessoa = await tx.pessoa.create({
+          data: {
+            nome: data.nome,
+            is_fornecedor: true,
+            obs: data.obs || null,
+          },
+        });
+
+        let idPessoaFisica = null;
+        let idPessoaJuridica = null;
+        let tipoPessoaId = 1; // Default to Fisica
+
+        if (data.tipo_pessoa === 2 || data.tipo === "JURIDICA") {
+          tipoPessoaId = 2;
+          const pj = await tx.pessoaJuridica.create({
+            data: {
+              id_pessoa: pessoa.id_pessoa,
+              razao_social: data.razao_social || data.nome,
+              nome_fantasia: data.nome_fantasia || null,
+              cnpj: data.cnpj || null,
+              inscricao_estadual: data.inscricao_estadual || null,
+            },
+          });
+          idPessoaJuridica = pj.id_pessoa_juridica;
+        } else {
+          // Default to FISICA
+          const pf = await tx.pessoaFisica.create({
+            data: {
+              id_pessoa: pessoa.id_pessoa,
+              cpf: data.cpf || null,
+            },
+          });
+          idPessoaFisica = pf.id_pessoa_fisica;
+        }
+
+        // 2. Create Fornecedor
+        const fornecedor = await tx.fornecedor.create({
+          data: {
+            id_pessoa_fisica: idPessoaFisica,
+            id_pessoa_juridica: idPessoaJuridica,
+            tipo_pessoa: tipoPessoaId,
+            contato: data.contato || null,
+            telefone: data.telefone_1 || data.telefone || null,
+            whatsapp: data.telefone_2 || data.whatsapp || null,
+            email: data.email || null,
+            logradouro: data.logradouro || null,
+            numero: data.nr_logradouro || data.numero || null,
+            complemento: data.compl_logradouro || data.complemento || null,
+            bairro: data.bairro || null,
+            cidade: data.cidade || null,
+            uf: data.estado || data.uf || null,
+            cep: data.cep || null,
+            banco: data.banco || null,
+            agencia: data.agencia || null,
+            conta: data.conta || null,
+            chave_pix: data.chave_pix || null,
+            condicoes_pagamento: data.condicoes_pagamento || null,
+            categoria_produto: data.categoria_produto || null,
+          },
+        });
+
+        console.log("✅ Fornecedor transaction complete:", fornecedor.id_fornecedor);
+        return fornecedor;
+      });
+    }
+
+    // Existing logic if IDs are provided
+    const { id_pessoa_fisica, id_pessoa_juridica, ...fornecedorData } = data;
+
+    const payload = {
+      ...fornecedorData,
+      id_pessoa_fisica: id_pessoa_fisica || null,
+      id_pessoa_juridica: id_pessoa_juridica || null,
+    };
+
+    console.log(
+      "📤 FornecedorRepository.create - Sending to Prisma:",
+      JSON.stringify(payload, null, 2)
+    );
+
+    try {
+      const result = await prisma.fornecedor.create({
+        data: payload,
+      });
+      console.log("✅ FornecedorRepository.create - Success:", result.id_fornecedor);
+      return result;
+    } catch (error: any) {
+      console.error("❌ FornecedorRepository.create - Error:", error);
+      throw error;
+    }
+  }
+
+  async findAll() {
+    return await prisma.fornecedor.findMany({
+      include: {
+        pessoa_fisica: { include: { pessoa: true } },
+        pessoa_juridica: { include: { pessoa: true } },
+      },
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.fornecedor.findUnique({
+      where: { id_fornecedor: id },
+      include: {
+        pessoa_fisica: { include: { pessoa: true } },
+        pessoa_juridica: { include: { pessoa: true } },
+      },
+    });
+  }
+
+  async update(id: number, data: any) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Update Fornecedor base data
+      const {
+        nome, razao_social, nome_fantasia, cpf, cnpj, inscricao_estadual,
+        tipo_pessoa, ...fornecedorData
+      } = data;
+
+      const fornecedor = await tx.fornecedor.update({
+        where: { id_fornecedor: id },
+        data: fornecedorData,
+        include: {
+          pessoa_fisica: true,
+          pessoa_juridica: true
+        }
+      });
+
+      // 2. Update PessoaFisica or PessoaJuridica if provided
+      if (fornecedor.pessoa_fisica) {
+        if (cpf !== undefined) {
+          await tx.pessoaFisica.update({
+            where: { id_pessoa_fisica: fornecedor.pessoa_fisica.id_pessoa_fisica },
+            data: { cpf }
+          });
+        }
+        if (nome !== undefined) {
+          await tx.pessoa.update({
+            where: { id_pessoa: fornecedor.pessoa_fisica.id_pessoa },
+            data: { nome }
+          });
+        }
+      } else if (fornecedor.pessoa_juridica) {
+        if (cnpj !== undefined || razao_social !== undefined || nome_fantasia !== undefined || inscricao_estadual !== undefined) {
+          await tx.pessoaJuridica.update({
+            where: { id_pessoa_juridica: fornecedor.pessoa_juridica.id_pessoa_juridica },
+            data: {
+              cnpj: cnpj !== undefined ? cnpj : undefined,
+              razao_social: razao_social !== undefined ? razao_social : undefined,
+              nome_fantasia: nome_fantasia !== undefined ? nome_fantasia : undefined,
+              inscricao_estadual: inscricao_estadual !== undefined ? inscricao_estadual : undefined,
+            }
+          });
+        }
+        if (nome !== undefined || razao_social !== undefined) {
+          await tx.pessoa.update({
+            where: { id_pessoa: fornecedor.pessoa_juridica.id_pessoa },
+            data: { nome: razao_social || nome }
+          });
+        }
+      }
+
+      return fornecedor;
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.fornecedor.delete({
+      where: { id_fornecedor: id },
+    });
+  }
+}
+
+
+
+================================================================================
 FILE PATH: server\src\repositories\funcionario.repository.ts
 ================================================================================
 import { Prisma } from '@prisma/client';
@@ -46008,49 +47201,72 @@ export class OrdemDeServicoRepository {
         if (!finalClientId) {
              const isJuridica = data.client.tipo === 'JURIDICA';
              
-             // Base Pessoa
-             const pessoa = await tx.pessoa.create({
-                 data: { nome: data.client.nome }
-             });
-
-             let idPessoaFisica = null;
-             let idPessoaJuridica = null;
-             let tipoId = 1; // Default Default 1=Fisica
-
-             if (isJuridica) {
-                 tipoId = 2; // Default 2=Juridica
-                 const pj = await tx.pessoaJuridica.create({
-                     data: {
-                         id_pessoa: pessoa.id_pessoa,
-                         razao_social: data.client.nome,
-                         cnpj: data.client.cnpj || null
-                     }
+             const cleanCpf = data.client.cpf ? String(data.client.cpf).replace(/\D/g, '') : null;
+             const cleanCnpj = data.client.cnpj ? String(data.client.cnpj).replace(/\D/g, '') : null;
+             
+             let existingClient = null;
+             
+             if (isJuridica && cleanCnpj) {
+                 const pj = await tx.pessoaJuridica.findFirst({
+                     where: { cnpj: cleanCnpj },
+                     include: { clientes: true }
                  });
-                 idPessoaJuridica = pj.id_pessoa_juridica;
-             } else {
-                 const pf = await tx.pessoaFisica.create({
-                     data: {
-                         id_pessoa: pessoa.id_pessoa,
-                         cpf: data.client.cpf || null
-                     }
+                 if (pj && pj.clientes.length > 0) existingClient = pj.clientes[0];
+             } else if (!isJuridica && cleanCpf) {
+                 const pf = await tx.pessoaFisica.findFirst({
+                     where: { cpf: cleanCpf },
+                     include: { clientes: true }
                  });
-                 idPessoaFisica = pf.id_pessoa_fisica;
+                 if (pf && pf.clientes.length > 0) existingClient = pf.clientes[0];
              }
 
-             const newClient = await tx.cliente.create({
-                 data: {
-                     id_pessoa_fisica: idPessoaFisica,
-                     id_pessoa_juridica: idPessoaJuridica,
-                     tipo_pessoa: tipoId,
-                     telefone_1: data.client.telefone,
-                     logradouro: data.client.logradouro,
-                     nr_logradouro: data.client.numero,
-                     bairro: data.client.bairro,
-                     cidade: data.client.cidade,
-                     estado: data.client.estado
+             if (existingClient) {
+                 finalClientId = existingClient.id_cliente;
+             } else {
+                 // Base Pessoa
+                 const pessoa = await tx.pessoa.create({
+                     data: { nome: data.client.nome }
+                 });
+
+                 let idPessoaFisica = null;
+                 let idPessoaJuridica = null;
+                 let tipoId = 1; // Default Default 1=Fisica
+
+                 if (isJuridica) {
+                     tipoId = 2; // Default 2=Juridica
+                     const pj = await tx.pessoaJuridica.create({
+                         data: {
+                             id_pessoa: pessoa.id_pessoa,
+                             razao_social: data.client.nome,
+                             cnpj: cleanCnpj || null
+                         }
+                     });
+                     idPessoaJuridica = pj.id_pessoa_juridica;
+                 } else {
+                     const pf = await tx.pessoaFisica.create({
+                         data: {
+                             id_pessoa: pessoa.id_pessoa,
+                             cpf: cleanCpf || null
+                         }
+                     });
+                     idPessoaFisica = pf.id_pessoa_fisica;
                  }
-             });
-             finalClientId = newClient.id_cliente;
+
+                 const newClient = await tx.cliente.create({
+                     data: {
+                         id_pessoa_fisica: idPessoaFisica,
+                         id_pessoa_juridica: idPessoaJuridica,
+                         tipo_pessoa: tipoId,
+                         telefone_1: data.client.telefone,
+                         logradouro: data.client.logradouro,
+                         nr_logradouro: data.client.numero,
+                         bairro: data.client.bairro,
+                         cidade: data.client.cidade,
+                         estado: data.client.estado
+                     }
+                 });
+                 finalClientId = newClient.id_cliente;
+             }
         }
 
         // 2. Handle Vehicle Creation if needed
@@ -48095,9 +49311,6 @@ export { authRoutes };
 
 
 
-================================================================================
-FILE PATH: server\src\routes\categoriaFinanceira.routes.ts
-================================================================================
 import { Router } from 'express';
 import * as CategoriaController from '../controllers/categoriaFinanceira.controller.js';
 
@@ -48257,6 +49470,25 @@ export { financeiroRoutes };
 
 
 ================================================================================
+FILE PATH: server\src\routes\fornecedor.routes.ts
+================================================================================
+import { Router } from "express";
+import { FornecedorController } from "../controllers/fornecedor.controller.js";
+
+const router = Router();
+const controller = new FornecedorController();
+
+router.post("/", controller.create.bind(controller));
+router.get("/", controller.findAll.bind(controller));
+router.get("/:id", controller.findById.bind(controller));
+router.put("/:id", controller.update.bind(controller));
+router.delete("/:id", controller.delete.bind(controller));
+
+export { router as fornecedorRoutes };
+
+
+
+================================================================================
 FILE PATH: server\src\routes\funcionario.routes.ts
 ================================================================================
 import { Router } from 'express';
@@ -48287,6 +49519,7 @@ import { pessoaFisicaRoutes } from "./pessoaFisica.routes.js";
 import { pessoaJuridicaRoutes } from "./pessoaJuridica.routes.js";
 import { clienteRoutes } from "./cliente.routes.js";
 import { funcionarioRoutes } from "./funcionario.routes.js";
+import { fornecedorRoutes } from "./fornecedor.routes.js";
 import { pecasEstoqueRoutes } from "./pecasEstoque.routes.js";
 import { veiculoRoutes } from "./veiculo.routes.js";
 import { ordemDeServicoRoutes } from "./ordemDeServico.routes.js";
@@ -48322,6 +49555,7 @@ apiRouter.use("/pessoa-fisica", pessoaFisicaRoutes);
 apiRouter.use("/pessoa-juridica", pessoaJuridicaRoutes);
 apiRouter.use("/cliente", clienteRoutes);
 apiRouter.use("/funcionario", funcionarioRoutes);
+apiRouter.use("/fornecedor", fornecedorRoutes);
 apiRouter.use("/pecas-estoque", pecasEstoqueRoutes);
 apiRouter.use("/veiculo", veiculoRoutes);
 apiRouter.use("/ordem-de-servico", ordemDeServicoRoutes);
@@ -49703,6 +50937,11 @@ export class CalculadoraPagamentoService {
   }
 }
 
+
+
+================================================================================
+FILE PATH: server\src\services\DocumentoService.ts
+================================================================================
 import { NotificationService } from "./NotificationService.js";
 import { prisma } from "../prisma.js";
 

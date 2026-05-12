@@ -133,7 +133,7 @@ export const LoosePartOsModal = ({ isOpen, onClose }: LoosePartOsModalProps) => 
               {searchQuery.length >= 2 && clients.length === 0 && (
                 <div className="p-8 text-center bg-neutral-50 rounded-xl">
                   <p className="text-neutral-500 mb-4">Cliente não encontrado.</p>
-                  <Button variant="primary" icon={Plus} onClick={() => navigate("/cadastro-unificado")}>
+                  <Button variant="primary" icon={Plus} onClick={() => navigate("/novo-cadastro")}>
                     Cadastrar Novo Cliente
                   </Button>
                 </div>
@@ -179,7 +179,7 @@ export const LoosePartOsModal = ({ isOpen, onClose }: LoosePartOsModalProps) => 
               <Input
                 label="Numeração / Serial"
                 placeholder="Opcional"
-                value={equipData.numeracao}
+                value={equipData.numeracao || ""}
                 onChange={(e) => setEquipData({ ...equipData, numeracao: e.target.value })}
               />
             </div>

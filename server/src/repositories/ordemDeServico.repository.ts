@@ -28,49 +28,76 @@ export class OrdemDeServicoRepository {
         if (!finalClientId) {
              const isJuridica = data.client.tipo === 'JURIDICA';
              
-             // Base Pessoa
-             const pessoa = await tx.pessoa.create({
-                 data: { nome: data.client.nome }
-             });
-
-             let idPessoaFisica = null;
-             let idPessoaJuridica = null;
-             let tipoId = 1; // Default Default 1=Fisica
-
-             if (isJuridica) {
-                 tipoId = 2; // Default 2=Juridica
-                 const pj = await tx.pessoaJuridica.create({
-                     data: {
-                         id_pessoa: pessoa.id_pessoa,
-                         razao_social: data.client.nome,
-                         cnpj: data.client.cnpj || null
-                     }
+             // Extract digits only. If the result is empty string, convert to null
+             const cleanCpfRaw = data.client.cpf ? String(data.client.cpf).replace(/\D/g, '') : "";
+             const cleanCnpjRaw = data.client.cnpj ? String(data.client.cnpj).replace(/\D/g, '') : "";
+             
+             const cleanCpf = cleanCpfRaw === "" ? null : cleanCpfRaw;
+             const cleanCnpj = cleanCnpjRaw === "" ? null : cleanCnpjRaw;
+             
+             let existingClient = null;
+             
+             if (isJuridica && cleanCnpj) {
+                 const pj = await tx.pessoaJuridica.findFirst({
+                     where: { cnpj: cleanCnpj },
+                     include: { clientes: true }
                  });
-                 idPessoaJuridica = pj.id_pessoa_juridica;
-             } else {
-                 const pf = await tx.pessoaFisica.create({
-                     data: {
-                         id_pessoa: pessoa.id_pessoa,
-                         cpf: data.client.cpf || null
-                     }
+                 if (pj && pj.clientes.length > 0) existingClient = pj.clientes[0];
+             } else if (!isJuridica && cleanCpf) {
+                 const pf = await tx.pessoaFisica.findFirst({
+                     where: { cpf: cleanCpf },
+                     include: { clientes: true }
                  });
-                 idPessoaFisica = pf.id_pessoa_fisica;
+                 if (pf && pf.clientes.length > 0) existingClient = pf.clientes[0];
              }
 
-             const newClient = await tx.cliente.create({
-                 data: {
-                     id_pessoa_fisica: idPessoaFisica,
-                     id_pessoa_juridica: idPessoaJuridica,
-                     tipo_pessoa: tipoId,
-                     telefone_1: data.client.telefone,
-                     logradouro: data.client.logradouro,
-                     nr_logradouro: data.client.numero,
-                     bairro: data.client.bairro,
-                     cidade: data.client.cidade,
-                     estado: data.client.estado
+             if (existingClient) {
+                 finalClientId = existingClient.id_cliente;
+             } else {
+                 // Base Pessoa
+                 const pessoa = await tx.pessoa.create({
+                     data: { nome: data.client.nome || "Cliente Não Identificado" }
+                 });
+
+                 let idPessoaFisica = null;
+                 let idPessoaJuridica = null;
+                 let tipoId = 1; // Default 1=Fisica
+
+                 if (isJuridica) {
+                     tipoId = 2; // Default 2=Juridica
+                     const pj = await tx.pessoaJuridica.create({
+                         data: {
+                             id_pessoa: pessoa.id_pessoa,
+                             razao_social: data.client.nome || "Empresa Não Identificada",
+                             cnpj: cleanCnpj
+                         }
+                     });
+                     idPessoaJuridica = pj.id_pessoa_juridica;
+                 } else {
+                     const pf = await tx.pessoaFisica.create({
+                         data: {
+                             id_pessoa: pessoa.id_pessoa,
+                             cpf: cleanCpf
+                         }
+                     });
+                     idPessoaFisica = pf.id_pessoa_fisica;
                  }
-             });
-             finalClientId = newClient.id_cliente;
+
+                 const newClient = await tx.cliente.create({
+                     data: {
+                         id_pessoa_fisica: idPessoaFisica,
+                         id_pessoa_juridica: idPessoaJuridica,
+                         tipo_pessoa: tipoId,
+                         telefone_1: data.client.telefone || '00000000000', // Fallback numérico para não quebrar máscaras no frontend
+                         logradouro: data.client.logradouro || null,
+                         nr_logradouro: data.client.numero || null,
+                         bairro: data.client.bairro || null,
+                         cidade: data.client.cidade || null,
+                         estado: data.client.estado || null
+                     }
+                 });
+                 finalClientId = newClient.id_cliente;
+             }
         }
 
         // 2. Handle Vehicle Creation if needed
