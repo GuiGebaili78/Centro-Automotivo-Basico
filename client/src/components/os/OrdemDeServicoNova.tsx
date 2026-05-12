@@ -11,6 +11,7 @@ import {
 import { api } from "../../services/api";
 import { Modal, Button } from "../ui";
 import { UnifiedOsForm } from "./Forms/UnifiedOsForm";
+import { VeiculoForm } from "../veiculos/Forms/VeiculoForm";
 
 interface OrdemDeServicoNovaProps {
   employees: any[];
@@ -34,6 +35,9 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
   // If a client is selected from search, we show their vehicles
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [clientVehicles, setClientVehicles] = useState<any[]>([]);
+
+  // Vehicle Modal State
+  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
 
   // Confirmation Modal for "Quick Start"
   const [quickStartModal, setQuickStartModal] = useState<{
@@ -134,9 +138,15 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
   };
 
   const handleNewVehicleForSelectedClient = () => {
-    // Open Unified Form but pre-fill client
-    setCreateModalOpen(true);
-    // The UnifiedForm should handle "InitialClient" prop.
+    setVehicleModalOpen(true);
+  };
+
+  const handleVehicleSuccess = async () => {
+    setVehicleModalOpen(false);
+    if (selectedClient) {
+      // Refresh the client's vehicle list
+      await handleSelectClient(selectedClient);
+    }
   };
 
   return (
@@ -342,6 +352,17 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
               setCreateModalOpen(false);
               onSuccess(id);
             }}
+          />
+        </Modal>
+      )}
+
+      {/* MODAL: NEW VEHICLE */}
+      {vehicleModalOpen && selectedClient && (
+        <Modal title="Novo Veículo" onClose={() => setVehicleModalOpen(false)} className="max-w-4xl z-50">
+          <VeiculoForm
+            clientId={selectedClient.id_cliente}
+            onCancel={() => setVehicleModalOpen(false)}
+            onSuccess={handleVehicleSuccess}
           />
         </Modal>
       )}

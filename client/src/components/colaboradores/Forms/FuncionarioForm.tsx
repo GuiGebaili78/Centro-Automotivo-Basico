@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { IFuncionario } from "../../../types/backend";
+import { formatCpf, formatCnpj, formatRg, formatCep, formatPhone, unmask } from "../../../utils/normalize";
 
 import { Button, Input, Select, TextArea, ConfirmModal } from "../../ui";
 
@@ -211,19 +212,19 @@ export const FuncionarioForm = ({
         // MEI
         razao_social: formData.razao_social || null,
         nome_fantasia: formData.nome_fantasia || null,
-        cnpj_mei: formData.cnpj_mei || null,
+        cnpj_mei: unmask(formData.cnpj_mei) || null,
         inscricao_municipal: formData.inscricao_municipal || null,
 
         // Personal / Address
-        rg: formData.rg || null,
-        cep: formData.cep || null,
+        rg: unmask(formData.rg) || null,
+        cep: unmask(formData.cep) || null,
         logradouro: formData.logradouro || null,
         numero: formData.numero || null,
         complemento: formData.complemento || null,
         bairro: formData.bairro || null,
         cidade: formData.cidade || null,
         uf: formData.uf || null,
-        telefone_pessoal: formData.telefone_pessoal || null,
+        telefone_pessoal: unmask(formData.telefone_pessoal) || null,
         email_pessoal: formData.email_pessoal || null,
 
         especialidade: formData.especialidade || null,
@@ -265,7 +266,7 @@ export const FuncionarioForm = ({
         await ColaboradorService.create(
           getFuncionarioPayload(),
           pessoaCreateData,
-          formData.cpf,
+          unmask(formData.cpf),
         );
       }
 
@@ -347,7 +348,7 @@ export const FuncionarioForm = ({
                   <Input
                     label="CPF *"
                     value={formData.cpf}
-                    onChange={(e) => handleChange("cpf", e.target.value)}
+                    onChange={(e) => handleChange("cpf", formatCpf(e.target.value))}
                     placeholder="000.000.000-00"
                     required={!initialData}
                     disabled={!!initialData}
@@ -357,7 +358,7 @@ export const FuncionarioForm = ({
                   <Input
                     label="RG"
                     value={formData.rg}
-                    onChange={(e) => handleChange("rg", e.target.value)}
+                    onChange={(e) => handleChange("rg", formatRg(e.target.value))}
                   />
                 </div>
                 <div>
@@ -418,7 +419,7 @@ export const FuncionarioForm = ({
                   <Input
                     label="CNPJ MEI"
                     value={formData.cnpj_mei}
-                    onChange={(e) => handleChange("cnpj_mei", e.target.value)}
+                    onChange={(e) => handleChange("cnpj_mei", formatCnpj(e.target.value))}
                   />
                 </div>
                 <div>
@@ -448,7 +449,7 @@ export const FuncionarioForm = ({
                   <Input
                     label="CEP"
                     value={formData.cep}
-                    onChange={(e) => handleChange("cep", e.target.value)}
+                    onChange={(e) => handleChange("cep", formatCep(e.target.value))}
                     onBlur={handleCepBlur}
                     placeholder="00000-000"
                     icon={Search}
@@ -528,7 +529,7 @@ export const FuncionarioForm = ({
                     label="Telefone / WhatsApp"
                     value={formData.telefone_pessoal}
                     onChange={(e) =>
-                      handleChange("telefone_pessoal", e.target.value)
+                      handleChange("telefone_pessoal", formatPhone(e.target.value))
                     }
                   />
                 </div>

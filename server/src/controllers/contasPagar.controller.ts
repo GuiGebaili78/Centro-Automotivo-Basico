@@ -21,6 +21,20 @@ export const getContas = async (req: Request, res: Response) => {
   }
 };
 
+export const getDistinct = async (req: Request, res: Response) => {
+  try {
+    const field = req.params.field as 'descricao' | 'credor';
+    const search = (req.query.q as string) || '';
+    if (!['descricao', 'credor'].includes(field)) {
+      return res.status(400).json({ error: "Campo inválido para busca" });
+    }
+    const results = await repository.getDistinct(field, search);
+    res.json(results.map(r => r[field]).filter(Boolean));
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar valores distintos" });
+  }
+};
+
 export const getContaById = async (req: Request, res: Response) => {
   try {
     const conta = await repository.findById(Number(req.params.id));

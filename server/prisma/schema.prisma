@@ -91,6 +91,39 @@ model Cliente {
   @@map("cliente")
 }
 
+model Fornecedor {
+  id_fornecedor       Int       @id @default(autoincrement())
+  nome                String
+  nome_fantasia       String?
+  documento           String?   // CPF ou CNPJ
+  inscricao_estadual  String?
+  inscricao_municipal String?
+  tipo_pessoa         String    @default("JURIDICA")
+  cep                 String?
+  logradouro          String?
+  numero              String?
+  complemento         String?
+  bairro              String?
+  cidade              String?
+  uf                  String?
+  contato             String?
+  telefone            String?
+  whatsapp            String?
+  email               String?
+  banco               String?
+  agencia             String?
+  conta               String?
+  chave_pix           String?
+  categoria_produto   String?
+  condicoes_pagamento String?
+  obs                 String?   @db.Text
+  dt_cadastro         DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
+
+  @@map("fornecedor")
+}
+
 model EquipamentoCliente {
   id_equipamento    Int              @id @default(autoincrement())
   id_cliente        Int

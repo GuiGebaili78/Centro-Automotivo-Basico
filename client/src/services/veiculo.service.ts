@@ -31,6 +31,11 @@ export const VeiculoService = {
     return response.data;
   },
 
+  getDistinct: async (field: string, term: string) => {
+    const response = await api.get<string[]>(`/veiculo/distinct/${field}?q=${term}`);
+    return response.data;
+  },
+
   getByClienteId: async (_clienteId: number) => {
     // Assuming backend supports filtering or we misuse getAll for now
     return [];

@@ -3,7 +3,7 @@ import React from "react";
 interface PageLayoutProps {
   children: React.ReactNode;
   title: React.ReactNode;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   actions?: React.ReactNode; // Para botões como "Novo Cliente" que ficam no topo
 }
 
@@ -18,20 +18,21 @@ export const PageLayout = ({
       {/* Header */}
       {(title || subtitle || actions) && (
         <header className="bg-white border-b border-neutral-200 sticky top-0 z-40 print:hidden">
-          <div className="flex items-center justify-between px-6 py-4">
-            <div>
+          <div className="flex items-center gap-4 px-6 py-4">
+            {/* Título fixo */}
+            <div className="shrink-0">
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">
                 {title}
               </h1>
               {subtitle && (
-                <p className="text-sm text-slate-500 mt-1 font-medium">
+                <div className="text-sm text-slate-500 mt-1 font-medium">
                   {subtitle}
-                </p>
+                </div>
               )}
             </div>
 
-            {/* Espaço para botões de ação (ex: "+ Novo Cadastro") */}
-            {actions && <div className="flex items-center gap-3">{actions}</div>}
+            {/* Espaço para botões de ação — ocupa todo o restante do header */}
+            {actions && <div className="flex flex-1 items-center gap-3">{actions}</div>}
           </div>
         </header>
       )}

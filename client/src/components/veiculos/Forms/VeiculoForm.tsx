@@ -5,7 +5,7 @@ import { ClienteService } from "../../../services/cliente.service";
 import { normalizePlate } from "../../../utils/normalize";
 import { toast } from "react-toastify";
 import { Car, Search, User, Check, X, Save } from "lucide-react";
-import { Button, Input, Select, ActionButton } from "../../ui";
+import { Button, Input, Select, ActionButton, AutocompleteInput } from "../../ui";
 
 interface VeiculoFormProps {
   clientId?: number | null;
@@ -333,29 +333,32 @@ export const VeiculoForm = memo(
                 className="font-mono uppercase tracking-wider"
               />
             </div>
-            <div>
-              <Input
+            <div className="relative">
+              <AutocompleteInput
                 label="Marca *"
                 value={marca}
-                onChange={(e) => setMarca(e.target.value)}
+                onChange={setMarca}
+                fetchSuggestions={(q) => VeiculoService.getDistinct('marca', q)}
                 required
               />
             </div>
-            <div>
-              <Input
+            <div className="relative">
+              <AutocompleteInput
                 label="Modelo *"
                 value={modelo}
-                onChange={(e) => setModelo(e.target.value)}
+                onChange={setModelo}
+                fetchSuggestions={(q) => VeiculoService.getDistinct('modelo', q)}
                 required
               />
             </div>
-            <div>
-              <Input
+            <div className="relative">
+              <AutocompleteInput
                 label="Cor *"
                 value={cor}
-                onChange={(e) => setCor(e.target.value)}
+                onChange={setCor}
+                fetchSuggestions={(q) => VeiculoService.getDistinct('cor', q)}
                 required
-                placeholder="Ex: Prata, Branco..."
+                placeholder="Ex: PRATA, BRANCO..."
               />
             </div>
             <div>

@@ -125,8 +125,11 @@ export class FinanceiroService {
     return response.data;
   }
 
-  static async confirmarRecebiveis(ids: number[]): Promise<void> {
-    await api.post("/recebivel-cartao/confirmar", { ids });
+  static async confirmarRecebiveis(ids: number[], data_recebimento?: string): Promise<void> {
+    await api.post("/recebivel-cartao/confirmar", { 
+      ids, 
+      data_recebimento: data_recebimento || new Date().toISOString() 
+    });
   }
 
   // --- CATEGORIAS FINANCEIRAS ---
@@ -239,6 +242,11 @@ export class FinanceiroService {
 
   static async getRecurrenceInfo(id: number | string): Promise<any> {
     const response = await api.get(`/contas-pagar/${id}/recurrence-info`);
+    return response.data;
+  }
+
+  static async getDistinctContasPagar(field: string, query: string): Promise<string[]> {
+    const response = await api.get(`/contas-pagar/distinct/${field}?q=${query}`);
     return response.data;
   }
 

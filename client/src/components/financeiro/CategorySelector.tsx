@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { ArrowDownCircle } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { ArrowDownCircle, Check } from "lucide-react";
 
 interface Category {
   id_categoria: number;
@@ -58,7 +58,7 @@ export const CategorySelector = ({
           setSelectedChildId("");
         }
       }
-    } else {
+    } else if (value === undefined || value === null) {
       setSelectedParentId("");
       setSelectedChildId("");
     }
@@ -69,6 +69,29 @@ export const CategorySelector = ({
     if (!selectedParentId) return [];
     return filteredCats.filter((c) => c.parentId === Number(selectedParentId));
   }, [filteredCats, selectedParentId]);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Auto-open subcategory dropdown
+  useEffect(() => {
+    if (selectedParentId && children.length > 0) {
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  }, [selectedParentId, children.length]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleParentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const pId = Number(e.target.value);
@@ -85,7 +108,6 @@ export const CategorySelector = ({
     } else {
       // If it has children, we MUST clear the current selection until a child is picked
       // This prevents the parent ID from being sent as the "final" category
-      // Pass 0 or check how parent handles "invalid"
       onChange(0, ""); // Clear selection
     }
   };
@@ -98,10 +120,10 @@ export const CategorySelector = ({
   };
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div className={`space-y-4 ${className}`}>
       {/* Parent Selector */}
       <div>
-        <label>Categoria</label>
+        <label className="block text-sm font-medium text-neutral-700 mb-1.5 ml-1">Categoria</label>
         <div className="relative">
           <select
             value={selectedParentId}
@@ -125,7 +147,7 @@ export const CategorySelector = ({
       {/* Child Selector (Only if parent selected and has children) */}
       {selectedParentId && children.length > 0 && (
         <div className="animate-in slide-in-from-top-2 duration-200">
-          <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5 ml-1">
             Subcategoria
           </label>
           <div className="relative">

@@ -14,6 +14,7 @@ import {
 import type { IFornecedor } from "../../../types/backend";
 import { Button, Input } from "../../ui";
 import { toast } from "react-toastify";
+import { formatCnpj, formatCpf, formatCep, formatPhone, unmask, formatIE } from "../../../utils/normalize";
 
 interface FornecedorFormProps {
   initialData?: IFornecedor | null;
@@ -132,21 +133,29 @@ export const FornecedorForm = ({
     setLoading(true);
     try {
       let res;
-      // Map formData to IFornecedorPayload
-      const payload: any = { ...formData }; // Simple casting as fields match
+      const isUpdate = !!initialData?.id_fornecedor;
 
-      if (initialData?.id_fornecedor) {
-        res = await FornecedorService.update(
-          initialData.id_fornecedor,
-          payload,
-        );
+      // Payload plano — espelha diretamente a tabela `fornecedor` do banco
+      const payload: any = {
+        ...formData,
+        documento: unmask(formData.documento) || null,
+        inscricao_estadual: unmask(formData.inscricao_estadual) || null,
+        inscricao_municipal: unmask(formData.inscricao_municipal) || null,
+        cep: unmask(formData.cep) || null,
+        telefone: unmask(formData.telefone) || null,
+        whatsapp: unmask(formData.whatsapp) || null,
+      };
+
+      if (isUpdate) {
+        res = await FornecedorService.update(initialData.id_fornecedor, payload);
       } else {
         res = await FornecedorService.create(payload);
       }
+
       onSuccess(res);
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao salvar fornecedor.");
+      toast.error("Erro ao salvar fornecedor. Verifique os dados enviados.");
     } finally {
       setLoading(false);
     }
@@ -248,7 +257,14 @@ export const FornecedorForm = ({
                   <Input
                     label={formData.tipo_pessoa === "JURIDICA" ? "CNPJ" : "CPF"}
                     value={formData.documento}
-                    onChange={(e) => handleChange("documento", e.target.value)}
+                    onChange={(e) =>
+                      handleChange(
+                        "documento",
+                        formData.tipo_pessoa === "JURIDICA"
+                          ? formatCnpj(e.target.value)
+                          : formatCpf(e.target.value),
+                      )
+                    }
                     placeholder="Apenas números"
                   />
                 </div>
@@ -258,7 +274,7 @@ export const FornecedorForm = ({
                     label="Inscrição Estadual"
                     value={formData.inscricao_estadual}
                     onChange={(e) =>
-                      handleChange("inscricao_estadual", e.target.value)
+                      handleChange("inscricao_estadual", formatIE(e.target.value))
                     }
                     placeholder="IE (Comércio)"
                   />
@@ -293,7 +309,7 @@ export const FornecedorForm = ({
                   <Input
                     label="CEP"
                     value={formData.cep}
-                    onChange={(e) => handleChange("cep", e.target.value)}
+                    onChange={(e) => handleChange("cep", formatCep(e.target.value))}
                     onBlur={handleCepBlur}
                     placeholder="00000-000"
                     icon={Search}
@@ -386,14 +402,14 @@ export const FornecedorForm = ({
                   <Input
                     label="Telefone Fixo"
                     value={formData.telefone}
-                    onChange={(e) => handleChange("telefone", e.target.value)}
+                    onChange={(e) => handleChange("telefone", formatPhone(e.target.value))}
                   />
                 </div>
                 <div>
                   <Input
                     label="WhatsApp / Celular"
                     value={formData.whatsapp}
-                    onChange={(e) => handleChange("whatsapp", e.target.value)}
+                    onChange={(e) => handleChange("whatsapp", formatPhone(e.target.value))}
                   />
                 </div>
                 <div>

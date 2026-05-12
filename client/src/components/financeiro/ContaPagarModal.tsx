@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FinanceiroService } from "../../services/financeiro.service";
-import { Modal, Button, Input } from "../ui";
+import { Modal, Button, Input, AutocompleteInput } from "../ui";
 import { CategorySelector } from "./CategorySelector";
 import { toast } from "react-toastify";
 import { Upload } from "lucide-react";
@@ -186,23 +186,29 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
       <form onSubmit={handleSave} className="space-y-6 pt-4">
         {/* 1. Descrição & Credor */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            label="Descrição / Título"
-            required
-            value={formData.descricao}
-            onChange={(e) =>
-              setFormData({ ...formData, descricao: e.target.value })
-            }
-            placeholder="Ex: Compra Material Limpeza"
-          />
-          <Input
-            label="Credor"
-            value={formData.credor}
-            onChange={(e) =>
-              setFormData({ ...formData, credor: e.target.value })
-            }
-            placeholder="Ex: Fornecedor X"
-          />
+          <div className="relative">
+            <AutocompleteInput
+              label="Descrição / Título"
+              required
+              value={formData.descricao}
+              onChange={(val) =>
+                setFormData({ ...formData, descricao: val })
+              }
+              fetchSuggestions={(q) => FinanceiroService.getDistinctContasPagar('descricao', q)}
+              placeholder="Ex: COMPRA MATERIAL LIMPEZA"
+            />
+          </div>
+          <div className="relative">
+            <AutocompleteInput
+              label="Credor"
+              value={formData.credor}
+              onChange={(val) =>
+                setFormData({ ...formData, credor: val })
+              }
+              fetchSuggestions={(q) => FinanceiroService.getDistinctContasPagar('credor', q)}
+              placeholder="Ex: FORNECEDOR X"
+            />
+          </div>
         </div>
 
         {/* 2. Categoria & Valor & Repetição */}

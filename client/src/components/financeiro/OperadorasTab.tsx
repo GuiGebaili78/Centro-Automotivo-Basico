@@ -72,11 +72,6 @@ export const OperadorasTab = () => {
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {operadoras.map((op) => {
-          const taxas = op.taxas_cartao || [];
-          const taxaPix = getTaxa(taxas, "PIX", 1);
-          const taxaDebito = getTaxa(taxas, "DEBITO", 1);
-          const taxaAvista = getTaxa(taxas, "CREDITO_AVISTA", 1);
-          const parceladas = taxas.filter((t: any) => t.modalidade === "CREDITO");
           const contaDestino = contas.find((c) => c.id_conta === op.id_conta_destino);
 
           return (
@@ -120,56 +115,6 @@ export const OperadorasTab = () => {
                 </div>
               </div>
 
-              {/* Seção A: Taxas imediatas */}
-              <div className="grid grid-cols-3 gap-2 pl-4 mb-4">
-                <div className="bg-violet-50 border border-violet-100 p-3 rounded-xl">
-                  <p className="text-[10px] font-black text-violet-500 uppercase mb-1 flex items-center gap-1">
-                    <Wifi size={10} /> PIX Máquina
-                  </p>
-                  <p className="text-sm font-bold text-violet-700">
-                    {taxaPix ? `${Number(taxaPix.taxa_base_pct).toFixed(2)}%` : "—"}
-                  </p>
-                </div>
-                <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl">
-                  <p className="text-[10px] font-black text-blue-500 uppercase mb-1">Débito</p>
-                  <p className="text-sm font-bold text-blue-700">
-                    {taxaDebito ? `${Number(taxaDebito.taxa_base_pct).toFixed(2)}%` : "—"}
-                  </p>
-                </div>
-                <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
-                  <p className="text-[10px] font-black text-emerald-500 uppercase mb-1">Créd. Vista</p>
-                  <p className="text-sm font-bold text-emerald-700">
-                    {taxaAvista ? `${Number(taxaAvista.taxa_base_pct).toFixed(2)}%` : "—"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Seção B: Parcelamento resumido */}
-              {parceladas.length > 0 && (
-                <div className="pl-4">
-                  <p className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <ArrowRightLeft size={10} /> Parcelado ({parceladas.length}x configuradas)
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {parceladas
-                      .sort((a: any, b: any) => a.parcela - b.parcela)
-                      .slice(0, 9)
-                      .map((t: any) => (
-                        <span
-                          key={t.parcela}
-                          className="text-[10px] font-bold bg-neutral-100 text-neutral-600 px-2 py-1 rounded"
-                        >
-                          {t.parcela}x = {(Number(t.taxa_base_pct) + Number(t.taxa_juros_pct)).toFixed(2)}%
-                        </span>
-                      ))}
-                    {parceladas.length > 9 && (
-                      <span className="text-[10px] text-neutral-400 italic px-2 py-1">
-                        +{parceladas.length - 9} mais
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}

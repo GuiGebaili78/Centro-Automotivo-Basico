@@ -156,62 +156,81 @@ export const UnifiedSearch = ({
         <input
           ref={inputRef}
           type="text"
-          className="block w-full pl-10 pr-4 py-3 border-2 border-neutral-200 rounded-xl leading-5 bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-medium text-neutral-700 disabled:opacity-50"
-          placeholder="Buscar cliente, placa ou peça..."
+          className="block w-full pl-10 pr-16 h-[44px] border-2 border-neutral-200 rounded-xl bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-semibold text-neutral-800 text-base disabled:opacity-50"
+          placeholder="Buscar por cliente, placa ou modelo..."
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => {
             if (query.length >= 2) setIsOpen(true);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') { setIsOpen(false); setQuery(""); }
+          }}
           autoComplete="off"
         />
-        <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-          <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-sm font-bold text-neutral-400">
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+          {query && (
+            <button onClick={() => { setQuery(""); setIsOpen(false); }} className="text-neutral-400 hover:text-neutral-600 transition-colors mr-2">
+              <span className="text-lg leading-none">×</span>
+            </button>
+          )}
+          <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-xs font-bold text-neutral-400">
             ESC
           </kbd>
         </div>
       </div>
 
       {isOpen && (
-        <div className="absolute mt-1 w-full bg-white rounded-xl shadow-2xl border border-neutral-100 overflow-hidden max-h-96 overflow-y-auto animate-in fade-in zoom-in duration-200">
+        <div className="absolute mt-2 w-full bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.15)] border border-neutral-200 overflow-hidden max-h-[420px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150 z-50">
           {results.length > 0 ? (
-            <ul>
-              {results.map((result, idx) => (
-                <li
-                  key={`${result.id_cliente}-${result.id_veiculo || "nv"}`}
-                  className={`px-4 py-3 hover:bg-primary-50 cursor-pointer border-b border-neutral-50 last:border-0 transition-colors ${idx === 0 ? "bg-primary-50/30" : ""}`} // Highlight first item
-                  onClick={() => {
-                    onSelect(result);
-                    setIsOpen(false);
-                    setQuery("");
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-neutral-100 rounded-lg text-neutral-500">
-                      {result.placa ? <Car size={18} /> : <User size={18} />}
+            <>
+              <div className="px-4 py-2 bg-neutral-50 border-b border-neutral-100">
+                <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                  {results.length} resultado{results.length !== 1 ? 's' : ''} encontrado{results.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <ul>
+                {results.map((result, idx) => (
+                  <li
+                    key={`${result.id_cliente}-${result.id_veiculo || "nv"}-${idx}`}
+                    className="px-4 py-3.5 hover:bg-primary-50 cursor-pointer border-b border-neutral-100 last:border-0 transition-colors group"
+                    onClick={() => {
+                      onSelect(result);
+                      setIsOpen(false);
+                      setQuery("");
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl shrink-0 ${result.placa ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                        {result.placa ? <Car size={18} /> : <User size={18} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-neutral-900 text-sm truncate group-hover:text-primary-700 transition-colors">
+                          {result.display}
+                        </p>
+                        <p className="text-xs text-neutral-500 mt-0.5 font-medium truncate">
+                          {result.subtext}
+                        </p>
+                      </div>
+                      {result.placa && (
+                        <span className="shrink-0 px-2 py-1 bg-neutral-900 text-white rounded-lg text-xs tracking-[0.15em] font-mono font-bold">
+                          {result.placa}
+                        </span>
+                      )}
                     </div>
-                    <div>
-                      <p className="font-bold text-neutral-800 text-sm">
-                        {result.display}
-                        {result.placa && (
-                          <span className="ml-2 px-1.5 py-0.5 bg-neutral-800 text-white rounded text-sm tracking-widest font-mono">
-                            {result.placa}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-neutral-500 mt-0.5 font-medium">
-                        {result.subtext}
-                      </p>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : loading ? (
+            <div className="p-6 text-center">
+              <Loader2 size={24} className="animate-spin text-primary-400 mx-auto mb-2" />
+              <p className="text-sm text-neutral-400 font-medium">Buscando...</p>
+            </div>
           ) : (
-            <div className="p-4 text-center">
-              <p className="text-neutral-500 text-sm mb-3">
-                Nenhum resultado encontrado.
-              </p>
+            <div className="p-6 text-center">
+              <p className="text-neutral-600 font-bold text-sm mb-1">Nenhum resultado encontrado</p>
+              <p className="text-xs text-neutral-400 mb-4">Tente outro termo ou cadastre um novo cliente.</p>
               <Button
                 variant="primary"
                 size="sm"

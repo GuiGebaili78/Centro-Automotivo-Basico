@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { PessoaService } from "../../../services/pessoa.service";
+import { formatIE, unmask } from "../../../utils/normalize";
 import { Button, Input } from "../../ui";
 
 interface PessoaJuridicaFormProps {
@@ -30,7 +31,7 @@ export const PessoaJuridicaForm = ({
         razao_social: razaoSocial,
         nome_fantasia: nomeFantasia || null,
         cnpj: cnpj || null,
-        inscricao_estadual: inscricaoEstadual || null,
+        inscricao_estadual: unmask(inscricaoEstadual) || null,
       };
 
       const newItem = await PessoaService.createPessoaJuridica(payload);
@@ -94,7 +95,7 @@ export const PessoaJuridicaForm = ({
           <Input
             label="Inscrição Estadual"
             value={inscricaoEstadual}
-            onChange={(e) => setInscricaoEstadual(e.target.value)}
+            onChange={(e) => setInscricaoEstadual(formatIE(e.target.value))}
           />
         </div>
       </div>

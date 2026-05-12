@@ -2,6 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import type { IVeiculo } from "../types/backend";
+import { formatPhone } from "../utils/normalize";
+
+interface IClienteParcial {
+  telefone_1?: string;
+  telefone_2?: string;
+  email?: string;
+  pessoa_fisica?: { pessoa?: { nome?: string } };
+  pessoa_juridica?: { nome_fantasia?: string; razao_social?: string };
+}
 import { ClienteForm } from "../components/clientes/Forms/ClienteForm";
 import { VeiculoForm } from "../components/veiculos/Forms/VeiculoForm";
 import { Modal } from "../components/ui/Modal";
@@ -125,14 +134,16 @@ export const VeiculoPage = () => {
     const cor = v.cor.toLowerCase();
 
     // Client data access
+    const client = v.cliente as IClienteParcial | undefined;
     const clientName = (
-      (v.cliente as any)?.pessoa_fisica?.pessoa?.nome ||
-      (v.cliente as any)?.pessoa_juridica?.nome_fantasia ||
+      client?.pessoa_fisica?.pessoa?.nome ||
+      client?.pessoa_juridica?.nome_fantasia ||
+      client?.pessoa_juridica?.razao_social ||
       ""
     ).toLowerCase();
-    const clientPhone1 = ((v.cliente as any)?.telefone_1 || "").toLowerCase();
-    const clientPhone2 = ((v.cliente as any)?.telefone_2 || "").toLowerCase();
-    const clientEmail = ((v.cliente as any)?.email || "").toLowerCase();
+    const clientPhone1 = (client?.telefone_1 || "").toLowerCase();
+    const clientPhone2 = (client?.telefone_2 || "").toLowerCase();
+    const clientEmail = (client?.email || "").toLowerCase();
 
     return (
       placa.includes(s) ||
@@ -183,7 +194,9 @@ export const VeiculoPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredVeiculos.map((v, idx) => (
+                {filteredVeiculos.map((v, idx) => {
+                  const client = v.cliente as IClienteParcial | undefined;
+                  return (
                   <tr
                     key={v.id_veiculo}
                     className={`transition-colors hover:bg-neutral-25 group ${
@@ -209,9 +222,9 @@ export const VeiculoPage = () => {
                     <td>
                       <div className="flex flex-col">
                         <span className="font-medium text-neutral-600 text-base">
-                          {(v.cliente as any)?.pessoa_fisica?.pessoa?.nome ||
-                            (v.cliente as any)?.pessoa_juridica
-                              ?.nome_fantasia ||
+                          {client?.pessoa_fisica?.pessoa?.nome ||
+                            client?.pessoa_juridica?.nome_fantasia ||
+                            client?.pessoa_juridica?.razao_social ||
                             "Cliente não identificado"}
                         </span>
                       </div>
@@ -220,11 +233,11 @@ export const VeiculoPage = () => {
                       <div className="flex flex-col gap-1">
                         <span className="flex items-center gap-2 text-base text-neutral-600 font-medium">
                           <Phone size={14} className="text-neutral-400" />
-                          {(v.cliente as any)?.telefone_1 || "-"}
+                          {client?.telefone_1 ? formatPhone(client.telefone_1) : "-"}
                         </span>
-                        {(v.cliente as any)?.email && (
+                        {client?.email && (
                           <span className="text-base text-neutral-500 pl-6">
-                            {(v.cliente as any)?.email}
+                            {client.email}
                           </span>
                         )}
                       </div>
@@ -262,7 +275,8 @@ export const VeiculoPage = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {filteredVeiculos.length === 0 && (
                   <tr>
                     <td

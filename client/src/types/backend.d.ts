@@ -399,6 +399,8 @@ export interface IRecebivelCartao {
   data_venda: string;
   data_prevista: string;
   data_recebimento?: string | null;
+  confirmado_em?: string | null;
+  confirmado_por?: string | null;
 
   status: string; // 'PENDENTE', 'RECEBIDO'
 

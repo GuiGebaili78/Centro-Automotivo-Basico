@@ -200,8 +200,8 @@ export const UniversalFilters = ({
     <div className="w-full flex flex-col gap-4 bg-white p-4 border border-neutral-200 rounded-xl shadow-sm">
       {/* ── LINHA 1: Busca e Selects Principais ────────────────────────────── */}
       <div className="w-full flex flex-col lg:flex-row items-end gap-4">
-        {/* Busca Geral (Limitado a ~50% do espaço) */}
-        <div className="flex-1 w-full min-w-[250px] lg:max-w-[50%]">
+        {/* Busca Geral */}
+        <div className="flex-1 w-full min-w-[250px]">
           <label className={labelCls}>Busca Geral</label>
           <div className="relative">
             <Search

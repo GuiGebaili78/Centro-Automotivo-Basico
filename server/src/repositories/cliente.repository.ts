@@ -120,10 +120,59 @@ export class ClienteRepository {
     });
   }
 
-  async update(id: number, data: Prisma.ClienteUpdateInput) {
-    return await prisma.cliente.update({
-      where: { id_cliente: id },
-      data,
+  async update(id: number, data: any) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Extract nested data
+      const {
+        nome, razao_social, nome_fantasia, cpf, cnpj, inscricao_estadual,
+        id_pessoa_fisica, id_pessoa_juridica, tipo_pessoa, tipo, ...clienteData
+      } = data;
+
+      // 2. Update Cliente base data
+      const cliente = await tx.cliente.update({
+        where: { id_cliente: id },
+        data: clienteData as Prisma.ClienteUpdateInput,
+        include: {
+          pessoa_fisica: true,
+          pessoa_juridica: true
+        }
+      });
+
+      // 3. Update PessoaFisica or PessoaJuridica if provided
+      if (cliente.pessoa_fisica) {
+        if (cpf !== undefined) {
+          await tx.pessoaFisica.update({
+            where: { id_pessoa_fisica: cliente.pessoa_fisica.id_pessoa_fisica },
+            data: { cpf }
+          });
+        }
+        if (nome !== undefined) {
+          await tx.pessoa.update({
+            where: { id_pessoa: cliente.pessoa_fisica.id_pessoa },
+            data: { nome }
+          });
+        }
+      } else if (cliente.pessoa_juridica) {
+        if (cnpj !== undefined || razao_social !== undefined || nome_fantasia !== undefined || inscricao_estadual !== undefined) {
+          await tx.pessoaJuridica.update({
+            where: { id_pessoa_juridica: cliente.pessoa_juridica.id_pessoa_juridica },
+            data: {
+              cnpj: cnpj !== undefined ? cnpj : undefined,
+              razao_social: razao_social !== undefined ? razao_social : undefined,
+              nome_fantasia: nome_fantasia !== undefined ? nome_fantasia : undefined,
+              inscricao_estadual: inscricao_estadual !== undefined ? inscricao_estadual : undefined,
+            }
+          });
+        }
+        if (nome !== undefined || razao_social !== undefined) {
+          await tx.pessoa.update({
+            where: { id_pessoa: cliente.pessoa_juridica.id_pessoa },
+            data: { nome: razao_social || nome }
+          });
+        }
+      }
+
+      return cliente;
     });
   }
 

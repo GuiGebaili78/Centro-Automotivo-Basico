@@ -16,6 +16,7 @@ import type {
   EvolucaoMensal,
   EvolucaoDespesa,
   EvolucaoDespesaTemporal,
+  OperadoraStats,
 } from "../types/relatorios.types";
 import { RelatoriosService } from "../services/relatorios.service";
 import { FinanceiroService } from "../services/financeiro.service";
@@ -66,6 +67,20 @@ export const RelatoriosPage = () => {
   const [evolucaoDespesas, setEvolucaoDespesas] = useState<EvolucaoDespesa[]>(
     [],
   );
+  const [operadorasStats, setOperadorasStats] = useState<OperadoraStats[]>([]);
+  const [categoriasFinanceiras, setCategoriasFinanceiras] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchCategorias = async () => {
+      try {
+        const data = await FinanceiroService.getCategoriasFinanceiras();
+        setCategoriasFinanceiras(data);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchCategorias();
+  }, []);
 
   // Estado localizado — Evolução Financeira
   const [evolucao, setEvolucao] = useState<EvolucaoMensal[]>([]);
@@ -90,14 +105,16 @@ export const RelatoriosPage = () => {
   const fetchReports = async (startDate: string, endDate: string) => {
     setLoading(true);
     try {
-      const [resumoData, equipeData, evolucaoDespesasData] = await Promise.all([
+      const [resumoData, equipeData, evolucaoDespesasData, operadorasData] = await Promise.all([
         RelatoriosService.getResumoFinanceiro(startDate, endDate),
         RelatoriosService.getPerformanceEquipe(startDate, endDate),
         RelatoriosService.getEvolucaoDespesas(startDate, endDate),
+        RelatoriosService.getOperadorasCartao(startDate, endDate),
       ]);
       setResumo(resumoData);
       setEquipe(equipeData);
       setEvolucaoDespesas(evolucaoDespesasData);
+      setOperadorasStats(operadorasData);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar relatórios.");
@@ -189,6 +206,37 @@ export const RelatoriosPage = () => {
       ].filter((d) => d.value > 0)
     : [];
 
+  // ── Cálculos: Despesas Bancárias e Taxas ──────────────────────────────────────────────
+  const valorA = operadorasStats.reduce(
+    (acc, op) => acc + Number(op.totalTaxas || 0),
+    0
+  );
+
+  const getValorB = () => {
+    if (!resumo || categoriasFinanceiras.length === 0) return { total: 0, missingCategoria: false };
+    const parent = categoriasFinanceiras.find((c) => c.nome === "Taxas e Tarifas");
+    if (!parent) return { total: 0, missingCategoria: true }; // Se não existir, avisa
+
+    const validNames = [
+      parent.nome,
+      ...categoriasFinanceiras
+        .filter((c) => c.parentId === parent.id_categoria)
+        .map((c) => c.nome),
+    ];
+
+    let totalB = 0;
+    resumo.despesasPorCategoria.forEach((cat) => {
+      if (validNames.includes(cat.categoria)) {
+        totalB += Number(cat.valor || 0);
+      }
+    });
+    return { total: totalB, missingCategoria: false };
+  };
+
+  const valorBInfo = getValorB();
+  const valorB = valorBInfo.total;
+  const totalDespesasBancarias = valorA + valorB;
+
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <PageLayout
@@ -208,6 +256,42 @@ export const RelatoriosPage = () => {
           </div>
         ) : (
           <>
+            {/* ── Despesas Bancárias e Taxas ── */}
+            {resumo && (
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-100 mb-6 flex flex-col md:flex-row items-center justify-between gap-4 animate-in zoom-in-95 duration-300">
+                <div className="flex items-center gap-4">
+                  <div className="bg-red-50 p-4 rounded-xl text-red-500 border border-red-100">
+                    <TrendingDown size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-neutral-800 tracking-tight">Despesas Bancárias e Taxas</h3>
+                    <p className="text-sm text-neutral-500">
+                      Consolidação de descontos em maquininhas e tarifas de Livro Caixa.
+                    </p>
+                    {valorBInfo.missingCategoria && (
+                      <p className="text-xs text-amber-600 font-medium mt-1">
+                        Aviso: A categoria "Taxas e Tarifas" não foi encontrada. Crie ela nas configurações financeiras para mapear o Valor B.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-8 text-right">
+                  <div className="hidden lg:block">
+                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">Valor A (Operadoras)</p>
+                    <p className="text-lg font-semibold text-neutral-700">{formatCurrency(valorA)}</p>
+                  </div>
+                  <div className="hidden lg:block">
+                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">Valor B (Tarifas)</p>
+                    <p className="text-lg font-semibold text-neutral-700">{formatCurrency(valorB)}</p>
+                  </div>
+                  <div className="border-l border-neutral-200 pl-8">
+                    <p className="text-xs font-black text-red-400 uppercase tracking-wider mb-1">Total Consolidado</p>
+                    <p className="text-3xl font-black text-red-600 tracking-tighter">{formatCurrency(totalDespesasBancarias)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ── Row 1: 4 KPI Cards ── */}
             {resumo && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

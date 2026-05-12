@@ -107,6 +107,15 @@ export class VeiculoRepository {
     });
   }
 
+  async getDistinct(field: 'marca' | 'modelo' | 'cor', search: string) {
+    return await prisma.veiculo.findMany({
+      where: { [field]: { contains: search, mode: "insensitive" } },
+      distinct: [field],
+      select: { [field]: true },
+      take: 10,
+    });
+  }
+
   async update(id: number, data: Prisma.VeiculoUpdateInput) {
     return await prisma.veiculo.update({
       where: { id_veiculo: id },

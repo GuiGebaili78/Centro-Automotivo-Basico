@@ -412,6 +412,15 @@ export class ContasPagarRepository {
     });
   }
 
+  async getDistinct(field: 'descricao' | 'credor', search: string) {
+    return await prisma.contasPagar.findMany({
+      where: { [field]: { contains: search, mode: "insensitive" }, deleted_at: null },
+      distinct: [field],
+      select: { [field]: true },
+      take: 10,
+    });
+  }
+
   async delete(id: number) {
     return prisma.contasPagar.update({
       where: { id_conta_pagar: id },
