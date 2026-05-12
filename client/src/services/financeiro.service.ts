@@ -245,6 +245,11 @@ export class FinanceiroService {
     return response.data;
   }
 
+  static async getDistinctContasPagar(field: string, query: string): Promise<string[]> {
+    const response = await api.get(`/contas-pagar/distinct/${field}?q=${query}`);
+    return response.data;
+  }
+
   // --- FECHAMENTO & CONSOLIDAÇÃO ---
   static async getFechamentos(): Promise<any[]> {
     const response = await api.get("/fechamento-financeiro");

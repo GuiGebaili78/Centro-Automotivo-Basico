@@ -32,7 +32,6 @@ model PessoaFisica {
   cpf              String?      @db.VarChar(11)
   dt_cadastro      DateTime     @default(now()) @db.Timestamp(6)
   clientes         Cliente[]
-  fornecedores     Fornecedor[]
   funcionario      Funcionario?
   pessoa           Pessoa       @relation(fields: [id_pessoa], references: [id_pessoa])
 
@@ -48,7 +47,6 @@ model PessoaJuridica {
   inscricao_estadual String?   @db.VarChar(50)
   dt_cadastro        DateTime  @default(now()) @db.Timestamp(6)
   clientes           Cliente[]
-  fornecedores       Fornecedor[]
   pessoa             Pessoa    @relation(fields: [id_pessoa], references: [id_pessoa])
 
   @@map("pessoa_juridica")
@@ -94,34 +92,35 @@ model Cliente {
 }
 
 model Fornecedor {
-  id_fornecedor      Int              @id @default(autoincrement())
-  id_pessoa_fisica   Int?
-  id_pessoa_juridica Int?
-  tipo_pessoa        Int
-  contato            String?          @db.VarChar(100)
-  telefone           String?          @db.VarChar(15)
-  whatsapp           String?          @db.VarChar(15)
-  email              String?          @db.VarChar(100)
-  logradouro         String?          @db.VarChar(150)
-  numero             String?          @db.VarChar(20)
-  complemento        String?          @db.VarChar(100)
-  bairro             String?          @db.VarChar(100)
-  cidade             String?          @db.VarChar(100)
-  uf                 String?          @db.Char(2)
-  cep                String?          @db.VarChar(10)
-  banco              String?          @db.VarChar(50)
-  agencia            String?          @db.VarChar(20)
-  conta              String?          @db.VarChar(20)
-  chave_pix          String?          @db.VarChar(100)
-  condicoes_pagamento String?         @db.VarChar(100)
-  categoria_produto  String?          @db.VarChar(100)
-  dt_cadastro        DateTime         @default(now()) @db.Timestamp(6)
+  id_fornecedor       Int       @id @default(autoincrement())
+  nome                String
+  nome_fantasia       String?
+  documento           String?   // CPF ou CNPJ
+  inscricao_estadual  String?
+  inscricao_municipal String?
+  tipo_pessoa         String    @default("JURIDICA")
+  cep                 String?
+  logradouro          String?
+  numero              String?
+  complemento         String?
+  bairro              String?
+  cidade              String?
+  uf                  String?
+  contato             String?
+  telefone            String?
+  whatsapp            String?
+  email               String?
+  banco               String?
+  agencia             String?
+  conta               String?
+  chave_pix           String?
+  categoria_produto   String?
+  condicoes_pagamento String?
+  obs                 String?   @db.Text
+  dt_cadastro         DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
 
-  pessoa_fisica      PessoaFisica?    @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
-  pessoa_juridica    PessoaJuridica?  @relation(fields: [id_pessoa_juridica], references: [id_pessoa_juridica])
-
-  @@index([id_pessoa_fisica])
-  @@index([id_pessoa_juridica])
   @@map("fornecedor")
 }
 

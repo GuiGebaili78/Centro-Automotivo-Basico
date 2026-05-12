@@ -67,6 +67,20 @@ export class VeiculoController {
     }
   }
 
+  async getDistinct(req: Request, res: Response) {
+    try {
+      const field = req.params.field as 'marca' | 'modelo' | 'cor';
+      const search = (req.query.q as string) || '';
+      if (!['marca', 'modelo', 'cor'].includes(field)) {
+        return res.status(400).json({ error: "Invalid field for distinct search" });
+      }
+      const results = await repository.getDistinct(field, search);
+      res.json(results.map(r => r[field]).filter(Boolean));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch distinct values" });
+    }
+  }
+
   async update(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);

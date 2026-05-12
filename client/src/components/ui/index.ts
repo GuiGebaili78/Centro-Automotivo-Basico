@@ -12,3 +12,4 @@ export * from "./FilterButton";
 export * from "./TextArea";
 export * from "./StatusBanner";
 export * from "./Badge";
+export * from "./AutocompleteInput";

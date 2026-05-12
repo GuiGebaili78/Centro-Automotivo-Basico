@@ -19,8 +19,9 @@ export class FornecedorController {
     try {
       const fornecedores = await repository.findAll();
       res.json(fornecedores);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Fornecedores" });
+    } catch (error: any) {
+      console.error("❌ FornecedorController.findAll:", error?.message);
+      res.status(500).json({ error: "Failed to fetch Fornecedores", details: error?.message });
     }
   }
 

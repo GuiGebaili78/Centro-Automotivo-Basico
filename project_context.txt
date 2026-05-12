@@ -1,4 +1,4 @@
-PROJECT DUMP GENERATED ON 05/11/2026 21:16:36
+PROJECT DUMP GENERATED ON 05/11/2026 23:13:46
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env
 
@@ -1078,7 +1078,6 @@ docker compose \
 
 ================================================================================
 FILE PATH: docker-compose.dev.yml
-================================================================================
 # Override para desenvolvimento local.
 # Uso: ./dev.sh   (que faz "docker compose -f docker-compose.yml -f docker-compose.dev.yml up")
 # Em prod, NÃO usar este arquivo — basta "docker compose up -d".
@@ -4458,8 +4457,8 @@ export const UniversalFilters = ({
     <div className="w-full flex flex-col gap-4 bg-white p-4 border border-neutral-200 rounded-xl shadow-sm">
       {/* ── LINHA 1: Busca e Selects Principais ────────────────────────────── */}
       <div className="w-full flex flex-col lg:flex-row items-end gap-4">
-        {/* Busca Geral (Limitado a ~50% do espaço) */}
-        <div className="flex-1 w-full min-w-[250px] lg:max-w-[50%]">
+        {/* Busca Geral */}
+        <div className="flex-1 w-full min-w-[250px]">
           <label className={labelCls}>Busca Geral</label>
           <div className="relative">
             <Search
@@ -5339,62 +5338,81 @@ export const UnifiedSearch = ({
         <input
           ref={inputRef}
           type="text"
-          className="block w-full pl-10 pr-4 py-3 border-2 border-neutral-200 rounded-xl leading-5 bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-medium text-neutral-700 disabled:opacity-50"
-          placeholder="Buscar cliente, placa ou peça..."
+          className="block w-full pl-10 pr-16 h-[44px] border-2 border-neutral-200 rounded-xl bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-semibold text-neutral-800 text-base disabled:opacity-50"
+          placeholder="Buscar por cliente, placa ou modelo..."
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => {
             if (query.length >= 2) setIsOpen(true);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') { setIsOpen(false); setQuery(""); }
+          }}
           autoComplete="off"
         />
-        <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-          <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-sm font-bold text-neutral-400">
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+          {query && (
+            <button onClick={() => { setQuery(""); setIsOpen(false); }} className="text-neutral-400 hover:text-neutral-600 transition-colors mr-2">
+              <span className="text-lg leading-none">×</span>
+            </button>
+          )}
+          <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-xs font-bold text-neutral-400">
             ESC
           </kbd>
         </div>
       </div>
 
       {isOpen && (
-        <div className="absolute mt-1 w-full bg-white rounded-xl shadow-2xl border border-neutral-100 overflow-hidden max-h-96 overflow-y-auto animate-in fade-in zoom-in duration-200">
+        <div className="absolute mt-2 w-full bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.15)] border border-neutral-200 overflow-hidden max-h-[420px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150 z-50">
           {results.length > 0 ? (
-            <ul>
-              {results.map((result, idx) => (
-                <li
-                  key={`${result.id_cliente}-${result.id_veiculo || "nv"}`}
-                  className={`px-4 py-3 hover:bg-primary-50 cursor-pointer border-b border-neutral-50 last:border-0 transition-colors ${idx === 0 ? "bg-primary-50/30" : ""}`} // Highlight first item
-                  onClick={() => {
-                    onSelect(result);
-                    setIsOpen(false);
-                    setQuery("");
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-neutral-100 rounded-lg text-neutral-500">
-                      {result.placa ? <Car size={18} /> : <User size={18} />}
+            <>
+              <div className="px-4 py-2 bg-neutral-50 border-b border-neutral-100">
+                <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                  {results.length} resultado{results.length !== 1 ? 's' : ''} encontrado{results.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <ul>
+                {results.map((result, idx) => (
+                  <li
+                    key={`${result.id_cliente}-${result.id_veiculo || "nv"}-${idx}`}
+                    className="px-4 py-3.5 hover:bg-primary-50 cursor-pointer border-b border-neutral-100 last:border-0 transition-colors group"
+                    onClick={() => {
+                      onSelect(result);
+                      setIsOpen(false);
+                      setQuery("");
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl shrink-0 ${result.placa ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                        {result.placa ? <Car size={18} /> : <User size={18} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-neutral-900 text-sm truncate group-hover:text-primary-700 transition-colors">
+                          {result.display}
+                        </p>
+                        <p className="text-xs text-neutral-500 mt-0.5 font-medium truncate">
+                          {result.subtext}
+                        </p>
+                      </div>
+                      {result.placa && (
+                        <span className="shrink-0 px-2 py-1 bg-neutral-900 text-white rounded-lg text-xs tracking-[0.15em] font-mono font-bold">
+                          {result.placa}
+                        </span>
+                      )}
                     </div>
-                    <div>
-                      <p className="font-bold text-neutral-800 text-sm">
-                        {result.display}
-                        {result.placa && (
-                          <span className="ml-2 px-1.5 py-0.5 bg-neutral-800 text-white rounded text-sm tracking-widest font-mono">
-                            {result.placa}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-neutral-500 mt-0.5 font-medium">
-                        {result.subtext}
-                      </p>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : loading ? (
+            <div className="p-6 text-center">
+              <Loader2 size={24} className="animate-spin text-primary-400 mx-auto mb-2" />
+              <p className="text-sm text-neutral-400 font-medium">Buscando...</p>
+            </div>
           ) : (
-            <div className="p-4 text-center">
-              <p className="text-neutral-500 text-sm mb-3">
-                Nenhum resultado encontrado.
-              </p>
+            <div className="p-6 text-center">
+              <p className="text-neutral-600 font-bold text-sm mb-1">Nenhum resultado encontrado</p>
+              <p className="text-xs text-neutral-400 mb-4">Tente outro termo ou cadastre um novo cliente.</p>
               <Button
                 variant="primary"
                 size="sm"
@@ -7399,7 +7417,7 @@ FILE PATH: client\src\components\financeiro\ContaPagarModal.tsx
 ================================================================================
 import React, { useState, useEffect } from "react";
 import { FinanceiroService } from "../../services/financeiro.service";
-import { Modal, Button, Input } from "../ui";
+import { Modal, Button, Input, AutocompleteInput } from "../ui";
 import { CategorySelector } from "./CategorySelector";
 import { toast } from "react-toastify";
 import { Upload } from "lucide-react";
@@ -7585,23 +7603,29 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
       <form onSubmit={handleSave} className="space-y-6 pt-4">
         {/* 1. Descrição & Credor */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            label="Descrição / Título"
-            required
-            value={formData.descricao}
-            onChange={(e) =>
-              setFormData({ ...formData, descricao: e.target.value })
-            }
-            placeholder="Ex: Compra Material Limpeza"
-          />
-          <Input
-            label="Credor"
-            value={formData.credor}
-            onChange={(e) =>
-              setFormData({ ...formData, credor: e.target.value })
-            }
-            placeholder="Ex: Fornecedor X"
-          />
+          <div className="relative">
+            <AutocompleteInput
+              label="Descrição / Título"
+              required
+              value={formData.descricao}
+              onChange={(val) =>
+                setFormData({ ...formData, descricao: val })
+              }
+              fetchSuggestions={(q) => FinanceiroService.getDistinctContasPagar('descricao', q)}
+              placeholder="Ex: COMPRA MATERIAL LIMPEZA"
+            />
+          </div>
+          <div className="relative">
+            <AutocompleteInput
+              label="Credor"
+              value={formData.credor}
+              onChange={(val) =>
+                setFormData({ ...formData, credor: val })
+              }
+              fetchSuggestions={(q) => FinanceiroService.getDistinctContasPagar('credor', q)}
+              placeholder="Ex: FORNECEDOR X"
+            />
+          </div>
         </div>
 
         {/* 2. Categoria & Valor & Repetição */}
@@ -15077,35 +15101,23 @@ export const FornecedorForm = ({
       let res;
       const isUpdate = !!initialData?.id_fornecedor;
 
-      // Monta o payload base apenas com campos existentes na tabela Pessoa
+      // Payload plano — espelha diretamente a tabela `fornecedor` do banco
       const payload: any = {
-        nome: formData.nome,
-        obs: formData.obs || null,
-        is_fornecedor: true,
+        ...formData,
+        documento: unmask(formData.documento) || null,
+        inscricao_estadual: unmask(formData.inscricao_estadual) || null,
+        inscricao_municipal: unmask(formData.inscricao_municipal) || null,
+        cep: unmask(formData.cep) || null,
+        telefone: unmask(formData.telefone) || null,
+        whatsapp: unmask(formData.whatsapp) || null,
       };
-
-      // Adiciona o relacionamento correto dependendo do tipo de pessoa
-      if (formData.tipo_pessoa === "JURIDICA") {
-        const pjData = {
-          razao_social: formData.nome,
-          nome_fantasia: formData.nome_fantasia || null,
-          cnpj: unmask(formData.documento) || null,
-          inscricao_estadual: unmask(formData.inscricao_estadual) || null,
-        };
-        payload.pessoa_juridica = isUpdate ? { update: pjData } : { create: pjData };
-      } else {
-        const pfData = {
-          cpf: unmask(formData.documento) || null,
-        };
-        payload.pessoa_fisica = isUpdate ? { update: pfData } : { create: pfData };
-      }
 
       if (isUpdate) {
         res = await FornecedorService.update(initialData.id_fornecedor, payload);
       } else {
         res = await FornecedorService.create(payload);
       }
-      
+
       onSuccess(res);
     } catch (error) {
       console.error(error);
@@ -16189,6 +16201,7 @@ import {
 import { api } from "../../services/api";
 import { Modal, Button } from "../ui";
 import { UnifiedOsForm } from "./Forms/UnifiedOsForm";
+import { VeiculoForm } from "../veiculos/Forms/VeiculoForm";
 
 interface OrdemDeServicoNovaProps {
   employees: any[];
@@ -16212,6 +16225,9 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
   // If a client is selected from search, we show their vehicles
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [clientVehicles, setClientVehicles] = useState<any[]>([]);
+
+  // Vehicle Modal State
+  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
 
   // Confirmation Modal for "Quick Start"
   const [quickStartModal, setQuickStartModal] = useState<{
@@ -16312,9 +16328,15 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
   };
 
   const handleNewVehicleForSelectedClient = () => {
-    // Open Unified Form but pre-fill client
-    setCreateModalOpen(true);
-    // The UnifiedForm should handle "InitialClient" prop.
+    setVehicleModalOpen(true);
+  };
+
+  const handleVehicleSuccess = async () => {
+    setVehicleModalOpen(false);
+    if (selectedClient) {
+      // Refresh the client's vehicle list
+      await handleSelectClient(selectedClient);
+    }
   };
 
   return (
@@ -16520,6 +16542,17 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
               setCreateModalOpen(false);
               onSuccess(id);
             }}
+          />
+        </Modal>
+      )}
+
+      {/* MODAL: NEW VEHICLE */}
+      {vehicleModalOpen && selectedClient && (
+        <Modal title="Novo Veículo" onClose={() => setVehicleModalOpen(false)} className="max-w-4xl z-50">
+          <VeiculoForm
+            clientId={selectedClient.id_cliente}
+            onCancel={() => setVehicleModalOpen(false)}
+            onSuccess={handleVehicleSuccess}
           />
         </Modal>
       )}
@@ -19625,6 +19658,145 @@ export const ActionButton = ({
 
 
 ================================================================================
+FILE PATH: client\src\components\ui\AutocompleteInput.tsx
+================================================================================
+import React, { useState, useEffect, useRef } from "react";
+import { Loader2 } from "lucide-react";
+
+interface AutocompleteInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  fetchSuggestions: (query: string) => Promise<string[]>;
+  uppercase?: boolean;
+}
+
+export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
+  label,
+  value,
+  onChange,
+  fetchSuggestions,
+  uppercase = true,
+  className,
+  ...props
+}) => {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSearch = async (query: string) => {
+    if (query.length < 1) {
+      setSuggestions([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const results = await fetchSuggestions(query);
+      setSuggestions(results);
+    } catch (e) {
+      console.error(e);
+      setSuggestions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    if (uppercase) val = val.toUpperCase();
+    onChange(val);
+    setHighlightIndex(-1);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      handleSearch(val);
+    }, 300);
+  };
+
+  const handleSelect = (selectedVal: string) => {
+    let val = selectedVal;
+    if (uppercase) val = val.toUpperCase();
+    onChange(val);
+    setSuggestions([]);
+    setHighlightIndex(-1);
+  };
+
+  return (
+    <div className="relative group/search w-full">
+      <label className="text-sm font-medium text-gray-600 block mb-1">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          value={value}
+          onChange={handleChange}
+          onKeyDown={(e) => {
+            if (suggestions.length === 0) return;
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setHighlightIndex((prev) =>
+                Math.min(prev + 1, suggestions.length - 1),
+              );
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setHighlightIndex((prev) => Math.max(prev - 1, -1));
+            } else if (e.key === "Enter") {
+              if (highlightIndex >= 0 && suggestions[highlightIndex]) {
+                e.preventDefault();
+                handleSelect(suggestions[highlightIndex]);
+              }
+            }
+          }}
+          onBlur={() => {
+            setTimeout(() => {
+              if (!document.activeElement?.className.includes("search-result-item")) {
+                setSuggestions([]);
+              }
+            }, 200);
+          }}
+          className={`w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 text-base text-gray-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all placeholder:text-gray-400 ${className || ''}`}
+          {...props}
+        />
+        {loading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <Loader2 size={16} className="animate-spin text-primary-500" />
+          </div>
+        )}
+      </div>
+
+      {/* SEARCH RESULTS DROPDOWN */}
+      {suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-2 bg-white border border-neutral-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2 ring-4 ring-black/5">
+          {suggestions.map((s, idx) => (
+            <button
+              key={`${s}-${idx}`}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                handleSelect(s);
+              }}
+              className={`w-full text-left p-3 text-sm font-bold border-b border-neutral-50 flex justify-between items-center group/item transition-colors search-result-item ${
+                idx === highlightIndex
+                  ? "bg-blue-50 ring-1 ring-inset ring-blue-100 z-10 text-blue-700"
+                  : "hover:bg-neutral-50 text-neutral-700 hover:text-blue-600"
+              }`}
+            >
+              <span>{s}</span>
+            </button>
+          ))}
+          <div className="p-2 text-xs text-center text-neutral-400 bg-neutral-50 border-t border-neutral-100 uppercase font-black tracking-widest">
+            Use as setas para navegar e Enter para selecionar
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+
+================================================================================
 FILE PATH: client\src\components\ui\Badge.tsx
 ================================================================================
 import React from "react";
@@ -20022,6 +20194,7 @@ export const FilterButton = ({
 
 ================================================================================
 FILE PATH: client\src\components\ui\FilterRadio.tsx
+================================================================================
 import React from "react";
 
 interface FilterRadioProps {
@@ -20074,6 +20247,7 @@ export * from "./FilterButton";
 export * from "./TextArea";
 export * from "./StatusBanner";
 export * from "./Badge";
+export * from "./AutocompleteInput";
 
 
 
@@ -20189,57 +20363,6 @@ export const Modal = ({
 ================================================================================
 FILE PATH: client\src\components\ui\PageLayout.tsx
 ================================================================================
-import React from "react";
-
-interface PageLayoutProps {
-  children: React.ReactNode;
-  title: React.ReactNode;
-  subtitle?: string;
-  actions?: React.ReactNode; // Para botões como "Novo Cliente" que ficam no topo
-}
-
-export const PageLayout = ({
-  children,
-  title,
-  subtitle,
-  actions,
-}: PageLayoutProps) => {
-  return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      {(title || subtitle || actions) && (
-        <header className="bg-white border-b border-neutral-200 sticky top-0 z-40 print:hidden">
-          <div className="flex items-center justify-between px-6 py-4">
-            <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="text-sm text-slate-500 mt-1 font-medium">
-                  {subtitle}
-                </p>
-              )}
-            </div>
-
-            {/* Espaço para botões de ação (ex: "+ Novo Cadastro") */}
-            {actions && <div className="flex items-center gap-3">{actions}</div>}
-          </div>
-        </header>
-      )}
-
-      {/* Container que limita a largura e centraliza */}
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Área do Conteúdo */}
-        <main className="animate-in fade-in duration-500">{children}</main>
-      </div>
-    </div>
-  );
-};
-
-
-
-================================================================================
-FILE PATH: client\src\components\ui\Select.tsx
 ================================================================================
 import React, { forwardRef } from "react";
 import { ChevronDown } from "lucide-react";
@@ -21016,7 +21139,7 @@ import { ClienteService } from "../../../services/cliente.service";
 import { normalizePlate } from "../../../utils/normalize";
 import { toast } from "react-toastify";
 import { Car, Search, User, Check, X, Save } from "lucide-react";
-import { Button, Input, Select, ActionButton } from "../../ui";
+import { Button, Input, Select, ActionButton, AutocompleteInput } from "../../ui";
 
 interface VeiculoFormProps {
   clientId?: number | null;
@@ -21344,29 +21467,32 @@ export const VeiculoForm = memo(
                 className="font-mono uppercase tracking-wider"
               />
             </div>
-            <div>
-              <Input
+            <div className="relative">
+              <AutocompleteInput
                 label="Marca *"
                 value={marca}
-                onChange={(e) => setMarca(e.target.value)}
+                onChange={setMarca}
+                fetchSuggestions={(q) => VeiculoService.getDistinct('marca', q)}
                 required
               />
             </div>
-            <div>
-              <Input
+            <div className="relative">
+              <AutocompleteInput
                 label="Modelo *"
                 value={modelo}
-                onChange={(e) => setModelo(e.target.value)}
+                onChange={setModelo}
+                fetchSuggestions={(q) => VeiculoService.getDistinct('modelo', q)}
                 required
               />
             </div>
-            <div>
-              <Input
+            <div className="relative">
+              <AutocompleteInput
                 label="Cor *"
                 value={cor}
-                onChange={(e) => setCor(e.target.value)}
+                onChange={setCor}
+                fetchSuggestions={(q) => VeiculoService.getDistinct('cor', q)}
                 required
-                placeholder="Ex: Prata, Branco..."
+                placeholder="Ex: PRATA, BRANCO..."
               />
             </div>
             <div>
@@ -35823,6 +35949,11 @@ export class FinanceiroService {
     return response.data;
   }
 
+  static async getDistinctContasPagar(field: string, query: string): Promise<string[]> {
+    const response = await api.get(`/contas-pagar/distinct/${field}?q=${query}`);
+    return response.data;
+  }
+
   // --- FECHAMENTO & CONSOLIDAÇÃO ---
   static async getFechamentos(): Promise<any[]> {
     const response = await api.get("/fechamento-financeiro");
@@ -36272,6 +36403,11 @@ export const VeiculoService = {
 
   search: async (term: string) => {
     const response = await api.get<IVeiculo[]>(`/veiculo/search?q=${term}`);
+    return response.data;
+  },
+
+  getDistinct: async (field: string, term: string) => {
+    const response = await api.get<string[]>(`/veiculo/distinct/${field}?q=${term}`);
     return response.data;
   },
 
@@ -39696,6 +39832,18 @@ ALTER TABLE "itens_os" ADD COLUMN     "deleted_at" TIMESTAMP;
 ================================================================================
 FILE PATH: server\prisma\migrations\20260103205456_add_indexes_os\migration.sql
 ================================================================================
+-- CreateIndex
+CREATE INDEX "ordem_de_servico_id_cliente_idx" ON "ordem_de_servico"("id_cliente");
+
+-- CreateIndex
+CREATE INDEX "ordem_de_servico_id_veiculo_idx" ON "ordem_de_servico"("id_veiculo");
+
+-- CreateIndex
+CREATE INDEX "ordem_de_servico_status_idx" ON "ordem_de_servico"("status");
+
+-- CreateIndex
+CREATE INDEX "ordem_de_servico_deleted_at_idx" ON "ordem_de_servico"("deleted_at");
+
 
 
 ================================================================================
@@ -41337,6 +41485,20 @@ export const getContas = async (req: Request, res: Response) => {
   }
 };
 
+export const getDistinct = async (req: Request, res: Response) => {
+  try {
+    const field = req.params.field as 'descricao' | 'credor';
+    const search = (req.query.q as string) || '';
+    if (!['descricao', 'credor'].includes(field)) {
+      return res.status(400).json({ error: "Campo inválido para busca" });
+    }
+    const results = await repository.getDistinct(field, search);
+    res.json(results.map(r => r[field]).filter(Boolean));
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar valores distintos" });
+  }
+};
+
 export const getContaById = async (req: Request, res: Response) => {
   try {
     const conta = await repository.findById(Number(req.params.id));
@@ -41551,84 +41713,69 @@ export class DashboardController {
 
 
 ================================================================================
-FILE PATH: server\src\controllers\documento.controller.ts
 ================================================================================
-import { Request, Response } from "express";
-import { DocumentoService } from "../services/DocumentoService.js";
+FILE PATH: server\src\controllers\equipamentoCliente.controller.ts
+================================================================================
+import { Request, Response } from 'express';
+import { EquipamentoClienteRepository } from '../repositories/equipamentoCliente.repository.js';
 
-const service = new DocumentoService();
+const repository = new EquipamentoClienteRepository();
 
-export class DocumentoController {
-  async generatePdf(req: Request, res: Response) {
+export class EquipamentoClienteController {
+  async create(req: Request, res: Response) {
     try {
-      const id = Number(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "ID inválido" });
-      }
-
-      const pdfBuffer = await service.generatePdf(id);
-
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `inline; filename=os-${id}.pdf`);
-      res.send(pdfBuffer);
+      const equip = await repository.create(req.body);
+      res.status(201).json(equip);
     } catch (error: any) {
-      console.error("Erro ao gerar PDF:", error);
-      res.status(500).json({
-        error: "Erro ao gerar PDF",
-        details: error.message,
-      });
+      res.status(400).json({ error: error.message });
     }
   }
 
-  async sendEmail(req: Request, res: Response) {
+  async findAll(req: Request, res: Response) {
     try {
-      const id = Number(req.params.id);
-      const { email } = req.body;
-
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "ID inválido" });
-      }
-
-      if (!email) {
-        return res.status(400).json({ error: "Email é obrigatório" });
-      }
-
-      const pdfBuffer = await service.generatePdf(id);
-      await service.sendEmail(pdfBuffer, email);
-
-      res.json({ success: true, message: "Email enviado com sucesso" });
+      const equips = await repository.findAll();
+      res.json(equips);
     } catch (error: any) {
-      console.error("Erro ao enviar email:", error);
-      res.status(500).json({
-        error: "Erro ao enviar email",
-        details: error.message,
-      });
+      res.status(500).json({ error: error.message });
     }
   }
 
-  async sendTelegram(req: Request, res: Response) {
+  async findById(req: Request, res: Response) {
     try {
-      const id = Number(req.params.id);
-      const { chatId } = req.body;
-
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "ID inválido" });
+      const equip = await repository.findById(Number(req.params.id));
+      if (!equip) {
+        return res.status(404).json({ error: 'Equipamento não encontrado' });
       }
-
-      if (!chatId) {
-        return res.status(400).json({ error: "Chat ID é obrigatório" });
-      }
-
-      const pdfBuffer = await service.generatePdf(id);
-      await service.sendTelegram(pdfBuffer, chatId);
-
-      res.json({ success: true, message: "Telegram enviado com sucesso" });
+      res.json(equip);
     } catch (error: any) {
-      console.error("Erro ao enviar telegram:", error);
-      res.status(500).json({
-        error: "Erro ao enviar telegram",
-        details: error.message,
-      });
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async findByClienteId(req: Request, res: Response) {
+    try {
+      const equips = await repository.findByClienteId(Number(req.params.id));
+      res.json(equips);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const equip = await repository.update(Number(req.params.id), req.body);
+      res.json(equip);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      await repository.delete(Number(req.params.id));
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   }
 }
@@ -41987,8 +42134,9 @@ export class FornecedorController {
     try {
       const fornecedores = await repository.findAll();
       res.json(fornecedores);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Fornecedores" });
+    } catch (error: any) {
+      console.error("❌ FornecedorController.findAll error:", error?.message, error?.code, error?.meta);
+      res.status(500).json({ error: "Failed to fetch Fornecedores", details: error?.message });
     }
   }
 
@@ -45110,6 +45258,20 @@ export class VeiculoController {
     }
   }
 
+  async getDistinct(req: Request, res: Response) {
+    try {
+      const field = req.params.field as 'marca' | 'modelo' | 'cor';
+      const search = (req.query.q as string) || '';
+      if (!['marca', 'modelo', 'cor'].includes(field)) {
+        return res.status(400).json({ error: "Invalid field for distinct search" });
+      }
+      const results = await repository.getDistinct(field, search);
+      res.json(results.map(r => r[field]).filter(Boolean));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch distinct values" });
+    }
+  }
+
   async update(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
@@ -45973,6 +46135,15 @@ export class ContasPagarRepository {
           data: { deleted_at: new Date() },
         });
       }
+    });
+  }
+
+  async getDistinct(field: 'descricao' | 'credor', search: string) {
+    return await prisma.contasPagar.findMany({
+      where: { [field]: { contains: search, mode: "insensitive" }, deleted_at: null },
+      distinct: [field],
+      select: { [field]: true },
+      take: 10,
     });
   }
 
@@ -46845,17 +47016,25 @@ export class FornecedorRepository {
 
         let idPessoaFisica = null;
         let idPessoaJuridica = null;
-        let tipoPessoaId = 1; // Default to Fisica
 
-        if (data.tipo_pessoa === 2 || data.tipo === "JURIDICA") {
-          tipoPessoaId = 2;
+        // Aceita string "JURIDICA" (frontend) ou número 2 (legado)
+        const isJuridica =
+          data.tipo_pessoa === "JURIDICA" ||
+          data.tipo_pessoa === 2 ||
+          data.tipo === "JURIDICA";
+
+        // Extrai dados do sub-objeto enviado pelo frontend (pessoa_juridica.create)
+        const pjPayload = data.pessoa_juridica?.create || {};
+        const pfPayload = data.pessoa_fisica?.create || {};
+
+        if (isJuridica) {
           const pj = await tx.pessoaJuridica.create({
             data: {
               id_pessoa: pessoa.id_pessoa,
-              razao_social: data.razao_social || data.nome,
-              nome_fantasia: data.nome_fantasia || null,
-              cnpj: data.cnpj || null,
-              inscricao_estadual: data.inscricao_estadual || null,
+              razao_social: pjPayload.razao_social || data.razao_social || data.nome,
+              nome_fantasia: pjPayload.nome_fantasia || data.nome_fantasia || null,
+              cnpj: pjPayload.cnpj || data.cnpj || null,
+              inscricao_estadual: pjPayload.inscricao_estadual || data.inscricao_estadual || null,
             },
           });
           idPessoaJuridica = pj.id_pessoa_juridica;
@@ -46864,7 +47043,7 @@ export class FornecedorRepository {
           const pf = await tx.pessoaFisica.create({
             data: {
               id_pessoa: pessoa.id_pessoa,
-              cpf: data.cpf || null,
+              cpf: pfPayload.cpf || data.cpf || null,
             },
           });
           idPessoaFisica = pf.id_pessoa_fisica;
@@ -46875,7 +47054,7 @@ export class FornecedorRepository {
           data: {
             id_pessoa_fisica: idPessoaFisica,
             id_pessoa_juridica: idPessoaJuridica,
-            tipo_pessoa: tipoPessoaId,
+            tipo_pessoa: isJuridica ? 2 : 1,
             contato: data.contato || null,
             telefone: data.telefone_1 || data.telefone || null,
             whatsapp: data.telefone_2 || data.whatsapp || null,
@@ -47201,8 +47380,12 @@ export class OrdemDeServicoRepository {
         if (!finalClientId) {
              const isJuridica = data.client.tipo === 'JURIDICA';
              
-             const cleanCpf = data.client.cpf ? String(data.client.cpf).replace(/\D/g, '') : null;
-             const cleanCnpj = data.client.cnpj ? String(data.client.cnpj).replace(/\D/g, '') : null;
+             // Extract digits only. If the result is empty string, convert to null
+             const cleanCpfRaw = data.client.cpf ? String(data.client.cpf).replace(/\D/g, '') : "";
+             const cleanCnpjRaw = data.client.cnpj ? String(data.client.cnpj).replace(/\D/g, '') : "";
+             
+             const cleanCpf = cleanCpfRaw === "" ? null : cleanCpfRaw;
+             const cleanCnpj = cleanCnpjRaw === "" ? null : cleanCnpjRaw;
              
              let existingClient = null;
              
@@ -47225,20 +47408,20 @@ export class OrdemDeServicoRepository {
              } else {
                  // Base Pessoa
                  const pessoa = await tx.pessoa.create({
-                     data: { nome: data.client.nome }
+                     data: { nome: data.client.nome || "Cliente Não Identificado" }
                  });
 
                  let idPessoaFisica = null;
                  let idPessoaJuridica = null;
-                 let tipoId = 1; // Default Default 1=Fisica
+                 let tipoId = 1; // Default 1=Fisica
 
                  if (isJuridica) {
                      tipoId = 2; // Default 2=Juridica
                      const pj = await tx.pessoaJuridica.create({
                          data: {
                              id_pessoa: pessoa.id_pessoa,
-                             razao_social: data.client.nome,
-                             cnpj: cleanCnpj || null
+                             razao_social: data.client.nome || "Empresa Não Identificada",
+                             cnpj: cleanCnpj
                          }
                      });
                      idPessoaJuridica = pj.id_pessoa_juridica;
@@ -47246,7 +47429,7 @@ export class OrdemDeServicoRepository {
                      const pf = await tx.pessoaFisica.create({
                          data: {
                              id_pessoa: pessoa.id_pessoa,
-                             cpf: cleanCpf || null
+                             cpf: cleanCpf
                          }
                      });
                      idPessoaFisica = pf.id_pessoa_fisica;
@@ -47257,12 +47440,12 @@ export class OrdemDeServicoRepository {
                          id_pessoa_fisica: idPessoaFisica,
                          id_pessoa_juridica: idPessoaJuridica,
                          tipo_pessoa: tipoId,
-                         telefone_1: data.client.telefone,
-                         logradouro: data.client.logradouro,
-                         nr_logradouro: data.client.numero,
-                         bairro: data.client.bairro,
-                         cidade: data.client.cidade,
-                         estado: data.client.estado
+                         telefone_1: data.client.telefone || '00000000000', // Fallback numérico para não quebrar máscaras no frontend
+                         logradouro: data.client.logradouro || null,
+                         nr_logradouro: data.client.numero || null,
+                         bairro: data.client.bairro || null,
+                         cidade: data.client.cidade || null,
+                         estado: data.client.estado || null
                      }
                  });
                  finalClientId = newClient.id_cliente;
@@ -49067,9 +49250,6 @@ export class ServicoMaoDeObraRepository {
 
 
 
-================================================================================
-FILE PATH: server\src\repositories\tipo.repository.ts
-================================================================================
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 
@@ -49261,6 +49441,15 @@ export class VeiculoRepository {
     });
   }
 
+  async getDistinct(field: 'marca' | 'modelo' | 'cor', search: string) {
+    return await prisma.veiculo.findMany({
+      where: { [field]: { contains: search, mode: "insensitive" } },
+      distinct: [field],
+      select: { [field]: true },
+      take: 10,
+    });
+  }
+
   async update(id: number, data: Prisma.VeiculoUpdateInput) {
     return await prisma.veiculo.update({
       where: { id_veiculo: id },
@@ -49311,6 +49500,9 @@ export { authRoutes };
 
 
 
+================================================================================
+FILE PATH: server\src\routes\categoriaFinanceira.routes.ts
+================================================================================
 import { Router } from 'express';
 import * as CategoriaController from '../controllers/categoriaFinanceira.controller.js';
 
@@ -49385,12 +49577,14 @@ import {
   getRecurrenceInfo,
   updateConta,
   deleteConta,
+  getDistinct
 } from "../controllers/contasPagar.controller.js";
 
 const router = Router();
 
 router.post("/", createConta);
 router.get("/", getContas);
+router.get("/distinct/:field", getDistinct);
 router.get("/:id/recurrence-info", getRecurrenceInfo);
 router.get("/:id", getContaById);
 router.put("/:id", updateConta);
@@ -49429,6 +49623,25 @@ documentoRoutes.post("/:id/email", controller.sendEmail.bind(controller));
 documentoRoutes.post("/:id/telegram", controller.sendTelegram.bind(controller));
 
 export { documentoRoutes };
+
+
+
+================================================================================
+FILE PATH: server\src\routes\equipamentoCliente.routes.ts
+================================================================================
+import { Router } from 'express';
+import { EquipamentoClienteController } from '../controllers/equipamentoCliente.controller.js';
+
+const equipamentoClienteRoutes = Router();
+const controller = new EquipamentoClienteController();
+
+equipamentoClienteRoutes.post('/', controller.create);
+equipamentoClienteRoutes.get('/', controller.findAll);
+equipamentoClienteRoutes.get('/:id', controller.findById);
+equipamentoClienteRoutes.put('/:id', controller.update);
+equipamentoClienteRoutes.delete('/:id', controller.delete);
+
+export { equipamentoClienteRoutes };
 
 
 
@@ -49522,6 +49735,7 @@ import { funcionarioRoutes } from "./funcionario.routes.js";
 import { fornecedorRoutes } from "./fornecedor.routes.js";
 import { pecasEstoqueRoutes } from "./pecasEstoque.routes.js";
 import { veiculoRoutes } from "./veiculo.routes.js";
+import { equipamentoClienteRoutes } from "./equipamentoCliente.routes.js";
 import { ordemDeServicoRoutes } from "./ordemDeServico.routes.js";
 import { itensOsRoutes } from "./itensOs.routes.js";
 import { servicoMaoDeObraRoutes } from "./servicoMaoDeObra.routes.js";
@@ -49558,6 +49772,7 @@ apiRouter.use("/funcionario", funcionarioRoutes);
 apiRouter.use("/fornecedor", fornecedorRoutes);
 apiRouter.use("/pecas-estoque", pecasEstoqueRoutes);
 apiRouter.use("/veiculo", veiculoRoutes);
+apiRouter.use("/equipamento", equipamentoClienteRoutes);
 apiRouter.use("/ordem-de-servico", ordemDeServicoRoutes);
 apiRouter.use("/itens-os", itensOsRoutes);
 apiRouter.use("/servico-mao-de-obra", servicoMaoDeObraRoutes);
@@ -49900,6 +50115,7 @@ const controller = new VeiculoController();
 veiculoRoutes.post('/', controller.create);
 veiculoRoutes.get('/', controller.findAll);
 veiculoRoutes.get('/search', controller.search);
+veiculoRoutes.get('/distinct/:field', controller.getDistinct);
 veiculoRoutes.get('/placa/:placa', controller.findByPlaca);
 veiculoRoutes.get('/:id', controller.findById);
 veiculoRoutes.put('/:id', controller.update);
@@ -50204,119 +50420,6 @@ main()
 ================================================================================
 FILE PATH: server\src\scripts\clean_test_clients.ts
 ================================================================================
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
-async function main() {
-  console.log("🧹 Starting cleanup of 'Cliente Teste'...");
-
-  // 1. Find the specific "Cliente Teste"
-  const testClients = await prisma.cliente.findMany({
-    where: {
-      pessoa_fisica: {
-        pessoa: {
-          nome: {
-            contains: "Teste",
-            mode: "insensitive",
-          },
-        },
-      },
-    },
-    select: {
-      id_cliente: true,
-      pessoa_fisica: {
-        select: {
-          id_pessoa_fisica: true,
-          id_pessoa: true,
-        },
-      },
-    },
-  });
-
-  console.log(`🎯 Found ${testClients.length} clients to remove.`);
-
-  for (const client of testClients) {
-    console.log(`Processing Client ID: ${client.id_cliente}`);
-
-    // Find OS IDs
-    const osList = await prisma.ordemDeServico.findMany({
-      where: { id_cliente: client.id_cliente },
-      select: { id_os: true },
-    });
-    const osIds = osList.map((os) => os.id_os);
-    console.log(`- Found ${osIds.length} related OSs.`);
-
-    if (osIds.length > 0) {
-      // Delete OS Relations
-      await prisma.fechamentoFinanceiro.deleteMany({
-        where: { id_os: { in: osIds } },
-      });
-      await prisma.servicoMaoDeObra.deleteMany({
-        where: { id_os: { in: osIds } },
-      });
-
-      // Delete PagamentoPeca (Linked to ItensOs)
-      // First find items to find payments
-      const itensOs = await prisma.itensOs.findMany({
-        where: { id_os: { in: osIds } },
-        select: { id_iten: true },
-      });
-      const itemIds = itensOs.map((i) => i.id_iten);
-      if (itemIds.length > 0) {
-        await prisma.pagamentoPeca.deleteMany({
-          where: { id_item_os: { in: itemIds } },
-        });
-      }
-
-      await prisma.itensOs.deleteMany({ where: { id_os: { in: osIds } } });
-      await prisma.pagamentoCliente.deleteMany({
-        where: { id_os: { in: osIds } },
-      });
-      await prisma.recebivelCartao.deleteMany({
-        where: { id_os: { in: osIds } },
-      });
-
-      // Delete OSs
-      await prisma.ordemDeServico.deleteMany({
-        where: { id_os: { in: osIds } },
-      });
-      console.log(`- Deleted OSs.`);
-    }
-
-    // Delete Vehicles
-    await prisma.veiculo.deleteMany({
-      where: { id_cliente: client.id_cliente },
-    });
-    console.log(`- Deleted Vehicles.`);
-
-    // Delete Client
-    await prisma.cliente.delete({ where: { id_cliente: client.id_cliente } });
-    console.log(`- Deleted Cliente record.`);
-
-    // Delete Person Hierarchy if exists
-    if (client.pessoa_fisica) {
-      await prisma.pessoaFisica.delete({
-        where: { id_pessoa_fisica: client.pessoa_fisica.id_pessoa_fisica },
-      });
-      await prisma.pessoa.delete({
-        where: { id_pessoa: client.pessoa_fisica.id_pessoa },
-      });
-      console.log(`- Deleted Pessoa/PessoaFisica records.`);
-    }
-  }
-
-  console.log("✅ Cleanup complete.");
-}
-
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
-
-
-
-================================================================================
-FILE PATH: server\src\scripts\fix_financial_consistency.ts
 ================================================================================
 import { PrismaClient } from "@prisma/client";
 

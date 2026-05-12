@@ -6,12 +6,14 @@ import {
   getRecurrenceInfo,
   updateConta,
   deleteConta,
+  getDistinct
 } from "../controllers/contasPagar.controller.js";
 
 const router = Router();
 
 router.post("/", createConta);
 router.get("/", getContas);
+router.get("/distinct/:field", getDistinct);
 router.get("/:id/recurrence-info", getRecurrenceInfo);
 router.get("/:id", getContaById);
 router.put("/:id", updateConta);

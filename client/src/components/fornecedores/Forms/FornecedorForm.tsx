@@ -135,35 +135,23 @@ export const FornecedorForm = ({
       let res;
       const isUpdate = !!initialData?.id_fornecedor;
 
-      // Monta o payload base apenas com campos existentes na tabela Pessoa
+      // Payload plano — espelha diretamente a tabela `fornecedor` do banco
       const payload: any = {
-        nome: formData.nome,
-        obs: formData.obs || null,
-        is_fornecedor: true,
+        ...formData,
+        documento: unmask(formData.documento) || null,
+        inscricao_estadual: unmask(formData.inscricao_estadual) || null,
+        inscricao_municipal: unmask(formData.inscricao_municipal) || null,
+        cep: unmask(formData.cep) || null,
+        telefone: unmask(formData.telefone) || null,
+        whatsapp: unmask(formData.whatsapp) || null,
       };
-
-      // Adiciona o relacionamento correto dependendo do tipo de pessoa
-      if (formData.tipo_pessoa === "JURIDICA") {
-        const pjData = {
-          razao_social: formData.nome,
-          nome_fantasia: formData.nome_fantasia || null,
-          cnpj: unmask(formData.documento) || null,
-          inscricao_estadual: unmask(formData.inscricao_estadual) || null,
-        };
-        payload.pessoa_juridica = isUpdate ? { update: pjData } : { create: pjData };
-      } else {
-        const pfData = {
-          cpf: unmask(formData.documento) || null,
-        };
-        payload.pessoa_fisica = isUpdate ? { update: pfData } : { create: pfData };
-      }
 
       if (isUpdate) {
         res = await FornecedorService.update(initialData.id_fornecedor, payload);
       } else {
         res = await FornecedorService.create(payload);
       }
-      
+
       onSuccess(res);
     } catch (error) {
       console.error(error);
