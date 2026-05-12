@@ -5,4 +5,4 @@ REM   - Backend:  http://localhost:3000
 REM Em PROD, basta "docker compose up -d" (sem este script).
 
 cd /d "%~dp0"
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up %*
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build %*

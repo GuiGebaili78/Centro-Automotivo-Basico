@@ -54,25 +54,19 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # 3. Frontend (React + Vite) — só interno; quem expõe é o nginx
+  # 3. Frontend (React) — build estático servido por nginx interno na 8080.
+  #    Em prod, VITE_API_URL é inlineada no bundle em tempo de build.
   client:
     build:
       context: ./client
       dockerfile: Dockerfile
+      target: prod
+      args:
+        VITE_API_URL: https://hapi.gunz.com.br/api
     image: automotivo-client
+    restart: always
     expose:
       - "8080"
-    environment:
-      VITE_API_URL: https://hapi.gunz.com.br/api
-      VITE_PORT: "8080"
-      VITE_ALLOWED_HOSTS: painel.gunz.com.br
-      VITE_HMR_HOST: painel.gunz.com.br
-      VITE_HMR_PROTOCOL: wss
-      VITE_HMR_CLIENT_PORT: "443"
-      NODE_OPTIONS: "--max-old-space-size=2048"
-    volumes:
-      - ./client:/app/client
-      - /app/client/node_modules
     depends_on:
       - api
     networks:

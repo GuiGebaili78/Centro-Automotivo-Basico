@@ -1,15 +1,24 @@
 # Override para desenvolvimento local.
-# Uso: ./dev.sh   (que faz "docker compose -f docker-compose.yml -f docker-compose.dev.yml up")
-# Em prod, NÃO usar este arquivo — basta "docker compose up -d".
+# Uso: ./dev.sh   (faz "docker compose -f docker-compose.yml -f docker-compose.dev.yml up")
+# Em prod, NÃO usar este arquivo — basta "docker compose up -d" (ou ./deploy.sh).
 
 services:
   api:
+    # Sobrescreve o command de prod por hot-reload (tsx watch)
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npx prisma db seed && npm run dev"
+    environment:
+      NODE_ENV: development
+      FRONTEND_URL: http://localhost:5173
     ports:
       - "3000:3000"
-    environment:
-      FRONTEND_URL: http://localhost:5173
 
   client:
+    # Em dev usa o stage "dev" do Dockerfile (Vite dev server + HMR)
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      target: dev
+    # Sobe pelas portas direto, sem passar pelo nginx
     ports:
       - "5173:5173"
     environment:
@@ -19,10 +28,12 @@ services:
       VITE_HMR_HOST: ""
       VITE_HMR_PROTOCOL: ws
       VITE_HMR_CLIENT_PORT: "5173"
+    # Em dev precisa do bind do código pra HMR funcionar
+    volumes:
+      - ./client:/app/client
+      - /app/client/node_modules
 
-  # Em dev não precisa do reverse proxy. O profile "never" não é ativado por
-  # ./dev.sh, então o nginx não sobe localmente (e libera as portas 80/443
-  # do host).
+  # Em dev não precisa do reverse proxy nginx (libera as 80/443 do host).
   nginx:
     profiles:
       - never
