@@ -3,7 +3,7 @@ import { formatCurrency } from "../../utils/formatCurrency";
 import { getStatusStyle } from "../../utils/osUtils";
 import { FinanceiroService } from "../../services/financeiro.service";
 import { ColaboradorService } from "../../services/colaborador.service";
-import { Button, Card, Checkbox, Modal, Select, FilterButton } from "../ui";
+import { Button, Card, Checkbox, Modal, Select, FilterButton, Input, TextArea } from "../ui";
 import { toast } from "react-toastify";
 import {
   Plus,
@@ -408,12 +408,12 @@ export const PagamentoColaboradoresTab = ({
                 </FilterButton>
               </div>
             </div>
-            <button
+            <Button
               onClick={handleOpenNewPayment}
-              className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+              className="flex items-center gap-2"
             >
               <Plus size={18} /> Novo Pagamento
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -926,38 +926,24 @@ export const PagamentoColaboradoresTab = ({
                 ) : (
                   // ADIANTAMENTO MODE
                   <div className="space-y-4">
-                    <div>
-                      <div>
-                        <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                          Valor do Adiantamento (R$)
-                        </label>
-                        <input
-                          type="number"
-                          value={payValorAdiantamento}
-                          onChange={(e) =>
-                            setPayValorAdiantamento(e.target.value)
-                          }
-                          placeholder="0.00"
-                          autoFocus
-                          className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <div>
-                        <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                          Data Lançamento
-                        </label>
-                        <input
-                          type="date"
-                          value={payDataAdiantamento}
-                          onChange={(e) =>
-                            setPayDataAdiantamento(e.target.value)
-                          }
-                          className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
-                        />
-                      </div>
-                    </div>
+                    <Input
+                      type="number"
+                      label="Valor do Adiantamento (R$)"
+                      value={payValorAdiantamento}
+                      onChange={(e) =>
+                        setPayValorAdiantamento(e.target.value)
+                      }
+                      placeholder="0.00"
+                      autoFocus
+                    />
+                    <Input
+                      type="date"
+                      label="Data Lançamento"
+                      value={payDataAdiantamento}
+                      onChange={(e) =>
+                        setPayDataAdiantamento(e.target.value)
+                      }
+                    />
                   </div>
                 )}
               </div>
@@ -981,68 +967,53 @@ export const PagamentoColaboradoresTab = ({
                             }
                           />
                           <div className="mt-2">
-                            <input
+                            <Input
                               disabled={!payIncludeSalary}
                               value={payValorSalario}
                               onChange={(e) =>
                                 setPayValorSalario(e.target.value)
                               }
                               placeholder="0.00"
-                              className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400 disabled:opacity-50"
                             />
                           </div>
                         </div>
                       </div>
                       <div className="mb-4">
-                        <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                          Prêmio / Bônus
-                        </label>
-                        <input
+                        <Input
+                          label="Prêmio / Bônus"
                           value={payValorPremio}
                           onChange={(e) => setPayValorPremio(e.target.value)}
                           placeholder="0.00"
-                          className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
                         />
                       </div>
                       {payValorPremio && (
                         <div className="mb-4">
-                          <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                            Motivo Prêmio
-                          </label>
-                          <input
+                          <Input
+                            label="Motivo Prêmio"
                             value={payObsExtra}
                             onChange={(e) => setPayObsExtra(e.target.value)}
                             placeholder="Ex: Meta Batida"
-                            className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
                           />
                         </div>
                       )}
                     </>
                   )}
-                  <div>
-                    <div>
-                      <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                        Forma Pagamento
-                      </label>
-                      <select
-                        value={payMethod}
-                        onChange={(e) => setPayMethod(e.target.value)}
-                        className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-                      >
-                        <option value="DINHEIRO">Dinheiro</option>
-                        <option value="PIX">Pix</option>
-                        <option value="TRANSFERENCIA">Transferência</option>
-                      </select>
-                    </div>
+                  <div className="mb-4">
+                    <Select
+                      label="Forma Pagamento"
+                      value={payMethod}
+                      onChange={(e) => setPayMethod(e.target.value)}
+                    >
+                      <option value="DINHEIRO">Dinheiro</option>
+                      <option value="PIX">Pix</option>
+                      <option value="TRANSFERENCIA">Transferência</option>
+                    </Select>
                   </div>
                   <div className="mt-4">
-                    <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                      Observações
-                    </label>
-                    <textarea
+                    <TextArea
+                      label="Observações"
                       value={payObsPagamento}
                       onChange={(e) => setPayObsPagamento(e.target.value)}
-                      className="w-full bg-white border border-neutral-200 p-2 rounded-lg text-sm font-medium outline-none focus:border-neutral-400 resize-none"
                       rows={2}
                     />
                   </div>
@@ -1126,15 +1097,15 @@ export const PagamentoColaboradoresTab = ({
               >
                 Cancelar
               </Button>
-              <button
+              <Button
                 onClick={handleExecutePayment}
-                className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                className="flex items-center gap-2"
               >
                 <Save size={18} />
                 {paymentMode === "PAGAMENTO"
                   ? "Realizar Pagamento"
                   : "Lançar Adiantamento"}
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>

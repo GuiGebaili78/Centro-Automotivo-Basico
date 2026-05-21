@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../services/api";
 import type { IPessoaJuridica } from "../types/backend";
 import { PessoaJuridicaForm } from "../components/pessoa/Forms/PessoaJuridicaForm";
-import { Modal } from "../components/ui";
+import { Modal, Input } from "../components/ui";
 import { Plus, Search, Trash2, Edit, Building2 } from "lucide-react";
 
 export const PessoaJuridicaPage = () => {
@@ -144,24 +144,25 @@ export const PessoaJuridicaPage = () => {
         <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">
           Manutenção (Por ID)
         </h2>
-        <div className="flex gap-4 mb-4">
-          <input
-            type="number"
-            value={searchId}
-            onChange={(e) => setSearchId(e.target.value)}
-            placeholder="Digite o ID da Pessoa Jurídica..."
-            className="border p-2 rounded w-64"
-          />
+        <div className="flex gap-4 mb-4 items-end">
+          <div className="w-64">
+            <Input
+              type="number"
+              value={searchId}
+              onChange={(e) => setSearchId(e.target.value)}
+              placeholder="Digite o ID da Pessoa Jurídica..."
+            />
+          </div>
           <button
             onClick={handleSearch}
-            className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-700"
+            className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 font-medium h-11"
           >
             <Search size={18} /> Localizar
           </button>
           {searchId && (
             <button
               onClick={handleDelete}
-              className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200"
+              className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2.5 rounded-lg hover:bg-red-200 font-medium h-11"
             >
               <Trash2 size={18} /> Excluir
             </button>
@@ -175,32 +176,28 @@ export const PessoaJuridicaPage = () => {
             </h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="col-span-2">
-                <label className="text-xs font-bold block mb-1">
-                  Razão Social
-                </label>
-                <input
+                <Input
+                  label="Razão Social"
                   value={editData.razao_social}
                   onChange={(e) =>
                     setEditData({ ...editData, razao_social: e.target.value })
                   }
-                  className="border p-2 w-full rounded"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold block mb-1">CNPJ</label>
-                <input
+                <Input
+                  label="CNPJ"
                   value={editData.cnpj || ""}
                   onChange={(e) =>
                     setEditData({ ...editData, cnpj: e.target.value })
                   }
-                  className="border p-2 w-full rounded"
                   maxLength={14}
                 />
               </div>
             </div>
             <button
               onClick={handleUpdate}
-              className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-bold"
+              className="flex items-center gap-2 bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold"
             >
               <Edit size={18} /> Salvar Alterações
             </button>

@@ -4,6 +4,8 @@ import { CheckCircle, Trash2 } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
+import { TextArea } from "../ui/TextArea";
 import { EstoqueService } from "../../services/estoque.service";
 import type { IPecasEstoque } from "../../types/estoque.types";
 
@@ -146,41 +148,33 @@ export const EdicaoPecaModal = ({
                 }
                 placeholder="Marca..."
               />
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-neutral-500">
-                  Unidade
-                </label>
-                <select
-                  value={formData.unidade_medida}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      unidade_medida: e.target.value,
-                    })
-                  }
-                  className="w-full p-2.5 rounded-lg border border-neutral-200 bg-white focus:bg-white outline-none focus:border-primary-500 font-medium text-sm transition-all h-[42px]"
-                >
-                  <option value="UN">Unidade (UN)</option>
-                  <option value="L">Litro (L)</option>
-                  <option value="KG">Quilo (KG)</option>
-                  <option value="KIT">Kit</option>
-                  <option value="PAR">Par</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-neutral-500">
-                Descrição / Notas
-              </label>
-              <textarea
-                value={formData.descricao}
+              <Select
+                label="Unidade"
+                value={formData.unidade_medida}
                 onChange={(e) =>
-                  setFormData({ ...formData, descricao: e.target.value })
+                  setFormData({
+                    ...formData,
+                    unidade_medida: e.target.value,
+                  })
                 }
-                className="w-full p-3 rounded-lg border border-neutral-200 bg-white focus:bg-white outline-none focus:border-primary-500 font-medium text-sm h-24 resize-none transition-all"
-                placeholder="Detalhes adicionais..."
-              />
+                className="!py-2.5 !px-3 bg-white h-[42px]"
+              >
+                <option value="UN">Unidade (UN)</option>
+                <option value="L">Litro (L)</option>
+                <option value="KG">Quilo (KG)</option>
+                <option value="KIT">Kit</option>
+                <option value="PAR">Par</option>
+              </Select>
             </div>
+            <TextArea
+              label="Descrição / Notas"
+              value={formData.descricao}
+              onChange={(e) =>
+                setFormData({ ...formData, descricao: e.target.value })
+              }
+              className="h-24 resize-none"
+              placeholder="Detalhes adicionais..."
+            />
           </div>
 
           <div className="space-y-4 bg-neutral-50 p-4 rounded-xl border border-neutral-100">

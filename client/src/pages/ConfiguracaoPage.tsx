@@ -1,8 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { PageLayout } from "../components/ui/PageLayout";
-import { Card } from "../components/ui/Card";
-import { Input } from "../components/ui/Input";
-import { Button } from "../components/ui/Button";
+import { PageLayout, Card, Input, Button } from "../components/ui";
 import {
   ConfiguracaoService,
   type Configuracao,
@@ -311,21 +308,17 @@ export const ConfiguracaoPage = () => {
                   <div className="w-full space-y-3">
                     {isNewUpload && (
                       <>
-                        <div>
-                          <label className="text-xs font-bold text-slate-600 mb-1 block">
-                            Zoom: {logoZoom}%
-                          </label>
-                          <input
-                            type="range"
-                            min="50"
-                            max="200"
-                            value={logoZoom}
-                            onChange={(e) =>
-                              setLogoZoom(Number(e.target.value))
-                            }
-                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
-                          />
-                        </div>
+                        <Input
+                          label={`Zoom: ${logoZoom}%`}
+                          type="range"
+                          min="50"
+                          max="200"
+                          value={logoZoom}
+                          onChange={(e) =>
+                            setLogoZoom(Number(e.target.value))
+                          }
+                          className="!w-full !h-2 !bg-slate-200 !rounded-lg !appearance-none !cursor-pointer !accent-primary-600 !border-0 !p-0 !ring-0"
+                        />
                         <p className="text-xs text-slate-500 text-center">
                           💡 Arraste o logo para reposicionar
                         </p>
@@ -368,13 +361,14 @@ export const ConfiguracaoPage = () => {
                   </div>
                 )}
 
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept="image/*"
-                  className="hidden"
-                />
+                <div className="hidden">
+                  <Input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                  />
+                </div>
 
                 {!logoPreview && (
                   <p className="text-xs text-slate-500 text-center">

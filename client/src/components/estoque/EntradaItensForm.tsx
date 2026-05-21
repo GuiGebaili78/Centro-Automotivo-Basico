@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { Package, Search, Plus, Trash2, Edit, Save } from "lucide-react";
 import { toast } from "react-toastify";
-import { Card } from "../ui/Card";
-import { Input } from "../ui/Input";
-import { Button } from "../ui/Button";
-import { ActionButton } from "../ui/ActionButton";
+import { Card, Input, Select, Button, ActionButton } from "../ui";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { EstoqueService } from "../../services/estoque.service";
 import type { IItemEntrada, IPecasEstoque } from "../../types/estoque.types";
@@ -206,23 +203,17 @@ export const EntradaItensForm = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Part Search / New Part Toggle */}
           <div className="relative z-20">
-            <label className="block text-sm font-medium text-gray-600 mb-1">
-              Buscar Peça ou Cadastrar Nova
-            </label>
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                size={18}
-              />
-              <input
-                className={`w-full pl-10 pr-4 py-3 rounded-xl border ${selectedStockPart ? "border-primary-500 bg-primary-50 text-primary-700 font-bold" : "border-neutral-200 bg-white font-medium"} outline-none focus:border-primary-500 transition-all h-[46px]`}
-                placeholder="Digite o nome da peça..."
-                value={partSearch}
-                onChange={(e) => {
-                  handleSearchPart(e.target.value);
-                  if (selectedStockPart) setSelectedStockPart(null);
-                }}
-              />
+            <Input
+              label="Buscar Peça ou Cadastrar Nova"
+              icon={Search}
+              className={`${selectedStockPart ? "border-primary-500 bg-primary-50 text-primary-700 font-bold" : "border-neutral-200 bg-white font-medium"} !h-[46px] !py-3`}
+              placeholder="Digite o nome da peça..."
+              value={partSearch}
+              onChange={(e) => {
+                handleSearchPart(e.target.value);
+                if (selectedStockPart) setSelectedStockPart(null);
+              }}
+            />
               {partResults.length > 0 && !selectedStockPart && (
                 <div className="absolute w-full mt-2 bg-white border border-neutral-100 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50">
                   {partResults.map((p) => (
@@ -271,7 +262,6 @@ export const EntradaItensForm = ({
                   </div>
                 )}
             </div>
-          </div>
 
           {/* If New Part: Extra Fields */}
           {isNewPart && (
@@ -284,22 +274,18 @@ export const EntradaItensForm = ({
                   onChange={(e) => setNewPartFab(e.target.value)}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Unidade
-                </label>
-                <select
-                  className="w-full p-3 rounded-xl border border-neutral-200 bg-white font-medium h-[46px]"
-                  value={newPartUnit}
-                  onChange={(e) => setNewPartUnit(e.target.value)}
-                >
-                  <option value="UN">Unidade (UN)</option>
-                  <option value="L">Litro (L)</option>
-                  <option value="KG">Quilo (KG)</option>
-                  <option value="KIT">Kit</option>
-                  <option value="PAR">Par</option>
-                </select>
-              </div>
+              <Select
+                label="Unidade"
+                className="!h-[46px] !p-3 bg-white"
+                value={newPartUnit}
+                onChange={(e) => setNewPartUnit(e.target.value)}
+              >
+                <option value="UN">Unidade (UN)</option>
+                <option value="L">Litro (L)</option>
+                <option value="KG">Quilo (KG)</option>
+                <option value="KIT">Kit</option>
+                <option value="PAR">Par</option>
+              </Select>
             </div>
           )}
         </div>

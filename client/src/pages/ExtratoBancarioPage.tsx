@@ -18,7 +18,7 @@ import {
   Settings,
 } from "lucide-react";
 import type { IContaBancaria } from "../types/backend";
-import { Button, Input, Modal } from "../components/ui";
+import { Button, Input, Modal, Select, TextArea } from "../components/ui";
 
 export const ExtratoBancarioPage = () => {
   const { idConta } = useParams();
@@ -463,64 +463,43 @@ export const ExtratoBancarioPage = () => {
                   }
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                  Tipo
-                </label>
-                <div className="relative">
-                  <select
-                    value={formData.tipo_movimentacao}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        tipo_movimentacao: e.target.value,
-                      })
-                    }
-                    className="w-full bg-neutral-50 border border-neutral-200 px-3 py-[11px] rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-                  >
-                    <option value="ENTRADA">Entrada (+)</option>
-                    <option value="SAIDA">Saída (-)</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                    <ArrowDownCircle size={14} />
-                  </div>
-                </div>
-              </div>
+              <Select
+                label="Tipo"
+                value={formData.tipo_movimentacao}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    tipo_movimentacao: e.target.value,
+                  })
+                }
+              >
+                <option value="ENTRADA">Entrada (+)</option>
+                <option value="SAIDA">Saída (-)</option>
+              </Select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                Categoria
-              </label>
-              <div className="relative">
-                <select
-                  value={formData.categoria}
-                  onChange={(e) =>
-                    setFormData({ ...formData, categoria: e.target.value })
-                  }
-                  className="w-full bg-neutral-50 border border-neutral-200 px-3 py-[11px] rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.id_categoria} value={cat.nome}>
-                      {cat.nome}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                  <ArrowDownCircle size={14} />
-                </div>
-              </div>
+              <Select
+                label="Categoria"
+                value={formData.categoria}
+                onChange={(e) =>
+                  setFormData({ ...formData, categoria: e.target.value })
+                }
+              >
+                {categories.map((cat) => (
+                  <option key={cat.id_categoria} value={cat.nome}>
+                    {cat.nome}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 ml-1 mb-1.5">
-                Observação (Opcional)
-              </label>
-              <textarea
+              <TextArea
+                label="Observação (Opcional)"
                 rows={3}
                 value={formData.obs}
                 onChange={(e) =>
                   setFormData({ ...formData, obs: e.target.value })
                 }
-                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded-lg font-medium text-neutral-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all"
               />
             </div>
             <div className="pt-4 flex gap-3 justify-end">

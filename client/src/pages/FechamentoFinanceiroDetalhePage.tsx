@@ -17,10 +17,7 @@ import {
 import { PagamentoClienteForm } from "../components/financeiro/Forms/PagamentoClienteForm";
 import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
 import { LaborManager } from "../components/os/LaborManager";
-import { Modal } from "../components/ui/Modal";
-import { Button } from "../components/ui/Button";
-import { ActionButton } from "../components/ui/ActionButton";
-import { Card } from "../components/ui/Card";
+import { Modal, Button, ActionButton, Card, Input, Select, TextArea } from "../components/ui";
 import { toast } from "react-toastify";
 
 interface ItemOS {
@@ -650,13 +647,12 @@ export const FechamentoFinanceiroDetalhePage = () => {
         {/* Top Header: Actions & ID */}
         <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-neutral-100">
           <div className="flex items-center gap-4">
-            <button
+            <ActionButton
+              icon={ArrowLeft}
+              label="Voltar"
               onClick={() => navigate("/fechamento-financeiro")}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-all text-neutral-400 hover:text-neutral-700 active:scale-95"
-              title="Voltar"
-            >
-              <ArrowLeft size={24} />
-            </button>
+              variant="neutral"
+            />
 
             <div className="flex flex-col">
               <div className="flex items-center gap-3">
@@ -709,14 +705,14 @@ export const FechamentoFinanceiroDetalhePage = () => {
               <span className="text-sm font-medium uppercase tracking-widest">
                 Veículo
               </span>
-              <button
+              <ActionButton
+                icon={Edit}
+                label="Editar Veículo"
                 onClick={() =>
                   navigate(`/cadastro/${osData.cliente?.id_cliente}`)
                 }
-                className="text-primary-500 hover:text-primary-600 p-0.5 rounded hover:bg-primary-50"
-              >
-                <Edit size={16} />
-              </button>
+                variant="primary"
+              />
             </div>
             <div className="flex flex-col">
               <span className="text-gray-900 text-base font-bold uppercase">
@@ -735,14 +731,14 @@ export const FechamentoFinanceiroDetalhePage = () => {
               <span className="text-sm font-medium uppercase tracking-widest">
                 Cliente
               </span>
-              <button
+              <ActionButton
+                icon={Edit}
+                label="Editar Cliente"
                 onClick={() =>
                   navigate(`/cadastro/${osData.cliente?.id_cliente}`)
                 }
-                className="text-primary-500 hover:text-primary-600 p-0.5 rounded hover:bg-primary-50"
-              >
-                <Edit size={16} />
-              </button>
+                variant="primary"
+              />
             </div>
             <div>
               <p className="text-base font-bold text-gray-900 leading-tight uppercase">
@@ -768,7 +764,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 </div>
                 Defeito Relatado (Impressão para o Cliente)
               </label>
-              <textarea
+              <TextArea
                 className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-base font-medium text-neutral-700 h-32 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
                 placeholder="Descreva o defeito..."
                 value={osData.defeito_relatado || ""}
@@ -786,7 +782,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 </div>
                 Diagnóstico (apenas informações internas da oficina)
               </label>
-              <textarea
+              <TextArea
                 className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-base font-medium text-neutral-700 h-32 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
                 placeholder="Descreva o diagnóstico e a solução técnica..."
                 value={osData.diagnostico || ""}
@@ -891,8 +887,8 @@ export const FechamentoFinanceiroDetalhePage = () => {
                         <Truck size={14} /> Estoque Próprio
                       </div>
                     ) : (
-                      <select
-                        className="w-full p-2.5 bg-white border border-neutral-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                      <Select
+                        className="!py-1.5 !px-3 !text-sm"
                         value={itemsState[item.id_iten]?.id_fornecedor || ""}
                         onChange={(e) =>
                           handleItemChange(
@@ -908,7 +904,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                             {String(f.nome_fantasia || f.razao_social || f.nome_completo || f.nome || "").toUpperCase()}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     )}
                   </td>
                   <td className="p-4">
@@ -918,10 +914,10 @@ export const FechamentoFinanceiroDetalhePage = () => {
                           <span className="text-gray-400 text-xs font-bold mr-2">
                             R$
                           </span>
-                          <input
+                          <Input
                             disabled
                             value="0.00"
-                            className="w-full bg-transparent text-sm font-bold text-gray-400 cursor-not-allowed outline-none"
+                            className="!p-0 bg-transparent border-0 focus:ring-0 text-sm font-bold text-gray-400 cursor-not-allowed"
                           />
                         </div>
                         <div className="text-sm text-gray-400 mt-1 text-center font-medium uppercase tracking-tighter">
@@ -935,7 +931,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                         <span className="text-gray-400 text-xs font-bold mr-2">
                           R$
                         </span>
-                        <input
+                        <Input
                           type="number"
                           step="0.01"
                           value={itemsState[item.id_iten]?.custo_real}
@@ -955,7 +951,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                                 val.toFixed(2),
                               );
                           }}
-                          className="w-full text-base font-bold text-gray-900 outline-none placeholder-gray-300"
+                          className="!p-0 bg-transparent border-0 focus:ring-0 text-sm font-bold text-gray-900"
                           placeholder="0.00"
                         />
                       </div>
@@ -1037,8 +1033,8 @@ export const FechamentoFinanceiroDetalhePage = () => {
                         {item.codigo_referencia || "-"}
                       </td>
                       <td className="p-4">
-                        <select
-                          className="w-full p-2 bg-white border border-amber-100 rounded-lg text-sm"
+                        <Select
+                          className="!py-1.5 !px-3 !text-sm"
                           value={itemsState[item.id_iten]?.id_fornecedor || ""}
                           onChange={(e) =>
                             handleItemChange(
@@ -1057,11 +1053,11 @@ export const FechamentoFinanceiroDetalhePage = () => {
                               {String(f.nome_fantasia || f.razao_social || f.nome_completo || f.nome || "").toUpperCase()}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center border border-amber-100 rounded-lg bg-white px-3 py-2">
-                          <input
+                          <Input
                             type="number"
                             step="0.01"
                             value={itemsState[item.id_iten]?.custo_real}
@@ -1072,7 +1068,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                                 e.target.value,
                               )
                             }
-                            className="w-full text-base font-bold text-amber-700 outline-none"
+                            className="!p-0 bg-transparent border-0 focus:ring-0 text-sm font-bold text-amber-700"
                             placeholder="0.00"
                           />
                         </div>
@@ -1172,24 +1168,18 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
                     {!pag.deleted_at && (
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() =>
-                            setPaymentModal({ isOpen: true, data: pag })
-                          }
-                          className="text-neutral-400 hover:text-primary-600 p-1.5 hover:bg-primary-50 rounded-lg transition-colors"
-                          title="Editar"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleDeletePayment(pag.id_pagamento_cliente)
-                          }
-                          className="text-neutral-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Excluir"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <ActionButton
+                          icon={Edit}
+                          label="Editar"
+                          onClick={() => setPaymentModal({ isOpen: true, data: pag })}
+                          variant="accent"
+                        />
+                        <ActionButton
+                          icon={Trash2}
+                          label="Excluir"
+                          onClick={() => handleDeletePayment(pag.id_pagamento_cliente)}
+                          variant="danger"
+                        />
                       </div>
                     )}
                   </div>
@@ -1348,78 +1338,58 @@ export const FechamentoFinanceiroDetalhePage = () => {
           onClose={() => setEditItemModal({ isOpen: false, item: null })}
         >
           <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                Descrição
-              </label>
-              <input
-                type="text"
-                value={editItemForm.descricao}
-                onChange={(e) =>
-                  setEditItemForm({
-                    ...editItemForm,
-                    descricao: e.target.value,
-                  })
-                }
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            <Input
+              label="Descrição"
+              type="text"
+              value={editItemForm.descricao}
+              onChange={(e) =>
+                setEditItemForm({
+                  ...editItemForm,
+                  descricao: e.target.value,
+                })
+              }
+            />
             <div
               className={`grid ${editItemForm.is_interno ? "grid-cols-1" : "grid-cols-2"} gap-4`}
             >
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Quantidade
-                </label>
-                <input
-                  type="number"
-                  value={editItemForm.quantidade}
-                  onChange={(e) =>
-                    setEditItemForm({
-                      ...editItemForm,
-                      quantidade: Number(e.target.value),
-                    })
-                  }
-                  className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              {!editItemForm.is_interno && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                    Valor Unit. Venda
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={editItemForm.valor_venda}
-                    onChange={(e) =>
-                      setEditItemForm({
-                        ...editItemForm,
-                        valor_venda: Number(e.target.value),
-                      })
-                    }
-                    className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                Ref / Nota
-              </label>
-              <input
-                type="text"
-                value={editItemForm.codigo_referencia}
+              <Input
+                label="Quantidade"
+                type="number"
+                value={editItemForm.quantidade}
                 onChange={(e) =>
                   setEditItemForm({
                     ...editItemForm,
-                    codigo_referencia: e.target.value,
+                    quantidade: Number(e.target.value),
                   })
                 }
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Opcional"
               />
+              {!editItemForm.is_interno && (
+                <Input
+                  label="Valor Unit. Venda"
+                  type="number"
+                  step="0.1"
+                  value={editItemForm.valor_venda}
+                  onChange={(e) =>
+                    setEditItemForm({
+                      ...editItemForm,
+                      valor_venda: Number(e.target.value),
+                    })
+                  }
+                />
+              )}
             </div>
+            <Input
+              label="Ref / Nota"
+              type="text"
+              value={editItemForm.codigo_referencia}
+              onChange={(e) =>
+                setEditItemForm({
+                  ...editItemForm,
+                  codigo_referencia: e.target.value,
+                })
+              }
+              placeholder="Opcional"
+            />
             <div className="pt-2 flex justify-end gap-2">
               <Button
                 variant="secondary"
@@ -1442,56 +1412,41 @@ export const FechamentoFinanceiroDetalhePage = () => {
           onClose={() => setAddInternalModal({ isOpen: false })}
         >
           <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                Descrição
-              </label>
-              <input
-                type="text"
-                value={addInternalForm.descricao}
-                onChange={(e) =>
-                  setAddInternalForm({
-                    ...addInternalForm,
-                    descricao: e.target.value,
-                  })
-                }
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ex. Material de Limpeza, Estopa, etc..."
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                Quantidade
-              </label>
-              <input
-                type="number"
-                value={addInternalForm.quantidade}
-                onChange={(e) =>
-                  setAddInternalForm({
-                    ...addInternalForm,
-                    quantidade: Number(e.target.value),
-                  })
-                }
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                Ref / Nota
-              </label>
-              <input
-                type="text"
-                value={addInternalForm.codigo_referencia}
-                onChange={(e) =>
-                  setAddInternalForm({
-                    ...addInternalForm,
-                    codigo_referencia: e.target.value,
-                  })
-                }
-                className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Opcional"
-              />
-            </div>
+            <Input
+              label="Descrição"
+              type="text"
+              value={addInternalForm.descricao}
+              onChange={(e) =>
+                setAddInternalForm({
+                  ...addInternalForm,
+                  descricao: e.target.value,
+                })
+              }
+              placeholder="Ex. Material de Limpeza, Estopa, etc..."
+            />
+            <Input
+              label="Quantidade"
+              type="number"
+              value={addInternalForm.quantidade}
+              onChange={(e) =>
+                setAddInternalForm({
+                  ...addInternalForm,
+                  quantidade: Number(e.target.value),
+                })
+              }
+            />
+            <Input
+              label="Ref / Nota"
+              type="text"
+              value={addInternalForm.codigo_referencia}
+              onChange={(e) =>
+                setAddInternalForm({
+                  ...addInternalForm,
+                  codigo_referencia: e.target.value,
+                })
+              }
+              placeholder="Opcional"
+            />
             <div className="pt-2 flex justify-end gap-2">
               <Button
                 variant="secondary"

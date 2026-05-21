@@ -238,7 +238,6 @@ export const ClienteFormSection = memo(
                   onChange={(e) => setNome(e.target.value)}
                   placeholder="Nome do cliente"
                   required
-                  disabled={isEditMode}
                 />
                 <Input
                   label="CPF"
@@ -259,14 +258,12 @@ export const ClienteFormSection = memo(
                   onChange={(e) => setRazaoSocial(e.target.value)}
                   placeholder="Nome da Empresa"
                   required
-                  disabled={isEditMode}
                 />
                 <Input
                   label="Nome Fantasia"
                   value={nomeFantasia}
                   onChange={(e) => setNomeFantasia(e.target.value)}
                   placeholder="Nome Comercial"
-                  disabled={isEditMode}
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <Input

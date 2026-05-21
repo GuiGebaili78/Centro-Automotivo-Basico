@@ -26,6 +26,7 @@ export default defineConfig({
     allowedHosts: allowedHosts.length > 0 ? allowedHosts : true,
     watch: {
       usePolling: true,
+      ignored: ["**/node_modules/**", "**/dist/**", "**/.git/**"],
       interval: 1000,
       binaryInterval: 2000,
     },

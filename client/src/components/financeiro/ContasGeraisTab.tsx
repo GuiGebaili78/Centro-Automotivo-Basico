@@ -8,6 +8,8 @@ import {
   Card,
   Checkbox,
   FilterButton,
+  Input,
+  Select,
 } from "../ui";
 import { toast } from "react-toastify";
 import { CategoryManager } from "./CategoryManager";
@@ -225,18 +227,22 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={() => setIsCategoryModalOpen(true)}
-            className="bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+            variant="outline"
+            size="sm"
+            icon={Settings}
           >
-            <Settings size={18} /> Categorias
-          </button>
-          <button
+            Categorias
+          </Button>
+          <Button
             onClick={openNewModal}
-            className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+            variant="primary"
+            size="sm"
+            icon={Plus}
           >
-            <Plus size={18} /> Nova Conta
-          </button>
+            Nova Conta
+          </Button>
         </div>
       </div>
 
@@ -270,22 +276,14 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
       <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex flex-col gap-6">
         <div className="flex flex-col md:flex-row items-end justify-between gap-4">
           <div className="w-full md:flex-1">
-            <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-              Buscar
-            </label>
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                size={18}
-              />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por Descrição, Credor..."
-                className="w-full h-10 pl-10 pr-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
-              />
-            </div>
+            <Input
+              label="Buscar"
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por Descrição, Credor..."
+              icon={Search}
+            />
           </div>
 
           <div className="flex flex-col gap-2">
@@ -339,35 +337,27 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
             </div>
 
             <div className="flex gap-2 items-center">
-              <div className="w-32">
-                <input
+              <div className="w-36">
+                <Input
                   type="date"
                   value={filterStart}
                   onChange={(e) => {
                     setFilterStart(e.target.value);
                     setActiveFilter("CUSTOM");
                   }}
-                  className={`w-full h-10 px-3 bg-neutral-50 border rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-bold uppercase ${
-                    activeFilter === "CUSTOM"
-                      ? "border-primary-300 text-primary-700"
-                      : "border-neutral-200"
-                  }`}
+                  className={activeFilter === "CUSTOM" ? "border-primary-600 text-primary-700" : ""}
                 />
               </div>
               <span className="text-neutral-400 self-center">-</span>
-              <div className="w-32">
-                <input
+              <div className="w-36">
+                <Input
                   type="date"
                   value={filterEnd}
                   onChange={(e) => {
                     setFilterEnd(e.target.value);
                     setActiveFilter("CUSTOM");
                   }}
-                  className={`w-full h-10 px-3 bg-neutral-50 border rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-bold uppercase ${
-                    activeFilter === "CUSTOM"
-                      ? "border-primary-300 text-primary-700"
-                      : "border-neutral-200"
-                  }`}
+                  className={activeFilter === "CUSTOM" ? "border-primary-600 text-primary-700" : ""}
                 />
               </div>
             </div>
@@ -579,55 +569,40 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
           onClose={() => setPayModalOpen(false)}
         >
           <div className="space-y-4 pt-2">
-            <div>
-              <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                Valor Pago
-              </label>
-              <input
-                type="number"
-                value={paymentValue}
-                onChange={(e) => setPaymentValue(e.target.value)}
-                className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                Data Pagamento
-              </label>
-              <input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                Conta Bancária (Opcional)
-              </label>
-              <select
-                value={selectedBank}
-                onChange={(e) => setSelectedBank(e.target.value)}
-                className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-              >
-                <option value="">Selecione...</option>
-                {bankAccounts.map((b: any) => (
-                  <option key={b.id_conta_bancaria} value={b.id_conta_bancaria}>
-                    {b.nome_banco} - {b.agencia}/{b.conta}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Input
+              label="Valor Pago"
+              type="number"
+              value={paymentValue}
+              onChange={(e) => setPaymentValue(e.target.value)}
+            />
+            <Input
+              label="Data Pagamento"
+              type="date"
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+            />
+            <Select
+              label="Conta Bancária (Opcional)"
+              value={selectedBank}
+              onChange={(e) => setSelectedBank(e.target.value)}
+            >
+              <option value="">Selecione...</option>
+              {bankAccounts.map((b: any) => (
+                <option key={b.id_conta_bancaria} value={b.id_conta_bancaria}>
+                  {b.nome_banco} - {b.agencia}/{b.conta}
+                </option>
+              ))}
+            </Select>
             <div className="flex justify-end gap-2 pt-4 border-t border-neutral-100">
               <Button variant="ghost" onClick={() => setPayModalOpen(false)}>
                 Cancelar
               </Button>
-              <button
+              <Button
                 onClick={executePay}
-                className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                variant="primary"
               >
                 Confirmar Pagamento
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>

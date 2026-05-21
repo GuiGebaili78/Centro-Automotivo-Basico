@@ -1,6 +1,7 @@
 import { DateRangePicker } from "@tremor/react";
 import { ptBR } from "date-fns/locale";
-import { Calendar, TrendingUp } from "lucide-react";
+import { Calendar } from "lucide-react";
+import { Checkbox } from "../ui";
 
 interface DateRangePickerValue {
   from?: Date;
@@ -115,20 +116,12 @@ export function GlobalFilter({
 
       {/* Year-over-Year Comparison */}
       <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
-        <input
-          type="checkbox"
+        <Checkbox
           id="compare-yoy"
           checked={compareYearOverYear}
           onChange={(e) => onCompareChange(e.target.checked)}
-          className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+          label="Comparar com o ano passado"
         />
-        <label
-          htmlFor="compare-yoy"
-          className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer"
-        >
-          <TrendingUp className="w-4 h-4" />
-          Comparar com o ano passado
-        </label>
       </div>
     </div>
   );

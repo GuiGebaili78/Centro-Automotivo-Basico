@@ -1,6 +1,4 @@
-import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
-
+import { Modal, Button, Input } from "../ui";
 import { formatCurrency } from "../../utils/formatCurrency";
 
 interface EditItemOsModalProps {
@@ -23,48 +21,34 @@ export const OsItemEditModal = ({
   return (
     <Modal title="Editar Item" onClose={onClose}>
       <div className="space-y-4">
-
-
-        <div>
-          <label className="text-sm font-medium text-gray-600 block mb-1">
-            Descrição
-          </label>
-          <input
-            className="w-full border border-neutral-200 p-2.5 rounded-xl text-base text-gray-900 outline-none focus:border-primary-500"
-            value={itemData.descricao}
-            onChange={(e) =>
-              setItemData({
-                ...itemData,
-                descricao: e.target.value,
-              })
-            }
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-gray-600 block mb-1">
-            Código/Ref
-          </label>
-          <input
-            className="w-full border border-neutral-200 p-2.5 rounded-xl text-base text-gray-900 outline-none focus:border-primary-500 placeholder:text-gray-400 placeholder:text-sm"
-            placeholder="Anotações internas ou Referência"
-            title="Utilize este campo para anotações internas da oficina."
-            value={itemData.codigo_referencia || ""}
-            onChange={(e) =>
-              setItemData({
-                ...itemData,
-                codigo_referencia: e.target.value,
-              })
-            }
-          />
-        </div>
+        <Input
+          label="Descrição"
+          value={itemData.descricao}
+          onChange={(e) =>
+            setItemData({
+              ...itemData,
+              descricao: e.target.value,
+            })
+          }
+        />
+        <Input
+          label="Código/Ref"
+          placeholder="Anotações internas ou Referência"
+          title="Utilize este campo para anotações internas da oficina."
+          value={itemData.codigo_referencia || ""}
+          onChange={(e) =>
+            setItemData({
+              ...itemData,
+              codigo_referencia: e.target.value,
+            })
+          }
+        />
         <div className="flex gap-2">
           <div className="flex-1">
-            <label className="text-sm font-medium text-gray-600 block mb-1">
-              Qtd
-            </label>
-            <input
+            <Input
               type="number"
-              className="w-full border border-neutral-200 p-2.5 rounded-xl text-center text-base text-gray-900 outline-none focus:border-primary-500"
+              label="Qtd"
+              className="text-center"
               value={itemData.quantidade}
               onChange={(e) =>
                 setItemData({
@@ -75,13 +59,11 @@ export const OsItemEditModal = ({
             />
           </div>
           <div className="flex-1">
-            <label className="text-sm font-medium text-gray-600 block mb-1">
-              Valor Unit.
-            </label>
-            <input
+            <Input
               type="number"
               step="0.01"
-              className="w-full border border-neutral-200 p-2.5 rounded-xl text-center text-base text-gray-900 outline-none focus:border-primary-500 transition-colors"
+              label="Valor Unit."
+              className="text-center"
               value={itemData.valor_venda}
               onChange={(e) =>
                 setItemData({
@@ -109,3 +91,4 @@ export const OsItemEditModal = ({
     </Modal>
   );
 };
+

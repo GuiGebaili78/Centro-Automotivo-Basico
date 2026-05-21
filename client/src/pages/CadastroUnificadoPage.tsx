@@ -170,6 +170,12 @@ export const CadastroUnificadoPage = () => {
       if (isEditMode && finalClientId) {
         // UPDATE
         await ClienteService.update(finalClientId, {
+          nome: clienteData.nome,
+          razao_social: clienteData.razaoSocial,
+          nome_fantasia: clienteData.nomeFantasia,
+          cpf: clienteData.cpf,
+          cnpj: clienteData.cnpj,
+          inscricao_estadual: clienteData.ie,
           telefone_1: clienteData.telefone,
           telefone_2: clienteData.telefone2,
           email: clienteData.email,

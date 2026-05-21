@@ -9,7 +9,7 @@ import {
   Gauge,
   Edit,
 } from "lucide-react";
-import { Button, Card } from "../ui";
+import { Button, Card, Input, ActionButton } from "../ui";
 import type { IOrdemDeServico } from "../../types/backend";
 import { getStatusStyle } from "../../utils/osUtils";
 import { useNavigate } from "react-router-dom";
@@ -50,13 +50,12 @@ export const OsHeaderCard = ({
       {/* Top Header: Actions & ID */}
       <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-neutral-100">
         <div className="flex items-center gap-4">
-          <button
+          <ActionButton
+            icon={ArrowLeft}
+            label="Voltar"
             onClick={onBack}
-            className="p-2 hover:bg-neutral-100 rounded-lg transition-all text-neutral-400 hover:text-neutral-700 active:scale-95"
-            title="Voltar"
-          >
-            <ArrowLeft size={24} />
-          </button>
+            variant="neutral"
+          />
 
           <div className="flex flex-col">
             <div className="flex items-center gap-3">
@@ -121,15 +120,15 @@ export const OsHeaderCard = ({
             <span className="text-sm font-medium uppercase tracking-widest">
               Veículo
             </span>
-            <button
+            <ActionButton
+              icon={Edit}
+              label="Editar Cadastro"
               onClick={() =>
                 os.cliente?.id_cliente &&
                 navigate(`/cadastro/${os.cliente.id_cliente}`)
               }
-              className="text-primary-500 hover:text-primary-600 p-0.5 rounded hover:bg-primary-50"
-            >
-              <Edit size={16} />
-            </button>
+              variant="primary"
+            />
           </div>
           <div className="flex flex-col">
             <span className="text-gray-900 text-base font-bold uppercase">
@@ -149,15 +148,15 @@ export const OsHeaderCard = ({
             <span className="text-sm font-medium uppercase tracking-widest">
               Cliente
             </span>
-            <button
+            <ActionButton
+              icon={Edit}
+              label="Editar Cadastro"
               onClick={() =>
                 os.cliente?.id_cliente &&
                 navigate(`/cadastro/${os.cliente.id_cliente}`)
               }
-              className="text-primary-500 hover:text-primary-600 p-0.5 rounded hover:bg-primary-50"
-            >
-              <Edit size={16} />
-            </button>
+              variant="primary"
+            />
           </div>
           <div>
             <p className="text-base font-bold text-gray-900 leading-tight uppercase">
@@ -194,19 +193,20 @@ export const OsHeaderCard = ({
                   })}
                 </p>
                 {canEditDate && (
-                  <button
+                  <ActionButton
+                    icon={Edit}
+                    label="Editar Data"
                     onClick={() => setShowDateEdit(true)}
-                    className="text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-primary-50 rounded"
-                  >
-                    <Edit size={16} />
-                  </button>
+                    variant="primary"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  />
                 )}
               </div>
             ) : (
-              <input
+              <Input
                 type="datetime-local"
                 disabled={!canEditDate}
-                className="text-base border border-neutral-200 rounded-xl p-2 w-full focus:border-primary-500 outline-none disabled:bg-neutral-50 disabled:text-neutral-300 shadow-sm"
+                className="!py-2 !px-3 !text-base bg-white"
                 defaultValue={new Date(
                   new Date(os.dt_abertura).getTime() -
                     new Date().getTimezoneOffset() * 60000,
@@ -236,13 +236,13 @@ export const OsHeaderCard = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <input
+            <Input
               type="number"
               value={os.km_entrada || 0}
               onChange={(e) =>
                 updateOSField("km_entrada", Number(e.target.value))
               }
-              className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2 text-base font-bold text-gray-900 outline-none focus:border-primary-500"
+              className="!py-2 !px-3 !text-base !font-bold bg-neutral-50"
             />
             <span className="text-xs font-bold text-gray-400 uppercase">
               KM

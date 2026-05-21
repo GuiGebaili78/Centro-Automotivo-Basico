@@ -17,6 +17,7 @@ export default {
             },
             colors: {
                 primary: {
+                    DEFAULT: '#0E2773',
                     50: '#eff6ff',
                     100: '#dbeafe',
                     200: '#bfdbfe',
@@ -27,6 +28,7 @@ export default {
                     900: '#1e3a8a',
                 },
                 secondary: {
+                    DEFAULT: '#f97316',
                     50: '#fff7ed',
                     100: '#ffedd5',
                     500: '#f97316', // Laranja Principal
@@ -34,18 +36,42 @@ export default {
                     700: '#c2410c',
                 },
                 success: {
+                    DEFAULT: '#22c55e',
                     50: '#f0fdf4',
                     100: '#dcfce7',
                     500: '#22c55e', // Verde Principal (Lucros, Sucesso)
                     600: '#16a34a',
                     700: '#15803d',
                 },
+                error: {
+                    DEFAULT: '#ef4444',
+                    50: '#fef2f2',
+                    100: '#fee2e2',
+                    500: '#ef4444', // Vermelho Principal (Erros, Dívidas)
+                    600: '#dc2626',
+                    700: '#b91c1c',
+                },
                 highlight: {
+                    DEFAULT: '#a855f7',
                     50: '#faf5ff',
                     100: '#f3e8ff',
                     500: '#a855f7', // Roxo Principal (Destaques, Ações Especiais)
                     600: '#9333ea',
                     700: '#7e22ce',
+                },
+                neutral: {
+                    25: '#FCFCFD',
+                    50: '#F9FAFB',
+                    100: '#F3F4F6',
+                    200: '#E5E7EB',
+                    300: '#D1D5DB',
+                    400: '#9CA3AF',
+                    500: '#6B7280',
+                    600: '#4B5563',
+                    700: '#374151',
+                    800: '#1F2937',
+                    900: '#111827',
+                    950: '#030712',
                 },
                 // Tremor colors...
                 tremor: {

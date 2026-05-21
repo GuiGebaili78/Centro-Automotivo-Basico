@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Hash, Palette, Calendar } from "lucide-react";
 import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
 
 interface VehicleDataSectionProps {
   placa: string;
@@ -122,13 +123,11 @@ export const VehicleDataSection = memo(
             />
           </div>
           <div className="col-span-2">
-            <label className="text-sm font-semibold text-neutral-700 ml-1 mb-1 block">
-              Combustível
-            </label>
-            <select
+            <Select
+              label="Combustível"
               value={combustivel}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCombustivel(e.target.value)}
-              className="select select-bordered w-full border-neutral-200 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all rounded-xl bg-neutral-25"
+              className="bg-neutral-25"
             >
               <option value="Flex">Flex</option>
               <option value="Gasolina">Gasolina</option>
@@ -136,7 +135,7 @@ export const VehicleDataSection = memo(
               <option value="Diesel">Diesel</option>
               <option value="GNV">GNV</option>
               <option value="Elétrico">Elétrico</option>
-            </select>
+            </Select>
           </div>
         </div>
       </div>

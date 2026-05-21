@@ -3,6 +3,14 @@ import { prisma } from "../prisma.js";
 
 export class VeiculoRepository {
   async create(data: Prisma.VeiculoCreateInput) {
+    if (data.placa) {
+      const existing = await prisma.veiculo.findFirst({
+        where: { placa: data.placa }
+      });
+      if (existing) {
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
+    }
     return await prisma.veiculo.create({
       data,
       include: {
@@ -141,6 +149,20 @@ export class VeiculoRepository {
   }
 
   async update(id: number, data: Prisma.VeiculoUpdateInput) {
+    if (data.placa) {
+      const placaValue = typeof data.placa === "string" ? data.placa : (data.placa as any).set;
+      if (placaValue) {
+        const existing = await prisma.veiculo.findFirst({
+          where: {
+            placa: placaValue,
+            id_veiculo: { not: id }
+          }
+        });
+        if (existing) {
+          throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+        }
+      }
+    }
     return await prisma.veiculo.update({
       where: { id_veiculo: id },
       data,

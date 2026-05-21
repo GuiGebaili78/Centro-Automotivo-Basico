@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { IPessoa } from '../types/backend';
 import { PessoaForm } from '../components/pessoa/Forms/PessoaForm';
-import { Modal } from '../components/ui';
+import { Modal, Input, Select } from '../components/ui';
 import { Plus, Search, Trash2, Edit, User } from 'lucide-react';
 
 export const PessoaPage = () => {
@@ -114,18 +114,19 @@ export const PessoaPage = () => {
             {/* MANAGE */}
             <div className="bg-white p-4 rounded-xl border border-gray-200">
                 <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Manutenção de Pessoa (Por ID)</h2>
-                <div className="flex gap-4 mb-4">
-                    <input 
-                        type="number" 
-                        value={searchId} 
-                        onChange={(e) => setSearchId(e.target.value)} 
-                        placeholder="Digite o ID da Pessoa..." 
-                        className="border p-2 rounded w-64"
-                    />
-                    <button onClick={handleSearch} className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-700">
+                <div className="flex gap-4 mb-4 items-end">
+                    <div className="w-64">
+                        <Input 
+                            type="number" 
+                            value={searchId} 
+                            onChange={(e) => setSearchId(e.target.value)} 
+                            placeholder="Digite o ID da Pessoa..." 
+                        />
+                    </div>
+                    <button onClick={handleSearch} className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 font-medium h-11">
                         <Search size={18} /> Localizar
                     </button>
-                    {searchId && <button onClick={handleDelete} className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200">
+                    {searchId && <button onClick={handleDelete} className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2.5 rounded-lg hover:bg-red-200 font-medium h-11">
                         <Trash2 size={18} /> Excluir
                     </button>}
                 </div>
@@ -135,28 +136,26 @@ export const PessoaPage = () => {
                         <h3 className="font-bold mb-2">Editando: {editData.nome}</h3>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div className="col-span-2">
-                                <label className="text-xs font-bold block mb-1">Nome</label>
-                                <input 
+                                <Input 
+                                    label="Nome"
                                     value={editData.nome} 
                                     onChange={(e) => setEditData({...editData, nome: e.target.value})} 
-                                    className="border p-2 w-full rounded" 
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-bold block mb-1">Gênero</label>
-                                <select 
+                                <Select 
+                                    label="Gênero"
                                     value={editData.genero || ''} 
                                     onChange={(e) => setEditData({...editData, genero: e.target.value})} 
-                                    className="border p-2 w-full rounded"
                                 >
                                     <option value="">Selecione...</option>
                                     <option value="Masculino">Masculino</option>
                                     <option value="Feminino">Feminino</option>
                                     <option value="Outro">Outro</option>
-                                </select>
+                                </Select>
                             </div>
                         </div>
-                        <button onClick={handleUpdate} className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-bold">
+                        <button onClick={handleUpdate} className="flex items-center gap-2 bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold">
                             <Edit size={18} /> Salvar Alterações
                         </button>
                     </div>

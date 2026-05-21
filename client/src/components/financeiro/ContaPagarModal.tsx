@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FinanceiroService } from "../../services/financeiro.service";
-import { Modal, Button, Input, AutocompleteInput } from "../ui";
+import { Modal, Button, Input, AutocompleteInput, Checkbox, Select } from "../ui";
 import { CategorySelector } from "./CategorySelector";
 import { toast } from "react-toastify";
 import { Upload } from "lucide-react";
@@ -307,21 +307,16 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             }
             placeholder="Nota Fiscal / Boleto"
           />
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 ml-1 mb-1.5">
-              Status
-            </label>
-            <select
-              className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-neutral-600 font-medium text-sm h-[42px] outline-none bg-white transition-all"
-              value={formData.status}
-              onChange={(e) =>
-                setFormData({ ...formData, status: e.target.value })
-              }
-            >
-              <option value="PENDENTE">Pendente</option>
-              <option value="PAGO">Pago</option>
-            </select>
-          </div>
+          <Select
+            label="Status"
+            value={formData.status}
+            onChange={(e) =>
+              setFormData({ ...formData, status: e.target.value })
+            }
+          >
+            <option value="PENDENTE">Pendente</option>
+            <option value="PAGO">Pago</option>
+          </Select>
         </div>
 
         {/* 5. Anexos */}
@@ -339,20 +334,13 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
 
         {/* 6. Recurrence Update Option */}
         {editingId && recurrenceInfo && (
-          <div className="bg-blue-50 p-3 rounded-lg flex items-center gap-2">
-            <input
-              type="checkbox"
+          <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 flex items-center gap-2">
+            <Checkbox
               id="editSeries"
               checked={applyToAllRecurrences}
               onChange={(e) => setApplyToAllRecurrences(e.target.checked)}
-              className="rounded border-blue-400 text-blue-600 focus:ring-blue-500"
+              label="Aplicar alterações para toda a série (Recorrência)?"
             />
-            <label
-              htmlFor="editSeries"
-              className="text-sm font-bold text-blue-800"
-            >
-              Aplicar alterações para toda a série (Recorrência)?
-            </label>
           </div>
         )}
 

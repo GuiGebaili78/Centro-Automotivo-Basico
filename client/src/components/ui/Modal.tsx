@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { ActionButton } from "./ActionButton";
 
 interface ModalProps {
   title: React.ReactNode;
@@ -37,12 +38,13 @@ export const Modal = ({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-neutral-100">
           <h2 className="text-xl font-bold text-neutral-900">{title}</h2>
-          <button
+          <ActionButton
+            icon={X}
+            label="Fechar"
             onClick={onClose}
-            className="p-2 text-neutral-400 hover:text-error hover:bg-error-50 rounded-lg transition-colors"
-          >
-            <X size={20} />
-          </button>
+            variant="neutral"
+            className="-my-1"
+          />
         </div>
 
         {/* Content */}

@@ -3,7 +3,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
 import type { IItensOs } from "../types/backend";
 import { ItensOsForm } from "../components/os/Forms/ItensOsForm";
-import { Modal } from "../components/ui";
+import { Modal, Input } from "../components/ui";
 import { Plus, Search, Trash2, Edit, Package } from "lucide-react";
 
 export const ItensOsPage = () => {
@@ -153,24 +153,25 @@ export const ItensOsPage = () => {
         <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">
           Manutenção de Item (Por ID)
         </h2>
-        <div className="flex gap-4 mb-4">
-          <input
-            type="number"
-            value={searchId}
-            onChange={(e) => setSearchId(e.target.value)}
-            placeholder="Digite o ID do Item..."
-            className="border p-2 rounded w-64"
-          />
+        <div className="flex gap-4 mb-4 items-end">
+          <div className="w-64">
+            <Input
+              type="number"
+              value={searchId}
+              onChange={(e) => setSearchId(e.target.value)}
+              placeholder="Digite o ID do Item..."
+            />
+          </div>
           <button
             onClick={handleSearch}
-            className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-700"
+            className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 font-medium h-11"
           >
             <Search size={18} /> Localizar
           </button>
           {searchId && (
             <button
               onClick={handleDelete}
-              className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200"
+              className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2.5 rounded-lg hover:bg-red-200 font-medium h-11"
             >
               <Trash2 size={18} /> Excluir
             </button>
@@ -182,22 +183,17 @@ export const ItensOsPage = () => {
             <h3 className="font-bold mb-2">Editando: {editData.descricao}</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="col-span-2">
-                <label className="text-xs font-bold block mb-1">
-                  Descrição
-                </label>
-                <input
+                <Input
+                  label="Descrição"
                   value={editData.descricao}
                   onChange={(e) =>
                     setEditData({ ...editData, descricao: e.target.value })
                   }
-                  className="border p-2 w-full rounded"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold block mb-1">
-                  Quantidade
-                </label>
-                <input
+                <Input
+                  label="Quantidade"
                   type="number"
                   value={editData.quantidade}
                   onChange={(e) =>
@@ -206,13 +202,12 @@ export const ItensOsPage = () => {
                       quantidade: Number(e.target.value),
                     })
                   }
-                  className="border p-2 w-full rounded"
                 />
               </div>
             </div>
             <button
               onClick={handleUpdate}
-              className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-bold"
+              className="flex items-center gap-2 bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold"
             >
               <Edit size={18} /> Salvar Alterações
             </button>

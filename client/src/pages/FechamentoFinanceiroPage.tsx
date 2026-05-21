@@ -73,7 +73,7 @@ export const FechamentoFinanceiroPage = () => {
         OsService.getAll(),
       ]);
 
-      const fechamentosWithOs = fechamentosData.map((f: IFechamentoFinanceiro) => {
+      const fechamentosWithOs = fechamentosData.map((f: any) => {
         const foundOs = allOss.find((os) => os.id_os === f.id_os);
         return {
           ...f,

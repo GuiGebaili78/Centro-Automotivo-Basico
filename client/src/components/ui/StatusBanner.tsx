@@ -1,4 +1,5 @@
 import { CheckCircle, AlertCircle, X } from 'lucide-react';
+import { ActionButton } from './ActionButton';
 
 interface StatusBannerProps {
     msg: {
@@ -20,13 +21,13 @@ export const StatusBanner = ({ msg, onClose }: StatusBannerProps) => {
                 {isSuccess ? <CheckCircle size={20} className="shrink-0" /> : <AlertCircle size={20} className="shrink-0" />}
                 <span className="uppercase text-xs tracking-wider">{msg.text}</span>
             </div>
-            <button 
-                type="button"
+            <ActionButton 
+                icon={X}
+                label="Fechar"
                 onClick={onClose} 
-                className="opacity-40 hover:opacity-100 transition-opacity p-1"
-            >
-                <X size={16} />
-            </button>
+                variant="neutral"
+                className="opacity-60 hover:opacity-100 transition-opacity"
+            />
         </div>
     );
 };

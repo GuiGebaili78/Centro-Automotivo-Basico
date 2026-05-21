@@ -2,6 +2,23 @@ import { prisma } from "../prisma.js";
 
 export class FornecedorRepository {
   async create(data: any) {
+    if (data.documento) {
+      const existing = await prisma.fornecedor.findFirst({
+        where: { documento: data.documento, deleted_at: null }
+      });
+      if (existing) {
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
+    }
+    if (data.inscricao_estadual) {
+      const existing = await prisma.fornecedor.findFirst({
+        where: { inscricao_estadual: data.inscricao_estadual, deleted_at: null }
+      });
+      if (existing) {
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
+    }
+
     const {
       nome,
       nome_fantasia,
@@ -73,6 +90,31 @@ export class FornecedorRepository {
   }
 
   async update(id: number, data: any) {
+    if (data.documento) {
+      const existing = await prisma.fornecedor.findFirst({
+        where: {
+          documento: data.documento,
+          deleted_at: null,
+          id_fornecedor: { not: id }
+        }
+      });
+      if (existing) {
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
+    }
+    if (data.inscricao_estadual) {
+      const existing = await prisma.fornecedor.findFirst({
+        where: {
+          inscricao_estadual: data.inscricao_estadual,
+          deleted_at: null,
+          id_fornecedor: { not: id }
+        }
+      });
+      if (existing) {
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
+    }
+
     const {
       nome,
       nome_fantasia,

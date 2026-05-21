@@ -3,7 +3,7 @@ import { formatCurrency } from "../../utils/formatCurrency";
 import { Plus, Check, X, Trash2, Edit } from "lucide-react";
 import { OsService } from "../../services/os.service";
 import type { FormEvent } from "react";
-import { Button, ActionButton, Card } from "../ui";
+import { Button, ActionButton, Card, Input, Select } from "../ui";
 import type { ILaborService } from "../../types/os.types";
 
 interface LaborManagerProps {
@@ -248,13 +248,11 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
       {!readOnly && (
         <div className="p-4 bg-neutral-25 rounded-2xl border border-primary-100 grid grid-cols-12 gap-3 items-end">
           <div className="col-span-12 md:col-span-4">
-            <label className="text-sm font-medium text-gray-600 mb-1 block">
-              Profissional / Mecânico
-            </label>
-            <select
+            <Select
+              label="Profissional / Mecânico"
               value={newLaborService.id_funcionario}
               onChange={handleEmployeeChange}
-              className="w-full p-3 rounded-xl border border-primary-200 outline-none focus:border-primary-500 text-base text-gray-900 bg-neutral-25"
+              className="bg-neutral-25"
             >
               <option value="">Selecione...</option>
               {employees.map((emp) => (
@@ -262,7 +260,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                   {emp.pessoa_fisica?.pessoa?.nome} ({emp.cargo})
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="col-span-12 md:col-span-2">
             <label className="text-sm font-medium text-gray-600 mb-1 block">
@@ -304,10 +302,8 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             </div>
           </div>
           <div className="col-span-12 md:col-span-2">
-            <label className="text-sm font-medium text-gray-600 mb-1 block">
-              Descrição (Opcional)
-            </label>
-            <input
+            <Input
+              label="Descrição (Opcional)"
               value={newLaborService.descricao}
               onChange={(e) =>
                 setNewLaborService({
@@ -316,14 +312,12 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                 })
               }
               placeholder="Ex: Troca de óleo..."
-              className="w-full p-3 rounded-xl border border-primary-200 outline-none focus:border-primary-500 text-base text-gray-900 bg-neutral-25 placeholder:text-gray-400"
+              className="bg-neutral-25"
             />
           </div>
           <div className="col-span-12 md:col-span-2">
-            <label className="text-sm font-medium text-gray-600 mb-1 block">
-              Valor (R$)
-            </label>
-            <input
+            <Input
+              label="Valor (R$)"
               type="number"
               step="0.01"
               value={newLaborService.valor}
@@ -334,7 +328,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                 })
               }
               placeholder="0.00"
-              className="w-full p-3 rounded-xl border border-primary-200 outline-none focus:border-primary-500 text-base text-gray-900 bg-neutral-25 placeholder:text-gray-400"
+              className="bg-neutral-25"
             />
           </div>
           <div className="col-span-12 md:col-span-2 flex gap-2 h-[46px] items-end">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Input } from "../ui";
+import { Modal, Button, Input, Select } from "../ui";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { DollarSign, Calendar, Percent, Landmark, Save, X } from "lucide-react";
 
@@ -70,29 +70,19 @@ export const ModalPagamentoUnificado: React.FC<
     <Modal onClose={onClose} title={title} className="max-w-md">
       <div className="space-y-6 pt-4">
         {/* Account Selection */}
-        <div>
-          <label className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-2 block">
-            Conta Bancária de Origem
-          </label>
-          <div className="relative">
-            <Landmark
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-              size={18}
-            />
-            <select
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-neutral-200 rounded-lg font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all text-neutral-600"
-            >
-              <option value="">Selecione a conta...</option>
-              {bankAccounts.map((acc) => (
-                <option key={acc.id_conta} value={acc.id_conta}>
-                  {acc.nome} - Saldo: {formatCurrency(Number(acc.saldo_atual))}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <Select
+          label="Conta Bancária de Origem"
+          value={accountId}
+          onChange={(e) => setAccountId(e.target.value)}
+          icon={Landmark}
+        >
+          <option value="">Selecione a conta...</option>
+          {bankAccounts.map((acc) => (
+            <option key={acc.id_conta} value={acc.id_conta}>
+              {acc.nome} - Saldo: {formatCurrency(Number(acc.saldo_atual))}
+            </option>
+          ))}
+        </Select>
 
         {/* Date Selection */}
         <Input

@@ -1,10 +1,11 @@
-import React from "react";
-import { type LucideIcon } from "lucide-react";
+import type { MouseEvent } from "react";
+import type { LucideIcon } from "lucide-react";
+import { Button } from "./Button";
 
 interface ActionButtonProps {
   icon: LucideIcon;
   label: string;
-  onClick: (e: React.MouseEvent) => void;
+  onClick: (e: MouseEvent) => void;
   variant?: "primary" | "danger" | "accent" | "neutral";
   className?: string;
   disabled?: boolean;
@@ -33,17 +34,18 @@ export const ActionButton = ({
     <div
       className={`group/action relative inline-flex items-center justify-center ${className} ${isBtnDisabled ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`}
     >
-      <button
+      <Button
         type="button"
+        variant="ghost"
         disabled={isBtnDisabled}
         onClick={(e) => {
           e.stopPropagation();
           onClick(e);
         }}
-        className={`p-2 rounded-lg transition-all duration-200 ${variants[variant]}`}
+        className={`!p-2 !rounded-lg !transition-all !duration-200 !h-auto !w-auto !min-h-0 !min-w-0 !shadow-none !normal-case !tracking-normal !active:scale-100 ${variants[variant]}`}
       >
         <Icon size={18} className={isLoading ? "animate-spin" : ""} />
-      </button>
+      </Button>
 
       {/* TOOLTIP: Otimizado */}
       <div className="absolute bottom-full mb-2 hidden group-hover/action:flex flex-col items-center pointer-events-none z-100 animate-in fade-in zoom-in-95 duration-200">

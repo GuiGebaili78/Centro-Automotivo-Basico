@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { PageLayout, Modal, Button, Input } from "../components/ui";
+import { PageLayout, Modal, Button, Input, Checkbox } from "../components/ui";
 import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
 import { EntradaFornecedorForm } from "../components/estoque/EntradaFornecedorForm";
 import { EntradaItensForm } from "../components/estoque/EntradaItensForm";
@@ -160,20 +160,13 @@ export const EntradaEstoquePage = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                <input
-                  type="checkbox"
+              <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
+                <Checkbox
                   id="chkEnableFin"
                   checked={enableFinancial}
                   onChange={(e) => setEnableFinancial(e.target.checked)}
-                  className="w-5 h-5 accent-primary-600 rounded cursor-pointer"
+                  label="Lançar valor no Financeiro (Contas a Pagar)?"
                 />
-                <label
-                  htmlFor="chkEnableFin"
-                  className="font-bold text-neutral-700 cursor-pointer select-none text-sm"
-                >
-                  Lançar valor no Financeiro (Contas a Pagar)?
-                </label>
               </div>
 
               {enableFinancial && (
@@ -192,46 +185,32 @@ export const EntradaEstoquePage = () => {
                       readOnly
                       className="bg-neutral-100 font-bold text-neutral-600"
                     />
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">
-                        Vencimento
-                      </label>
-                      <input
-                        type="date"
-                        value={finDueDate}
-                        onChange={(e) => setFinDueDate(e.target.value)}
-                        className="w-full border border-neutral-200 p-2.5 rounded-xl outline-none focus:border-blue-500 font-medium h-[42px]"
-                      />
-                    </div>
+                    <Input
+                      label="Vencimento"
+                      type="date"
+                      value={finDueDate}
+                      onChange={(e) => setFinDueDate(e.target.value)}
+                    />
                   </div>
 
                   <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200">
-                    <div className="flex items-center gap-3 mb-4">
-                      <input
-                        type="checkbox"
+                    <div className="mb-4">
+                      <Checkbox
                         id="chkPaid"
                         checked={finPaid}
                         onChange={(e) => setFinPaid(e.target.checked)}
-                        className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
+                        label="Compra à vista / Já foi paga?"
                       />
-                      <label
-                        htmlFor="chkPaid"
-                        className="font-bold text-neutral-700 cursor-pointer select-none text-sm"
-                      >
-                        Compra à vista / Já foi paga?
-                      </label>
                     </div>
 
                     {finPaid && (
                       <div className="animate-in fade-in slide-in-from-top-2">
-                        <label className="block text-xs font-bold text-emerald-600 uppercase mb-1">
-                          Data do Pagamento
-                        </label>
-                        <input
+                        <Input
+                          label="Data do Pagamento"
                           type="date"
                           value={finPayDate}
                           onChange={(e) => setFinPayDate(e.target.value)}
-                          className="w-full border p-2.5 rounded-xl outline-none focus:border-emerald-500 font-bold text-emerald-800 border-emerald-200 bg-emerald-50 h-[42px]"
+                          className="font-bold text-emerald-800 border-emerald-200 bg-emerald-50 focus:border-emerald-500 focus:ring-emerald-100"
                         />
                       </div>
                     )}

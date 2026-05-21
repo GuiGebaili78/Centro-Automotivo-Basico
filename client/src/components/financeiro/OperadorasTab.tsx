@@ -1,14 +1,10 @@
 import { useState, useEffect } from "react";
 import { FinanceiroService } from "../../services/financeiro.service";
-import { Plus, CreditCard, Trash2, Edit, Wifi, ArrowRightLeft } from "lucide-react";
+import { Plus, CreditCard, Trash2, Edit, Wifi } from "lucide-react";
 import type { IOperadoraCartao, IContaBancaria } from "../../types/backend";
 import { Button, ActionButton, ConfirmModal } from "../ui";
 import { toast } from "react-toastify";
 import { OperadoraModal } from "./OperadoraModal";
-
-// Helper to get taxa from array
-const getTaxa = (taxas: any[], modalidade: string, parcela = 1) =>
-  taxas?.find((t: any) => t.modalidade === modalidade && t.parcela === parcela);
 
 export const OperadorasTab = () => {
   const [operadoras, setOperadoras] = useState<IOperadoraCartao[]>([]);

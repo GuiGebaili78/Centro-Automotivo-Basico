@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { PessoaService } from "../../../services/pessoa.service";
+import { Button, Input } from "../../ui";
 
 interface PessoaFisicaFormProps {
   onSuccess: (newItem: any) => void;
@@ -46,27 +47,21 @@ export const PessoaFisicaForm = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            ID Pessoa *
-          </label>
-          <input
+          <Input
+            label="ID Pessoa *"
             type="number"
             value={idPessoa}
             onChange={(e) => setIdPessoa(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             required
             placeholder="Ex: 10"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-            CPF
-          </label>
-          <input
+          <Input
+            label="CPF"
             value={cpf}
             onChange={(e) => setCpf(e.target.value)}
-            className="w-full border p-2 rounded border-gray-300"
             maxLength={11}
             placeholder="Somente números"
           />
@@ -74,20 +69,22 @@ export const PessoaFisicaForm = ({
       </div>
 
       <div className="flex gap-2 pt-4">
-        <button
+        <Button
+          variant="outline"
           type="button"
           onClick={onCancel}
-          className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-lg"
+          className="flex-1"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
           type="submit"
-          disabled={loading}
-          className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          isLoading={loading}
+          className="flex-1"
         >
-          {loading ? "Salvando..." : "Salvar Pessoa Física"}
-        </button>
+          Salvar Pessoa Física
+        </Button>
       </div>
     </form>
   );

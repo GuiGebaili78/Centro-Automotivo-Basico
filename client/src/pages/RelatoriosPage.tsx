@@ -46,7 +46,7 @@ import {
   BarChart2,
   Filter,
 } from "lucide-react";
-import { FilterButton } from "../components/ui";
+import { FilterButton, Input, Select } from "../components/ui";
 
 // ─── Tipos locais ──────────────────────────────────────────────────────────────
 type GroupByOption = "month" | "quarter" | "semester" | "year";
@@ -495,19 +495,23 @@ export const RelatoriosPage = () => {
 
                   {/* Datas locais */}
                   <div className="flex items-center gap-2 text-xs text-neutral-500">
-                    <input
-                      type="date"
-                      value={evolStart}
-                      onChange={(e) => setEvolStart(e.target.value)}
-                      className="border border-neutral-200 rounded-lg px-2 py-1 text-xs text-neutral-700 bg-white outline-none focus:ring-1 focus:ring-primary-300"
-                    />
+                    <div className="w-28">
+                      <Input
+                        type="date"
+                        value={evolStart}
+                        onChange={(e) => setEvolStart(e.target.value)}
+                        className="!py-1 !px-2 !text-xs !rounded-lg bg-white"
+                      />
+                    </div>
                     <span className="text-neutral-300">→</span>
-                    <input
-                      type="date"
-                      value={evolEnd}
-                      onChange={(e) => setEvolEnd(e.target.value)}
-                      className="border border-neutral-200 rounded-lg px-2 py-1 text-xs text-neutral-700 bg-white outline-none focus:ring-1 focus:ring-primary-300"
-                    />
+                    <div className="w-28">
+                      <Input
+                        type="date"
+                        value={evolEnd}
+                        onChange={(e) => setEvolEnd(e.target.value)}
+                        className="!py-1 !px-2 !text-xs !rounded-lg bg-white"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -679,18 +683,20 @@ export const RelatoriosPage = () => {
                     (6 meses passados + 4 futuros)
                   </span>
                 </h3>
-                <select
-                  value={timelineCategoria}
-                  onChange={(e) => setTimelineCategoria(e.target.value)}
-                  className="text-xs border border-neutral-200 rounded-lg px-3 py-1.5 text-neutral-700 bg-white outline-none focus:ring-1 focus:ring-primary-300 cursor-pointer"
-                >
-                  <option value="">Todas as Categorias</option>
-                  {resumo?.despesasPorCategoria.map((cat) => (
-                    <option key={cat.categoria} value={cat.categoria}>
-                      {cat.categoria}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-48 sm:w-56">
+                  <Select
+                    value={timelineCategoria}
+                    onChange={(e) => setTimelineCategoria(e.target.value)}
+                    className="!py-1.5 !px-3 !text-xs !rounded-lg bg-white"
+                  >
+                    <option value="">Todas as Categorias</option>
+                    {resumo?.despesasPorCategoria.map((cat) => (
+                      <option key={cat.categoria} value={cat.categoria}>
+                        {cat.categoria}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
               </div>
 
               {/* Gráfico de barras da timeline */}

@@ -9,7 +9,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import type { IRecebivelCartao } from "../../types/backend";
-import { Button, Modal } from "../ui";
+import { Button, Modal, Checkbox } from "../ui";
 import { toast } from "react-toastify";
 import { UniversalFilters } from "../common/UniversalFilters";
 import type { UniversalFiltersState } from "../common/UniversalFilters";
@@ -210,15 +210,15 @@ export const RecebiveisTab = () => {
             <thead>
               <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
                 <th className="p-4 w-14 text-center">
-                  <input
-                    type="checkbox"
-                    onChange={toggleSelectAll}
-                    checked={
-                      filteredData.length > 0 &&
-                      selectedIds.length === filteredData.length
-                    }
-                    className="w-5 h-5 rounded-lg border-neutral-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
-                  />
+                  <div className="flex justify-center">
+                    <Checkbox
+                      onChange={toggleSelectAll}
+                      checked={
+                        filteredData.length > 0 &&
+                        selectedIds.length === filteredData.length
+                      }
+                    />
+                  </div>
                 </th>
                 <th className="p-4 text-left">Previsão</th>
                 <th className="p-4 text-left">Nº / Aut.</th>
@@ -255,13 +255,13 @@ export const RecebiveisTab = () => {
                     className={`group hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0 ${r.status === "RECEBIDO" ? "opacity-60 bg-neutral-50/50" : ""}`}
                   >
                     <td className="p-4 text-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(r.id_recebivel)}
-                        onChange={() => toggleSelect(r.id_recebivel)}
-                        disabled={r.status === "RECEBIDO"}
-                        className="w-5 h-5 rounded-lg border-neutral-300 text-primary-600 focus:ring-primary-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                      />
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={selectedIds.includes(r.id_recebivel)}
+                          onChange={() => toggleSelect(r.id_recebivel)}
+                          disabled={r.status === "RECEBIDO"}
+                        />
+                      </div>
                     </td>
                     <td className="p-4">
                       <div className="flex flex-col">

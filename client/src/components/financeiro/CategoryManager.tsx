@@ -9,7 +9,7 @@ import {
   Save,
   ArrowRight,
 } from "lucide-react";
-import { Modal, Button, Input } from "../ui";
+import { Modal, Button, Input, Select, ActionButton } from "../ui";
 
 interface Category {
   id_categoria: number;
@@ -174,24 +174,20 @@ export const CategoryManager = ({
           </p>
 
           {!conflictData.message.includes("subcategorias") && (
-            <>
-              <label className="block text-sm font-bold text-neutral-400 uppercase mb-1">
-                Substituir por:
-              </label>
-              <select
-                value={replacementCat}
-                onChange={(e) => setReplacementCat(e.target.value)}
-                className="w-full bg-white border border-neutral-200 p-3 rounded-xl font-bold text-sm outline-none focus:border-orange-300 mb-4"
-              >
-                {categories
-                  .filter((c) => c.id_categoria !== conflictData.id)
-                  .map((c) => (
-                    <option key={c.id_categoria} value={c.nome}>
-                      {c.nome}
-                    </option>
-                  ))}
-              </select>
-            </>
+            <Select
+              label="Substituir por:"
+              value={replacementCat}
+              onChange={(e) => setReplacementCat(e.target.value)}
+              className="mb-4"
+            >
+              {categories
+                .filter((c) => c.id_categoria !== conflictData.id)
+                .map((c) => (
+                  <option key={c.id_categoria} value={c.nome}>
+                    {c.nome}
+                  </option>
+                ))}
+            </Select>
           )}
 
           <div className="flex gap-2">
@@ -205,7 +201,7 @@ export const CategoryManager = ({
             {!conflictData.message.includes("subcategorias") && (
               <Button
                 onClick={() => handleDelete(conflictData.id, replacementCat)}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-neutral-25 shadow-orange-200"
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white shadow-orange-200"
               >
                 Confirmar Troca
               </Button>
@@ -242,43 +238,35 @@ export const CategoryManager = ({
       ) : (
         <>
           <form onSubmit={handleAdd} className="flex gap-2 mb-6 items-end">
-            <div className="flex-1 space-y-1">
-              <label className="text-xs font-medium text-neutral-500 ml-1">
-                Nome
-              </label>
+            <div className="flex-1">
               <Input
+                label="Nome"
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 placeholder="Nova categoria..."
                 required
               />
             </div>
-            <div className="w-32 space-y-1">
-              <label className="text-xs font-medium text-neutral-500 ml-1">
-                Tipo
-              </label>
-              <select
+            <div className="w-32">
+              <Select
+                label="Tipo"
                 value={newCatType}
                 onChange={(e) => setNewCatType(e.target.value)}
-                className="w-full bg-neutral-50 border border-neutral-200 p-[11px] rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all cursor-pointer"
               >
                 <option value="AMBOS">Ambos</option>
                 <option value="ENTRADA">Entrada</option>
                 <option value="SAIDA">Saída</option>
-              </select>
+              </Select>
             </div>
-            <div className="w-40 space-y-1">
-              <label className="text-xs font-medium text-neutral-500 ml-1">
-                Pai (Opcional)
-              </label>
-              <select
+            <div className="w-40">
+              <Select
+                label="Pai (Opcional)"
                 value={newCatParentId}
                 onChange={(e) =>
                   setNewCatParentId(
                     e.target.value ? Number(e.target.value) : "",
                   )
                 }
-                className="w-full bg-neutral-50 border border-neutral-200 p-[11px] rounded-xl font-bold text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all cursor-pointer"
               >
                 <option value="">Nenhum</option>
                 {potentialParents.map((p) => (
@@ -286,13 +274,13 @@ export const CategoryManager = ({
                     {p.nome}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <Button
               type="submit"
               disabled={loading}
               variant="primary"
-              className="px-3"
+              className="px-3 shrink-0 h-[46px]"
               icon={Plus}
             >
               Criar
@@ -306,33 +294,37 @@ export const CategoryManager = ({
                 <div className="flex justify-between items-center p-3 bg-neutral-50 rounded-xl border border-neutral-200 group hover:border-primary-200 transition-colors">
                   {editingCatId === parent.id_categoria ? (
                     <div className="flex gap-2 w-full items-center">
-                      <input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="flex-1 bg-white border border-neutral-300 p-2 rounded-lg font-bold text-sm outline-none focus:border-primary-500"
-                        autoFocus
-                      />
-                      <select
-                        value={editType}
-                        onChange={(e) => setEditType(e.target.value)}
-                        className="w-24 bg-white border border-neutral-300 p-2 rounded-lg font-bold text-sm outline-none"
-                      >
-                        <option value="AMBOS">Ambos</option>
-                        <option value="ENTRADA">Entrada</option>
-                        <option value="SAIDA">Saída</option>
-                      </select>
-                      <button
+                      <div className="flex-1">
+                        <Input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="py-1.5 px-3 text-sm h-9 font-bold"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="w-28 shrink-0">
+                        <Select
+                          value={editType}
+                          onChange={(e) => setEditType(e.target.value)}
+                          className="py-1.5 px-3 text-sm h-9 font-bold"
+                        >
+                          <option value="AMBOS">Ambos</option>
+                          <option value="ENTRADA">Entrada</option>
+                          <option value="SAIDA">Saída</option>
+                        </Select>
+                      </div>
+                      <ActionButton
+                        icon={Save}
+                        label="Salvar"
                         onClick={() => handleEdit(parent.id_categoria)}
-                        className="text-green-600 p-2 hover:bg-green-50 rounded"
-                      >
-                        <Save size={16} />
-                      </button>
-                      <button
+                        variant="accent"
+                      />
+                      <ActionButton
+                        icon={X}
+                        label="Cancelar"
                         onClick={() => setEditingCatId(null)}
-                        className="text-neutral-500 p-2 hover:bg-neutral-100 rounded"
-                      >
-                        <X size={16} />
-                      </button>
+                        variant="neutral"
+                      />
                     </div>
                   ) : (
                     <>
@@ -345,20 +337,18 @@ export const CategoryManager = ({
                         </span>
                       </div>
                       <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
-                        <button
+                        <ActionButton
+                          icon={Edit}
+                          label="Editar"
                           onClick={() => startEditing(parent)}
-                          className="p-2 hover:bg-blue-50 text-blue-600 rounded"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setDeleteConfirmId(parent.id_categoria)
-                          }
-                          className="p-2 hover:bg-red-50 text-red-600 rounded"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                          variant="accent"
+                        />
+                        <ActionButton
+                          icon={Trash2}
+                          label="Excluir"
+                          onClick={() => setDeleteConfirmId(parent.id_categoria)}
+                          variant="danger"
+                        />
                       </div>
                     </>
                   )}
@@ -373,25 +363,27 @@ export const CategoryManager = ({
                     >
                       {editingCatId === child.id_categoria ? (
                         <div className="flex gap-2 w-full items-center">
-                          <input
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            className="flex-1 bg-white border border-neutral-300 p-1.5 rounded font-medium outline-none focus:border-primary-500"
-                            autoFocus
-                          />
+                          <div className="flex-1">
+                            <Input
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              className="py-1 px-2.5 text-sm h-8 font-medium"
+                              autoFocus
+                            />
+                          </div>
                           {/* Child cannot change parent in this simple edit mode efficiently, just name/type */}
-                          <button
+                          <ActionButton
+                            icon={Save}
+                            label="Salvar"
                             onClick={() => handleEdit(child.id_categoria)}
-                            className="text-green-600 p-1.5 hover:bg-green-50 rounded"
-                          >
-                            <Save size={14} />
-                          </button>
-                          <button
+                            variant="accent"
+                          />
+                          <ActionButton
+                            icon={X}
+                            label="Cancelar"
                             onClick={() => setEditingCatId(null)}
-                            className="text-neutral-500 p-1.5 hover:bg-neutral-100 rounded"
-                          >
-                            <X size={14} />
-                          </button>
+                            variant="neutral"
+                          />
                         </div>
                       ) : (
                         <>
@@ -405,20 +397,18 @@ export const CategoryManager = ({
                             </span>
                           </div>
                           <div className="flex gap-1 opacity-0 group-hover/child:opacity-100 transition-opacity">
-                            <button
+                            <ActionButton
+                              icon={Edit}
+                              label="Editar"
                               onClick={() => startEditing(child)}
-                              className="p-1.5 hover:bg-blue-50 text-blue-600 rounded"
-                            >
-                              <Edit size={14} />
-                            </button>
-                            <button
-                              onClick={() =>
-                                setDeleteConfirmId(child.id_categoria)
-                              }
-                              className="p-1.5 hover:bg-red-50 text-red-600 rounded"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                              variant="accent"
+                            />
+                            <ActionButton
+                              icon={Trash2}
+                              label="Excluir"
+                              onClick={() => setDeleteConfirmId(child.id_categoria)}
+                              variant="danger"
+                            />
                           </div>
                         </>
                       )}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
-import { Button, FilterButton } from "../ui";
+import { Button, FilterButton, Input } from "../ui";
 import {
   Search,
   Calendar,
@@ -100,67 +100,49 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
       <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-end gap-4 font-bold">
           <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-            <div>
-              <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                Buscar Detalhes
-              </label>
-              <div className="relative">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                  size={18}
-                />
-                <input
-                  type="text"
-                  value={filters.search}
-                  onChange={(e) =>
-                    setFilters({ ...filters, search: e.target.value })
-                  }
-                  placeholder="Ex: OS 123, Pix..."
-                  className="w-full h-10 pl-10 pr-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
-                />
-              </div>
-            </div>
-            <div className="md:col-span-2 flex flex-col sm:flex-row items-end gap-2">
-              <div className="w-full">
-                <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                  Data Início
-                </label>
-                <input
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) => {
-                    setFilters({ ...filters, startDate: e.target.value });
-                    setActiveFilter("CUSTOM");
-                  }}
-                  className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
-                />
-              </div>
-              <div className="w-full">
-                <label className="text-sm font-bold text-neutral-500 uppercase tracking-widest block mb-1">
-                  Data Fim
-                </label>
-                <input
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) => {
-                    setFilters({ ...filters, endDate: e.target.value });
-                    setActiveFilter("CUSTOM");
-                  }}
-                  className="w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400"
-                />
-              </div>
+            <Input
+              label="Buscar Detalhes"
+              icon={Search}
+              type="text"
+              value={filters.search}
+              onChange={(e) =>
+                setFilters({ ...filters, search: e.target.value })
+              }
+              placeholder="Ex: OS 123, Pix..."
+            />
+            <div className="md:col-span-2 flex flex-col sm:flex-row items-end gap-4 w-full">
+              <Input
+                type="date"
+                label="Data Início"
+                value={filters.startDate}
+                onChange={(e) => {
+                  setFilters({ ...filters, startDate: e.target.value });
+                  setActiveFilter("CUSTOM");
+                }}
+              />
+              <Input
+                type="date"
+                label="Data Fim"
+                value={filters.endDate}
+                onChange={(e) => {
+                  setFilters({ ...filters, endDate: e.target.value });
+                  setActiveFilter("CUSTOM");
+                }}
+              />
             </div>
           </div>
-          <button
+          <Button
             onClick={() =>
               alert(
                 "Funcionalidade de Lançamento Manual será implementada em breve.",
               )
             }
-            className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg h-10 px-4 font-bold text-sm transition-colors flex items-center justify-center gap-2 w-full md:w-auto mt-2 md:mt-0"
+            icon={Plus}
+            variant="primary"
+            className="w-full md:w-auto h-11"
           >
-            <Plus size={18} /> Novo Lançamento
-          </button>
+            Novo Lançamento
+          </Button>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-neutral-100 pt-4">

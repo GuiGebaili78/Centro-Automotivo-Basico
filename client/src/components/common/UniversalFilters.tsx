@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X, Calendar } from "lucide-react";
+import { Input, Select } from "../ui";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,14 +96,7 @@ const getRangeForPeriod = (
 const labelCls =
   "block text-[10px] font-bold uppercase text-neutral-500 tracking-widest mb-1";
 
-const inputCls =
-  "w-full h-10 px-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 " +
-  "focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-400";
 
-// Estilo para campos visíveis, mas desabilitados
-const disabledCls =
-  "w-full h-10 px-3 bg-neutral-100 border border-neutral-200 rounded-lg text-sm text-neutral-400 " +
-  "opacity-70 cursor-not-allowed outline-none appearance-none";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -202,44 +196,37 @@ export const UniversalFilters = ({
       <div className="w-full flex flex-col lg:flex-row items-end gap-4">
         {/* Busca Geral */}
         <div className="flex-1 w-full min-w-[250px]">
-          <label className={labelCls}>Busca Geral</label>
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-            />
-            <input
-              type="text"
-              className={`${inputCls} pl-8`}
-              placeholder="Pesquisar por cliente, placa, peça ou ID..."
-              value={filters.search}
-              onChange={(e) => update({ search: e.target.value }, true)}
-            />
-          </div>
+          <Input
+            label="Busca Geral"
+            icon={Search}
+            placeholder="Pesquisar por cliente, placa, peça ou ID..."
+            value={filters.search}
+            onChange={(e) => update({ search: e.target.value }, true)}
+          />
         </div>
 
         {/* Nº da OS */}
         <div className="w-full lg:w-32 shrink-0">
-          <label className={labelCls}>Nº da OS</label>
-          <input
+          <Input
+            label="Nº da OS"
             type="number"
             min={0}
-            className={enableOsId ? inputCls : disabledCls}
             placeholder={enableOsId ? "Ex: 1250" : "-"}
             value={filters.osId}
             onChange={(e) => enableOsId && update({ osId: e.target.value })}
             disabled={!enableOsId}
+            className={!enableOsId ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : ""}
           />
         </div>
 
         {/* Status */}
         <div className="w-full lg:w-60 shrink-0">
-          <label className={labelCls}>Status</label>
-          <select
-            className={enableStatus ? inputCls : disabledCls}
+          <Select
+            label="Status"
             value={filters.status}
             onChange={(e) => enableStatus && update({ status: e.target.value })}
             disabled={!enableStatus}
+            className={!enableStatus ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : ""}
           >
             {enableStatus ? (
               statusOptions.map((o) => (
@@ -250,19 +237,19 @@ export const UniversalFilters = ({
             ) : (
               <option value="">Não aplicável</option>
             )}
-          </select>
+          </Select>
         </div>
 
         {/* Operadora (Visível sempre, mas desabilitada se !enableOperadora) */}
         <div className="w-full lg:w-72 shrink-0">
-          <label className={labelCls}>Operadora</label>
-          <select
-            className={enableOperadora ? inputCls : disabledCls}
+          <Select
+            label="Operadora"
             value={filters.operadora}
             onChange={(e) =>
               enableOperadora && update({ operadora: e.target.value })
             }
             disabled={!enableOperadora}
+            className={!enableOperadora ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : ""}
           >
             {!enableOperadora ? (
               <option value="">Desabilitado</option>
@@ -276,7 +263,7 @@ export const UniversalFilters = ({
                 ))}
               </>
             )}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -284,14 +271,14 @@ export const UniversalFilters = ({
       <div className="w-full flex flex-col lg:flex-row items-end gap-6">
         {/* Fornecedor (Visível sempre, mas desabilitada se !enableFornecedor) */}
         <div className="w-full lg:w-72 shrink-0">
-          <label className={labelCls}>Fornecedor</label>
-          <select
-            className={enableFornecedor ? inputCls : disabledCls}
+          <Select
+            label="Fornecedor"
             value={filters.fornecedor}
             onChange={(e) =>
               enableFornecedor && update({ fornecedor: e.target.value })
             }
             disabled={!enableFornecedor}
+            className={!enableFornecedor ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : ""}
           >
             {!enableFornecedor ? (
               <option value="">Desabilitado</option>
@@ -305,7 +292,7 @@ export const UniversalFilters = ({
                 ))}
               </>
             )}
-          </select>
+          </Select>
         </div>
 
         {/* Atalhos de Período colados no fornecedor */}
@@ -334,13 +321,11 @@ export const UniversalFilters = ({
 
         {/* Data Inicial */}
         <div className="w-full lg:w-36 shrink-0">
-          <label className={`${labelCls} flex items-center gap-1`}>
-            <Calendar size={10} />
-            De
-          </label>
-          <input
+          <Input
+            label="De"
             type="date"
-            className={`${inputCls} ${manualDate.start ? "text-primary-600 font-semibold" : "text-neutral-600"}`}
+            icon={Calendar}
+            className={manualDate.start ? "text-primary-600 font-semibold" : "text-neutral-600"}
             value={filters.startDate}
             onChange={(e) => handleDate("startDate", e.target.value)}
           />
@@ -348,13 +333,11 @@ export const UniversalFilters = ({
 
         {/* Data Final */}
         <div className="w-full lg:w-36 shrink-0">
-          <label className={`${labelCls} flex items-center gap-1`}>
-            <Calendar size={10} />
-            Até
-          </label>
-          <input
+          <Input
+            label="Até"
             type="date"
-            className={`${inputCls} ${manualDate.end ? "text-primary-600 font-semibold" : "text-neutral-600"}`}
+            icon={Calendar}
+            className={manualDate.end ? "text-primary-600 font-semibold" : "text-neutral-600"}
             value={filters.endDate}
             onChange={(e) => handleDate("endDate", e.target.value)}
           />

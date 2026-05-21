@@ -8,6 +8,35 @@ export class ClienteRepository {
       JSON.stringify(data, null, 2)
     );
 
+    // VALIDATE DUPLICITY BEFORE CREATING
+    if (data.tipo_pessoa === 2 || data.tipo === "JURIDICA") {
+      if (data.cnpj) {
+        const existingCnpj = await prisma.pessoaJuridica.findFirst({
+          where: { cnpj: data.cnpj }
+        });
+        if (existingCnpj) {
+          throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+        }
+      }
+      if (data.inscricao_estadual) {
+        const existingIe = await prisma.pessoaJuridica.findFirst({
+          where: { inscricao_estadual: data.inscricao_estadual }
+        });
+        if (existingIe) {
+          throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+        }
+      }
+    } else {
+      if (data.cpf) {
+        const existingCpf = await prisma.pessoaFisica.findFirst({
+          where: { cpf: data.cpf }
+        });
+        if (existingCpf) {
+          throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+        }
+      }
+    }
+
     // TRANSACTIONAL CREATION FOR SIMPLIFIED PAYLOAD
     // If 'nome' is provided and we don't have explicit foreign keys, assume we need to create the person structure.
     if (data.nome && !data.id_pessoa_fisica && !data.id_pessoa_juridica) {
@@ -121,6 +150,50 @@ export class ClienteRepository {
   }
 
   async update(id: number, data: any) {
+    // 1. Get current client to find associated person IDs
+    const currentCliente = await prisma.cliente.findUnique({
+      where: { id_cliente: id },
+      include: {
+        pessoa_fisica: true,
+        pessoa_juridica: true
+      }
+    });
+    if (!currentCliente) {
+      throw new Error("Cliente não encontrado.");
+    }
+
+    // 2. Validate CPF / CNPJ / IE duplicity
+    if (data.cpf) {
+      const pfWhere: any = { cpf: data.cpf };
+      if (currentCliente.id_pessoa_fisica) {
+        pfWhere.id_pessoa_fisica = { not: currentCliente.id_pessoa_fisica };
+      }
+      const existing = await prisma.pessoaFisica.findFirst({
+        where: pfWhere
+      });
+      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+    }
+    if (data.cnpj) {
+      const pjWhere: any = { cnpj: data.cnpj };
+      if (currentCliente.id_pessoa_juridica) {
+        pjWhere.id_pessoa_juridica = { not: currentCliente.id_pessoa_juridica };
+      }
+      const existing = await prisma.pessoaJuridica.findFirst({
+        where: pjWhere
+      });
+      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+    }
+    if (data.inscricao_estadual) {
+      const pjWhere: any = { inscricao_estadual: data.inscricao_estadual };
+      if (currentCliente.id_pessoa_juridica) {
+        pjWhere.id_pessoa_juridica = { not: currentCliente.id_pessoa_juridica };
+      }
+      const existing = await prisma.pessoaJuridica.findFirst({
+        where: pjWhere
+      });
+      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+    }
+
     return await prisma.$transaction(async (tx) => {
       // 1. Extract nested data
       const {

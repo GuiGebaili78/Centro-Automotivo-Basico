@@ -150,11 +150,20 @@ export const OperadoraModal: React.FC<OperadoraModalProps> = ({
     }
     setLoading(true);
     try {
+      // Normalização de payload com valor seguro para taxa_base_cliente_pct de forma a preservar compatibilidade com o banco
+      const payload = {
+        ...formData,
+        taxas_cartao: (formData.taxas_cartao || []).map((t) => ({
+          ...t,
+          taxa_base_cliente_pct: 0,
+        })),
+      };
+
       if (editingOp) {
-        await FinanceiroService.updateOperadoraCartao(editingOp.id_operadora, formData);
+        await FinanceiroService.updateOperadoraCartao(editingOp.id_operadora, payload);
         toast.success("Operadora atualizada!");
       } else {
-        await FinanceiroService.createOperadoraCartao(formData);
+        await FinanceiroService.createOperadoraCartao(payload);
         toast.success("Operadora cadastrada!");
       }
       onSuccess();
@@ -268,10 +277,9 @@ export const OperadoraModal: React.FC<OperadoraModalProps> = ({
           {/* Cabeçalho da tabela */}
           <div className="grid grid-cols-12 gap-2 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-center px-1">
             <div className="col-span-1 text-left">Nx</div>
-            <div className="col-span-3">Juros Parcela (%)</div>
-            <div className="col-span-3">Máquina Loja (%)</div>
-            <div className="col-span-3">Máquina Cliente (%)</div>
-            <div className="col-span-2">Custo Loja</div>
+            <div className="col-span-4">Juros assumidos (%)</div>
+            <div className="col-span-4">Parcelamento Loja (%)</div>
+            <div className="col-span-3">Custo Loja</div>
           </div>
 
           {/* 18 linhas */}
@@ -295,8 +303,8 @@ export const OperadoraModal: React.FC<OperadoraModalProps> = ({
                     </span>
                   </div>
 
-                  {/* Juros da Parcela */}
-                  <div className="col-span-3">
+                  {/* Juros assumidos */}
+                  <div className="col-span-4">
                     <Input
                       type="number"
                       step="0.01"
@@ -310,8 +318,8 @@ export const OperadoraModal: React.FC<OperadoraModalProps> = ({
                     />
                   </div>
 
-                  {/* Taxa Máquina: Loja Assume */}
-                  <div className="col-span-3">
+                  {/* Parcelamento Loja */}
+                  <div className="col-span-4">
                     <Input
                       type="number"
                       step="0.01"
@@ -325,23 +333,8 @@ export const OperadoraModal: React.FC<OperadoraModalProps> = ({
                     />
                   </div>
 
-                  {/* Taxa Máquina: Cliente Assume */}
-                  <div className="col-span-3">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={baseCliente || ""}
-                      onChange={(e) =>
-                        setCreditoField(num, "taxa_base_cliente_pct", Number(e.target.value))
-                      }
-                      className="h-7 text-center text-[11px] bg-white focus:bg-white font-bold text-blue-700 border-blue-100 focus:border-blue-400"
-                    />
-                  </div>
-
                   {/* Custo Total Loja (disabled: juros + base_loja) */}
-                  <div className="col-span-2 text-center">
+                  <div className="col-span-3 text-center">
                     <span
                       className={`text-[11px] font-black px-2 py-1 rounded block ${hasValue && custoLoja > 0 ? "bg-rose-100 text-rose-700" : "text-neutral-300"}`}
                     >

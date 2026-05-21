@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import type { FC, ChangeEvent, InputHTMLAttributes } from "react";
 import { Loader2 } from "lucide-react";
+import { Input } from "./Input";
+import { Button } from "./Button";
 
-interface AutocompleteInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+interface AutocompleteInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -9,7 +12,7 @@ interface AutocompleteInputProps extends Omit<React.InputHTMLAttributes<HTMLInpu
   uppercase?: boolean;
 }
 
-export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
+export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   label,
   value,
   onChange,
@@ -46,7 +49,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
     if (uppercase) val = val.toUpperCase();
     onChange(val);
@@ -72,7 +75,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         {label}
       </label>
       <div className="relative">
-        <input
+        <Input
           value={value}
           onChange={handleChange}
           onKeyDown={(e) => {
@@ -99,7 +102,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
               }
             }, 200);
           }}
-          className={`w-full p-2.5 rounded-xl border border-neutral-200 bg-neutral-25 text-base text-gray-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all placeholder:text-gray-400 ${className || ''}`}
+          className={`w-full !p-2.5 !bg-neutral-25 ${className || ''}`}
           {...props}
         />
         {loading && (
@@ -111,34 +114,29 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
       {/* SEARCH RESULTS DROPDOWN */}
       {suggestions.length > 0 && (
-        <ul role="listbox" className="absolute z-50 w-full mt-2 bg-white border border-neutral-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2 ring-4 ring-black/5 list-none p-0">
+        <div className="absolute z-50 w-full mt-2 bg-white border border-neutral-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2 ring-4 ring-black/5 p-0">
           {suggestions.map((s, idx) => (
-            <li
+            <Button
               key={`${s}-${idx}`}
-              role="option"
-              aria-selected={idx === highlightIndex}
-              className="list-none"
+              type="button"
+              variant="ghost"
+              onClick={(e) => {
+                e.preventDefault();
+                handleSelect(s);
+              }}
+              className={`!w-full !text-left !p-3 !text-sm !font-bold !border-b !border-neutral-50 !flex !justify-between !items-center !group/item !transition-colors !search-result-item !rounded-none !normal-case !tracking-normal !shadow-none !h-auto !justify-start !active:scale-100 ${
+                idx === highlightIndex
+                  ? "!bg-blue-50 !ring-1 !ring-inset !ring-blue-100 !z-10 !text-blue-700"
+                  : "hover:!bg-neutral-50 !text-neutral-700 hover:!text-blue-600"
+              }`}
             >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleSelect(s);
-                }}
-                className={`w-full text-left p-3 text-sm font-bold border-b border-neutral-50 flex justify-between items-center group/item transition-colors search-result-item ${
-                  idx === highlightIndex
-                    ? "bg-blue-50 ring-1 ring-inset ring-blue-100 z-10 text-blue-700"
-                    : "hover:bg-neutral-50 text-neutral-700 hover:text-blue-600"
-                }`}
-              >
-                <span>{s}</span>
-              </button>
-            </li>
+              <span>{s}</span>
+            </Button>
           ))}
-          <li className="p-2 text-xs text-center text-neutral-400 bg-neutral-50 border-t border-neutral-100 uppercase font-black tracking-widest list-none">
+          <div className="p-2 text-xs text-center text-neutral-400 bg-neutral-50 border-t border-neutral-100 uppercase font-black tracking-widest">
             Use as setas para navegar e Enter para selecionar
-          </li>
-        </ul>
+          </div>
+        </div>
       )}
     </div>
   );

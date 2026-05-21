@@ -280,7 +280,7 @@ export const VeiculoPage = () => {
                 {filteredVeiculos.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="p-8 text-center text-neutral-400"
                     >
                       Nenhum veículo encontrado.

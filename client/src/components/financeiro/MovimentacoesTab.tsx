@@ -10,7 +10,7 @@ import {
   Edit,
   AlertTriangle,
 } from "lucide-react";
-import { ActionButton, Button, Input, Modal } from "../ui";
+import { ActionButton, Button, Input, Modal, Select } from "../ui";
 import { UniversalFilters } from "../common/UniversalFilters";
 import type { UniversalFiltersState } from "../common/UniversalFilters";
 import { useUniversalFilter } from "../../hooks/useUniversalFilter";
@@ -805,26 +805,20 @@ export const MovimentacoesTab = () => {
                 />
               </div>
               <div>
-                <label>Tipo</label>
-                <div className="relative">
-                  <select
-                    value={formData.tipo_movimentacao}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        tipo_movimentacao: e.target.value,
-                      })
-                    }
-                    disabled={!!editingItem} // Usually can't change type after creation easily without messes, or enable it. Let's disable for safety or matching legacy.
-                    className="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all appearance-none cursor-pointer disabled:opacity-50"
-                  >
-                    <option value="ENTRADA">Entrada (+)</option>
-                    <option value="SAIDA">Saída (-)</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-                    <ArrowDownCircle size={14} />
-                  </div>
-                </div>
+                <Select
+                  label="Tipo"
+                  value={formData.tipo_movimentacao}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      tipo_movimentacao: e.target.value,
+                    })
+                  }
+                  disabled={!!editingItem}
+                >
+                  <option value="ENTRADA">Entrada (+)</option>
+                  <option value="SAIDA">Saída (-)</option>
+                </Select>
               </div>
             </div>
 

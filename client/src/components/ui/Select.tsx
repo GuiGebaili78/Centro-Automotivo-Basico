@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useId } from "react";
 import { ChevronDown } from "lucide-react";
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -8,11 +8,14 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, icon: Icon, className = "", children, ...props }, ref) => {
+  ({ label, error, icon: Icon, className = "", children, id, title, ...props }, ref) => {
+    const generatedId = useId();
+    const selectId = id || generatedId;
+
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+          <label htmlFor={selectId} className="text-sm font-bold text-slate-500 uppercase tracking-widest">
             {label}
           </label>
         )}
@@ -24,6 +27,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           )}
           <select
             {...props}
+            id={selectId}
+            title={title || label}
             ref={ref}
             className={`
               w-full bg-white border rounded-xl py-2.5 text-sm transition-all outline-none appearance-none

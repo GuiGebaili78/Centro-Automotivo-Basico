@@ -9,7 +9,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { api } from "../../services/api";
-import { Modal, Button } from "../ui";
+import { Modal, Button, Input, Select } from "../ui";
 import { UnifiedOsForm } from "./Forms/UnifiedOsForm";
 import { VeiculoForm } from "../veiculos/Forms/VeiculoForm";
 
@@ -391,60 +391,45 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-bold text-neutral-400 uppercase block mb-1">
-                  KM Entrada *
-                </label>
-                <input
-                  type="number"
-                  autoFocus
-                  value={quickStartData.km}
-                  onChange={(e) =>
-                    setQuickStartData({ ...quickStartData, km: e.target.value })
-                  }
-                  className="w-full p-3 rounded-xl border border-neutral-300 font-black text-xl text-neutral-900 outline-none focus:border-primary-500"
-                  placeholder="000000"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-bold text-neutral-400 uppercase block mb-1">
-                  Mecânico *
-                </label>
-                <select
-                  value={quickStartData.mechanic}
-                  onChange={(e) =>
-                    setQuickStartData({
-                      ...quickStartData,
-                      mechanic: e.target.value,
-                    })
-                  }
-                  className="w-full p-3 rounded-xl border border-neutral-300 font-bold text-neutral-800 outline-none focus:border-primary-500"
-                >
-                  <option value="">Selecione...</option>
-                  {employees.map((e) => (
-                    <option key={e.id_funcionario} value={e.id_funcionario}>
-                      {e.pessoa_fisica?.pessoa?.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-bold text-neutral-400 uppercase block mb-1">
-                Defeito Relatado (Opcional)
-              </label>
-              <input
-                value={quickStartData.defect}
+              <Input
+                label="KM Entrada *"
+                type="number"
+                autoFocus
+                value={quickStartData.km}
+                onChange={(e) =>
+                  setQuickStartData({ ...quickStartData, km: e.target.value })
+                }
+                placeholder="000000"
+              />
+              <Select
+                label="Mecânico *"
+                value={quickStartData.mechanic}
                 onChange={(e) =>
                   setQuickStartData({
                     ...quickStartData,
-                    defect: e.target.value,
+                    mechanic: e.target.value,
                   })
                 }
-                className="w-full p-3 rounded-xl border border-neutral-300 font-medium text-neutral-800 outline-none focus:border-primary-500"
-              />
+              >
+                <option value="">Selecione...</option>
+                {employees.map((e) => (
+                  <option key={e.id_funcionario} value={e.id_funcionario}>
+                    {e.pessoa_fisica?.pessoa?.nome}
+                  </option>
+                ))}
+              </Select>
             </div>
+
+            <Input
+              label="Defeito Relatado (Opcional)"
+              value={quickStartData.defect}
+              onChange={(e) =>
+                setQuickStartData({
+                  ...quickStartData,
+                  defect: e.target.value,
+                })
+              }
+            />
 
             <Button
               onClick={handleQuickCreate}

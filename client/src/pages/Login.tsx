@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { API_BASE } from "../services/api";
+import { Input, Button, Card } from "../components/ui";
+import { Mail, Lock, ShieldAlert, Key } from "lucide-react";
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -47,54 +49,61 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100">
-      <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          Centro Automotivo
-        </h2>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md p-8 border border-slate-200/60 shadow-xl bg-white rounded-2xl space-y-6">
+        <div className="flex flex-col items-center text-center">
+          <div className="p-3.5 bg-primary-50 rounded-2xl text-primary-600 mb-4 shadow-sm border border-primary-100/50">
+            <Key size={32} />
+          </div>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+            Centro Automotivo
+          </h2>
+          <p className="text-sm text-slate-500 mt-2">
+            Preencha suas credenciais para acessar o sistema
+          </p>
+        </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm text-center">
-            {error}
+          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-semibold flex items-start gap-2.5">
+            <ShieldAlert size={20} className="shrink-0 text-red-500 mt-0.5" />
+            <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              E-mail
-            </label>
-            <input
-              type="text"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
-          </div>
+          <Input
+            label="E-mail"
+            type="email"
+            icon={Mail}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="seuemail@oficina.com"
+            required
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Senha
-            </label>
-            <input
-              type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
-          </div>
+          <Input
+            label="Senha"
+            type="password"
+            icon={Lock}
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            placeholder="Sua senha de acesso"
+            required
+          />
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            {loading ? "Autenticando..." : "Entrar"}
-          </button>
+          <div className="pt-2">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full text-base font-bold h-12 uppercase tracking-wide"
+              variant="primary"
+              isLoading={loading}
+            >
+              Entrar
+            </Button>
+          </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 };

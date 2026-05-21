@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { ITipo } from '../types/backend';
 import { TipoForm } from '../components/os/Forms/TipoForm';
-import { Modal } from '../components/ui';
+import { Modal, Input } from '../components/ui';
 import { Plus, Search, Trash2, Edit, Tag } from 'lucide-react';
 
 export const TipoPage = () => {
@@ -108,18 +108,19 @@ export const TipoPage = () => {
             {/* MANAGE */}
             <div className="bg-white p-4 rounded-xl border border-gray-200">
                 <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Manutenção de Tipo (Por ID)</h2>
-                <div className="flex gap-4 mb-4">
-                    <input 
-                        type="number" 
-                        value={searchId} 
-                        onChange={(e) => setSearchId(e.target.value)} 
-                        placeholder="Digite o ID do Tipo..." 
-                        className="border p-2 rounded w-64"
-                    />
-                    <button onClick={handleSearch} className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-700">
+                <div className="flex gap-4 mb-4 items-end">
+                    <div className="w-64">
+                        <Input 
+                            type="number" 
+                            value={searchId} 
+                            onChange={(e) => setSearchId(e.target.value)} 
+                            placeholder="Digite o ID do Tipo..." 
+                        />
+                    </div>
+                    <button onClick={handleSearch} className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 font-medium h-11">
                         <Search size={18} /> Localizar
                     </button>
-                    {searchId && <button onClick={handleDelete} className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200">
+                    {searchId && <button onClick={handleDelete} className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2.5 rounded-lg hover:bg-red-200 font-medium h-11">
                         <Trash2 size={18} /> Excluir
                     </button>}
                 </div>
@@ -128,11 +129,10 @@ export const TipoPage = () => {
                     <div className="bg-slate-50 p-4 rounded border animate-in fade-in">
                         <h3 className="font-bold mb-2">Editando Tipo #{editData.id_tipo}</h3>
                         <div className="mb-4">
-                            <label className="text-xs font-bold block mb-1">Função</label>
-                            <input 
+                            <Input 
+                                label="Função"
                                 value={editData.funcao || ''} 
                                 onChange={(e) => setEditData({...editData, funcao: e.target.value})} 
-                                className="border p-2 w-full rounded" 
                             />
                         </div>
                         <button onClick={handleUpdate} className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-bold">
