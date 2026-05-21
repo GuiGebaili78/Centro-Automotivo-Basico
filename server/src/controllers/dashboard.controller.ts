@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
+import { OrdemDeServicoRepository } from "../repositories/ordemDeServico.repository.js";
+
+const osRepository = new OrdemDeServicoRepository();
 
 export class DashboardController {
   async getDashboardData(req: Request, res: Response) {
@@ -122,19 +125,7 @@ export class DashboardController {
       ).length;
 
       // 8. Recent OSs (Strict Limit, light includes)
-      const recentOss = await prisma.ordemDeServico.findMany({
-        take: 30, // Reduced from 100 for dashboard snappiness
-        orderBy: { updated_at: "desc" },
-        include: {
-          veiculo: true,
-          cliente: {
-            include: {
-              pessoa_fisica: { include: { pessoa: true } },
-              pessoa_juridica: { include: { pessoa: true } },
-            },
-          },
-        },
-      });
+      const recentOss = await osRepository.findRecent(30);
 
       res.json({
         stats: {

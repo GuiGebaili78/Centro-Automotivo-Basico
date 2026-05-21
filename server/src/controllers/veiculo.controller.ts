@@ -81,6 +81,36 @@ export class VeiculoController {
     }
   }
 
+  async buscarMarcas(req: Request, res: Response) {
+    try {
+      const termo = (req.query.q as string) || '';
+      const resultados = await repository.buscarMarcas(termo);
+      res.json(resultados.map(r => r.marca).filter(Boolean));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch brands", details: error });
+    }
+  }
+
+  async buscarModelos(req: Request, res: Response) {
+    try {
+      const termo = (req.query.q as string) || '';
+      const resultados = await repository.buscarModelos(termo);
+      res.json(resultados.map(r => r.modelo).filter(Boolean));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch models", details: error });
+    }
+  }
+
+  async buscarCores(req: Request, res: Response) {
+    try {
+      const termo = (req.query.q as string) || '';
+      const resultados = await repository.buscarCores(termo);
+      res.json(resultados.map(r => r.cor).filter(Boolean));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch colors", details: error });
+    }
+  }
+
   async update(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);

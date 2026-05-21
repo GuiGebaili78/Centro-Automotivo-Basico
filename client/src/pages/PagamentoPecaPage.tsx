@@ -209,7 +209,7 @@ export const PagamentoPecaPage = () => {
   // --- Supplier list for UniversalFilters ---
   const fornecedoresList = fornecedores.map((f) => ({
     id: String(f.id_fornecedor),
-    nome: f.nome_fantasia || f.nome,
+    nome: String(f.nome_fantasia || f.nome || "").toUpperCase(),
   }));
 
   // --- Elevate id_os to root for hook comparison ---
@@ -412,7 +412,7 @@ export const PagamentoPecaPage = () => {
                         <div className="flex items-center gap-2 text-base text-neutral-900 font-normal">
                           <Truck size={14} className="text-neutral-400" />
                           <span>
-                            {p.fornecedor?.nome_fantasia || p.fornecedor?.nome || "N/I"}
+                            {String(p.fornecedor?.nome_fantasia || p.fornecedor?.nome || "N/I").toUpperCase()}
                           </span>
                         </div>
                       </td>
@@ -547,7 +547,7 @@ export const PagamentoPecaPage = () => {
               >
                 {fornecedores.map((f) => (
                   <option key={f.id_fornecedor} value={f.id_fornecedor}>
-                    {f.nome_fantasia || f.nome}
+                    {String(f.nome_fantasia || f.nome || "").toUpperCase()}
                   </option>
                 ))}
               </Select>

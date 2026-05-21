@@ -6,12 +6,26 @@ const repository = new PagamentoPecaRepository();
 export class PagamentoPecaController {
   async create(req: Request, res: Response) {
     try {
-      const pagamento = await repository.create(req.body);
+      const { id_item_os, id_pessoa, id_fornecedor, custo_real, pago_ao_fornecedor, data_compra } = req.body;
+      
+      const parsedIdPessoa = id_pessoa !== undefined && id_pessoa !== null && id_pessoa !== "" ? id_pessoa : id_fornecedor;
+      const hasValidFornecedor = parsedIdPessoa !== undefined && parsedIdPessoa !== null && parsedIdPessoa !== "" && !isNaN(Number(parsedIdPessoa)) && Number(parsedIdPessoa) > 0;
+      const fornecedorId = hasValidFornecedor ? Number(parsedIdPessoa) : undefined;
+
+      const payload = {
+        id_item_os: Number(id_item_os),
+        id_pessoa: fornecedorId,
+        custo_real: Number(custo_real),
+        pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+        data_compra: data_compra ? new Date(data_compra) : new Date(),
+      };
+
+      const pagamento = await repository.create(payload as any);
       res.status(201).json(pagamento);
-    } catch (error) {
+    } catch (error: any) {
       res
         .status(400)
-        .json({ error: "Failed to create Pagamento Peca", details: error });
+        .json({ error: "Failed to create Pagamento Peca", details: error.message });
     }
   }
 
@@ -44,27 +58,37 @@ export class PagamentoPecaController {
         pago_ao_fornecedor,
         id_conta_bancaria,
         data_pagamento_fornecedor,
+        id_item_os,
+        id_pessoa,
+        id_fornecedor,
+        custo_real,
+        data_compra
       } = req.body;
 
+      const parsedIdPessoa = id_pessoa !== undefined && id_pessoa !== null && id_pessoa !== "" ? id_pessoa : id_fornecedor;
+      const hasValidFornecedor = parsedIdPessoa !== undefined && parsedIdPessoa !== null && parsedIdPessoa !== "" && !isNaN(Number(parsedIdPessoa)) && Number(parsedIdPessoa) > 0;
+      const fornecedorId = hasValidFornecedor ? Number(parsedIdPessoa) : undefined;
+
       // Check if we are UN-PAYING (reversing)
-      // The frontend sends pago_ao_fornecedor: false when unpaying
       if (pago_ao_fornecedor === false) {
         try {
           const result = await repository.reversePayment(id);
           return res.json(result);
         } catch (e: any) {
-          // If error is "not paid", maybe it was just a regular update setting false?
-          // Fallback to regular update if specific logic fails or just let it fail?
-          // Let's assume frontend calls this explicitly for unpay action.
           console.error("Reverse failed, trying regular update", e);
-          // Fallback to regular update
-          const p = await repository.update(id, req.body);
+          
+          const payload: any = { pago_ao_fornecedor: false };
+          if (id_item_os !== undefined) payload.id_item_os = Number(id_item_os);
+          if (parsedIdPessoa !== undefined) payload.id_pessoa = fornecedorId;
+          if (custo_real !== undefined) payload.custo_real = Number(custo_real);
+          if (data_compra !== undefined) payload.data_compra = new Date(data_compra);
+
+          const p = await repository.update(id, payload);
           return res.json(p);
         }
       }
 
       // Check if we are PAYING (confirming) and have a bank account
-      // Frontend sends pago_ao_fornecedor: true AND id_conta_bancaria
       if (pago_ao_fornecedor === true && id_conta_bancaria) {
         try {
           const date = data_pagamento_fornecedor
@@ -84,15 +108,18 @@ export class PagamentoPecaController {
         }
       }
 
-      // Default generic update (e.g. editing cost, date_compra, without changing status)
-      // Note: If frontend sends pago_ao_fornecedor: true BUT NO account, it goes here.
-      // This path updates the record but creates NO financial movement.
-      // This is backward compatible but dangerous if frontend forgets account.
-      // But let's keep it for now.
-      const pagamento = await repository.update(id, req.body);
+      // Default generic update
+      const payload: any = {};
+      if (pago_ao_fornecedor !== undefined) payload.pago_ao_fornecedor = Boolean(pago_ao_fornecedor);
+      if (id_item_os !== undefined) payload.id_item_os = Number(id_item_os);
+      if (parsedIdPessoa !== undefined) payload.id_pessoa = fornecedorId;
+      if (custo_real !== undefined) payload.custo_real = Number(custo_real);
+      if (data_compra !== undefined) payload.data_compra = new Date(data_compra);
+
+      const pagamento = await repository.update(id, payload);
       res.json(pagamento);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to update Pagamento Peca" });
+    } catch (error: any) {
+      res.status(400).json({ error: "Failed to update Pagamento Peca", details: error.message });
     }
   }
 

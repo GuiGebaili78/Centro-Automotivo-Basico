@@ -140,6 +140,8 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
       setLoading(true);
       const payload: any = {
         ...formData,
+        descricao: formData.descricao.toUpperCase(),
+        credor: formData.credor.toUpperCase(),
         valor: Number(formData.valor),
         applyToAllRecurrences,
         dt_pagamento:
@@ -194,7 +196,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
               onChange={(val) =>
                 setFormData({ ...formData, descricao: val })
               }
-              fetchSuggestions={(q) => FinanceiroService.getDistinctContasPagar('descricao', q)}
+              fetchSuggestions={(q) => FinanceiroService.buscarDescricao(q)}
               placeholder="Ex: COMPRA MATERIAL LIMPEZA"
             />
           </div>
@@ -205,7 +207,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
               onChange={(val) =>
                 setFormData({ ...formData, credor: val })
               }
-              fetchSuggestions={(q) => FinanceiroService.getDistinctContasPagar('credor', q)}
+              fetchSuggestions={(q) => FinanceiroService.buscarCredor(q)}
               placeholder="Ex: FORNECEDOR X"
             />
           </div>

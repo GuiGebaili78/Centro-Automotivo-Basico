@@ -250,6 +250,16 @@ export class FinanceiroService {
     return response.data;
   }
 
+  static async buscarDescricao(term: string): Promise<string[]> {
+    const response = await api.get(`/contas-pagar/buscar-descricao?q=${term}`);
+    return response.data;
+  }
+
+  static async buscarCredor(term: string): Promise<string[]> {
+    const response = await api.get(`/contas-pagar/buscar-credor?q=${term}`);
+    return response.data;
+  }
+
   // --- FECHAMENTO & CONSOLIDAÇÃO ---
   static async getFechamentos(): Promise<any[]> {
     const response = await api.get("/fechamento-financeiro");

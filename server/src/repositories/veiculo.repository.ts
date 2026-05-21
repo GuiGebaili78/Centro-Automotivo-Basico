@@ -116,6 +116,30 @@ export class VeiculoRepository {
     });
   }
 
+  async buscarMarcas(termo: string) {
+    return await prisma.veiculo.findMany({
+      where: { marca: { contains: termo, mode: 'insensitive' } },
+      distinct: ['marca'],
+      select: { marca: true }
+    });
+  }
+
+  async buscarModelos(termo: string) {
+    return await prisma.veiculo.findMany({
+      where: { modelo: { contains: termo, mode: 'insensitive' } },
+      distinct: ['modelo'],
+      select: { modelo: true }
+    });
+  }
+
+  async buscarCores(termo: string) {
+    return await prisma.veiculo.findMany({
+      where: { cor: { contains: termo, mode: 'insensitive' } },
+      distinct: ['cor'],
+      select: { cor: true }
+    });
+  }
+
   async update(id: number, data: Prisma.VeiculoUpdateInput) {
     return await prisma.veiculo.update({
       where: { id_veiculo: id },

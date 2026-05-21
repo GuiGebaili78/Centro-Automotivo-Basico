@@ -36,6 +36,21 @@ export const VeiculoService = {
     return response.data;
   },
 
+  buscarMarcas: async (term: string) => {
+    const response = await api.get<string[]>(`/veiculo/buscar-marcas?q=${term}`);
+    return response.data;
+  },
+
+  buscarModelos: async (term: string) => {
+    const response = await api.get<string[]>(`/veiculo/buscar-modelos?q=${term}`);
+    return response.data;
+  },
+
+  buscarCores: async (term: string) => {
+    const response = await api.get<string[]>(`/veiculo/buscar-cores?q=${term}`);
+    return response.data;
+  },
+
   getByClienteId: async (_clienteId: number) => {
     // Assuming backend supports filtering or we misuse getAll for now
     return [];

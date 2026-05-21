@@ -35,6 +35,26 @@ export const getDistinct = async (req: Request, res: Response) => {
   }
 };
 
+export const buscarDescricao = async (req: Request, res: Response) => {
+  try {
+    const termo = (req.query.q as string) || '';
+    const resultados = await repository.buscarDescricao(termo);
+    res.json(resultados.map(r => r.descricao).filter(Boolean));
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar descrições" });
+  }
+};
+
+export const buscarCredor = async (req: Request, res: Response) => {
+  try {
+    const termo = (req.query.q as string) || '';
+    const resultados = await repository.buscarCredor(termo);
+    res.json(resultados.map(r => r.credor).filter(Boolean));
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar credores" });
+  }
+};
+
 export const getContaById = async (req: Request, res: Response) => {
   try {
     const conta = await repository.findById(Number(req.params.id));

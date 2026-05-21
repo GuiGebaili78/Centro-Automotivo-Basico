@@ -421,6 +421,28 @@ export class ContasPagarRepository {
     });
   }
 
+  async buscarDescricao(termo: string) {
+    return await prisma.contasPagar.findMany({
+      where: { 
+        descricao: { contains: termo, mode: 'insensitive' },
+        deleted_at: null
+      },
+      distinct: ['descricao'],
+      select: { descricao: true }
+    });
+  }
+
+  async buscarCredor(termo: string) {
+    return await prisma.contasPagar.findMany({
+      where: { 
+        credor: { contains: termo, mode: 'insensitive' },
+        deleted_at: null
+      },
+      distinct: ['credor'],
+      select: { credor: true }
+    });
+  }
+
   async delete(id: number) {
     return prisma.contasPagar.update({
       where: { id_conta_pagar: id },

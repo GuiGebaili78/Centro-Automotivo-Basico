@@ -38,7 +38,8 @@ interface ItemOS {
   };
   pagamentos_peca?: {
     id_pagamento_peca: number;
-    id_fornecedor: number;
+    id_fornecedor?: number;
+    id_pessoa?: number;
     custo_real: number;
     pago_ao_fornecedor: boolean;
   }[];
@@ -47,6 +48,9 @@ interface ItemOS {
 interface IFornecedor {
   id_fornecedor: number;
   nome: string;
+  nome_fantasia?: string | null;
+  razao_social?: string | null;
+  nome_completo?: string | null;
 }
 
 interface ItemFinanceiroState {
@@ -231,10 +235,14 @@ export const FechamentoFinanceiroDetalhePage = () => {
               ).toFixed(2)
             : "";
 
+        const existingPaymentIdPessoa = existingPayment
+          ? (existingPayment.id_pessoa || existingPayment.id_fornecedor)
+          : null;
+
         initialItemsState[item.id_iten] = {
           id_pagamento_peca: existingPayment?.id_pagamento_peca,
-          id_fornecedor: existingPayment
-            ? String(existingPayment.id_fornecedor)
+          id_fornecedor: existingPaymentIdPessoa
+            ? String(existingPaymentIdPessoa)
             : "",
           custo_real: initialCost,
           pago_fornecedor: existingPayment
@@ -448,32 +456,33 @@ export const FechamentoFinanceiroDetalhePage = () => {
     if (!osData) return;
 
     try {
-      // Upsert Payments (Costs)
       const pagamentoPromises = osData.itens_os.map(async (item) => {
         const st = itemsState[item.id_iten];
-        if (!st || !st.id_fornecedor) return null; // Skip incomplete items? Or strictly require?
-        // If finalize is true, we might strictly require. If just saving, allow partial?
-        // Let's allow partial save if not finalizing.
+        if (!st) return null;
 
-        if (st && st.id_fornecedor && st.custo_real) {
+        const hasFornecedor = st.id_fornecedor && st.id_fornecedor.trim() !== "";
+        const hasCusto = st.custo_real && st.custo_real.trim() !== "";
+
+        // Only save if there is a cost or if there is an existing payment being modified
+        if (hasCusto || st.id_pagamento_peca) {
           const payload = {
-            id_item_os: item.id_iten,
-            id_fornecedor: Number(st.id_fornecedor),
+            id_item_os: Number(item.id_iten),
+            id_fornecedor: hasFornecedor ? Number(st.id_fornecedor) : undefined,
+            id_pessoa: hasFornecedor ? Number(st.id_fornecedor) : undefined,
             custo_real: Number(st.custo_real),
             data_compra: new Date().toISOString(),
-            pago_ao_fornecedor: st.pago_fornecedor,
+            pago_ao_fornecedor: Boolean(st.pago_fornecedor),
           };
 
           if (st.id_pagamento_peca) {
             return api.put(`/pagamento-peca/${st.id_pagamento_peca}`, payload);
-          } else {
+          } else if (hasFornecedor) {
+            // Only create new payment record if a valid supplier is selected
             return api.post("/pagamento-peca", payload);
           }
         }
         return null;
       });
-
-      await Promise.all(pagamentoPromises);
 
       await Promise.all(pagamentoPromises);
 
@@ -896,7 +905,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                         <option value="">-- Selecione --</option>
                         {fornecedores.map((f) => (
                           <option key={f.id_fornecedor} value={f.id_fornecedor}>
-                            {f.nome}
+                            {String(f.nome_fantasia || f.razao_social || f.nome_completo || f.nome || "").toUpperCase()}
                           </option>
                         ))}
                       </select>
@@ -1045,7 +1054,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                               key={f.id_fornecedor}
                               value={f.id_fornecedor}
                             >
-                              {f.nome}
+                              {String(f.nome_fantasia || f.razao_social || f.nome_completo || f.nome || "").toUpperCase()}
                             </option>
                           ))}
                         </select>

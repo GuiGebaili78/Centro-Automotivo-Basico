@@ -76,6 +76,10 @@ export function DashboardPage() {
   };
 
   const handleSearchResultSelect = (result: any) => {
+    if (result.subtext === "Sem veículo cadastrado") {
+      navigate(`/cadastro/${result.id_cliente}`);
+      return;
+    }
     setSelectedSearch(result);
     setDecisionModalOpen(true);
   };
@@ -146,12 +150,12 @@ export function DashboardPage() {
         </div>
       }
     >
-      <div className="space-y-6">
-        <div className="p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700">
+      <div className="h-[calc(100vh-170px)] flex flex-col overflow-hidden space-y-4">
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700 shrink-0">
           <DashboardMetrics stats={stats} />
         </div>
 
-        <main className="animate-in fade-in duration-500 space-y-4">
+        <main className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0">
           <DashboardCalendar
             items={recentOss
               .filter(

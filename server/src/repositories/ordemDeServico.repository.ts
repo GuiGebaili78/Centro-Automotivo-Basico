@@ -415,4 +415,46 @@ export class OrdemDeServicoRepository {
           }
       }
   }
+
+  async findRecent(take: number = 30) {
+    return await prisma.ordemDeServico.findMany({
+      take,
+      where: {
+        deleted_at: null,
+        status: {
+          in: ['AGENDAMENTO', 'ORCAMENTO', 'ABERTA', 'FINANCEIRO', 'FINALIZADA']
+        }
+      },
+      orderBy: { updated_at: 'desc' },
+      include: {
+        veiculo: true,
+        equipamento: true,
+        servicos_mao_de_obra: {
+          where: { deleted_at: null },
+          include: {
+            funcionario: {
+              include: {
+                pessoa_fisica: {
+                  include: {
+                    // @ts-ignore
+                    pessoa: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        cliente: {
+          include: {
+            pessoa_fisica: { include: {
+// @ts-ignore
+pessoa: true } },
+            pessoa_juridica: { include: {
+// @ts-ignore
+pessoa: true } }
+          }
+        }
+      }
+    });
+  }
 }

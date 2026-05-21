@@ -167,9 +167,9 @@ export const VeiculoForm = memo(
         const payload = {
           id_cliente: finalClientId,
           placa: normalizePlate(placa),
-          marca,
-          modelo,
-          cor,
+          marca: marca.toUpperCase(),
+          modelo: modelo.toUpperCase(),
+          cor: cor.toUpperCase(),
           ano_fabricacao: anoFabricacao || null,
           ano_modelo: anoModelo,
           combustivel,
@@ -338,7 +338,7 @@ export const VeiculoForm = memo(
                 label="Marca *"
                 value={marca}
                 onChange={setMarca}
-                fetchSuggestions={(q) => VeiculoService.getDistinct('marca', q)}
+                fetchSuggestions={(q) => VeiculoService.buscarMarcas(q)}
                 required
               />
             </div>
@@ -347,7 +347,7 @@ export const VeiculoForm = memo(
                 label="Modelo *"
                 value={modelo}
                 onChange={setModelo}
-                fetchSuggestions={(q) => VeiculoService.getDistinct('modelo', q)}
+                fetchSuggestions={(q) => VeiculoService.buscarModelos(q)}
                 required
               />
             </div>
@@ -356,7 +356,7 @@ export const VeiculoForm = memo(
                 label="Cor *"
                 value={cor}
                 onChange={setCor}
-                fetchSuggestions={(q) => VeiculoService.getDistinct('cor', q)}
+                fetchSuggestions={(q) => VeiculoService.buscarCores(q)}
                 required
                 placeholder="Ex: PRATA, BRANCO..."
               />

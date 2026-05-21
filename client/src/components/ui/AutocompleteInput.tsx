@@ -21,7 +21,13 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const handleSearch = async (query: string) => {
     if (query.length < 1) {
@@ -105,28 +111,34 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
       {/* SEARCH RESULTS DROPDOWN */}
       {suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-white border border-neutral-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2 ring-4 ring-black/5">
+        <ul role="listbox" className="absolute z-50 w-full mt-2 bg-white border border-neutral-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2 ring-4 ring-black/5 list-none p-0">
           {suggestions.map((s, idx) => (
-            <button
+            <li
               key={`${s}-${idx}`}
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                handleSelect(s);
-              }}
-              className={`w-full text-left p-3 text-sm font-bold border-b border-neutral-50 flex justify-between items-center group/item transition-colors search-result-item ${
-                idx === highlightIndex
-                  ? "bg-blue-50 ring-1 ring-inset ring-blue-100 z-10 text-blue-700"
-                  : "hover:bg-neutral-50 text-neutral-700 hover:text-blue-600"
-              }`}
+              role="option"
+              aria-selected={idx === highlightIndex}
+              className="list-none"
             >
-              <span>{s}</span>
-            </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSelect(s);
+                }}
+                className={`w-full text-left p-3 text-sm font-bold border-b border-neutral-50 flex justify-between items-center group/item transition-colors search-result-item ${
+                  idx === highlightIndex
+                    ? "bg-blue-50 ring-1 ring-inset ring-blue-100 z-10 text-blue-700"
+                    : "hover:bg-neutral-50 text-neutral-700 hover:text-blue-600"
+                }`}
+              >
+                <span>{s}</span>
+              </button>
+            </li>
           ))}
-          <div className="p-2 text-xs text-center text-neutral-400 bg-neutral-50 border-t border-neutral-100 uppercase font-black tracking-widest">
+          <li className="p-2 text-xs text-center text-neutral-400 bg-neutral-50 border-t border-neutral-100 uppercase font-black tracking-widest list-none">
             Use as setas para navegar e Enter para selecionar
-          </div>
-        </div>
+          </li>
+        </ul>
       )}
     </div>
   );

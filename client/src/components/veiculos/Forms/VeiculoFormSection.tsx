@@ -15,8 +15,9 @@ import {
   forwardRef,
   useEffect,
 } from "react";
-import { Hash, Palette, Calendar } from "lucide-react";
-import { Input } from "../../ui";
+import { Hash, Calendar } from "lucide-react";
+import { Input, AutocompleteInput } from "../../ui";
+import { VeiculoService } from "../../../services/veiculo.service";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,10 +79,10 @@ export const VeiculoFormSection = memo(
         ref,
         () => ({
           getData: () => ({
-            placa,
-            marca,
-            modelo,
-            cor,
+            placa: placa.toUpperCase(),
+            marca: marca.toUpperCase(),
+            modelo: modelo.toUpperCase(),
+            cor: cor.toUpperCase(),
             anoFabricacao,
             anoModelo,
             combustivel,
@@ -116,13 +117,15 @@ export const VeiculoFormSection = memo(
             </div>
 
             {/* Marca */}
-            <Input
-              label="Marca *"
-              value={marca}
-              onChange={(e) => setMarca(e.target.value)}
-              required={!!placa}
-              className="bg-neutral-25"
-            />
+            <div className="relative">
+              <AutocompleteInput
+                label="Marca *"
+                value={marca}
+                onChange={setMarca}
+                fetchSuggestions={(q) => VeiculoService.buscarMarcas(q)}
+                required={!!placa}
+              />
+            </div>
 
             {/* Chassi */}
             <div className="col-span-2">
@@ -135,25 +138,27 @@ export const VeiculoFormSection = memo(
             </div>
 
             {/* Modelo */}
-            <div className="col-span-2">
-              <Input
+            <div className="col-span-2 relative">
+              <AutocompleteInput
                 label="Modelo *"
                 value={modelo}
-                onChange={(e) => setModelo(e.target.value)}
+                onChange={setModelo}
+                fetchSuggestions={(q) => VeiculoService.buscarModelos(q)}
                 required={!!placa}
-                className="bg-neutral-25"
               />
             </div>
 
             {/* Cor */}
-            <Input
-              label="Cor *"
-              icon={Palette}
-              value={cor}
-              onChange={(e) => setCor(e.target.value)}
-              required={!!placa}
-              className="bg-neutral-25"
-            />
+            <div className="relative">
+              <AutocompleteInput
+                label="Cor *"
+                value={cor}
+                onChange={setCor}
+                fetchSuggestions={(q) => VeiculoService.buscarCores(q)}
+                required={!!placa}
+                placeholder="Ex: PRATA, BRANCO..."
+              />
+            </div>
 
             {/* Ano Fabricação + Ano Modelo lado a lado */}
             <div className="grid grid-cols-2 gap-2">
