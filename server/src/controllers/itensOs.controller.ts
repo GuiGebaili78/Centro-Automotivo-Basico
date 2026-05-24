@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ItensOsRepository } from '../repositories/itensOs.repository.js';
 import { PagamentoPecaRepository } from '../repositories/pagamentoPeca.repository.js';
+import { prisma } from '../prisma.js';
 
 const repository = new ItensOsRepository();
 const pagamentoRepository = new PagamentoPecaRepository();
@@ -18,14 +19,27 @@ export class ItensOsController {
 
       const item = await repository.create(itemData);
       
-      if (id_fornecedor) {
-          await pagamentoRepository.create({
-              item_os: { connect: { id_iten: item.id_iten } },
-              fornecedor: { connect: { id_pessoa: Number(id_fornecedor) } },
-              custo_real: custo_real ? Number(custo_real) : 0,
-              data_compra: new Date(),
-              pago_ao_fornecedor: false
-          });
+      // Se for uma peça externa (não vinda do estoque e não interna), cria registro de PagamentoPeca imediatamente
+      if (!itemData.id_pecas_estoque && !itemData.is_interno) {
+          let supplierId = id_fornecedor ? Number(id_fornecedor) : null;
+          if (!supplierId) {
+              const defaultSupplier = await prisma.pessoa.findFirst({
+                  where: { is_fornecedor: true }
+              });
+              if (defaultSupplier) {
+                  supplierId = defaultSupplier.id_pessoa;
+              }
+          }
+          
+          if (supplierId) {
+              await pagamentoRepository.create({
+                  item_os: { connect: { id_iten: item.id_iten } },
+                  fornecedor: { connect: { id_pessoa: supplierId } },
+                  custo_real: custo_real ? Number(custo_real) : 0,
+                  data_compra: new Date(),
+                  pago_ao_fornecedor: false
+              });
+          }
       }
 
       res.status(201).json(item);
