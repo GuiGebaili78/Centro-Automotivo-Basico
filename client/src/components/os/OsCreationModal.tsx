@@ -10,6 +10,7 @@ interface OsCreationModalProps {
   onSelect: (status: OsStatus) => void;
   clientName?: string;
   vehicleName?: string;
+  isLoading?: boolean;
 }
 
 export const OsCreationModal = memo(
@@ -19,6 +20,7 @@ export const OsCreationModal = memo(
     onSelect,
     clientName,
     vehicleName,
+    isLoading = false,
   }: OsCreationModalProps) => {
     if (!isOpen) return null;
 
@@ -62,7 +64,8 @@ export const OsCreationModal = memo(
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={handleSchedule}
-              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-purple-500 hover:bg-purple-50 transition-all group text-center"
+              disabled={isLoading}
+              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-purple-500 hover:bg-purple-50 transition-all group text-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="p-4 bg-purple-100 text-purple-600 rounded-full group-hover:scale-110 transition-transform">
                 <Calendar size={32} />
@@ -79,7 +82,8 @@ export const OsCreationModal = memo(
 
             <button
               onClick={() => onSelect(OsStatus.ORCAMENTO)}
-              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-amber-500 hover:bg-amber-50 transition-all group text-center"
+              disabled={isLoading}
+              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-amber-500 hover:bg-amber-50 transition-all group text-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="p-4 bg-amber-100 text-amber-600 rounded-full group-hover:scale-110 transition-transform">
                 <FileText size={32} />
@@ -96,7 +100,8 @@ export const OsCreationModal = memo(
 
             <button
               onClick={() => onSelect(OsStatus.ABERTA)}
-              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-blue-500 hover:bg-blue-50 transition-all group text-center"
+              disabled={isLoading}
+              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-blue-500 hover:bg-blue-50 transition-all group text-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="p-4 bg-blue-100 text-blue-600 rounded-full group-hover:scale-110 transition-transform">
                 <Wrench size={32} />

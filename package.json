@@ -9,7 +9,8 @@
     "db:migrate": "docker compose exec api npx prisma migrate dev",
     "db:push": "docker compose exec api npx prisma db push",
     "db:studio": "docker compose exec api npx prisma studio",
-    "generate:context": "powershell -ExecutionPolicy Bypass -File ./generate_context.ps1"
+    "generate:context": "powershell -ExecutionPolicy Bypass -File ./generate_context.ps1",
+    "generate:context:arquitetura": "powershell -ExecutionPolicy Bypass -File ./generate_context_arquitetura.ps1"
   },
   "keywords": [],
   "author": "",

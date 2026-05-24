@@ -1,53 +1,110 @@
-import { useState, useEffect, useRef } from "react";
-import { Search, User, Car, Plus, Loader2 } from "lucide-react";
+/**
+ * UnifiedSearch
+ *
+ * Campo de busca dinâmica da Dashboard (Monitor).
+ * Busca por: nome do cliente, telefone, placa, modelo de veículo,
+ * nome da peça/equipamento e fabricante.
+ *
+ * Suporta navegação por teclado: ↑↓ para mover, Enter para selecionar, ESC para fechar.
+ */
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Search, User, Car, Wrench, Plus, Loader2, X } from "lucide-react";
 import { api } from "../../services/api";
 import { Button } from "../ui";
 
-interface SearchResult {
-  type: "cliente_veiculo";
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type SearchResultType = "veiculo" | "equipamento" | "cliente";
+
+export interface SearchResult {
+  type: SearchResultType;
   display: string;
   subtext: string;
   id_cliente: number;
   id_veiculo?: number;
+  id_equipamento?: number;
+  /** Exibida no badge direito para veículos. */
   placa?: string;
 }
 
 interface UnifiedSearchProps {
   onSelect: (result: SearchResult) => void;
   onNewRecord: () => void;
+  placeholder?: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function normalize(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function clientDisplayName(c: any): string {
+  return (
+    c.pessoa_fisica?.pessoa?.nome ||
+    c.pessoa_juridica?.nome_fantasia ||
+    c.pessoa_juridica?.razao_social ||
+    "Cliente"
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const UnifiedSearch = ({
   onSelect,
   onNewRecord,
+  placeholder = "Buscar por cliente, placa, modelo ou peça avulsa...",
 }: UnifiedSearchProps) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounce logic or direct effect?
-  // User asked for "letra por letra", so maybe fast debounce or direct.
-  // Given local data might be used in Dashboard, but here let's assume we might need API or local filtering.
-  // The plan said "frontend filter initially".
-
+  // ── Fechar ao clicar fora ──
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(event.target as Node)
-      ) {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleSearch = async (val: string) => {
+  // ── Scroll automático do item ativo ──
+  useEffect(() => {
+    if (activeIndex < 0 || !listRef.current) return;
+    const items = listRef.current.querySelectorAll("li[data-selectable]");
+    (items[activeIndex] as HTMLElement)?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
+
+  // ── Reset do activeIndex quando a lista muda ──
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [results]);
+
+  // ── Busca com debounce 250ms ──
+  const handleSearch = useCallback((val: string) => {
     setQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
     if (val.length < 2) {
       setResults([]);
       setIsOpen(false);
@@ -57,169 +114,298 @@ export const UnifiedSearch = ({
     setLoading(true);
     setIsOpen(true);
 
-    try {
-      // Fetching all relevant data to filter locally or using a search endpoint if available.
-      // For performance, ideally this matches the "fetchData" in dashboard, checking if we can reuse or just fetch search.
-      // Let's emulate a search endpoint behavior by filtering 'clients' and 'vehicles' endpoints if optimized,
-      // or using a specific endpoint if one existed.
-      // User context: "procurar dinamicamente por clientes e veículos".
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const [clientsRes, equipsRes] = await Promise.all([
+          api.get("/cliente"),
+          api.get("/equipamento"),
+        ]);
+        const allClients = clientsRes.data;
+        const allEquipamentos = equipsRes.data;
+        
+        const q = normalize(val);
+        const matches: SearchResult[] = [];
 
-      // Let's assume we fetch all for now as per plan, or use a smart search.
-      // Since we don't have a dedicated /search endpoint in the summary, let's call existing ones in parallel?
-      // Or maybe the dashboard already has them?
-      // To be self-contained, let's fetch here or better, receive data as props?
-      // Receiving data as props might be better if Dashboard already loads them.
-      // But Dashboard loads 'OS', 'Contas', etc. It doesn't seem to load ALL clients/vehicles.
-      // So we should fetch here.
+        // 1. Index and match clients & vehicles
+        allClients.forEach((c: any) => {
+          const name = normalize(clientDisplayName(c));
+          const phones = normalize(
+            [c.telefone_1, c.telefone_2].filter(Boolean).join(" ")
+          );
+          const matchesClient = name.includes(q) || phones.includes(q);
 
-      const response = await api.get(`/cliente`); // Assuming this returns list.
-      // Note: If list is huge, this is bad. But maintaining context constraint: "search letter by letter".
+          // ── Veículos ──
+          if (c.veiculos && c.veiculos.length > 0) {
+            c.veiculos.forEach((v: any) => {
+              const plate = normalize(v.placa || "");
+              const model = normalize(v.modelo || "");
+              const brand = normalize(v.marca || "");
 
-      // OPTIMIZATION: In a real app we'd search server-side.
-      // I'll simulate server-side search by fetching and filtering here for MVP as per plan.
+              if (
+                matchesClient ||
+                plate.includes(q) ||
+                model.includes(q) ||
+                brand.includes(q)
+              ) {
+                matches.push({
+                  type: "veiculo",
+                  display: `${clientDisplayName(c)} — ${v.modelo || "Modelo N/I"}`,
+                  subtext: [v.placa, v.cor, v.marca, v.ano_modelo]
+                    .filter(Boolean)
+                    .join(" • "),
+                  id_cliente: c.id_cliente,
+                  id_veiculo: v.id_veiculo,
+                  placa: v.placa,
+                });
+              }
+            });
+          }
 
-      const allClients = response.data;
-
-      const normalizedQuery = val.toLowerCase();
-
-      const matches: SearchResult[] = [];
-
-      allClients.forEach((c: any) => {
-        const clientName = (
-          c.pessoa_fisica?.pessoa?.nome ||
-          c.pessoa_juridica?.nome_fantasia ||
-          ""
-        ).toLowerCase();
-        const phones = [c.telefone_1, c.telefone_2]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        // Check Vehicles
-        if (c.veiculos && c.veiculos.length > 0) {
-          c.veiculos.forEach((v: any) => {
-            const plate = (v.placa || "").toLowerCase();
-            const model = (v.modelo || "").toLowerCase();
-
-            if (
-              clientName.includes(normalizedQuery) ||
-              plate.includes(normalizedQuery) ||
-              model.includes(normalizedQuery) ||
-              phones.includes(normalizedQuery)
-            ) {
-              matches.push({
-                type: "cliente_veiculo",
-                display: `${c.pessoa_fisica?.pessoa?.nome || c.pessoa_juridica?.nome_fantasia} - ${v.modelo}`,
-                subtext: `${v.placa} • ${v.cor || ""} • ${v.marca || ""}`,
-                id_cliente: c.id_cliente,
-                id_veiculo: v.id_veiculo,
-                placa: v.placa,
-              });
-            }
-          });
-        } else {
-          // Client without vehicle
+          // ── Cliente sem veículo — mas que bate no nome/tel ──
           if (
-            clientName.includes(normalizedQuery) ||
-            phones.includes(normalizedQuery)
+            matchesClient &&
+            (!c.veiculos || c.veiculos.length === 0)
           ) {
             matches.push({
-              type: "cliente_veiculo",
-              display:
-                c.pessoa_fisica?.pessoa?.nome ||
-                c.pessoa_juridica?.nome_fantasia,
-              subtext: "Sem veículo cadastrado",
+              type: "cliente",
+              display: clientDisplayName(c),
+              subtext: c.telefone_1 || "Sem contato cadastrado",
               id_cliente: c.id_cliente,
             });
           }
-        }
-      });
+        });
 
-      setResults(matches.slice(0, 10)); // Limit 10
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+        // 2. Index and match pieces avulsas (equipamentos) from /equipamento
+        if (allEquipamentos && allEquipamentos.length > 0) {
+          allEquipamentos.forEach((eq: any) => {
+            const nomePeca = normalize(eq.nome_peca || "");
+            const fabricante = normalize(eq.fabricante || "");
+            const numeracao = normalize(eq.numeracao || "");
+
+            // Fetch owner details
+            const owner = eq.cliente;
+            const ownerName = owner ? clientDisplayName(owner) : "Cliente";
+            const matchesOwner = normalize(ownerName).includes(q);
+
+            if (
+              matchesOwner ||
+              nomePeca.includes(q) ||
+              fabricante.includes(q) ||
+              numeracao.includes(q)
+            ) {
+              matches.push({
+                type: "equipamento",
+                display: `${ownerName} — ${eq.nome_peca}`,
+                subtext: [eq.fabricante, eq.numeracao]
+                  .filter(Boolean)
+                  .join(" • ") || "Peça avulsa",
+                id_cliente: eq.id_cliente,
+                id_equipamento: eq.id_equipamento,
+              });
+            }
+          });
+        }
+
+        setResults(matches.slice(0, 12));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+  }, []);
+
+  // ── Seleciona o item ativo ou o resultado clicado ──
+  const selectResult = useCallback(
+    (result: SearchResult) => {
+      onSelect(result);
+      setIsOpen(false);
+      setQuery("");
+      setResults([]);
+      setActiveIndex(-1);
+    },
+    [onSelect]
+  );
+
+  // ── Navegação por teclado ──
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen || results.length === 0) {
+      if (e.key === "Escape") {
+        setQuery("");
+        setIsOpen(false);
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setActiveIndex((prev) => (prev + 1 >= results.length ? 0 : prev + 1));
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setActiveIndex((prev) =>
+          prev - 1 < 0 ? results.length - 1 : prev - 1
+        );
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (activeIndex >= 0) {
+          selectResult(results[activeIndex]);
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        setIsOpen(false);
+        setQuery("");
+        setResults([]);
+        break;
     }
   };
 
+  // ── Ícone e cor por tipo de resultado ──
+  const typeConfig: Record<
+    SearchResultType,
+    { icon: React.ReactNode; bg: string; text: string; badge: string }
+  > = {
+    veiculo: {
+      icon: <Car size={17} />,
+      bg: "bg-blue-100",
+      text: "text-blue-600",
+      badge: "Veículo",
+    },
+    equipamento: {
+      icon: <Wrench size={17} />,
+      bg: "bg-amber-100",
+      text: "text-amber-600",
+      badge: "Peça",
+    },
+    cliente: {
+      icon: <User size={17} />,
+      bg: "bg-emerald-100",
+      text: "text-emerald-600",
+      badge: "Cliente",
+    },
+  };
+
   return (
-    <div ref={wrapperRef} className="relative w-full z-50">
+    <div ref={wrapperRef} className="relative w-full">
+      {/* ── Input ── */}
       <div className="relative group">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-primary-500 transition-colors">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-primary-500 transition-colors">
           {loading ? (
-            <Loader2 size={20} className="animate-spin" />
+            <Loader2 size={19} className="animate-spin" />
           ) : (
-            <Search size={20} />
+            <Search size={19} />
           )}
         </div>
+
         <input
           ref={inputRef}
           type="text"
-          className="block w-full pl-10 pr-16 h-[44px] border-2 border-neutral-200 rounded-xl bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-semibold text-neutral-800 text-base disabled:opacity-50"
-          placeholder="Buscar por cliente, placa ou modelo..."
+          className="block w-full pl-10 pr-20 h-[44px] border-2 border-neutral-200 rounded-xl bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-semibold text-neutral-800 text-sm"
+          placeholder={placeholder}
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
-          onFocus={() => {
-            if (query.length >= 2) setIsOpen(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') { setIsOpen(false); setQuery(""); }
-          }}
+          onFocus={() => { if (query.length >= 2) setIsOpen(true); }}
+          onKeyDown={handleKeyDown}
           autoComplete="off"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            activeIndex >= 0 ? `search-option-${activeIndex}` : undefined
+          }
         />
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center gap-1.5">
           {query && (
-            <button onClick={() => { setQuery(""); setIsOpen(false); }} className="text-neutral-400 hover:text-neutral-600 transition-colors mr-2">
-              <span className="text-lg leading-none">×</span>
+            <button
+              onClick={() => {
+                setQuery("");
+                setIsOpen(false);
+                setResults([]);
+                setActiveIndex(-1);
+                inputRef.current?.focus();
+              }}
+              className="text-neutral-400 hover:text-neutral-600 transition-colors"
+              aria-label="Limpar busca"
+            >
+              <X size={15} />
             </button>
           )}
-          <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-xs font-bold text-neutral-400">
+          <kbd className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-[10px] font-bold text-neutral-400 tracking-wide">
             ESC
           </kbd>
         </div>
       </div>
 
+      {/* ── Dropdown de resultados ── */}
       {isOpen && (
         <div className="absolute mt-2 w-full bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.15)] border border-neutral-200 overflow-hidden max-h-[420px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150 z-50">
           {results.length > 0 ? (
             <>
-              <div className="px-4 py-2 bg-neutral-50 border-b border-neutral-100">
-                <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">
-                  {results.length} resultado{results.length !== 1 ? 's' : ''} encontrado{results.length !== 1 ? 's' : ''}
+              {/* Cabeçalho com contagem */}
+              <div className="px-4 py-2 bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
+                <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">
+                  {results.length} resultado{results.length !== 1 ? "s" : ""} encontrado{results.length !== 1 ? "s" : ""}
+                </p>
+                <p className="text-[10px] text-neutral-400 font-medium hidden sm:block">
+                  ↑↓ navegar · Enter selecionar
                 </p>
               </div>
-              <ul>
-                {results.map((result, idx) => (
-                  <li
-                    key={`${result.id_cliente}-${result.id_veiculo || "nv"}-${idx}`}
-                    className="px-4 py-3.5 hover:bg-primary-50 cursor-pointer border-b border-neutral-100 last:border-0 transition-colors group"
-                    onClick={() => {
-                      onSelect(result);
-                      setIsOpen(false);
-                      setQuery("");
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl shrink-0 ${result.placa ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                        {result.placa ? <Car size={18} /> : <User size={18} />}
+
+              <ul ref={listRef} role="listbox">
+                {results.map((result, idx) => {
+                  const cfg = typeConfig[result.type];
+                  const isActive = idx === activeIndex;
+                  return (
+                    <li
+                      id={`search-option-${idx}`}
+                      key={`${result.id_cliente}-${result.id_veiculo ?? ""}-${result.id_equipamento ?? ""}-${idx}`}
+                      data-selectable
+                      role="option"
+                      aria-selected={isActive}
+                      className={`px-4 py-3 border-b border-neutral-100 last:border-0 cursor-pointer transition-colors group
+                        ${isActive ? "bg-primary-50" : "hover:bg-primary-50"}`}
+                      onClick={() => selectResult(result)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`p-2 rounded-xl shrink-0 transition-transform ${cfg.bg} ${cfg.text}
+                            ${isActive ? "scale-110" : "group-hover:scale-105"}`}
+                        >
+                          {cfg.icon}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`font-bold text-sm truncate transition-colors
+                              ${isActive ? "text-primary-700" : "text-neutral-900 group-hover:text-primary-700"}`}
+                          >
+                            {result.display}
+                          </p>
+                          <p className="text-xs text-neutral-500 mt-0.5 font-medium truncate">
+                            {result.subtext}
+                          </p>
+                        </div>
+
+                        <div className="shrink-0 flex items-center gap-2">
+                          {result.placa && (
+                            <span className="px-1.5 py-0.5 bg-neutral-900 text-white rounded text-[10px] tracking-[0.12em] font-mono font-bold">
+                              {result.placa}
+                            </span>
+                          )}
+                          <span
+                            className={`hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide ${cfg.bg} ${cfg.text}`}
+                          >
+                            {cfg.badge}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-neutral-900 text-sm truncate group-hover:text-primary-700 transition-colors">
-                          {result.display}
-                        </p>
-                        <p className="text-xs text-neutral-500 mt-0.5 font-medium truncate">
-                          {result.subtext}
-                        </p>
-                      </div>
-                      {result.placa && (
-                        <span className="shrink-0 px-2 py-1 bg-neutral-900 text-white rounded-lg text-xs tracking-[0.15em] font-mono font-bold">
-                          {result.placa}
-                        </span>
-                      )}
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </>
           ) : loading ? (
@@ -229,8 +415,12 @@ export const UnifiedSearch = ({
             </div>
           ) : (
             <div className="p-6 text-center">
-              <p className="text-neutral-600 font-bold text-sm mb-1">Nenhum resultado encontrado</p>
-              <p className="text-xs text-neutral-400 mb-4">Tente outro termo ou cadastre um novo cliente.</p>
+              <p className="text-neutral-600 font-bold text-sm mb-1">
+                Nenhum resultado encontrado
+              </p>
+              <p className="text-xs text-neutral-400 mb-4">
+                Tente outro nome, placa ou peça — ou cadastre um novo cliente.
+              </p>
               <Button
                 variant="primary"
                 size="sm"
@@ -241,7 +431,7 @@ export const UnifiedSearch = ({
                   setIsOpen(false);
                 }}
               >
-                Cadastrar Novo Cliente/Veículo
+                Cadastrar Novo Cliente / Veículo
               </Button>
             </div>
           )}

@@ -23,8 +23,9 @@ export interface FilterOptions<T> {
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 /**
- * Recursively extracts only primitive values (string | number | boolean)
- * from an object, concatenated with a space. Avoids JSON keys and metadata.
+ * Recursively extracts primitive values (string | number | boolean)
+ * from any object, explicitly checking relations like 'equipamento',
+ * 'veiculo', and 'cliente' to guarantee they are fully indexed for search.
  */
 function extractText(val: unknown): string {
   if (val === null || val === undefined) return "";
@@ -32,9 +33,68 @@ function extractText(val: unknown): string {
   if (typeof val === "number" || typeof val === "boolean") return String(val);
   if (Array.isArray(val)) return val.map(extractText).join(" ");
   if (typeof val === "object") {
-    return Object.values(val as Record<string, unknown>)
-      .map(extractText)
-      .join(" ");
+    // Treat Date objects specifically
+    if (val instanceof Date) {
+      return val.toLocaleDateString("pt-BR");
+    }
+
+    const obj = val as Record<string, unknown>;
+
+    // Handle Decimal constructor safely
+    if (obj.constructor && obj.constructor.name === "Decimal") {
+      return String(val);
+    }
+
+    let explicitParts: string[] = [];
+
+    // Explicitly grab piece avulsa (equipamento) fields
+    if ("equipamento" in obj && obj.equipamento) {
+      const eq = obj.equipamento as any;
+      if (eq.nome_peca) explicitParts.push(eq.nome_peca);
+      if (eq.fabricante) explicitParts.push(eq.fabricante);
+      if (eq.numeracao) explicitParts.push(eq.numeracao);
+      if (eq.observacoes) explicitParts.push(eq.observacoes);
+    }
+
+    // Explicitly grab vehicle fields
+    if ("veiculo" in obj && obj.veiculo) {
+      const v = obj.veiculo as any;
+      if (v.placa) explicitParts.push(v.placa);
+      if (v.marca) explicitParts.push(v.marca);
+      if (v.modelo) explicitParts.push(v.modelo);
+      if (v.cor) explicitParts.push(v.cor);
+      if (v.ano_modelo) explicitParts.push(String(v.ano_modelo));
+    }
+
+    // Explicitly grab client fields
+    if ("cliente" in obj && obj.cliente) {
+      const c = obj.cliente as any;
+      const pfName = c.pessoa_fisica?.pessoa?.nome;
+      const pjFantasia = c.pessoa_juridica?.nome_fantasia;
+      const pjRazao = c.pessoa_juridica?.razao_social;
+      if (pfName) explicitParts.push(pfName);
+      if (pjFantasia) explicitParts.push(pjFantasia);
+      if (pjRazao) explicitParts.push(pjRazao);
+      if (c.telefone_1) explicitParts.push(c.telefone_1);
+      if (c.telefone_2) explicitParts.push(c.telefone_2);
+    }
+
+    // Recursively handle any other properties, skipping relations we handled explicitly
+    const otherParts = Object.entries(obj).map(([key, value]) => {
+      if (
+        key === "created_at" ||
+        key === "updated_at" ||
+        key === "deleted_at" ||
+        key === "cliente" ||
+        key === "veiculo" ||
+        key === "equipamento"
+      ) {
+        return "";
+      }
+      return extractText(value);
+    });
+
+    return [...explicitParts, ...otherParts].filter(Boolean).join(" ");
   }
   return "";
 }

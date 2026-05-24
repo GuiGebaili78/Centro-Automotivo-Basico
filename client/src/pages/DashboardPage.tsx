@@ -1,30 +1,42 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { PageLayout } from "../components/ui/PageLayout";
 
 import { OsStatus } from "../types/os.types";
-import { UnifiedSearch } from "../components/dashboard/UnifiedSearch";
+import { OsCreationFlowModal } from "../components/os/OsCreationFlowModal";
 import { OsCreationModal } from "../components/os/OsCreationModal";
 import { LoosePartOsModal } from "../components/os/LoosePartOsModal";
 import { DashboardCalendar } from "../components/dashboard/DashboardCalendar";
+import { UnifiedSearch, type SearchResult } from "../components/dashboard/UnifiedSearch";
 
 import { DashboardService } from "../services/dashboard.service";
+import { OsService } from "../services/os.service";
 import { DashboardMetrics } from "../components/dashboard/DashboardMetrics";
 import { RecentOsWidget } from "../components/dashboard/RecentOsWidget";
 import type { IDashboardStats } from "../types/dashboard.types";
+import { toast } from "react-toastify";
+
+interface OsTarget {
+  clientId: number;
+  vehicleId?: number;
+  equipamentoId?: number;
+}
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const [decisionModalOpen, setDecisionModalOpen] = useState(false);
+  // ── Modais ──
+  const [isOsFlowOpen, setIsOsFlowOpen] = useState(false);
+  const [isOsCreationModalOpen, setIsOsCreationModalOpen] = useState(false);
   const [isLoosePartModalOpen, setIsLoosePartModalOpen] = useState(false);
-  const [selectedSearch, setSelectedSearch] = useState<any>(null);
+  const [isCreatingOs, setIsCreatingOs] = useState(false);
 
-  const [handleNewRecord] = useState(() => () => navigate("/novo-cadastro"));
+  // Armazena o alvo (cliente + veículo/equipamento) para repassar ao OsCreationModal
+  const [osTarget, setOsTarget] = useState<OsTarget | null>(null);
 
+  // ── Dashboard data ──
   const [recentOss, setRecentOss] = useState<any[]>([]);
   const [stats, setStats] = useState<IDashboardStats>({
     osAberta: 0,
@@ -42,28 +54,12 @@ export function DashboardPage() {
   useEffect(() => {
     fetchData();
 
-    // Atualizar data/hora a cada segundo
     const timer = setInterval(() => {
       setCurrentDateTime(new Date());
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    if (location.state?.focusSearch) {
-      // Pequeno delay para garantir que o componente de busca foi renderizado
-      setTimeout(() => {
-        const input = document.querySelector(
-          "input[placeholder*='Buscar cliente, placa ou peça...']",
-        );
-        if (input) (input as HTMLElement).focus();
-      }, 100);
-
-      // Limpa o state para não focar novamente se der refresh
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location, navigate]);
 
   const fetchData = async () => {
     try {
@@ -75,28 +71,57 @@ export function DashboardPage() {
     }
   };
 
-  const handleSearchResultSelect = (result: any) => {
-    if (result.subtext === "Sem veículo cadastrado") {
-      navigate(`/cadastro/${result.id_cliente}`);
-      return;
-    }
-    setSelectedSearch(result);
-    setDecisionModalOpen(true);
+  // ── Recebe o retorno do OsCreationFlowModal e abre o OsCreationModal padrão ──
+  const handleOpenOs = (
+    clientId: number,
+    vehicleId?: number,
+    equipamentoId?: number
+  ) => {
+    setOsTarget({ clientId, vehicleId, equipamentoId });
+    setIsOsFlowOpen(false);
+    setIsOsCreationModalOpen(true);
   };
 
-  const handleOsSelect = (status: OsStatus) => {
-    if (!selectedSearch) return;
+  // ── Resultado selecionado no UnifiedSearch → abre fluxo de OS ──
+  const handleSearchSelect = (result: SearchResult) => {
+    handleOpenOs(
+      result.id_cliente,
+      result.id_veiculo,
+      result.id_equipamento
+    );
+  };
 
-    // Construct URL with all necessary params
-    const params = new URLSearchParams();
-    params.append("clientId", selectedSearch.id_cliente);
-    if (selectedSearch.id_veiculo) {
-      params.append("vehicleId", selectedSearch.id_veiculo);
+  // ── Recebe a seleção de status, cria a OS via API e navega para o detalhe ──
+  const handleOsSelect = async (status: OsStatus) => {
+    if (!osTarget) return;
+
+    setIsCreatingOs(true);
+    try {
+      const novaOs = await OsService.create({
+        id_cliente: osTarget.clientId,
+        id_veiculo: osTarget.vehicleId ?? undefined,
+        id_equipamento: osTarget.equipamentoId ?? undefined,
+        status,
+        parcelas: 1,
+        valor_total_cliente: 0,
+        valor_mao_de_obra: 0,
+      });
+
+      setIsOsCreationModalOpen(false);
+      setOsTarget(null);
+      // Navega direto para o detalhe da OS recém-criada (permanece no contexto do Monitor)
+      navigate(`/ordem-de-servico/${novaOs.id_os}`);
+      toast.success("OS criada com sucesso!");
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Erro ao criar a OS. Tente novamente.";
+      toast.error(msg);
+    } finally {
+      setIsCreatingOs(false);
     }
-    params.append("initialStatus", status);
-
-    navigate(`/ordem-de-servico?${params.toString()}`);
-    setDecisionModalOpen(false);
   };
 
   return (
@@ -119,24 +144,20 @@ export function DashboardPage() {
         </div>
       }
       actions={
-        <div className="flex-1 w-full xl:max-w-3xl mx-auto flex items-center gap-3 order-2">
-          <div className="flex-1">
+        <div className="flex items-center gap-3">
+          {/* Busca rápida ao lado dos botões */}
+          <div className="w-72">
             <UnifiedSearch
-              onSelect={handleSearchResultSelect}
-              onNewRecord={handleNewRecord}
+              onSelect={handleSearchSelect}
+              onNewRecord={() => navigate("/novo-cadastro")}
             />
           </div>
           <Button
             variant="primary"
             size="lg"
             icon={Plus}
-            className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
-            onClick={() => {
-              const input = document.querySelector(
-                "input[placeholder*='Buscar cliente, placa ou peça...']",
-              );
-              if (input) (input as HTMLElement).focus();
-            }}
+            className="h-[42px] px-5 shadow-lg shadow-primary-500/20 whitespace-nowrap"
+            onClick={() => setIsOsFlowOpen(true)}
           >
             Nova OS
           </Button>
@@ -150,12 +171,13 @@ export function DashboardPage() {
         </div>
       }
     >
-      <div className="h-[calc(100vh-170px)] flex flex-col overflow-hidden space-y-4">
-        <div className="p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700 shrink-0">
+      {/* Container sem altura fixa nem overflow interno — scroll natural do documento */}
+      <div className="flex flex-col space-y-4">
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700">
           <DashboardMetrics stats={stats} />
         </div>
 
-        <main className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0">
+        <main className="space-y-4">
           <DashboardCalendar
             items={recentOss
               .filter(
@@ -184,12 +206,24 @@ export function DashboardPage() {
         </main>
       </div>
 
+      {/* ── Modais ── */}
+      <OsCreationFlowModal
+        isOpen={isOsFlowOpen}
+        onClose={() => setIsOsFlowOpen(false)}
+        onOpenOs={handleOpenOs}
+      />
+
       <OsCreationModal
-        isOpen={decisionModalOpen}
-        onClose={() => setDecisionModalOpen(false)}
+        isOpen={isOsCreationModalOpen}
+        onClose={() => {
+          if (isCreatingOs) return; // não fecha durante a criação
+          setIsOsCreationModalOpen(false);
+          setOsTarget(null);
+        }}
         onSelect={handleOsSelect}
-        clientName={selectedSearch?.display}
-        vehicleName={selectedSearch?.subtext}
+        isLoading={isCreatingOs}
+        clientName={undefined}
+        vehicleName={undefined}
       />
 
       <LoosePartOsModal
