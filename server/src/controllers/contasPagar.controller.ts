@@ -102,3 +102,35 @@ export const deleteConta = async (req: Request, res: Response) => {
     res.status(400).json({ error: "Erro ao deletar conta" });
   }
 };
+
+export const getNfsPendentes = async (req: Request, res: Response) => {
+  try {
+    const nfs = await repository.findNfsPendentes();
+    res.json(nfs);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar notas fiscais pendentes" });
+  }
+};
+
+export const getNfSyncStatus = async (req: Request, res: Response) => {
+  try {
+    const { nf_numero } = req.params;
+    if (!nf_numero) {
+      return res.status(400).json({ error: "Número da NF é obrigatório" });
+    }
+    const status = await repository.getNfSyncStatus(nf_numero);
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar status de sincronização da NF" });
+  }
+};
+
+export const getNotasFiscaisCentral = async (req: Request, res: Response) => {
+  try {
+    const list = await repository.getNotasFiscaisCentral();
+    res.json(list);
+  } catch (error) {
+    console.error("Erro no getNotasFiscaisCentral:", error);
+    res.status(500).json({ error: "Erro ao carregar a central de notas fiscais" });
+  }
+};

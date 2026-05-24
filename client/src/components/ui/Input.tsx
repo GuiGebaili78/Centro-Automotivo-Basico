@@ -4,17 +4,21 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   icon?: React.ElementType;
+  labelClassName?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, icon: Icon, className = "", id, ...props }, ref) => {
+  ({ label, error, icon: Icon, className = "", labelClassName = "", id, ...props }, ref) => {
     const generatedId = useId();
     const inputId = id || generatedId;
 
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-gray-600">
+          <label
+            htmlFor={inputId}
+            className={`text-sm font-medium text-gray-600 ${labelClassName}`}
+          >
             {label}
           </label>
         )}

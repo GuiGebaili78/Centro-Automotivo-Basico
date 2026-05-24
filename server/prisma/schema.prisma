@@ -301,6 +301,7 @@ model PagamentoPeca {
   pago_ao_fornecedor        Boolean     @default(false)
   deleted_at                DateTime?   @db.Timestamp(6)
   id_livro_caixa            Int?
+  nf_numero                 String?     @db.VarChar(50)
   fornecedor                Pessoa      @relation(fields: [id_pessoa], references: [id_pessoa])
   item_os                   ItensOs     @relation(fields: [id_item_os], references: [id_iten])
   livro_caixa               LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
@@ -396,6 +397,10 @@ model ContasPagar {
   id_grupo_recorrencia String?   @db.VarChar(50)
   numero_parcela       Int?
   total_parcelas       Int?
+  nf_numero            String?   @db.VarChar(50)
+  nf_parcela           Int?
+  nf_total_parcelas    Int?
+  nf_boleto            String?   @db.VarChar(100)
 
   id_categoria         Int?
   categoria_financeira CategoriaFinanceira? @relation(fields: [id_categoria], references: [id_categoria])
@@ -472,6 +477,7 @@ model EntradaEstoque {
   valor_total   Decimal       @db.Decimal(10, 2)
   obs           String?       @db.VarChar(500)
   created_at    DateTime      @default(now()) @db.Timestamp(6)
+  nf_numero     String?       @db.VarChar(50)
   fornecedor    Pessoa        @relation(fields: [id_pessoa], references: [id_pessoa])
   itens         ItemEntrada[]
 

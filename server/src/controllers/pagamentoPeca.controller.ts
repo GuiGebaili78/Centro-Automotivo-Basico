@@ -6,7 +6,7 @@ const repository = new PagamentoPecaRepository();
 export class PagamentoPecaController {
   async create(req: Request, res: Response) {
     try {
-      const { id_item_os, id_pessoa, id_fornecedor, custo_real, pago_ao_fornecedor, data_compra } = req.body;
+      const { id_item_os, id_pessoa, id_fornecedor, custo_real, pago_ao_fornecedor, data_compra, nf_numero } = req.body;
       
       const parsedIdPessoa = id_pessoa !== undefined && id_pessoa !== null && id_pessoa !== "" ? id_pessoa : id_fornecedor;
       const hasValidFornecedor = parsedIdPessoa !== undefined && parsedIdPessoa !== null && parsedIdPessoa !== "" && !isNaN(Number(parsedIdPessoa)) && Number(parsedIdPessoa) > 0;
@@ -18,6 +18,7 @@ export class PagamentoPecaController {
         custo_real: Number(custo_real),
         pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
         data_compra: data_compra ? new Date(data_compra) : new Date(),
+        nf_numero: nf_numero || undefined,
       };
 
       const pagamento = await repository.create(payload as any);
@@ -62,7 +63,8 @@ export class PagamentoPecaController {
         id_pessoa,
         id_fornecedor,
         custo_real,
-        data_compra
+        data_compra,
+        nf_numero
       } = req.body;
 
       const parsedIdPessoa = id_pessoa !== undefined && id_pessoa !== null && id_pessoa !== "" ? id_pessoa : id_fornecedor;
@@ -82,6 +84,7 @@ export class PagamentoPecaController {
           if (parsedIdPessoa !== undefined) payload.id_pessoa = fornecedorId;
           if (custo_real !== undefined) payload.custo_real = Number(custo_real);
           if (data_compra !== undefined) payload.data_compra = new Date(data_compra);
+          if (nf_numero !== undefined) payload.nf_numero = nf_numero || null;
 
           const p = await repository.update(id, payload);
           return res.json(p);
@@ -115,6 +118,7 @@ export class PagamentoPecaController {
       if (parsedIdPessoa !== undefined) payload.id_pessoa = fornecedorId;
       if (custo_real !== undefined) payload.custo_real = Number(custo_real);
       if (data_compra !== undefined) payload.data_compra = new Date(data_compra);
+      if (nf_numero !== undefined) payload.nf_numero = nf_numero || null;
 
       const pagamento = await repository.update(id, payload);
       res.json(pagamento);

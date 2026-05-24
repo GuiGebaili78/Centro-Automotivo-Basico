@@ -15,7 +15,11 @@ export class PecasEstoqueController {
 
   async createEntry(req: Request, res: Response) {
     try {
-        const entry = await repository.createEntry(req.body);
+        const payload = req.body;
+        if (payload && typeof payload.nf_numero === 'string') {
+          payload.nf_numero = payload.nf_numero.trim() || null;
+        }
+        const entry = await repository.createEntry(payload);
         res.status(201).json(entry);
     } catch (error) {
         console.error(error);

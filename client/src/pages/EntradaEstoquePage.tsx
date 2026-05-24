@@ -6,6 +6,7 @@ import { EntradaFornecedorForm } from "../components/estoque/EntradaFornecedorFo
 import { EntradaItensForm } from "../components/estoque/EntradaItensForm";
 import { api } from "../services/api";
 import { EstoqueService } from "../services/estoque.service";
+import { FinanceiroService } from "../services/financeiro.service";
 import type {
   IItemEntrada,
   IEntradaEstoquePayload,
@@ -20,6 +21,8 @@ export const EntradaEstoquePage = () => {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [obs, setObs] = useState("");
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
+  const [nfsPendentes, setNfsPendentes] = useState<any[]>([]);
+  const [nfNumero, setNfNumero] = useState("");
 
   // Items State
   const [items, setItems] = useState<IItemEntrada[]>([]);
@@ -33,9 +36,10 @@ export const EntradaEstoquePage = () => {
   const [finPaid, setFinPaid] = useState(false);
   const [finPayDate, setFinPayDate] = useState("");
 
-  // Load Suppliers
+  // Load Suppliers & Pending NFs
   useEffect(() => {
     loadSuppliers();
+    loadNfsPendentes();
   }, []);
 
   const loadSuppliers = () => {
@@ -43,6 +47,15 @@ export const EntradaEstoquePage = () => {
       .get("/fornecedor")
       .then((res) => setSuppliers(res.data))
       .catch(console.error);
+  };
+
+  const loadNfsPendentes = async () => {
+    try {
+      const data = await FinanceiroService.getNfsPendentes();
+      setNfsPendentes(data || []);
+    } catch (e) {
+      console.error("Erro ao carregar NFs pendentes:", e);
+    }
   };
 
   const totalValue = items.reduce(
@@ -84,6 +97,7 @@ export const EntradaEstoquePage = () => {
         data_compra: new Date(date),
         obs: obs,
         itens: items,
+        nf_numero: nfNumero.trim() || null,
         financeiro: enableFinancial
           ? {
               descricao: finDesc,
@@ -104,6 +118,9 @@ export const EntradaEstoquePage = () => {
       setItems([]);
       setInvoice("");
       setObs("");
+      setNfNumero("");
+      // Reload pending NFs
+      loadNfsPendentes();
     } catch (e: any) {
       console.error(e);
       toast.error(
@@ -127,6 +144,9 @@ export const EntradaEstoquePage = () => {
           date={date}
           setDate={setDate}
           onNewSupplier={() => setShowNewSupplierModal(true)}
+          nfsPendentes={nfsPendentes}
+          nfNumero={nfNumero}
+          setNfNumero={setNfNumero}
         />
 
         <EntradaItensForm

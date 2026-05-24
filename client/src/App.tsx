@@ -28,6 +28,7 @@ import { FornecedorPage } from "./pages/FornecedorPage";
 import { PagamentoPecaPage } from "./pages/PagamentoPecaPage";
 import { LivroCaixaPage } from "./pages/LivroCaixaPage";
 import { ContasAPagarPage } from "./pages/ContasAPagarPage";
+import { NotasFiscaisPage } from "./pages/NotasFiscaisPage";
 import { SearchClientePage } from "./pages/SearchClientePage";
 import { SearchVeiculoPage } from "./pages/SearchVeiculoPage";
 import { NovoPagamentoPage } from "./pages/NovoPagamentoPage";
@@ -101,6 +102,10 @@ const router = createBrowserRouter(
           <Route
             path="/financeiro/contas-pagar"
             element={<ContasAPagarPage />}
+          />
+          <Route
+            path="/financeiro/notas-fiscais"
+            element={<NotasFiscaisPage />}
           />
           <Route path="/financeiro/relatorios" element={<RelatoriosPage />} />
           <Route

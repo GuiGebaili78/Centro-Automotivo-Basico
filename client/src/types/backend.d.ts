@@ -321,6 +321,12 @@ export interface IContasPagar {
   numero_parcela?: number | null;
   total_parcelas?: number | null;
 
+  // Novos campos de Nota Fiscal (FASE 2)
+  nf_numero?: string | null;
+  nf_parcela?: number | null;
+  nf_total_parcelas?: number | null;
+  nf_boleto?: string | null;
+
   obs?: string | null;
   dt_cadastro: string;
 }

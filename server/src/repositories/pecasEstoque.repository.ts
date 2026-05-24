@@ -68,10 +68,12 @@ export class PecasEstoqueRepository {
   }
 
   async createEntry(data: {
-    id_pessoa: number;
+    id_pessoa?: number;
+    id_fornecedor?: number;
     nota_fiscal?: string;
     data_compra?: Date;
     obs?: string;
+    nf_numero?: string | null;
     itens: {
       id_pecas_estoque?: number;
       new_part_data?: any; // Name, Description, etc.
@@ -83,11 +85,17 @@ export class PecasEstoqueRepository {
       obs?: string;
     }[];
   }) {
+    const idPessoa = Number(data.id_pessoa || data.id_fornecedor);
+    if (!idPessoa || isNaN(idPessoa)) {
+      throw new Error("Fornecedor (id_pessoa ou id_fornecedor) é obrigatório.");
+    }
+    const nfNumeroNormalized = data.nf_numero ? data.nf_numero.trim() || null : null;
+
     return await prisma.$transaction(async (tx) => {
       // 1. Create Entry Header
       const entrada = await tx.entradaEstoque.create({
         data: {
-          id_pessoa: data.id_pessoa,
+          id_pessoa: idPessoa,
           nota_fiscal: data.nota_fiscal || null,
           data_compra: data.data_compra || new Date(),
           valor_total: data.itens.reduce(
@@ -95,6 +103,7 @@ export class PecasEstoqueRepository {
             0,
           ),
           obs: data.obs || null,
+          nf_numero: nfNumeroNormalized,
         },
       });
 
@@ -168,6 +177,7 @@ export class PecasEstoqueRepository {
             status: fin.status,
             categoria: "PEÇAS",
             obs: `Ref. Entrada Estoque #${entrada.id_entrada}`,
+            nf_numero: nfNumeroNormalized,
           },
         });
 

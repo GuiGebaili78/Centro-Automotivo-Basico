@@ -84,4 +84,11 @@ export interface IContaPagar {
   id_recorrencia?: number;
   parcela_atual?: number;
   total_parcelas?: number;
+
+  // Novos campos de Nota Fiscal (FASE 2)
+  nf_numero?: string | null;
+  nf_parcela?: number | null;
+  nf_total_parcelas?: number | null;
+  nf_boleto?: string | null;
 }
+

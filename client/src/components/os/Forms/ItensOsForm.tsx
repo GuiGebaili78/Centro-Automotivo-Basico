@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { OsItemsService } from "../../../services/osItems.service";
-import { Button, Input } from "../../ui";
+import { FornecedorService } from "../../../services/fornecedor.service";
+import { Button, Input, Select } from "../../ui";
 
 interface ItensOsFormProps {
   osId: number;
@@ -22,6 +23,20 @@ export const ItensOsForm = ({
   const [quantidade, setQuantidade] = useState("1");
   const [valorVenda, setValorVenda] = useState("");
   const [valorTotal, setValorTotal] = useState("");
+
+  // Compra externa / Peça avulsa fields
+  const [fornecedores, setFornecedores] = useState<any[]>([]);
+  const [idFornecedor, setIdFornecedor] = useState("");
+  const [custoReal, setCustoReal] = useState("");
+
+  useEffect(() => {
+    // Apenas carregar fornecedores se for peça externa (ou seja, se idPecasEstoque estiver vazio)
+    if (!idPecasEstoque) {
+      FornecedorService.getAll()
+        .then((data) => setFornecedores(data || []))
+        .catch(console.error);
+    }
+  }, [idPecasEstoque]);
 
   // Auto-calculate valor_total when quantidade or valor_venda changes
   const handleQuantidadeChange = (value: string) => {
@@ -51,6 +66,8 @@ export const ItensOsForm = ({
         quantidade: Number(quantidade),
         valor_venda: Number(valorVenda),
         valor_total: Number(valorTotal),
+        id_fornecedor: !idPecasEstoque && idFornecedor ? Number(idFornecedor) : null,
+        custo_real: !idPecasEstoque && custoReal ? Number(custoReal) : null,
       };
 
       const newItem = await OsItemsService.create(payload);
@@ -77,7 +94,7 @@ export const ItensOsForm = ({
             type="number"
             value={idPecasEstoque}
             onChange={(e) => setIdPecasEstoque(e.target.value)}
-            placeholder="Deixe vazio para serviço"
+            placeholder="Deixe vazio para serviço ou compra avulsa"
           />
         </div>
 
@@ -125,6 +142,38 @@ export const ItensOsForm = ({
             readOnly
           />
         </div>
+
+        {/* Peça externa opcional */}
+        {!idPecasEstoque && (
+          <div className="col-span-2 bg-amber-50/20 border border-amber-100/50 p-4 rounded-xl space-y-4">
+            <p className="text-xs font-bold text-amber-800 uppercase tracking-widest">
+              Compra Externa / Peça Avulsa (Opcional)
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                label="Fornecedor da Peça"
+                value={idFornecedor}
+                onChange={(e) => setIdFornecedor(e.target.value)}
+              >
+                <option value="">Não definido (Informar depois)</option>
+                {fornecedores.map((f) => (
+                  <option key={f.id_fornecedor} value={f.id_fornecedor}>
+                    {String(f.nome_fantasia || f.nome || "").toUpperCase()}
+                  </option>
+                ))}
+              </Select>
+
+              <Input
+                label="Custo Real da Peça (R$)"
+                type="number"
+                step="0.01"
+                value={custoReal}
+                onChange={(e) => setCustoReal(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 pt-4">

@@ -11,6 +11,9 @@ interface EntradaFornecedorFormProps {
   date: string;
   setDate: (val: string) => void;
   onNewSupplier: () => void;
+  nfsPendentes: any[];
+  nfNumero: string;
+  setNfNumero: (val: string) => void;
 }
 
 export const EntradaFornecedorForm = ({
@@ -22,11 +25,14 @@ export const EntradaFornecedorForm = ({
   date,
   setDate,
   onNewSupplier,
+  nfsPendentes,
+  nfNumero,
+  setNfNumero,
 }: EntradaFornecedorFormProps) => {
   return (
     <Card className="p-6">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-        <div className="md:col-span-6 relative">
+        <div className="md:col-span-5 relative">
           <div className="flex justify-between items-baseline mb-1">
             <span className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
               Fornecedor
@@ -54,7 +60,7 @@ export const EntradaFornecedorForm = ({
           </Select>
         </div>
 
-        <div className="md:col-span-3">
+        <div className="md:col-span-2">
           <Input
             label="Data Compra"
             type="date"
@@ -64,7 +70,7 @@ export const EntradaFornecedorForm = ({
           />
         </div>
 
-        <div className="md:col-span-3">
+        <div className="md:col-span-2">
           <Input
             label="Nota Fiscal / Recibo"
             value={invoice}
@@ -72,6 +78,30 @@ export const EntradaFornecedorForm = ({
             placeholder="Nº NF"
             icon={FileText}
           />
+        </div>
+
+        <div className="md:col-span-3">
+          <Select
+            label="NF Sincronização (Contas a Pagar)"
+            value={nfNumero}
+            onChange={(e) => {
+              const val = e.target.value;
+              setNfNumero(val);
+              // Auto-fill invoice if empty
+              if (val && !invoice) {
+                setInvoice(val);
+              }
+            }}
+            labelClassName="text-amber-800 font-semibold"
+            className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 text-amber-900 font-medium"
+          >
+            <option value="">Sem Sincronização (Livre)</option>
+            {nfsPendentes.map((nf) => (
+              <option key={nf.nf_numero} value={nf.nf_numero}>
+                {nf.nf_numero} ({nf.credor || "Sem Credor"})
+              </option>
+            ))}
+          </Select>
         </div>
       </div>
     </Card>

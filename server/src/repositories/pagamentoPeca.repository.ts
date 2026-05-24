@@ -19,11 +19,13 @@ export class PagamentoPecaRepository {
         orderBy: { data_compra: "desc" },
         select: {
           id_pagamento_peca: true,
+          id_item_os: true,
           custo_real: true,
           data_compra: true,
           data_pagamento_fornecedor: true,
           pago_ao_fornecedor: true,
           id_livro_caixa: true,
+          nf_numero: true,
           fornecedor: {
             select: {
               id_pessoa: true,
@@ -32,8 +34,10 @@ export class PagamentoPecaRepository {
           },
           item_os: {
             select: {
+              id_iten: true,
               id_os: true,
               descricao: true,
+              codigo_referencia: true,
               dt_cadastro: true,
               ordem_de_servico: {
                 select: {

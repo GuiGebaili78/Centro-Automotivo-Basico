@@ -39,6 +39,7 @@ export interface IEntradaEstoquePayload {
   data_compra: Date;
   obs: string;
   itens: IItemEntrada[];
+  nf_numero?: string | null;
   financeiro?: {
     descricao: string;
     valor: number;

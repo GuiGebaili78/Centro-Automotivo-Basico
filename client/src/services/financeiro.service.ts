@@ -260,6 +260,27 @@ export class FinanceiroService {
     return response.data;
   }
 
+  // --- SINCRONIZAÇÃO DE NOTAS FISCAIS (FASE 2) ---
+  static async getNfsPendentes(): Promise<any[]> {
+    const response = await api.get("/contas-pagar/nfs-pendentes");
+    return response.data;
+  }
+
+  static async getNfSyncStatus(nf_numero: string): Promise<{
+    totalContasPagar: number;
+    totalEstoque: number;
+    totalPagamentoPeca: number;
+    matchPercent: number;
+  }> {
+    const response = await api.get(`/contas-pagar/nf-sync-status/${encodeURIComponent(nf_numero)}`);
+    return response.data;
+  }
+
+  static async getNotasFiscaisCentral(): Promise<any[]> {
+    const response = await api.get("/contas-pagar/notas-fiscais");
+    return response.data;
+  }
+
   // --- FECHAMENTO & CONSOLIDAÇÃO ---
   static async getFechamentos(): Promise<any[]> {
     const response = await api.get("/fechamento-financeiro");

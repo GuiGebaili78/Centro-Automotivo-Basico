@@ -129,8 +129,9 @@ export const useOsItems = (osId: string | undefined) => {
       loadItems();
       toast.success("Item removido.");
       return true;
-    } catch (e) {
-      toast.error("Erro ao remover item.");
+    } catch (e: any) {
+      const errMsg = e.response?.data?.error || e.message || "Erro ao remover item.";
+      toast.error(errMsg);
       return false;
     }
   };

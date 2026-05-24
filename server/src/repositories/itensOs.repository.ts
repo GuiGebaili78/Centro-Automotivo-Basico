@@ -78,6 +78,17 @@ export class ItensOsRepository {
     const current = await this.findById(id);
     if (!current) throw new Error('Item not found');
 
+    const hasPaidPayment = current.pagamentos_peca?.some((p) => p.pago_ao_fornecedor && !p.deleted_at);
+    if (hasPaidPayment) {
+      throw new Error("A peça já foi paga ao fornecedor. Estorne o pagamento antes de removê-la da OS.");
+    }
+
+    // Soft-delete unpaid payments associated with this item to prevent orphans
+    await prisma.pagamentoPeca.updateMany({
+      where: { id_item_os: id, pago_ao_fornecedor: false, deleted_at: null },
+      data: { deleted_at: new Date() }
+    });
+
     const updated = await prisma.itensOs.update({
       where: { id_iten: id },
       data: { deleted_at: new Date() }

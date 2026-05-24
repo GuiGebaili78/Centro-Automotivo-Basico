@@ -49,6 +49,7 @@ const menuItems = [
       { path: "/financeiro/equipe", label: "Pgto. Colaboradores" },
       { path: "/financeiro/pagamento-pecas", label: "Pgto. Auto Peças" },
       { path: "/financeiro/contas-pagar", label: "Contas a Pagar" },
+      { path: "/financeiro/notas-fiscais", label: "Central NFs 📄" },
       { path: "/financeiro/relatorios", label: "Relatórios Inteligentes ✨" },
       { path: "/fechamento-financeiro", label: "Consolidação" },
     ],

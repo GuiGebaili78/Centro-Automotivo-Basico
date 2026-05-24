@@ -40,6 +40,10 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
     url_anexo: "",
     obs: "",
     repetir_parcelas: 0,
+    nf_numero: "",
+    nf_boleto: "",
+    nf_parcela: "" as string | number,
+    nf_total_parcelas: "" as string | number,
   });
 
   useEffect(() => {
@@ -104,6 +108,10 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
         url_anexo: conta.url_anexo || "",
         obs: conta.obs || "",
         repetir_parcelas: 0,
+        nf_numero: conta.nf_numero || "",
+        nf_boleto: conta.nf_boleto || "",
+        nf_parcela: conta.nf_parcela !== null && conta.nf_parcela !== undefined ? String(conta.nf_parcela) : "",
+        nf_total_parcelas: conta.nf_total_parcelas !== null && conta.nf_total_parcelas !== undefined ? String(conta.nf_total_parcelas) : "",
       });
       setApplyToAllRecurrences(false);
     } catch (error) {
@@ -129,6 +137,10 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
       url_anexo: "",
       obs: "",
       repetir_parcelas: 0,
+      nf_numero: "",
+      nf_boleto: "",
+      nf_parcela: "",
+      nf_total_parcelas: "",
     });
     setRecurrenceInfo(null);
     setApplyToAllRecurrences(false);
@@ -154,6 +166,10 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
         dt_emissao: formData.dt_emissao
           ? new Date(formData.dt_emissao).toISOString()
           : null,
+        nf_numero: formData.nf_numero ? formData.nf_numero.trim() : null,
+        nf_boleto: formData.nf_boleto ? formData.nf_boleto.trim() : null,
+        nf_parcela: formData.nf_parcela !== "" ? Number(formData.nf_parcela) : null,
+        nf_total_parcelas: formData.nf_total_parcelas !== "" ? Number(formData.nf_total_parcelas) : null,
       };
 
       if (editingId) {
@@ -330,6 +346,65 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             }
             placeholder="https://..."
           />
+        </div>
+
+        {/* 5.1 Vínculo de Nota Fiscal (Sincronização - FASE 2) */}
+        <div className="bg-amber-50/30 border border-amber-100/70 p-5 rounded-2xl space-y-4">
+          <div className="flex items-center gap-2 border-b border-amber-100 pb-2">
+            <span className="text-sm font-bold text-amber-800 uppercase tracking-wider">
+              Vínculo de Nota Fiscal (Sincronização)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Número da NF (Sincronização Sensível)"
+              value={formData.nf_numero}
+              onChange={(e) =>
+                setFormData({ ...formData, nf_numero: e.target.value })
+              }
+              placeholder="Ex: 000.123.456"
+              labelClassName="text-amber-800 font-semibold"
+              className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 placeholder:text-amber-600/40 text-amber-900 font-medium"
+            />
+            <Input
+              label="Referência do Boleto / Identificador"
+              value={formData.nf_boleto}
+              onChange={(e) =>
+                setFormData({ ...formData, nf_boleto: e.target.value })
+              }
+              placeholder="Ex: BOL-1234"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Número da Parcela"
+              type="number"
+              min={1}
+              value={formData.nf_parcela}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  nf_parcela: e.target.value ? Number(e.target.value) : "",
+                })
+              }
+              placeholder="Ex: 1"
+            />
+            <Input
+              label="Total de Parcelas da NF"
+              type="number"
+              min={1}
+              value={formData.nf_total_parcelas}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  nf_total_parcelas: e.target.value ? Number(e.target.value) : "",
+                })
+              }
+              placeholder="Ex: 3"
+            />
+          </div>
         </div>
 
         {/* 6. Recurrence Update Option */}

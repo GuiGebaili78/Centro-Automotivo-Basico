@@ -79,6 +79,14 @@ export const EstoqueTable = ({
                   <span className="text-base text-neutral-400">
                     {dataCompra}
                   </span>
+                  {lastEntry?.nf_numero && (
+                    <span
+                      className="mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm"
+                      title={`Esta compra está vinculada à NF ${lastEntry.nf_numero}`}
+                    >
+                      NF: {lastEntry.nf_numero}
+                    </span>
+                  )}
                 </div>
               </td>
               <td className="text-left">

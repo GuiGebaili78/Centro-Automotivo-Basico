@@ -126,8 +126,8 @@ export class ItensOsController {
       const id = Number(req.params.id);
       await repository.delete(id);
       res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to delete Item OS' });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to delete Item OS' });
     }
   }
 

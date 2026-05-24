@@ -29,6 +29,7 @@ import { ModalPagamentoUnificado } from "../components/financeiro/ModalPagamento
 import { UniversalFilters } from "../components/common/UniversalFilters";
 import type { UniversalFiltersState } from "../components/common/UniversalFilters";
 import { useUniversalFilter } from "../hooks/useUniversalFilter";
+import { NfSyncBadge } from "../components/financeiro/NfSyncBadge";
 
 export const PagamentoPecaPage = () => {
   const [loading, setLoading] = useState(false);
@@ -37,6 +38,7 @@ export const PagamentoPecaPage = () => {
   const [payments, setPayments] = useState<any[]>([]);
   const [fornecedores, setFornecedores] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [nfsPendentes, setNfsPendentes] = useState<any[]>([]);
 
   // --- UNIVERSAL FILTERS ---
   const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
@@ -73,14 +75,16 @@ export const PagamentoPecaPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [paymentsData, suppliersData, accountsData] = await Promise.all([
+      const [paymentsData, suppliersData, accountsData, nfsData] = await Promise.all([
         FinanceiroService.getPagamentosPeca(),
         FornecedorService.getAll(),
         FinanceiroService.getContasBancarias(),
+        FinanceiroService.getNfsPendentes(),
       ]);
       setPayments(paymentsData || []);
       setFornecedores(suppliersData);
       setAccounts(accountsData.filter((a: any) => a.ativo));
+      setNfsPendentes(nfsData || []);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados financeiros.");
@@ -90,6 +94,8 @@ export const PagamentoPecaPage = () => {
   };
 
   const toggleSelection = (id: number) => {
+    const payment = payments.find((x) => x.id_pagamento_peca === id);
+    if (payment?.nf_numero) return; // Trava de lote: impede selecionar itens com NF
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
@@ -177,6 +183,7 @@ export const PagamentoPecaPage = () => {
           ? String(new Date(editPayment.data_pagamento_fornecedor).toISOString())
           : null,
         pago_ao_fornecedor: editPayment.pago_ao_fornecedor,
+        nf_numero: editPayment.nf_numero || null,
       });
       if (editPayment.item_os && editPayment.ref_nota) {
         await api.put(`/itens-os/${editPayment.item_os.id_iten}`, {
@@ -202,6 +209,7 @@ export const PagamentoPecaPage = () => {
         ? new Date(payment.data_pagamento_fornecedor).toISOString().split("T")[0]
         : "",
       ref_nota: payment.item_os?.codigo_referencia || "",
+      nf_numero: payment.nf_numero || "",
     });
     setShowEditModal(true);
   };
@@ -216,6 +224,7 @@ export const PagamentoPecaPage = () => {
   const pagamentosMapeados = payments.map((p) => ({
     ...p,
     id_os: p.item_os?.id_os || p.item_os?.ordem_de_servico?.id_os,
+    id_fornecedor: p.fornecedor?.id_pessoa || p.id_pessoa || p.id_fornecedor,
   }));
 
   // --- Filtered via hook ---
@@ -391,8 +400,32 @@ export const PagamentoPecaPage = () => {
                         </div>
                       </td>
                       <td className="p-5">
-                        <div className="text-base text-neutral-900 font-normal">
-                          {p.item_os?.codigo_referencia || "---"}
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="text-base text-neutral-900 font-normal">
+                            {p.item_os?.codigo_referencia || "---"}
+                          </span>
+                          {p.nf_numero && (
+                            <div className="flex flex-col gap-1 mt-1 col-span-2">
+                              {p.pago_ao_fornecedor ? (
+                                <span
+                                  className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm text-center"
+                                  title={`Este pagamento está vinculado à NF ${p.nf_numero} e já foi PAGO.`}
+                                >
+                                  NF: {p.nf_numero} (Pago)
+                                </span>
+                              ) : (
+                                <span
+                                  className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm text-center"
+                                  title={`Este pagamento está vinculado à NF ${p.nf_numero} e está PENDENTE.`}
+                                >
+                                  NF: {p.nf_numero} (Pendente)
+                                </span>
+                              )}
+                              <div className="scale-95 origin-left">
+                                <NfSyncBadge nf_numero={p.nf_numero} />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="p-5">
@@ -444,7 +477,22 @@ export const PagamentoPecaPage = () => {
                       </td>
                       <td className="p-5 text-center">
                         <div className="flex justify-center">
-                          {p.pago_ao_fornecedor ? (
+                          {p.nf_numero ? (
+                            <div className="flex flex-col items-center">
+                              {p.pago_ao_fornecedor ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm animate-in fade-in duration-300">
+                                  ✓ Pago (NF: {p.nf_numero})
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 cursor-not-allowed select-none shadow-sm animate-in fade-in duration-300"
+                                  title={`🔒 Item vinculado à NF ${p.nf_numero}. A quitação automática ocorrerá na baixa do Contas a Pagar.`}
+                                >
+                                  Aguardando NF: {p.nf_numero}
+                                </span>
+                              )}
+                            </div>
+                          ) : p.pago_ao_fornecedor ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -536,6 +584,24 @@ export const PagamentoPecaPage = () => {
                   setEditPayment({ ...editPayment, custo_real: e.target.value })
                 }
               />
+            </div>
+            <div>
+              <Select
+                label="Nota Fiscal Vinculada (Sincronização)"
+                value={editPayment.nf_numero}
+                onChange={(e) =>
+                  setEditPayment({ ...editPayment, nf_numero: e.target.value })
+                }
+                labelClassName="text-amber-800 font-semibold"
+                className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 text-amber-900 font-medium"
+              >
+                <option value="">Sem Sincronização (Livre)</option>
+                {nfsPendentes.map((nf) => (
+                  <option key={nf.nf_numero} value={nf.nf_numero}>
+                    {nf.nf_numero} ({nf.credor || "Sem Credor"})
+                  </option>
+                ))}
+              </Select>
             </div>
             <div>
               <Select

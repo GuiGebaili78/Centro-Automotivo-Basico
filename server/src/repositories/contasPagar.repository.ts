@@ -35,6 +35,12 @@ export class ContasPagarRepository {
           `${mainData.obs || ""} (Recorrência 1/${totalParcelas})`.trim();
       }
 
+      // Sincronizar campos nf_parcela e nf_total_parcelas se houver nf_numero e recorrência
+      if (grupoId && mainData.nf_numero) {
+        mainData.nf_parcela = 1;
+        mainData.nf_total_parcelas = totalParcelas;
+      }
+
       const created = await tx.contasPagar.create({ data: mainData });
       console.log("[ContasPagarRepo] Created Status:", created.status);
 
@@ -56,6 +62,30 @@ export class ContasPagarRepository {
             obs: `Referente à conta a pagar #${created.id_conta_pagar}. ${mainData.obs || ""}`,
           },
         });
+
+        // ── Passo 4: Sincronização de Notas Fiscais na Criação ──
+        if (created.nf_numero) {
+          const pendentesCount = await tx.contasPagar.count({
+            where: {
+              nf_numero: created.nf_numero,
+              status: { not: "PAGO" },
+              deleted_at: null,
+            },
+          });
+          if (pendentesCount === 0) {
+            await tx.pagamentoPeca.updateMany({
+              where: {
+                nf_numero: created.nf_numero,
+                pago_ao_fornecedor: false,
+                deleted_at: null,
+              },
+              data: {
+                pago_ao_fornecedor: true,
+                data_pagamento_fornecedor: created.dt_pagamento || new Date(),
+              },
+            });
+          }
+        }
       }
 
       // Lógica de Repetição (Novas Parcelas)
@@ -76,6 +106,12 @@ export class ContasPagarRepository {
           repData.id_grupo_recorrencia = grupoId;
           repData.numero_parcela = i + 1;
           repData.total_parcelas = totalParcelas;
+
+          // Sincronizar campos de parcelas da nota fiscal
+          if (repData.nf_numero) {
+            repData.nf_parcela = i + 1;
+            repData.nf_total_parcelas = totalParcelas;
+          }
 
           // Remover a observação antiga e adicionar a nova
           const baseObs = (mainData.obs || "")
@@ -188,6 +224,30 @@ export class ContasPagarRepository {
             where: { id_conta: id_conta_bancaria },
             data: { saldo_atual: { decrement: updated.valor } },
           });
+        }
+
+        // ── Passo 4: Sincronização de Notas Fiscais ao Pagar ──
+        if (updated.nf_numero) {
+          const pendentesCount = await tx.contasPagar.count({
+            where: {
+              nf_numero: updated.nf_numero,
+              status: { not: "PAGO" },
+              deleted_at: null,
+            },
+          });
+          if (pendentesCount === 0) {
+            await tx.pagamentoPeca.updateMany({
+              where: {
+                nf_numero: updated.nf_numero,
+                pago_ao_fornecedor: false,
+                deleted_at: null,
+              },
+              data: {
+                pago_ao_fornecedor: true,
+                data_pagamento_fornecedor: updated.dt_pagamento || new Date(),
+              },
+            });
+          }
         }
       }
 
@@ -347,10 +407,12 @@ export class ContasPagarRepository {
         delete updateData.repetir_parcelas;
         delete updateData.applyToAllRecurrences;
 
-        // Manter os campos de recorrência originais
+        // Manter os campos de recorrência e NF originais para não quebrar a ordem das parcelas da série
         delete updateData.id_grupo_recorrencia;
         delete updateData.numero_parcela;
         delete updateData.total_parcelas;
+        delete updateData.nf_parcela;
+        delete updateData.nf_total_parcelas;
 
         // Smart Date Shifting
         // If we have a delta, apply it to the original date of THIS installment
@@ -447,6 +509,184 @@ export class ContasPagarRepository {
     return prisma.contasPagar.update({
       where: { id_conta_pagar: id },
       data: { deleted_at: new Date() },
+    });
+  }
+
+  // ── Rota A: NFs Pendentes ──
+  async findNfsPendentes() {
+    return await prisma.contasPagar.findMany({
+      where: {
+        nf_numero: { not: null },
+        status: { not: "PAGO" },
+        deleted_at: null,
+      },
+      distinct: ["nf_numero"],
+      select: {
+        nf_numero: true,
+        credor: true,
+        valor: true,
+      },
+    });
+  }
+
+  // ── Rota B: Status de Sincronização da NF ──
+  async getNfSyncStatus(nfNumero: string) {
+    const contas = await prisma.contasPagar.findMany({
+      where: { nf_numero: nfNumero, deleted_at: null }
+    });
+    const somaContas = contas.reduce((acc, c) => acc + Number(c.valor), 0);
+
+    const estoque = await prisma.entradaEstoque.findMany({
+      where: { nf_numero: nfNumero }
+    });
+    const somaEstoque = estoque.reduce((acc, e) => acc + Number(e.valor_total), 0);
+
+    const pecas = await prisma.pagamentoPeca.findMany({
+      where: { nf_numero: nfNumero, deleted_at: null }
+    });
+    const somaPecas = pecas.reduce((acc, p) => acc + Number(p.custo_real), 0);
+
+    const somaRealizada = somaEstoque + somaPecas;
+
+    let percent = 0;
+    let flag = "OK";
+
+    if (somaContas > 0) {
+      percent = Number(((somaRealizada / somaContas) * 100).toFixed(2));
+      if (percent > 100) {
+        percent = 100;
+        flag = "VALOR_DIVERGENTE";
+      }
+    } else if (somaRealizada > 0) {
+      percent = 0;
+      flag = "VALOR_DIVERGENTE";
+    }
+
+    return {
+      nf_numero: nfNumero,
+      totalContasPagar: Number(somaContas.toFixed(2)),
+      totalEstoque: Number(somaEstoque.toFixed(2)),
+      totalPagamentoPeca: Number(somaPecas.toFixed(2)),
+      totalRealizado: Number(somaRealizada.toFixed(2)),
+      matchPercent: percent,
+      status: flag
+    };
+  }
+
+  // ── Rota C: Agregação da Central de Notas Fiscais (FASE 4) ──
+  async getNotasFiscaisCentral() {
+    // 1. Executa as 3 consultas de lote indexadas em paralelo
+    const [contasPagarList, entradaEstoqueList, pagamentoPecaList] = await Promise.all([
+      prisma.contasPagar.findMany({
+        where: { nf_numero: { not: null }, deleted_at: null },
+        orderBy: { dt_vencimento: "asc" }
+      }),
+      prisma.entradaEstoque.findMany({
+        where: { nf_numero: { not: null } },
+        include: { fornecedor: true }
+      }),
+      prisma.pagamentoPeca.findMany({
+        where: { nf_numero: { not: null }, deleted_at: null },
+        include: {
+          fornecedor: true,
+          item_os: {
+            include: {
+              ordem_de_servico: {
+                include: {
+                  cliente: {
+                    include: {
+                      pessoa_fisica: { include: { pessoa: true } },
+                      pessoa_juridica: { include: { pessoa: true } }
+                    }
+                  },
+                  veiculo: true
+                }
+              }
+            }
+          }
+        }
+      })
+    ]);
+
+    // 2. Agrupa em memória linear O(N)
+    const uniqueNfs = new Set<string>();
+    contasPagarList.forEach((c) => c.nf_numero && uniqueNfs.add(c.nf_numero));
+    entradaEstoqueList.forEach((e) => e.nf_numero && uniqueNfs.add(e.nf_numero));
+    pagamentoPecaList.forEach((p) => p.nf_numero && uniqueNfs.add(p.nf_numero));
+
+    return Array.from(uniqueNfs).map((nf) => {
+      const contas = contasPagarList.filter((c) => c.nf_numero === nf);
+      const estoques = entradaEstoqueList.filter((e) => e.nf_numero === nf);
+      const pecas = pagamentoPecaList.filter((p) => p.nf_numero === nf);
+
+      // Determina o Fornecedor Principal (Credor)
+      const credor =
+        contas[0]?.credor ||
+        estoques[0]?.fornecedor?.nome ||
+        (estoques[0]?.fornecedor as any)?.nome_fantasia ||
+        pecas[0]?.fornecedor?.nome ||
+        (pecas[0]?.fornecedor as any)?.nome_fantasia ||
+        "FORNECEDOR NÃO INFORMADO";
+
+      // Calcula o valor total planejado de Contas a Pagar
+      const valorTotal = contas.reduce((sum, c) => sum + Number(c.valor), 0);
+
+      // Status consolidado da NF: pago se todas as parcelas forem "PAGO"
+      const statusConsolidado =
+        contas.length > 0 && contas.every((c) => c.status === "PAGO") ? "PAGO" : "PENDENTE";
+
+      return {
+        nf_numero: nf,
+        credor: credor.toUpperCase(),
+        valor_total: Number(valorTotal.toFixed(2)),
+        status: statusConsolidado,
+        boletos: contas.map((c) => ({
+          id_conta_pagar: c.id_conta_pagar,
+          descricao: c.descricao,
+          valor: Number(c.valor),
+          dt_vencimento: c.dt_vencimento,
+          dt_pagamento: c.dt_pagamento,
+          status: c.status,
+          numero_parcela: c.numero_parcela,
+          total_parcelas: c.total_parcelas,
+          nf_parcela: c.nf_parcela,
+          nf_total_parcelas: c.nf_total_parcelas,
+          nf_boleto: c.nf_boleto,
+        })),
+        pecas_estoque: estoques.map((e) => ({
+          id_entrada_estoque: e.id_entrada,
+          nota_fiscal: e.nota_fiscal,
+          data_compra: e.data_compra,
+          valor_total: Number(e.valor_total),
+          obs: e.obs,
+          fornecedor: (e.fornecedor as any)?.nome_fantasia || e.fornecedor?.nome || "Desconhecido",
+        })),
+        pecas_os: pecas.map((p) => {
+          const os = p.item_os?.ordem_de_servico;
+          let clientName = "Cliente não cadastrado";
+
+          if (os?.cliente) {
+            if (os.cliente.tipo_pessoa === 2 && os.cliente.pessoa_juridica?.pessoa?.nome) {
+              clientName = os.cliente.pessoa_juridica.pessoa.nome;
+            } else if (os.cliente.pessoa_fisica?.pessoa?.nome) {
+              clientName = os.cliente.pessoa_fisica.pessoa.nome;
+            }
+          }
+
+          return {
+            id_pagamento_peca: p.id_pagamento_peca,
+            descricao: p.item_os?.descricao || "Peça Avulsa",
+            custo_real: Number(p.custo_real),
+            data_compra: p.data_compra,
+            pago_ao_fornecedor: p.pago_ao_fornecedor,
+            id_os: os?.id_os,
+            cliente: clientName.toUpperCase(),
+            veiculo: os?.veiculo
+              ? `${os.veiculo.modelo} (${os.veiculo.placa})`.toUpperCase()
+              : "SEM VEÍCULO",
+          };
+        }),
+      };
     });
   }
 }

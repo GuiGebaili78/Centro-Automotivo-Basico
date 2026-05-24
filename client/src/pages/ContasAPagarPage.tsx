@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import type { IContasPagar } from "../types/backend";
 import { ContaPagarModal } from "../components/financeiro/ContaPagarModal";
+import { NfSyncBadge } from "../components/financeiro/NfSyncBadge";
 
 export const ContasAPagarPage = () => {
   const [contas, setContas] = useState<IContasPagar[]>([]);
@@ -240,6 +241,7 @@ export const ContasAPagarPage = () => {
             <tr className="bg-neutral-50 border-b border-neutral-200 text-sm font-medium text-gray-600">
               <th className="p-4 text-left">Vencimento / Status</th>
               <th className="p-4 text-left">Descrição</th>
+              <th className="p-4 text-left">NF / Sincronização</th>
               <th className="p-4 text-left">Categoria</th>
               <th className="p-4 text-right min-w-[150px]">Valor</th>
               <th className="p-4 text-center">Ações</th>
@@ -319,6 +321,31 @@ export const ContasAPagarPage = () => {
                         {conta.obs || "\u00A0"}
                       </div>
                     </div>
+                  </td>
+                  <td className="p-4">
+                    {conta.nf_numero ? (
+                      <div className="flex flex-col">
+                        <div className="text-base text-neutral-900 font-semibold flex items-center gap-1.5">
+                          {conta.nf_numero}
+                        </div>
+                        <div className="text-sm text-neutral-500 font-normal min-h-[1.5rem] mt-1">
+                          {conta.nf_parcela !== null && conta.nf_parcela !== undefined && conta.nf_total_parcelas ? (
+                            `Parcela ${conta.nf_parcela} de ${conta.nf_total_parcelas}`
+                          ) : conta.nf_boleto ? (
+                            `Boleto: ${conta.nf_boleto}`
+                          ) : (
+                            "\u00A0"
+                          )}
+                        </div>
+                        <NfSyncBadge nf_numero={conta.nf_numero} />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col">
+                        <span className="text-sm text-neutral-400 italic">Sem vínculo</span>
+                        <div className="text-sm text-neutral-500 font-normal min-h-[1.5rem] mt-1">&nbsp;</div>
+                        <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                      </div>
+                    )}
                   </td>
                   <td className="p-4">
                     <div className="flex flex-col">
