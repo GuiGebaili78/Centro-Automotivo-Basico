@@ -3,8 +3,9 @@ import type { IOrdemDeServico } from "../types/backend";
 import { OsStatus } from "../types/os.types";
 
 export const OsService = {
-  getAll: async () => {
-    const response = await api.get<IOrdemDeServico[]>("/ordem-de-servico");
+  getAll: async (searchTerm?: string) => {
+    const params = searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : '';
+    const response = await api.get<IOrdemDeServico[]>(`/ordem-de-servico${params}`);
     return response.data;
   },
 

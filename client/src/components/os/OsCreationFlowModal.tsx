@@ -93,6 +93,7 @@ export function OsCreationFlowModal({
   // ── Refs ──
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const assetContainerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Fecha apenas o flow modal ──
@@ -144,6 +145,16 @@ export function OsCreationFlowModal({
     const items = listRef.current.querySelectorAll("li");
     items[activeIndex]?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
+
+  // ── Foco no container do Step 2 e retorno de foco após fechar sub-modal ──
+  useEffect(() => {
+    if (step === "select-asset" && !quickModal) {
+      const timer = setTimeout(() => {
+        assetContainerRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [step, quickModal]);
 
   // ── Busca com debounce 300ms ──
   const handleSearchChange = (val: string) => {
@@ -539,10 +550,7 @@ export function OsCreationFlowModal({
                 className="p-5 space-y-5 outline-none"
                 tabIndex={0}
                 onKeyDown={handleKeyDown}
-                // Recebe foco automaticamente para capturar setas
-                ref={(el) => {
-                  if (el && step === "select-asset") setTimeout(() => el.focus(), 50);
-                }}
+                ref={assetContainerRef}
               >
                 {/* Dica de navegação */}
                 {assetItems.length > 0 && (

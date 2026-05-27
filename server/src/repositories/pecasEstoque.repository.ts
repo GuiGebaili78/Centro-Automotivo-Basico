@@ -201,6 +201,176 @@ export class PecasEstoqueRepository {
     });
   }
 
+  async findEntryById(id: number) {
+    return await prisma.entradaEstoque.findUnique({
+      where: { id_entrada: id },
+      include: {
+        fornecedor: true,
+        itens: {
+          include: {
+            peca: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateEntry(
+    id: number,
+    data: {
+      id_pessoa?: number;
+      nota_fiscal?: string | null;
+      data_compra?: Date;
+      obs?: string | null;
+      nf_numero?: string | null;
+      itens: {
+        id_item_entrada?: number;      // presente → item existente
+        id_pecas_estoque?: number;     // obrigatório para novos itens
+        new_part_data?: any;           // se nova peça a cadastrar
+        quantidade: number;
+        valor_custo: number;
+        valor_venda: number;
+        margem_lucro?: number;
+        ref_cod?: string;
+        obs?: string;
+        _delete?: boolean;             // true → remover este item
+      }[];
+    },
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Verificar que a entrada existe
+      const entrada = await tx.entradaEstoque.findUnique({
+        where: { id_entrada: id },
+        include: { itens: { include: { peca: true } } },
+      });
+      if (!entrada) throw new Error("Entrada de estoque não encontrada.");
+
+      // 2. Processar cada item do payload
+      for (const item of data.itens) {
+        // --- REMOÇÃO ---
+        if (item._delete && item.id_item_entrada) {
+          const itemExistente = entrada.itens.find(
+            (i) => i.id_item_entrada === item.id_item_entrada,
+          );
+          if (!itemExistente) continue;
+
+          const partId = itemExistente.id_pecas_estoque;
+
+          // Validação de segurança: verificar movimentação ativa em OS
+          const osAtivas = await tx.itensOs.count({
+            where: {
+              id_pecas_estoque: partId,
+              deleted_at: null,
+              ordem_de_servico: {
+                status: { notIn: ["FINALIZADA", "CANCELADA", "PAGA_CLIENTE"] },
+                deleted_at: null,
+              },
+            },
+          });
+          if (osAtivas > 0) {
+            const nomePeca = itemExistente.peca?.nome || `ID ${partId}`;
+            throw new Error(
+              `A peça "${nomePeca}" não pode ser removida pois já está vinculada a uma Ordem de Serviço ativa. Finalize ou cancele a OS antes de remover este item.`,
+            );
+          }
+
+          // Decrementar estoque e remover item
+          await tx.pecasEstoque.update({
+            where: { id_pecas_estoque: partId },
+            data: { estoque_atual: { decrement: itemExistente.quantidade } },
+          });
+          await tx.itemEntrada.delete({
+            where: { id_item_entrada: item.id_item_entrada },
+          });
+          continue;
+        }
+
+        // --- ATUALIZAÇÃO de item existente ---
+        if (item.id_item_entrada) {
+          await tx.itemEntrada.update({
+            where: { id_item_entrada: item.id_item_entrada },
+            data: {
+              quantidade: item.quantidade,
+              valor_custo: item.valor_custo,
+              valor_venda: item.valor_venda,
+              margem_lucro: item.margem_lucro ?? null,
+              ref_cod: item.ref_cod ?? null,
+              obs: item.obs ?? null,
+            },
+          });
+          continue;
+        }
+
+        // --- CRIAÇÃO de novo item ---
+        let partId = item.id_pecas_estoque;
+        if (!partId && item.new_part_data) {
+          const newPart = await tx.pecasEstoque.create({
+            data: {
+              nome: item.new_part_data.nome,
+              descricao: item.new_part_data.descricao || item.new_part_data.nome,
+              unidade_medida: item.new_part_data.unidade_medida || "UN",
+              estoque_atual: 0,
+              valor_custo: item.valor_custo,
+              valor_venda: item.valor_venda,
+              estoque_minimo: item.new_part_data.estoque_minimo || 0,
+              custo_unitario_padrao: item.valor_custo,
+              fabricante: item.new_part_data.fabricante || null,
+            },
+          });
+          partId = newPart.id_pecas_estoque;
+        }
+        if (!partId) throw new Error("Item sem ID de peça e sem dados para cadastro.");
+
+        await tx.itemEntrada.create({
+          data: {
+            id_entrada: id,
+            id_pecas_estoque: partId,
+            quantidade: item.quantidade,
+            valor_custo: item.valor_custo,
+            valor_venda: item.valor_venda,
+            margem_lucro: item.margem_lucro ?? null,
+            ref_cod: item.ref_cod ?? null,
+            obs: item.obs ?? null,
+          },
+        });
+
+        await tx.pecasEstoque.update({
+          where: { id_pecas_estoque: partId },
+          data: {
+            estoque_atual: { increment: item.quantidade },
+            valor_venda: item.valor_venda,
+            dt_ultima_compra: new Date(),
+          },
+        });
+      }
+
+      // 3. Recalcular valor_total da entrada (itens não deletados)
+      const itensAtualizados = await tx.itemEntrada.findMany({
+        where: { id_entrada: id },
+      });
+      const novoTotal = itensAtualizados.reduce(
+        (acc, i) => acc + Number(i.valor_custo) * Number(i.quantidade),
+        0,
+      );
+
+      // 4. Atualizar cabeçalho da entrada
+      return await tx.entradaEstoque.update({
+        where: { id_entrada: id },
+        data: {
+          ...(data.id_pessoa !== undefined && { id_pessoa: data.id_pessoa }),
+          ...(data.nota_fiscal !== undefined && { nota_fiscal: data.nota_fiscal }),
+          ...(data.data_compra !== undefined && { data_compra: data.data_compra }),
+          ...(data.obs !== undefined && { obs: data.obs }),
+          ...(data.nf_numero !== undefined && { nf_numero: data.nf_numero?.trim() || null }),
+          valor_total: novoTotal,
+        },
+        include: {
+          itens: { include: { peca: true } },
+        },
+      });
+    });
+  }
+
   async getAvailability(id: number) {
     const part = await prisma.pecasEstoque.findUnique({
       where: { id_pecas_estoque: id },

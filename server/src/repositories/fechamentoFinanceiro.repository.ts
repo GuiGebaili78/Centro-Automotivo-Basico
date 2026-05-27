@@ -49,10 +49,14 @@ export class FechamentoFinanceiroRepository {
       const fechamento = await tx.fechamentoFinanceiro.update({
         where: { id_fechamento_financeiro: id },
         data: fechamentoData,
+        include: { ordem_de_servico: true },
       });
 
+      // Se OS estiver FINALIZADA, ignorar as atualizações financeiras de peças para evitar duplicidade.
+      const isFinalizada = fechamento.ordem_de_servico.status === "FINALIZADA";
+
       // 2. Processar Pagamentos de Peças (UPSET em lote)
-      if (itemsPecas && itemsPecas.length > 0) {
+      if (!isFinalizada && itemsPecas && itemsPecas.length > 0) {
         for (const itemPeca of itemsPecas) {
           const {
             id_pagamento_peca,
@@ -109,8 +113,44 @@ export class FechamentoFinanceiroRepository {
     itemsPecas?: any[],
   ) {
     return await prisma.$transaction(async (tx) => {
+      // 1. Buscar OS com todos os pagamentos e detalhes para validação inicial
+      const os = await tx.ordemDeServico.findUnique({
+        where: { id_os: idOs },
+        include: {
+          pagamentos_cliente: {
+            where: { deleted_at: null },
+          },
+          cliente: {
+            include: {
+              pessoa_fisica: { include: { pessoa: true } },
+              pessoa_juridica: true,
+            },
+          },
+          veiculo: true,
+          equipamento: true,
+          itens_os: {
+            where: { deleted_at: null },
+            include: { pecas_estoque: true },
+          },
+          servicos_mao_de_obra: {
+            where: { deleted_at: null },
+          },
+        },
+      });
+
+      if (!os) {
+        throw new Error("OS não encontrada");
+      }
+
+      const isFinalizada = os.status === "FINALIZADA";
+      const allowedStatuses = ["ABERTA", "PRONTO PARA FINANCEIRO", "FINANCEIRO", "FINALIZADA", "EM_ANDAMENTO"];
+      
+      if (!allowedStatuses.includes(os.status)) {
+        throw new Error("OS não está num status que permita inserção financeira (necessita estar ABERTA, EM ANDAMENTO, PRONTO PARA FINANCEIRO ou FINANCEIRO).");
+      }
+
       // 0. Processar Pagamentos de Peças (UPSET em lote dentro da transação)
-      if (itemsPecas && itemsPecas.length > 0) {
+      if (!isFinalizada && itemsPecas && itemsPecas.length > 0) {
         for (const itemPeca of itemsPecas) {
           const {
             id_pagamento_peca,
@@ -141,39 +181,6 @@ export class FechamentoFinanceiroRepository {
             });
           }
         }
-      }
-
-      // 1. Buscar OS com todos os pagamentos e detalhes para descrição e cálculo de lucro
-      const os = await tx.ordemDeServico.findUnique({
-        where: { id_os: idOs },
-        include: {
-          pagamentos_cliente: {
-            where: { deleted_at: null },
-          },
-          cliente: {
-            include: {
-              pessoa_fisica: { include: { pessoa: true } },
-              pessoa_juridica: true,
-            },
-          },
-          veiculo: true,
-          equipamento: true,
-          itens_os: {
-            where: { deleted_at: null },
-            include: { pecas_estoque: true },
-          },
-          servicos_mao_de_obra: {
-            where: { deleted_at: null },
-          },
-        },
-      });
-
-      if (!os) {
-        throw new Error("OS não encontrada");
-      }
-
-      if (os.status !== "FINANCEIRO") {
-        throw new Error("OS não está pronta para consolidação financeira");
       }
 
       // Buscar Categoria 'Serviços' (Filho de Receita)
@@ -645,10 +652,12 @@ export class FechamentoFinanceiroRepository {
         console.log(`      ✅ [DESPESA LIVRO CAIXA] Lançado custo externo de R$ ${custoPecasExternas}`);
       }
 
-      await tx.ordemDeServico.update({
-        where: { id_os: idOs },
-        data: { status: "FINALIZADA" },
-      });
+      if (os.status === "FINANCEIRO" || os.status === "PRONTO PARA FINANCEIRO") {
+        await tx.ordemDeServico.update({
+          where: { id_os: idOs },
+          data: { status: "FINALIZADA" },
+        });
+      }
 
       return fechamento;
     });

@@ -123,12 +123,13 @@ export const ClientePage = () => {
       <OsCreationModal
         isOpen={showOsModeModal}
         onClose={() => setShowOsModeModal(false)}
-        onSelect={(type) => {
+        hasVehicle={!!pendingOsData?.vehicleId}
+        onSelect={(type, km) => {
           setShowOsModeModal(false);
           if (pendingOsData) {
-            navigate(
-              `/ordem-de-servico?clientId=${pendingOsData.clientId}&vehicleId=${pendingOsData.vehicleId}&initialStatus=${type}`,
-            );
+            let url = `/ordem-de-servico?clientId=${pendingOsData.clientId}&vehicleId=${pendingOsData.vehicleId}&initialStatus=${type}`;
+            if (km !== undefined) url += `&km=${km}`;
+            navigate(url);
             setPendingOsData(null);
           }
         }}

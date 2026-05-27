@@ -32,6 +32,16 @@ export const EstoqueService = {
     return response.data;
   },
 
+  getEntry: async (id: number) => {
+    const response = await api.get(`/pecas-estoque/entry/${id}`);
+    return response.data;
+  },
+
+  updateEntry: async (id: number, data: any) => {
+    const response = await api.put(`/pecas-estoque/entry/${id}`, data);
+    return response.data;
+  },
+
   create: async (data: any) => {
     const response = await api.post<IPecasEstoque>("/pecas-estoque", data);
     return response.data;

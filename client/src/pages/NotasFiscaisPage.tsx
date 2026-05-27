@@ -357,6 +357,9 @@ export const NotasFiscaisPage = () => {
                             <div className="text-xs text-neutral-500 mt-0.5">
                               Entrada em: {item.data ? new Date(item.data).toLocaleDateString("pt-BR") : "N/A"}
                             </div>
+                            {item.obs && (
+                              <div className="text-xs text-neutral-400 italic mt-0.5">{item.obs}</div>
+                            )}
                           </td>
                           <td className="p-3">
                             <span
@@ -414,14 +417,17 @@ export const NotasFiscaisPage = () => {
 // Mapper helper defined outside the component to keep codebase structured
 const getUnifiedItems = (nf: any) => {
   if (!nf) return [];
-  
+
   const estoqueItems = (nf.pecas_estoque || []).map((e: any) => ({
     id_unico: `estoque_${e.id_entrada_estoque}`,
-    nome_item: `LOTE #${e.id_entrada_estoque} ${e.nota_fiscal ? `(NF: ${e.nota_fiscal})` : "(S/N)"}`,
+    nome_item: e.nota_fiscal
+      ? `Nota Fiscal: ${e.nota_fiscal}`
+      : `Entrada de Estoque #${e.id_entrada_estoque}`,
     custo: Number(e.valor_total),
-    destino_string: "Em estoque",
+    destino_string: "Em estoque físico",
     tipo_origem: "ESTOQUE",
     data: e.data_compra,
+    obs: e.obs || null,
   }));
 
   const osItems = (nf.pecas_os || []).map((p: any) => ({
@@ -431,6 +437,7 @@ const getUnifiedItems = (nf: any) => {
     destino_string: `OS nº ${p.id_os || "---"} | Veículo: ${p.veiculo || "N/A"} | Cliente: ${p.cliente || "Desconhecido"}`,
     tipo_origem: "OS",
     data: p.data_compra,
+    obs: null,
   }));
 
   return [...estoqueItems, ...osItems].sort(

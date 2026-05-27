@@ -92,7 +92,7 @@ export function DashboardPage() {
   };
 
   // ── Recebe a seleção de status, cria a OS via API e navega para o detalhe ──
-  const handleOsSelect = async (status: OsStatus) => {
+  const handleOsSelect = async (status: OsStatus, km?: number) => {
     if (!osTarget) return;
 
     setIsCreatingOs(true);
@@ -102,6 +102,7 @@ export function DashboardPage() {
         id_veiculo: osTarget.vehicleId ?? undefined,
         id_equipamento: osTarget.equipamentoId ?? undefined,
         status,
+        km_entrada: km !== undefined ? Number(km) : undefined,
         parcelas: 1,
         valor_total_cliente: 0,
         valor_mao_de_obra: 0,
@@ -146,7 +147,7 @@ export function DashboardPage() {
       actions={
         <div className="flex items-center gap-3">
           {/* Busca rápida ao lado dos botões */}
-          <div className="w-72">
+          <div className="w-[432px] max-w-full">
             <UnifiedSearch
               onSelect={handleSearchSelect}
               onNewRecord={() => navigate("/novo-cadastro")}
@@ -224,6 +225,7 @@ export function DashboardPage() {
         isLoading={isCreatingOs}
         clientName={undefined}
         vehicleName={undefined}
+        hasVehicle={!!osTarget?.vehicleId}
       />
 
       <LoosePartOsModal

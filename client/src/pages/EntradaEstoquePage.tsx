@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { PageLayout, Modal, Button, Input, Checkbox } from "../components/ui";
+import { PageLayout, Modal, Button } from "../components/ui";
 import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
 import { EntradaFornecedorForm } from "../components/estoque/EntradaFornecedorForm";
 import { EntradaItensForm } from "../components/estoque/EntradaItensForm";
@@ -11,9 +12,13 @@ import type {
   IItemEntrada,
   IEntradaEstoquePayload,
 } from "../types/estoque.types";
-import { CheckCircle, FileText } from "lucide-react";
+import { Edit } from "lucide-react";
 
 export const EntradaEstoquePage = () => {
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("editId") ? Number(searchParams.get("editId")) : null;
+  const isEditMode = !!editId;
+
   // Header State
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
@@ -23,24 +28,23 @@ export const EntradaEstoquePage = () => {
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [nfsPendentes, setNfsPendentes] = useState<any[]>([]);
   const [nfNumero, setNfNumero] = useState("");
+  const [loadingEdit, setLoadingEdit] = useState(false);
 
   // Items State
   const [items, setItems] = useState<IItemEntrada[]>([]);
-
-  // Financial Modal State
-  const [showFinancialModal, setShowFinancialModal] = useState(false);
-  const [enableFinancial, setEnableFinancial] = useState(true);
-  const [finDesc, setFinDesc] = useState("");
-  const [finValue, setFinValue] = useState("");
-  const [finDueDate, setFinDueDate] = useState("");
-  const [finPaid, setFinPaid] = useState(false);
-  const [finPayDate, setFinPayDate] = useState("");
 
   // Load Suppliers & Pending NFs
   useEffect(() => {
     loadSuppliers();
     loadNfsPendentes();
   }, []);
+
+  // Load entry data if in edit mode
+  useEffect(() => {
+    if (editId) {
+      loadEntryForEdit(editId);
+    }
+  }, [editId]);
 
   const loadSuppliers = () => {
     api
@@ -58,69 +62,102 @@ export const EntradaEstoquePage = () => {
     }
   };
 
-  const totalValue = items.reduce(
-    (acc, i) => acc + i.quantidade * i.valor_custo,
-    0,
-  );
+  const loadEntryForEdit = async (id: number) => {
+    setLoadingEdit(true);
+    try {
+      const entry = await EstoqueService.getEntry(id);
 
-  const handlePreSubmit = () => {
+      // Preencher cabeçalho
+      setSelectedSupplierId(String(entry.id_pessoa));
+      setInvoice(entry.nota_fiscal || "");
+      setDate(entry.data_compra ? entry.data_compra.split("T")[0] : new Date().toISOString().split("T")[0]);
+      setObs(entry.obs || "");
+      setNfNumero(entry.nf_numero || "");
+
+      // Preencher itens com dados do banco
+      const loadedItems: IItemEntrada[] = (entry.itens || []).map((i: any) => ({
+        tempId: i.id_item_entrada, // usa o id real como tempId para identificação
+        id_item_entrada: i.id_item_entrada,
+        id_pecas_estoque: i.id_pecas_estoque,
+        new_part_data: null,
+        displayName: i.peca?.nome || `Peça #${i.id_pecas_estoque}`,
+        quantidade: i.quantidade,
+        valor_custo: Number(i.valor_custo),
+        margem_lucro: i.margem_lucro ? Number(i.margem_lucro) : 0,
+        valor_venda: Number(i.valor_venda),
+        ref_cod: i.ref_cod || "",
+        obs: i.obs || "",
+        _delete: false,
+      }));
+      setItems(loadedItems);
+    } catch (e: any) {
+      toast.error("Erro ao carregar entrada para edição: " + (e.response?.data?.error || e.message));
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+
+  // Calcula total apenas sobre itens não marcados para exclusão
+  const totalValue = items
+    .filter((i) => !(i as any)._delete)
+    .reduce((acc, i) => acc + i.quantidade * i.valor_custo, 0);
+
+  const handleSubmit = async () => {
     if (!selectedSupplierId) {
       toast.error("Selecione um Fornecedor.");
       return;
     }
-    if (items.length === 0) {
+    if (items.filter((i) => !(i as any)._delete).length === 0) {
       toast.error("Adicione pelo menos um item.");
       return;
     }
 
-    // Pre-fill Financial Data
-    const supplierObj = suppliers.find(
-      (s) => s.id_fornecedor === Number(selectedSupplierId),
-    );
-    const supplierName =
-      supplierObj?.nome_fantasia || supplierObj?.nome || "Fornecedor";
-    setFinDesc(`Compra Estoque - NF ${invoice || "S/N"} - ${supplierName}`);
-    setFinValue(totalValue.toFixed(2));
-    setFinDueDate(date); // Default due date = purchase date
-    setFinPayDate(new Date().toISOString().split("T")[0]); // Default pay date = today
-    setFinPaid(false); // Default to Unpaid
-    setEnableFinancial(true);
-
-    setShowFinancialModal(true);
-  };
-
-  const handleFinalSubmit = async () => {
     try {
-      const payload: IEntradaEstoquePayload = {
-        id_fornecedor: Number(selectedSupplierId),
-        nota_fiscal: invoice,
-        data_compra: new Date(date),
-        obs: obs,
-        itens: items,
-        nf_numero: nfNumero.trim() || null,
-        financeiro: enableFinancial
-          ? {
-              descricao: finDesc,
-              valor: Number(finValue),
-              dt_vencimento: finDueDate,
-              dt_pagamento: finPaid ? finPayDate : null,
-              status: finPaid ? "PAGO" : "PENDENTE",
-            }
-          : undefined,
-      };
+      if (isEditMode && editId) {
+        // --- MODO EDIÇÃO: PUT ---
+        const payload = {
+          id_pessoa: Number(selectedSupplierId),
+          nota_fiscal: invoice,
+          data_compra: new Date(date),
+          obs: obs,
+          nf_numero: nfNumero.trim() || null,
+          itens: items.map((i) => ({
+            id_item_entrada: (i as any).id_item_entrada || undefined,
+            id_pecas_estoque: i.id_pecas_estoque || undefined,
+            new_part_data: i.new_part_data || undefined,
+            quantidade: i.quantidade,
+            valor_custo: i.valor_custo,
+            valor_venda: i.valor_venda,
+            margem_lucro: i.margem_lucro,
+            ref_cod: i.ref_cod,
+            obs: i.obs,
+            _delete: (i as any)._delete || false,
+          })),
+        };
 
-      await EstoqueService.createEntry(payload);
+        await EstoqueService.updateEntry(editId, payload);
+        toast.success("Entrada atualizada com sucesso!");
+      } else {
+        // --- MODO CRIAÇÃO: POST (sem campo financeiro) ---
+        const payload: IEntradaEstoquePayload = {
+          id_fornecedor: Number(selectedSupplierId),
+          nota_fiscal: invoice,
+          data_compra: new Date(date),
+          obs: obs,
+          itens: items,
+          nf_numero: nfNumero.trim() || null,
+        };
 
-      toast.success("Entrada Registrada com Sucesso!");
-      setShowFinancialModal(false);
+        await EstoqueService.createEntry(payload);
+        toast.success("Entrada Registrada com Sucesso!");
 
-      // Clear All
-      setItems([]);
-      setInvoice("");
-      setObs("");
-      setNfNumero("");
-      // Reload pending NFs
-      loadNfsPendentes();
+        // Limpar formulário apenas no modo criação
+        setItems([]);
+        setInvoice("");
+        setObs("");
+        setNfNumero("");
+        loadNfsPendentes();
+      }
     } catch (e: any) {
       console.error(e);
       toast.error(
@@ -129,12 +166,41 @@ export const EntradaEstoquePage = () => {
     }
   };
 
+  if (loadingEdit) {
+    return (
+      <PageLayout
+        title="Carregando Entrada..."
+        subtitle="Aguarde enquanto os dados da entrada são carregados."
+      >
+        <div className="flex items-center justify-center h-40 text-neutral-400">
+          Carregando dados da entrada #{editId}...
+        </div>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout
-      title="Nova Compra / Entrada de Estoque"
-      subtitle="Registre novas aquisições de peças e atualize o estoque automaticamente."
+      title={isEditMode ? `Editando Entrada #${editId}` : "Nova Compra / Entrada de Estoque"}
+      subtitle={
+        isEditMode
+          ? "Adicione ou remova itens desta entrada. Itens em uso em Ordens de Serviço ativas não podem ser removidos."
+          : "Registre novas aquisições de peças e atualize o estoque automaticamente."
+      }
     >
       <div className="space-y-6">
+        {/* Banner de modo edição */}
+        {isEditMode && (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <Edit size={18} className="text-amber-600 shrink-0" />
+            <p className="text-sm text-amber-800 font-medium">
+              Você está <strong>editando</strong> uma entrada de estoque existente. Os itens marcados como{" "}
+              <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-xs font-bold uppercase">SERÁ REMOVIDO</span>{" "}
+              serão excluídos permanentemente ao salvar.
+            </p>
+          </div>
+        )}
+
         <EntradaFornecedorForm
           suppliers={suppliers}
           selectedSupplierId={selectedSupplierId}
@@ -152,110 +218,10 @@ export const EntradaEstoquePage = () => {
         <EntradaItensForm
           items={items}
           setItems={setItems}
-          onSubmit={handlePreSubmit}
+          onSubmit={handleSubmit}
           totalValue={totalValue}
+          isEditMode={isEditMode}
         />
-
-        {/* NEW FINANCIAL MODAL - Could also be extracted but kept here for now as it orchestrates final submit */}
-        {showFinancialModal && (
-          <Modal
-            title="Financeiro da Compra"
-            onClose={() => setShowFinancialModal(false)}
-            className="max-w-2xl"
-          >
-            <div className="space-y-6 pt-2">
-              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
-                <div className="bg-blue-100 p-2 rounded-lg text-blue-600 mt-1">
-                  <FileText size={20} />
-                </div>
-                <div>
-                  <p className="text-sm text-blue-900 font-bold">
-                    Confirmação de Contas a Pagar
-                  </p>
-                  <p className="text-xs text-blue-700 mt-1 leading-relaxed">
-                    Um registro será criado em <strong>Contas a Pagar</strong>.
-                    Se marcado como pago, o valor será debitado do{" "}
-                    <strong>Livro Caixa</strong> automaticamente.
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                <Checkbox
-                  id="chkEnableFin"
-                  checked={enableFinancial}
-                  onChange={(e) => setEnableFinancial(e.target.checked)}
-                  label="Lançar valor no Financeiro (Contas a Pagar)?"
-                />
-              </div>
-
-              {enableFinancial && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
-                  <Input
-                    label="Descrição do Lançamento"
-                    value={finDesc}
-                    onChange={(e) => setFinDesc(e.target.value)}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="Valor Total (R$)"
-                      type="number"
-                      value={finValue}
-                      readOnly
-                      className="bg-neutral-100 font-bold text-neutral-600"
-                    />
-                    <Input
-                      label="Vencimento"
-                      type="date"
-                      value={finDueDate}
-                      onChange={(e) => setFinDueDate(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200">
-                    <div className="mb-4">
-                      <Checkbox
-                        id="chkPaid"
-                        checked={finPaid}
-                        onChange={(e) => setFinPaid(e.target.checked)}
-                        label="Compra à vista / Já foi paga?"
-                      />
-                    </div>
-
-                    {finPaid && (
-                      <div className="animate-in fade-in slide-in-from-top-2">
-                        <Input
-                          label="Data do Pagamento"
-                          type="date"
-                          value={finPayDate}
-                          onChange={(e) => setFinPayDate(e.target.value)}
-                          className="font-bold text-emerald-800 border-emerald-200 bg-emerald-50 focus:border-emerald-500 focus:ring-emerald-100"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end pt-4 gap-3 border-t border-neutral-100 mt-4">
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowFinancialModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleFinalSubmit}
-                  icon={CheckCircle}
-                >
-                  Confirmar Lançamento
-                </Button>
-              </div>
-            </div>
-          </Modal>
-        )}
 
         {/* NEW SUPPLIER MODAL */}
         {showNewSupplierModal && (

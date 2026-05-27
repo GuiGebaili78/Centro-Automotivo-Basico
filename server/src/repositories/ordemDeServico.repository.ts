@@ -179,17 +179,42 @@ export class OrdemDeServicoRepository {
   async findAll(searchTerm?: string) {
     const where: Prisma.OrdemDeServicoWhereInput = { deleted_at: null };
 
-    if (searchTerm) {
+    const trimmedSearch = searchTerm?.trim();
+
+    if (trimmedSearch) {
         where.OR = [
-            { cliente: { pessoa_fisica: { pessoa: { nome: { contains: searchTerm, mode: 'insensitive' } } } } },
-            { cliente: { pessoa_juridica: { pessoa: { nome: { contains: searchTerm, mode: 'insensitive' } } } } },
-            { cliente: { pessoa_juridica: { nome_fantasia: { contains: searchTerm, mode: 'insensitive' } } } },
-            { veiculo: { placa: { contains: searchTerm, mode: 'insensitive' } } },
-            { veiculo: { modelo: { contains: searchTerm, mode: 'insensitive' } } },
-            { equipamento: { nome_peca: { contains: searchTerm, mode: 'insensitive' } } },
-            { equipamento: { numeracao: { contains: searchTerm, mode: 'insensitive' } } },
-            { diagnostico: { contains: searchTerm, mode: 'insensitive' } }
+            { cliente: { pessoa_fisica: { pessoa: { nome: { contains: trimmedSearch, mode: 'insensitive' } } } } },
+            { cliente: { pessoa_fisica: { cpf: { contains: trimmedSearch, mode: 'insensitive' } } } },
+            { cliente: { pessoa_juridica: { pessoa: { nome: { contains: trimmedSearch, mode: 'insensitive' } } } } },
+            { cliente: { pessoa_juridica: { nome_fantasia: { contains: trimmedSearch, mode: 'insensitive' } } } },
+            { cliente: { pessoa_juridica: { razao_social: { contains: trimmedSearch, mode: 'insensitive' } } } },
+            { cliente: { pessoa_juridica: { cnpj: { contains: trimmedSearch, mode: 'insensitive' } } } },
+            { cliente: { telefone_1: { contains: trimmedSearch, mode: 'insensitive' } } },
+            { cliente: { telefone_2: { contains: trimmedSearch, mode: 'insensitive' } } },
+            { veiculo: { placa: { contains: trimmedSearch, mode: 'insensitive' } } },
+            { veiculo: { marca: { contains: trimmedSearch, mode: 'insensitive' } } },
+            { veiculo: { modelo: { contains: trimmedSearch, mode: 'insensitive' } } },
+            { equipamento: { nome_peca: { contains: trimmedSearch, mode: 'insensitive' } } },
+            { equipamento: { numeracao: { contains: trimmedSearch, mode: 'insensitive' } } },
+            { diagnostico: { contains: trimmedSearch, mode: 'insensitive' } },
+            { defeito_relatado: { contains: trimmedSearch, mode: 'insensitive' } },
+            { obs_final: { contains: trimmedSearch, mode: 'insensitive' } },
+            { itens_os: { some: { descricao: { contains: trimmedSearch, mode: 'insensitive' } } } },
+            { itens_os: { some: { codigo_referencia: { contains: trimmedSearch, mode: 'insensitive' } } } },
+            { itens_os: { some: { pecas_estoque: { nome: { contains: trimmedSearch, mode: 'insensitive' } } } } },
+            { servicos_mao_de_obra: { some: { descricao: { contains: trimmedSearch, mode: 'insensitive' } } } }
         ];
+
+        const numValue = Number(trimmedSearch.replace(',', '.'));
+        if (!isNaN(numValue)) {
+            where.OR.push(
+                { valor_final: { equals: numValue } },
+                { valor_total_cliente: { equals: numValue } },
+                { itens_os: { some: { valor_venda: { equals: numValue } } } },
+                { itens_os: { some: { valor_total: { equals: numValue } } } },
+                { servicos_mao_de_obra: { some: { valor: { equals: numValue } } } }
+            );
+        }
     }
 
     return await prisma.ordemDeServico.findMany({

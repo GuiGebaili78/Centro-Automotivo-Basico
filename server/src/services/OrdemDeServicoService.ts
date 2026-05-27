@@ -56,7 +56,7 @@ export class OrdemDeServicoService {
   }
 
   async findAll(filters: any) {
-    return this.repository.findAll();
+    return this.repository.findAll(filters?.search);
   }
 
   async findById(id: number, includeInternal: boolean = false) {

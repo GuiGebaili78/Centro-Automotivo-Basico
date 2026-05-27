@@ -15,6 +15,8 @@ export interface IEstoqueUpdatePayload {
 
 export interface IItemEntrada {
   tempId: number;
+  /** ID real do ItemEntrada no banco (presente apenas no modo edição) */
+  id_item_entrada?: number;
   id_pecas_estoque?: number | null;
   new_part_data?: {
     nome: string;
@@ -31,6 +33,8 @@ export interface IItemEntrada {
   valor_venda: number;
   ref_cod?: string;
   obs?: string;
+  /** Marcado como true no modo edição quando o usuário quer remover o item */
+  _delete?: boolean;
 }
 
 export interface IEntradaEstoquePayload {
@@ -40,11 +44,4 @@ export interface IEntradaEstoquePayload {
   obs: string;
   itens: IItemEntrada[];
   nf_numero?: string | null;
-  financeiro?: {
-    descricao: string;
-    valor: number;
-    dt_vencimento: string;
-    dt_pagamento: string | null;
-    status: "PAGO" | "PENDENTE";
-  };
 }

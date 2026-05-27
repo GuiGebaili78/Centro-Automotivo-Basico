@@ -88,8 +88,8 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
                 </span>
               </div>
 
-              {/* Items - Scrollable if many */}
-              <div className="space-y-2 min-h-[60px] max-h-[160px] overflow-y-auto custom-scrollbar flex-1">
+              {/* Items */}
+              <div className="space-y-2 min-h-[60px] flex-1">
                 {dayItems.length > 0 ? (
                   dayItems.map((item) => (
                     <div

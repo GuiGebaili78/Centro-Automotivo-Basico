@@ -87,6 +87,8 @@ export const FechamentoFinanceiroPage = () => {
       const pending = allOss.filter(
         (os) =>
           [
+            "ABERTA",
+            "EM_ANDAMENTO",
             "PRONTO PARA FINANCEIRO",
             "FINANCEIRO",
             "FINALIZADA",

@@ -21,9 +21,36 @@ export class PecasEstoqueController {
         }
         const entry = await repository.createEntry(payload);
         res.status(201).json(entry);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        res.status(400).json({ error: 'Failed to create entry', details: error });
+        res.status(400).json({ error: 'Failed to create entry', details: error.message || error });
+    }
+  }
+
+  async findEntryById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const entry = await repository.findEntryById(id);
+      if (!entry) return res.status(404).json({ error: 'Entrada de estoque não encontrada.' });
+      res.json(entry);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ error: 'Erro ao buscar entrada de estoque.', details: error.message });
+    }
+  }
+
+  async updateEntry(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const payload = req.body;
+      if (payload && typeof payload.nf_numero === 'string') {
+        payload.nf_numero = payload.nf_numero.trim() || null;
+      }
+      const updated = await repository.updateEntry(id, payload);
+      res.json(updated);
+    } catch (error: any) {
+      console.error(error);
+      res.status(400).json({ error: error.message || 'Erro ao atualizar entrada de estoque.' });
     }
   }
 

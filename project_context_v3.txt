@@ -1,4 +1,4 @@
-PROJECT DUMP V3 GENERATED ON 05/24/2026 12:35:39
+PROJECT DUMP V3 GENERATED ON 05/27/2026 15:46:27
 ROOT: C:\workspace\Meus Projetos\Centro Automotivo APP\App Centro Automotivo
 EXCLUDED: node_modules, .git, dist, build, .next, coverage, package-lock.json, yarn.lock, pnpm-lock.yaml, *.log, *.png, *.jpg, *.jpeg, *.gif, *.ico, *.svg, *.webp, *.pdf, .DS_Store, .env, migrations, *.css, *.scss, *.less, *.test.ts, *.spec.ts, *.test.tsx, *.spec.tsx, dados_oficina.sql, project_context*.txt
 
@@ -653,7 +653,7 @@ FILE PATH: client\index.html
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="../public/favicon.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -674,87 +674,6 @@ FILE PATH: client\index.html
 ================================================================================
 FILE PATH: client\nginx.conf
 ================================================================================
-server {
-  listen 8080;
-  server_name _;
-
-  root /usr/share/nginx/html;
-  index index.html;
-
-  # Long cache para assets versionados pelo Vite (hashes no nome)
-  location /assets/ {
-    expires 1y;
-    add_header Cache-Control "public, immutable";
-    try_files $uri =404;
-  }
-
-  # SPA fallback: rotas client-side caem no index.html
-  location / {
-    try_files $uri $uri/ /index.html;
-  }
-}
-
-
-
-================================================================================
-FILE PATH: client\package.json
-================================================================================
-{
-  "name": "client",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@headlessui/react": "2.2.9",
-    "@heroicons/react": "2.2.0",
-    "@tremor/react": "^3.18.7",
-    "axios": "^1.13.2",
-    "date-fns": "^4.1.0",
-    "lucide-react": "^0.561.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "react-router-dom": "^7.10.1",
-    "react-toastify": "^11.0.5",
-    "recharts": "^3.7.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/node": "^24.10.1",
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^5.1.1",
-    "autoprefixer": "10.4.18",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "postcss": "8.4.35",
-    "tailwindcss": "3.4.17",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
-  }
-}
-
-
-
-================================================================================
-FILE PATH: client\postcss.config.js
-================================================================================
-export default {
-    plugins: {
-        tailwindcss: {},
-        autoprefixer: {},
-    },
-}
-
-
 ================================================================================
 FILE PATH: client\README.md
 ================================================================================
@@ -1147,6 +1066,7 @@ import { FornecedorPage } from "./pages/FornecedorPage";
 import { PagamentoPecaPage } from "./pages/PagamentoPecaPage";
 import { LivroCaixaPage } from "./pages/LivroCaixaPage";
 import { ContasAPagarPage } from "./pages/ContasAPagarPage";
+import { NotasFiscaisPage } from "./pages/NotasFiscaisPage";
 import { SearchClientePage } from "./pages/SearchClientePage";
 import { SearchVeiculoPage } from "./pages/SearchVeiculoPage";
 import { NovoPagamentoPage } from "./pages/NovoPagamentoPage";
@@ -1220,6 +1140,10 @@ const router = createBrowserRouter(
           <Route
             path="/financeiro/contas-pagar"
             element={<ContasAPagarPage />}
+          />
+          <Route
+            path="/financeiro/notas-fiscais"
+            element={<NotasFiscaisPage />}
           />
           <Route path="/financeiro/relatorios" element={<RelatoriosPage />} />
           <Route
@@ -3875,6 +3799,144 @@ export const DashboardCalendar = ({ items }: DashboardCalendarProps) => {
 ================================================================================
 FILE PATH: client\src\components\dashboard\DashboardMetrics.tsx
 ================================================================================
+import { CreditCard, Wallet, CheckCircle, Package } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import type { IDashboardStats } from "../../types/dashboard.types";
+
+interface StatCardProps {
+  title: string;
+  icon: any;
+  onClick: () => void;
+  color: {
+    bg: string;
+    text: string;
+  };
+  value?: string | number;
+  subtext?: string;
+  children?: React.ReactNode;
+}
+
+const StatCard = ({
+  title,
+  icon: Icon,
+  onClick,
+  color,
+  value,
+  subtext,
+  children,
+}: StatCardProps) => (
+  <div
+    onClick={onClick}
+    className="bg-white p-2 rounded-xl shadow-sm border border-neutral-200 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 group h-20 w-full flex flex-col justify-center items-center"
+  >
+    <div className="flex items-center gap-1.5 mb-0.5">
+      <div className={`p-1.5 rounded-lg ${color.bg} ${color.text}`}>
+        <Icon size={16} />
+      </div>
+      <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest truncate">
+        {title}
+      </p>
+    </div>
+
+    <div className="mt-0 flex flex-col items-center text-center">
+      {children ? (
+        children
+      ) : (
+        <>
+          <h3 className={`text-lg  text-neutral-800 leading-none`}>{value}</h3>
+          {subtext && (
+            <p className="text-xs text-neutral-400 uppercase mt-1">{subtext}</p>
+          )}
+        </>
+      )}
+    </div>
+  </div>
+);
+
+interface DashboardMetricsProps {
+  stats: IDashboardStats;
+}
+
+export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0 order-3 w-full">
+      <StatCard
+        title="Contas a Pagar"
+        color={{
+          bg: "bg-red-50",
+          text: "text-red-600",
+        }}
+        icon={CreditCard}
+        onClick={() => navigate("/financeiro/contas-pagar")}
+      >
+        <div className="flex justify-between items-center w-full px-1 gap-2">
+          <div className="flex flex-col items-center">
+            <h3 className="text-lg text-neutral-600">
+              {stats.contasPagarPending}
+            </h3>
+            <p className="text-xs text-neutral-400 uppercase mt-0.5">
+              Pendente
+            </p>
+          </div>
+          <div className="h-5 w-px bg-neutral-200"></div>
+          <div className="flex flex-col items-center">
+            <h3 className="text-lg text-red-600">{stats.contasPagarOverdue}</h3>
+            <p className="text-xs text-neutral-400 uppercase mt-0.5">
+              Atrasada
+            </p>
+          </div>
+        </div>
+      </StatCard>
+      <StatCard
+        title="Mov. de Caixa"
+        value={stats.livroCaixaEntries + stats.livroCaixaExits}
+        color={{
+          bg: "bg-neutral-100",
+          text: "text-neutral-600",
+        }}
+        icon={Wallet}
+        onClick={() => navigate("/financeiro/livro-caixa")}
+        subtext={`Entrada: ${stats.livroCaixaEntries} | Saída: ${stats.livroCaixaExits}`}
+      />
+      <StatCard
+        title="Auto Peças"
+        value={stats.autoPecasPendentes}
+        color={{
+          bg: "bg-orange-50",
+          text: "text-orange-600",
+        }}
+        icon={Package}
+        onClick={() => navigate("/financeiro/pagamento-pecas")}
+        subtext="A Pagar"
+      />
+      <StatCard
+        title="Alerta Estoque"
+        value={stats.alertaEstoque}
+        color={{
+          bg: "bg-red-100",
+          text: "text-red-700",
+        }}
+        icon={Package}
+        onClick={() => navigate("/pecas-estoque")}
+        subtext="Peças em falta"
+      />
+      <StatCard
+        title="Consolidação"
+        value={stats.consolidacao}
+        color={{
+          bg: "bg-emerald-50",
+          text: "text-emerald-600",
+        }}
+        icon={CheckCircle}
+        onClick={() => navigate("/fechamento-financeiro")}
+        subtext="Aguardando"
+      />
+    </div>
+  );
+};
+
 
 
 ================================================================================
@@ -4132,56 +4194,113 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
 ================================================================================
 FILE PATH: client\src\components\dashboard\UnifiedSearch.tsx
 ================================================================================
-import { useState, useEffect, useRef } from "react";
-import { Search, User, Car, Plus, Loader2 } from "lucide-react";
+/**
+ * UnifiedSearch
+ *
+ * Campo de busca dinâmica da Dashboard (Monitor).
+ * Busca por: nome do cliente, telefone, placa, modelo de veículo,
+ * nome da peça/equipamento e fabricante.
+ *
+ * Suporta navegação por teclado: ↑↓ para mover, Enter para selecionar, ESC para fechar.
+ */
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Search, User, Car, Wrench, Plus, Loader2, X } from "lucide-react";
 import { api } from "../../services/api";
 import { Button } from "../ui";
 
-interface SearchResult {
-  type: "cliente_veiculo";
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type SearchResultType = "veiculo" | "equipamento" | "cliente";
+
+export interface SearchResult {
+  type: SearchResultType;
   display: string;
   subtext: string;
   id_cliente: number;
   id_veiculo?: number;
+  id_equipamento?: number;
+  /** Exibida no badge direito para veículos. */
   placa?: string;
 }
 
 interface UnifiedSearchProps {
   onSelect: (result: SearchResult) => void;
   onNewRecord: () => void;
+  placeholder?: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function normalize(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function clientDisplayName(c: any): string {
+  return (
+    c.pessoa_fisica?.pessoa?.nome ||
+    c.pessoa_juridica?.nome_fantasia ||
+    c.pessoa_juridica?.razao_social ||
+    "Cliente"
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const UnifiedSearch = ({
   onSelect,
   onNewRecord,
+  placeholder = "Buscar por cliente, placa, modelo ou peça avulsa...",
 }: UnifiedSearchProps) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounce logic or direct effect?
-  // User asked for "letra por letra", so maybe fast debounce or direct.
-  // Given local data might be used in Dashboard, but here let's assume we might need API or local filtering.
-  // The plan said "frontend filter initially".
-
+  // ── Fechar ao clicar fora ──
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(event.target as Node)
-      ) {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleSearch = async (val: string) => {
+  // ── Scroll automático do item ativo ──
+  useEffect(() => {
+    if (activeIndex < 0 || !listRef.current) return;
+    const items = listRef.current.querySelectorAll("li[data-selectable]");
+    (items[activeIndex] as HTMLElement)?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
+
+  // ── Reset do activeIndex quando a lista muda ──
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [results]);
+
+  // ── Busca com debounce 250ms ──
+  const handleSearch = useCallback((val: string) => {
     setQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
     if (val.length < 2) {
       setResults([]);
       setIsOpen(false);
@@ -4191,169 +4310,298 @@ export const UnifiedSearch = ({
     setLoading(true);
     setIsOpen(true);
 
-    try {
-      // Fetching all relevant data to filter locally or using a search endpoint if available.
-      // For performance, ideally this matches the "fetchData" in dashboard, checking if we can reuse or just fetch search.
-      // Let's emulate a search endpoint behavior by filtering 'clients' and 'vehicles' endpoints if optimized,
-      // or using a specific endpoint if one existed.
-      // User context: "procurar dinamicamente por clientes e veículos".
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const [clientsRes, equipsRes] = await Promise.all([
+          api.get("/cliente"),
+          api.get("/equipamento"),
+        ]);
+        const allClients = clientsRes.data;
+        const allEquipamentos = equipsRes.data;
+        
+        const q = normalize(val);
+        const matches: SearchResult[] = [];
 
-      // Let's assume we fetch all for now as per plan, or use a smart search.
-      // Since we don't have a dedicated /search endpoint in the summary, let's call existing ones in parallel?
-      // Or maybe the dashboard already has them?
-      // To be self-contained, let's fetch here or better, receive data as props?
-      // Receiving data as props might be better if Dashboard already loads them.
-      // But Dashboard loads 'OS', 'Contas', etc. It doesn't seem to load ALL clients/vehicles.
-      // So we should fetch here.
+        // 1. Index and match clients & vehicles
+        allClients.forEach((c: any) => {
+          const name = normalize(clientDisplayName(c));
+          const phones = normalize(
+            [c.telefone_1, c.telefone_2].filter(Boolean).join(" ")
+          );
+          const matchesClient = name.includes(q) || phones.includes(q);
 
-      const response = await api.get(`/cliente`); // Assuming this returns list.
-      // Note: If list is huge, this is bad. But maintaining context constraint: "search letter by letter".
+          // ── Veículos ──
+          if (c.veiculos && c.veiculos.length > 0) {
+            c.veiculos.forEach((v: any) => {
+              const plate = normalize(v.placa || "");
+              const model = normalize(v.modelo || "");
+              const brand = normalize(v.marca || "");
 
-      // OPTIMIZATION: In a real app we'd search server-side.
-      // I'll simulate server-side search by fetching and filtering here for MVP as per plan.
+              if (
+                matchesClient ||
+                plate.includes(q) ||
+                model.includes(q) ||
+                brand.includes(q)
+              ) {
+                matches.push({
+                  type: "veiculo",
+                  display: `${clientDisplayName(c)} — ${v.modelo || "Modelo N/I"}`,
+                  subtext: [v.placa, v.cor, v.marca, v.ano_modelo]
+                    .filter(Boolean)
+                    .join(" • "),
+                  id_cliente: c.id_cliente,
+                  id_veiculo: v.id_veiculo,
+                  placa: v.placa,
+                });
+              }
+            });
+          }
 
-      const allClients = response.data;
-
-      const normalizedQuery = val.toLowerCase();
-
-      const matches: SearchResult[] = [];
-
-      allClients.forEach((c: any) => {
-        const clientName = (
-          c.pessoa_fisica?.pessoa?.nome ||
-          c.pessoa_juridica?.nome_fantasia ||
-          ""
-        ).toLowerCase();
-        const phones = [c.telefone_1, c.telefone_2]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        // Check Vehicles
-        if (c.veiculos && c.veiculos.length > 0) {
-          c.veiculos.forEach((v: any) => {
-            const plate = (v.placa || "").toLowerCase();
-            const model = (v.modelo || "").toLowerCase();
-
-            if (
-              clientName.includes(normalizedQuery) ||
-              plate.includes(normalizedQuery) ||
-              model.includes(normalizedQuery) ||
-              phones.includes(normalizedQuery)
-            ) {
-              matches.push({
-                type: "cliente_veiculo",
-                display: `${c.pessoa_fisica?.pessoa?.nome || c.pessoa_juridica?.nome_fantasia} - ${v.modelo}`,
-                subtext: `${v.placa} • ${v.cor || ""} • ${v.marca || ""}`,
-                id_cliente: c.id_cliente,
-                id_veiculo: v.id_veiculo,
-                placa: v.placa,
-              });
-            }
-          });
-        } else {
-          // Client without vehicle
+          // ── Cliente sem veículo — mas que bate no nome/tel ──
           if (
-            clientName.includes(normalizedQuery) ||
-            phones.includes(normalizedQuery)
+            matchesClient &&
+            (!c.veiculos || c.veiculos.length === 0)
           ) {
             matches.push({
-              type: "cliente_veiculo",
-              display:
-                c.pessoa_fisica?.pessoa?.nome ||
-                c.pessoa_juridica?.nome_fantasia,
-              subtext: "Sem veículo cadastrado",
+              type: "cliente",
+              display: clientDisplayName(c),
+              subtext: c.telefone_1 || "Sem contato cadastrado",
               id_cliente: c.id_cliente,
             });
           }
-        }
-      });
+        });
 
-      setResults(matches.slice(0, 10)); // Limit 10
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+        // 2. Index and match pieces avulsas (equipamentos) from /equipamento
+        if (allEquipamentos && allEquipamentos.length > 0) {
+          allEquipamentos.forEach((eq: any) => {
+            const nomePeca = normalize(eq.nome_peca || "");
+            const fabricante = normalize(eq.fabricante || "");
+            const numeracao = normalize(eq.numeracao || "");
+
+            // Fetch owner details
+            const owner = eq.cliente;
+            const ownerName = owner ? clientDisplayName(owner) : "Cliente";
+            const matchesOwner = normalize(ownerName).includes(q);
+
+            if (
+              matchesOwner ||
+              nomePeca.includes(q) ||
+              fabricante.includes(q) ||
+              numeracao.includes(q)
+            ) {
+              matches.push({
+                type: "equipamento",
+                display: `${ownerName} — ${eq.nome_peca}`,
+                subtext: [eq.fabricante, eq.numeracao]
+                  .filter(Boolean)
+                  .join(" • ") || "Peça avulsa",
+                id_cliente: eq.id_cliente,
+                id_equipamento: eq.id_equipamento,
+              });
+            }
+          });
+        }
+
+        setResults(matches.slice(0, 12));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+  }, []);
+
+  // ── Seleciona o item ativo ou o resultado clicado ──
+  const selectResult = useCallback(
+    (result: SearchResult) => {
+      onSelect(result);
+      setIsOpen(false);
+      setQuery("");
+      setResults([]);
+      setActiveIndex(-1);
+    },
+    [onSelect]
+  );
+
+  // ── Navegação por teclado ──
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen || results.length === 0) {
+      if (e.key === "Escape") {
+        setQuery("");
+        setIsOpen(false);
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setActiveIndex((prev) => (prev + 1 >= results.length ? 0 : prev + 1));
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setActiveIndex((prev) =>
+          prev - 1 < 0 ? results.length - 1 : prev - 1
+        );
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (activeIndex >= 0) {
+          selectResult(results[activeIndex]);
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        setIsOpen(false);
+        setQuery("");
+        setResults([]);
+        break;
     }
   };
 
+  // ── Ícone e cor por tipo de resultado ──
+  const typeConfig: Record<
+    SearchResultType,
+    { icon: React.ReactNode; bg: string; text: string; badge: string }
+  > = {
+    veiculo: {
+      icon: <Car size={17} />,
+      bg: "bg-blue-100",
+      text: "text-blue-600",
+      badge: "Veículo",
+    },
+    equipamento: {
+      icon: <Wrench size={17} />,
+      bg: "bg-amber-100",
+      text: "text-amber-600",
+      badge: "Peça",
+    },
+    cliente: {
+      icon: <User size={17} />,
+      bg: "bg-emerald-100",
+      text: "text-emerald-600",
+      badge: "Cliente",
+    },
+  };
+
   return (
-    <div ref={wrapperRef} className="relative w-full z-50">
+    <div ref={wrapperRef} className="relative w-full">
+      {/* ── Input ── */}
       <div className="relative group">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-primary-500 transition-colors">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-primary-500 transition-colors">
           {loading ? (
-            <Loader2 size={20} className="animate-spin" />
+            <Loader2 size={19} className="animate-spin" />
           ) : (
-            <Search size={20} />
+            <Search size={19} />
           )}
         </div>
+
         <input
           ref={inputRef}
           type="text"
-          className="block w-full pl-10 pr-16 h-[44px] border-2 border-neutral-200 rounded-xl bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-semibold text-neutral-800 text-base disabled:opacity-50"
-          placeholder="Buscar por cliente, placa ou modelo..."
+          className="block w-full pl-10 pr-20 h-[44px] border-2 border-neutral-200 rounded-xl bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-semibold text-neutral-800 text-sm"
+          placeholder={placeholder}
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
-          onFocus={() => {
-            if (query.length >= 2) setIsOpen(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') { setIsOpen(false); setQuery(""); }
-          }}
+          onFocus={() => { if (query.length >= 2) setIsOpen(true); }}
+          onKeyDown={handleKeyDown}
           autoComplete="off"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            activeIndex >= 0 ? `search-option-${activeIndex}` : undefined
+          }
         />
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center gap-1.5">
           {query && (
-            <button onClick={() => { setQuery(""); setIsOpen(false); }} className="text-neutral-400 hover:text-neutral-600 transition-colors mr-2">
-              <span className="text-lg leading-none">×</span>
+            <button
+              onClick={() => {
+                setQuery("");
+                setIsOpen(false);
+                setResults([]);
+                setActiveIndex(-1);
+                inputRef.current?.focus();
+              }}
+              className="text-neutral-400 hover:text-neutral-600 transition-colors"
+              aria-label="Limpar busca"
+            >
+              <X size={15} />
             </button>
           )}
-          <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-xs font-bold text-neutral-400">
+          <kbd className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-[10px] font-bold text-neutral-400 tracking-wide">
             ESC
           </kbd>
         </div>
       </div>
 
+      {/* ── Dropdown de resultados ── */}
       {isOpen && (
         <div className="absolute mt-2 w-full bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.15)] border border-neutral-200 overflow-hidden max-h-[420px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150 z-50">
           {results.length > 0 ? (
             <>
-              <div className="px-4 py-2 bg-neutral-50 border-b border-neutral-100">
-                <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">
-                  {results.length} resultado{results.length !== 1 ? 's' : ''} encontrado{results.length !== 1 ? 's' : ''}
+              {/* Cabeçalho com contagem */}
+              <div className="px-4 py-2 bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
+                <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">
+                  {results.length} resultado{results.length !== 1 ? "s" : ""} encontrado{results.length !== 1 ? "s" : ""}
+                </p>
+                <p className="text-[10px] text-neutral-400 font-medium hidden sm:block">
+                  ↑↓ navegar · Enter selecionar
                 </p>
               </div>
-              <ul>
-                {results.map((result, idx) => (
-                  <li
-                    key={`${result.id_cliente}-${result.id_veiculo || "nv"}-${idx}`}
-                    className="px-4 py-3.5 hover:bg-primary-50 cursor-pointer border-b border-neutral-100 last:border-0 transition-colors group"
-                    onClick={() => {
-                      onSelect(result);
-                      setIsOpen(false);
-                      setQuery("");
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl shrink-0 ${result.placa ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                        {result.placa ? <Car size={18} /> : <User size={18} />}
+
+              <ul ref={listRef} role="listbox">
+                {results.map((result, idx) => {
+                  const cfg = typeConfig[result.type];
+                  const isActive = idx === activeIndex;
+                  return (
+                    <li
+                      id={`search-option-${idx}`}
+                      key={`${result.id_cliente}-${result.id_veiculo ?? ""}-${result.id_equipamento ?? ""}-${idx}`}
+                      data-selectable
+                      role="option"
+                      aria-selected={isActive}
+                      className={`px-4 py-3 border-b border-neutral-100 last:border-0 cursor-pointer transition-colors group
+                        ${isActive ? "bg-primary-50" : "hover:bg-primary-50"}`}
+                      onClick={() => selectResult(result)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`p-2 rounded-xl shrink-0 transition-transform ${cfg.bg} ${cfg.text}
+                            ${isActive ? "scale-110" : "group-hover:scale-105"}`}
+                        >
+                          {cfg.icon}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`font-bold text-sm truncate transition-colors
+                              ${isActive ? "text-primary-700" : "text-neutral-900 group-hover:text-primary-700"}`}
+                          >
+                            {result.display}
+                          </p>
+                          <p className="text-xs text-neutral-500 mt-0.5 font-medium truncate">
+                            {result.subtext}
+                          </p>
+                        </div>
+
+                        <div className="shrink-0 flex items-center gap-2">
+                          {result.placa && (
+                            <span className="px-1.5 py-0.5 bg-neutral-900 text-white rounded text-[10px] tracking-[0.12em] font-mono font-bold">
+                              {result.placa}
+                            </span>
+                          )}
+                          <span
+                            className={`hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide ${cfg.bg} ${cfg.text}`}
+                          >
+                            {cfg.badge}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-neutral-900 text-sm truncate group-hover:text-primary-700 transition-colors">
-                          {result.display}
-                        </p>
-                        <p className="text-xs text-neutral-500 mt-0.5 font-medium truncate">
-                          {result.subtext}
-                        </p>
-                      </div>
-                      {result.placa && (
-                        <span className="shrink-0 px-2 py-1 bg-neutral-900 text-white rounded-lg text-xs tracking-[0.15em] font-mono font-bold">
-                          {result.placa}
-                        </span>
-                      )}
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </>
           ) : loading ? (
@@ -4363,8 +4611,12 @@ export const UnifiedSearch = ({
             </div>
           ) : (
             <div className="p-6 text-center">
-              <p className="text-neutral-600 font-bold text-sm mb-1">Nenhum resultado encontrado</p>
-              <p className="text-xs text-neutral-400 mb-4">Tente outro termo ou cadastre um novo cliente.</p>
+              <p className="text-neutral-600 font-bold text-sm mb-1">
+                Nenhum resultado encontrado
+              </p>
+              <p className="text-xs text-neutral-400 mb-4">
+                Tente outro nome, placa ou peça — ou cadastre um novo cliente.
+              </p>
               <Button
                 variant="primary"
                 size="sm"
@@ -4375,7 +4627,7 @@ export const UnifiedSearch = ({
                   setIsOpen(false);
                 }}
               >
-                Cadastrar Novo Cliente/Veículo
+                Cadastrar Novo Cliente / Veículo
               </Button>
             </div>
           )}
@@ -4683,6 +4935,9 @@ interface EntradaFornecedorFormProps {
   date: string;
   setDate: (val: string) => void;
   onNewSupplier: () => void;
+  nfsPendentes: any[];
+  nfNumero: string;
+  setNfNumero: (val: string) => void;
 }
 
 export const EntradaFornecedorForm = ({
@@ -4694,11 +4949,14 @@ export const EntradaFornecedorForm = ({
   date,
   setDate,
   onNewSupplier,
+  nfsPendentes,
+  nfNumero,
+  setNfNumero,
 }: EntradaFornecedorFormProps) => {
   return (
     <Card className="p-6">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-        <div className="md:col-span-6 relative">
+        <div className="md:col-span-5 relative">
           <div className="flex justify-between items-baseline mb-1">
             <span className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
               Fornecedor
@@ -4726,7 +4984,7 @@ export const EntradaFornecedorForm = ({
           </Select>
         </div>
 
-        <div className="md:col-span-3">
+        <div className="md:col-span-2">
           <Input
             label="Data Compra"
             type="date"
@@ -4736,7 +4994,7 @@ export const EntradaFornecedorForm = ({
           />
         </div>
 
-        <div className="md:col-span-3">
+        <div className="md:col-span-2">
           <Input
             label="Nota Fiscal / Recibo"
             value={invoice}
@@ -4744,6 +5002,30 @@ export const EntradaFornecedorForm = ({
             placeholder="Nº NF"
             icon={FileText}
           />
+        </div>
+
+        <div className="md:col-span-3">
+          <Select
+            label="NF Sincronização (Contas a Pagar)"
+            value={nfNumero}
+            onChange={(e) => {
+              const val = e.target.value;
+              setNfNumero(val);
+              // Auto-fill invoice if empty
+              if (val && !invoice) {
+                setInvoice(val);
+              }
+            }}
+            labelClassName="text-amber-800 font-semibold"
+            className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 text-amber-900 font-medium"
+          >
+            <option value="">Sem Sincronização (Livre)</option>
+            {nfsPendentes.map((nf) => (
+              <option key={nf.nf_numero} value={nf.nf_numero}>
+                {nf.nf_numero} ({nf.credor || "Sem Credor"})
+              </option>
+            ))}
+          </Select>
         </div>
       </div>
     </Card>
@@ -5320,6 +5602,14 @@ export const EstoqueTable = ({
                   <span className="text-base text-neutral-400">
                     {dataCompra}
                   </span>
+                  {lastEntry?.nf_numero && (
+                    <span
+                      className="mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm"
+                      title={`Esta compra está vinculada à NF ${lastEntry.nf_numero}`}
+                    >
+                      NF: {lastEntry.nf_numero}
+                    </span>
+                  )}
                 </div>
               </td>
               <td className="text-left">
@@ -6371,6 +6661,10 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
     url_anexo: "",
     obs: "",
     repetir_parcelas: 0,
+    nf_numero: "",
+    nf_boleto: "",
+    nf_parcela: "" as string | number,
+    nf_total_parcelas: "" as string | number,
   });
 
   useEffect(() => {
@@ -6435,6 +6729,10 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
         url_anexo: conta.url_anexo || "",
         obs: conta.obs || "",
         repetir_parcelas: 0,
+        nf_numero: conta.nf_numero || "",
+        nf_boleto: conta.nf_boleto || "",
+        nf_parcela: conta.nf_parcela !== null && conta.nf_parcela !== undefined ? String(conta.nf_parcela) : "",
+        nf_total_parcelas: conta.nf_total_parcelas !== null && conta.nf_total_parcelas !== undefined ? String(conta.nf_total_parcelas) : "",
       });
       setApplyToAllRecurrences(false);
     } catch (error) {
@@ -6460,6 +6758,10 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
       url_anexo: "",
       obs: "",
       repetir_parcelas: 0,
+      nf_numero: "",
+      nf_boleto: "",
+      nf_parcela: "",
+      nf_total_parcelas: "",
     });
     setRecurrenceInfo(null);
     setApplyToAllRecurrences(false);
@@ -6485,6 +6787,10 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
         dt_emissao: formData.dt_emissao
           ? new Date(formData.dt_emissao).toISOString()
           : null,
+        nf_numero: formData.nf_numero ? formData.nf_numero.trim() : null,
+        nf_boleto: formData.nf_boleto ? formData.nf_boleto.trim() : null,
+        nf_parcela: formData.nf_parcela !== "" ? Number(formData.nf_parcela) : null,
+        nf_total_parcelas: formData.nf_total_parcelas !== "" ? Number(formData.nf_total_parcelas) : null,
       };
 
       if (editingId) {
@@ -6661,6 +6967,65 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             }
             placeholder="https://..."
           />
+        </div>
+
+        {/* 5.1 Vínculo de Nota Fiscal (Sincronização - FASE 2) */}
+        <div className="bg-amber-50/30 border border-amber-100/70 p-5 rounded-2xl space-y-4">
+          <div className="flex items-center gap-2 border-b border-amber-100 pb-2">
+            <span className="text-sm font-bold text-amber-800 uppercase tracking-wider">
+              Vínculo de Nota Fiscal (Sincronização)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Número da NF (Sincronização Sensível)"
+              value={formData.nf_numero}
+              onChange={(e) =>
+                setFormData({ ...formData, nf_numero: e.target.value })
+              }
+              placeholder="Ex: 000.123.456"
+              labelClassName="text-amber-800 font-semibold"
+              className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 placeholder:text-amber-600/40 text-amber-900 font-medium"
+            />
+            <Input
+              label="Referência do Boleto / Identificador"
+              value={formData.nf_boleto}
+              onChange={(e) =>
+                setFormData({ ...formData, nf_boleto: e.target.value })
+              }
+              placeholder="Ex: BOL-1234"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Número da Parcela"
+              type="number"
+              min={1}
+              value={formData.nf_parcela}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  nf_parcela: e.target.value ? Number(e.target.value) : "",
+                })
+              }
+              placeholder="Ex: 1"
+            />
+            <Input
+              label="Total de Parcelas da NF"
+              type="number"
+              min={1}
+              value={formData.nf_total_parcelas}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  nf_total_parcelas: e.target.value ? Number(e.target.value) : "",
+                })
+              }
+              placeholder="Ex: 3"
+            />
+          </div>
         </div>
 
         {/* 6. Recurrence Update Option */}
@@ -8973,6 +9338,176 @@ export const MovimentacoesTab = () => {
             </div>
           </div>
         </Modal>
+      )}
+    </div>
+  );
+};
+
+
+
+================================================================================
+FILE PATH: client\src\components\financeiro\NfSyncBadge.tsx
+================================================================================
+import React, { useState, useEffect, useRef } from "react";
+import { FinanceiroService } from "../../services/financeiro.service";
+import { RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+
+// Registro global em memória para desduplicação de chamadas HTTP simultâneas para o mesmo nf_numero
+const pendingRequests = new Map<string, Promise<{ matchPercent: number }>>();
+const resolvedCache = new Map<string, { matchPercent: number; timestamp: number }>();
+const STALE_TIME = 30000; // Tempo de cache de 30 segundos
+
+/**
+ * Função de-duplicadora e cache de requisições ao backend.
+ * Garante que se múltiplas parcelas com a mesma NF renderizarem simultaneamente,
+ * apenas uma única chamada HTTP é disparada e compartilhada por todas as instâncias.
+ */
+const fetchNfSyncStatus = (nfNumero: string): Promise<{ matchPercent: number }> => {
+  const now = Date.now();
+  const cached = resolvedCache.get(nfNumero);
+
+  // Retorna do cache se estiver válido
+  if (cached && now - cached.timestamp < STALE_TIME) {
+    return Promise.resolve(cached);
+  }
+
+  // Se já houver uma requisição em andamento para esta NF, reaproveita a mesma promessa
+  let promise = pendingRequests.get(nfNumero);
+  if (!promise) {
+    promise = FinanceiroService.getNfSyncStatus(nfNumero)
+      .then((data) => {
+        const result = { matchPercent: Number(data.matchPercent || 0) };
+        resolvedCache.set(nfNumero, { ...result, timestamp: Date.now() });
+        pendingRequests.delete(nfNumero);
+        return result;
+      })
+      .catch((err) => {
+        pendingRequests.delete(nfNumero);
+        throw err;
+      });
+    pendingRequests.set(nfNumero, promise);
+  }
+  return promise;
+};
+
+interface NfSyncBadgeProps {
+  nf_numero: string;
+}
+
+export const NfSyncBadge: React.FC<NfSyncBadgeProps> = ({ nf_numero }) => {
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [percent, setPercent] = useState<number | null>(null);
+  const elementRef = useRef<HTMLDivElement | null>(null);
+  const isMounted = useRef<boolean>(true);
+
+  // Mantém controle seguro de montagem do componente para evitar vazamento de memória / memory leaks
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  const loadStatus = async (force = false) => {
+    if (!nf_numero) return;
+    setStatus("loading");
+    try {
+      if (force) {
+        resolvedCache.delete(nf_numero);
+        pendingRequests.delete(nf_numero);
+      }
+      const data = await fetchNfSyncStatus(nf_numero);
+      if (isMounted.current) {
+        setPercent(data.matchPercent);
+        setStatus("success");
+      }
+    } catch (error) {
+      if (isMounted.current) {
+        console.error(`Erro ao carregar status da NF ${nf_numero}:`, error);
+        setStatus("error");
+      }
+    }
+  };
+
+  // IntersectionObserver: Dispara a busca apenas se o componente estiver visível no visor (viewport)
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element || !nf_numero) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && isMounted.current) {
+          loadStatus();
+          observer.unobserve(element);
+        }
+      },
+      {
+        rootMargin: "50px", // pré-carrega ligeiramente antes de entrar na tela
+      }
+    );
+
+    observer.observe(element);
+
+    return () => {
+      if (element) {
+        observer.unobserve(element);
+      }
+    };
+  }, [nf_numero]);
+
+  if (!nf_numero) return null;
+
+  return (
+    <div ref={elementRef} className="inline-flex items-center gap-1.5 text-xs mt-1">
+      {status === "idle" && (
+        <span className="text-neutral-400 animate-pulse italic">Aguardando...</span>
+      )}
+
+      {status === "loading" && (
+        <span className="inline-flex items-center gap-1 text-slate-500 font-medium bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200">
+          <RefreshCw size={10} className="animate-spin text-slate-400" /> Sincronizando...
+        </span>
+      )}
+
+      {status === "error" && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            loadStatus(true);
+          }}
+          className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-semibold bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-full border border-red-200 transition-colors shadow-sm"
+          title="Erro ao carregar sincronização. Clique para tentar novamente."
+        >
+          <AlertCircle size={10} /> Erro (Recarregar)
+        </button>
+      )}
+
+      {status === "success" && percent !== null && (
+        <div className="flex items-center gap-1.5">
+          {percent >= 100 ? (
+            <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold shadow-sm">
+              <CheckCircle2 size={10} className="text-emerald-500" /> 100% Sincronizado
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-bold shadow-sm">
+              <AlertCircle size={10} className="text-amber-500" /> {percent.toFixed(1)}% Sinc.
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              loadStatus(true);
+            }}
+            className="text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 p-1 rounded-md transition-all active:scale-95"
+            title="Atualizar Status de Sincronização"
+          >
+            <RefreshCw size={10} />
+          </button>
+        </div>
       )}
     </div>
   );
@@ -15439,6 +15974,799 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
 
 
 ================================================================================
+FILE PATH: client\src\components\os\OsCreationFlowModal.tsx
+================================================================================
+import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
+import {
+  X,
+  Search,
+  Loader2,
+  User,
+  Car,
+  Wrench,
+  ChevronLeft,
+  Plus,
+  Save,
+} from "lucide-react";
+import { ActionButton } from "../ui/ActionButton";
+import { Button } from "../ui/Button";
+import { Modal } from "../ui/Modal";
+import { ClienteService } from "../../services/cliente.service";
+import { EquipamentoService } from "../../services/equipamento.service";
+import { VeiculoForm } from "../veiculos/Forms/VeiculoForm";
+import {
+  EquipamentoFormSection,
+  type EquipamentoFormSectionRef,
+} from "../clientes/Forms/EquipamentoFormSection";
+import type { ICliente, IVeiculo, IEquipamentoCliente } from "../../types/backend";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+type FlowStep = "search" | "select-asset";
+
+/** Item genérico para a lista do STEP 2 (veículo ou equipamento unificados). */
+interface AssetItem {
+  kind: "vehicle" | "equipment";
+  id: number;
+  label: string;
+  sublabel?: string;
+  raw: IVeiculo | IEquipamentoCliente;
+}
+
+export interface OsCreationFlowModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onOpenOs: (
+    clientId: number,
+    vehicleId?: number,
+    equipamentoId?: number
+  ) => void;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getClientName(c: ICliente): string {
+  return (
+    c.pessoa_fisica?.pessoa?.nome ||
+    c.pessoa_juridica?.nome_fantasia ||
+    c.pessoa_juridica?.razao_social ||
+    "Cliente"
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN FLOW MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function OsCreationFlowModal({
+  isOpen,
+  onClose,
+  onOpenOs,
+}: OsCreationFlowModalProps) {
+  const navigate = useNavigate();
+
+  // ── Flow state ──
+  const [step, setStep] = useState<FlowStep>("search");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<ICliente[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<ICliente | null>(null);
+  const [isLoadingClient, setIsLoadingClient] = useState(false);
+
+  // ── Keyboard navigation: índice ativo na lista corrente ──
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  // ── Quick modals ──
+  const [quickModal, setQuickModal] = useState<"vehicle" | "equipment" | null>(null);
+  const [isSavingEquip, setIsSavingEquip] = useState(false);
+  const equipFormRef = useRef<EquipamentoFormSectionRef>(null);
+
+  // ── Refs ──
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Fecha apenas o flow modal ──
+  const closeFlowModal = useCallback(() => {
+    setStep("search");
+    setSearchTerm("");
+    setSearchResults([]);
+    setSelectedClient(null);
+    setQuickModal(null);
+    setActiveIndex(-1);
+    onClose();
+  }, [onClose]);
+
+  // ── Dispara onOpenOs e reseta o flow (sem chamar onClose) ──
+  const triggerOs = useCallback(
+    (clientId: number, vehicleId?: number, equipamentoId?: number) => {
+      onOpenOs(clientId, vehicleId, equipamentoId);
+      setStep("search");
+      setSearchTerm("");
+      setSearchResults([]);
+      setSelectedClient(null);
+      setQuickModal(null);
+      setActiveIndex(-1);
+    },
+    [onOpenOs]
+  );
+
+  // ── Foco automático e reset ao abrir ──
+  useEffect(() => {
+    if (isOpen) {
+      setStep("search");
+      setSearchTerm("");
+      setSearchResults([]);
+      setSelectedClient(null);
+      setQuickModal(null);
+      setActiveIndex(-1);
+      setTimeout(() => inputRef.current?.focus(), 80);
+    }
+  }, [isOpen]);
+
+  // ── Reset do activeIndex quando a lista muda ──
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [searchResults, selectedClient, step]);
+
+  // ── Scroll automático do item ativo para a view ──
+  useEffect(() => {
+    if (activeIndex < 0 || !listRef.current) return;
+    const items = listRef.current.querySelectorAll("li");
+    items[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
+
+  // ── Busca com debounce 300ms ──
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (val.trim().length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const raw = await ClienteService.search(val.trim());
+        setSearchResults(raw as unknown as ICliente[]);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  };
+
+  // ── Carga do cliente completo (com veículos + equipamentos) ──
+  const handleClientSelect = async (clientePartial: ICliente) => {
+    setIsLoadingClient(true);
+    try {
+      const full = await ClienteService.getById(clientePartial.id_cliente);
+      setSelectedClient(full);
+      setStep("select-asset");
+    } catch {
+      setSelectedClient(clientePartial);
+      setStep("select-asset");
+    } finally {
+      setIsLoadingClient(false);
+    }
+  };
+
+  // ── Lista unificada de ativos do STEP 2 ──
+  const assetItems: AssetItem[] = selectedClient
+    ? [
+        ...(selectedClient.veiculos ?? []).map((v): AssetItem => ({
+          kind: "vehicle",
+          id: v.id_veiculo,
+          label: `${v.modelo || "Modelo N/I"}${v.cor ? ` — ${v.cor}` : ""}`,
+          sublabel: [v.placa, v.marca, v.ano_modelo].filter(Boolean).join(" • "),
+          raw: v,
+        })),
+        ...(selectedClient.equipamentos ?? []).map((eq): AssetItem => ({
+          kind: "equipment",
+          id: eq.id_equipamento,
+          label: eq.nome_peca,
+          sublabel: eq.fabricante || undefined,
+          raw: eq,
+        })),
+      ]
+    : [];
+
+  // ── Seleciona um ativo da lista unificada ──
+  const selectAsset = (item: AssetItem) => {
+    if (item.kind === "vehicle") {
+      triggerOs(selectedClient!.id_cliente, item.id, undefined);
+    } else {
+      triggerOs(selectedClient!.id_cliente, undefined, item.id);
+    }
+  };
+
+  // ── VeiculoForm onSuccess ──
+  const handleVehicleFormSuccess = (novoVeiculo: IVeiculo) => {
+    setQuickModal(null);
+    triggerOs(selectedClient!.id_cliente, novoVeiculo.id_veiculo, undefined);
+  };
+
+  // ── Equipamento: submit via ref ──
+  const handleEquipamentoSave = async () => {
+    if (!equipFormRef.current || !selectedClient) return;
+    const data = equipFormRef.current.getData();
+
+    if (!data.nome_peca.trim()) {
+      toast.error("O nome da peça é obrigatório.");
+      return;
+    }
+
+    const clientId = selectedClient.id_cliente;
+    setIsSavingEquip(true);
+    try {
+      const novo = await EquipamentoService.create({
+        id_cliente: clientId,
+        nome_peca: data.nome_peca.trim(),
+        fabricante: data.fabricante.trim() || undefined,
+        numeracao: data.numeracao.trim() || undefined,
+        observacoes: data.observacoes.trim() || undefined,
+      });
+      setQuickModal(null);
+      triggerOs(clientId, undefined, novo.id_equipamento);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Erro ao cadastrar peça. Tente novamente.";
+      toast.error(msg);
+    } finally {
+      setIsSavingEquip(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // NAVEGAÇÃO POR TECLADO
+  // Gerenciada no nível do input (STEP 1) e do painel (STEP 2).
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Sub-modais abertos: ignora (eles gerenciam o próprio teclado)
+    if (quickModal) return;
+
+    if (step === "search") {
+      const list = searchResults;
+      if (list.length === 0) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((prev) => (prev + 1 >= list.length ? 0 : prev + 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((prev) => (prev - 1 < 0 ? list.length - 1 : prev - 1));
+      } else if (e.key === "Enter" && activeIndex >= 0) {
+        e.preventDefault();
+        handleClientSelect(list[activeIndex]);
+      }
+    }
+
+    if (step === "select-asset") {
+      if (assetItems.length === 0) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((prev) =>
+          prev + 1 >= assetItems.length ? 0 : prev + 1
+        );
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((prev) =>
+          prev - 1 < 0 ? assetItems.length - 1 : prev - 1
+        );
+      } else if (e.key === "Enter" && activeIndex >= 0) {
+        e.preventDefault();
+        selectAsset(assetItems[activeIndex]);
+      } else if (e.key === "Backspace" || e.key === "Escape") {
+        // ESC no STEP 2 volta para a busca (antes de fechar o modal)
+        if (e.key === "Escape") {
+          e.stopPropagation(); // evita fechar o modal inteiro
+          setStep("search");
+        }
+      }
+    }
+  };
+
+  // ── ESC fecha o flow (apenas quando não há sub-modal aberto) ──
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !quickModal && step === "search") {
+        closeFlowModal();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isOpen, quickModal, step, closeFlowModal]);
+
+  if (!isOpen) return null;
+
+  const selectedClientName = selectedClient ? getClientName(selectedClient) : "";
+
+  // Separa os ativos por tipo para exibir em seções distintas
+  const vehicleItems = assetItems.filter((a) => a.kind === "vehicle");
+  const equipItems = assetItems.filter((a) => a.kind === "equipment");
+
+  // Offset do activeIndex dentro da lista unificada para cada seção
+  const vehicleOffset = 0;
+  const equipOffset = vehicleItems.length;
+
+  return createPortal(
+    <>
+      {/* ══════════════════════════════════════════════════════════════
+          MODAL PRINCIPAL
+      ══════════════════════════════════════════════════════════════ */}
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+        style={{ zIndex: 50 }}
+        onClick={(e) => e.target === e.currentTarget && closeFlowModal()}
+        onKeyDown={handleKeyDown}
+      >
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[88vh] flex flex-col animate-in zoom-in-95 duration-200">
+
+          {/* ── Header ── */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 shrink-0">
+            <div className="flex items-center gap-3">
+              {step === "select-asset" && (
+                <button
+                  onClick={() => setStep("search")}
+                  className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800 transition-colors"
+                  aria-label="Voltar para busca"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+              )}
+              <div>
+                <h2 className="text-lg font-black text-neutral-900">
+                  {step === "search"
+                    ? "Nova Ordem de Serviço"
+                    : "Selecionar Veículo ou Peça"}
+                </h2>
+                {step === "search" && (
+                  <p className="text-xs text-neutral-500 font-medium mt-0.5">
+                    Passo 1 de 2 — Busque o cliente
+                  </p>
+                )}
+                {step === "select-asset" && (
+                  <p className="text-xs text-neutral-500 font-medium mt-0.5 truncate max-w-[260px] sm:max-w-xs">
+                    Cliente:{" "}
+                    <span className="font-black text-neutral-700">
+                      {selectedClientName}
+                    </span>
+                  </p>
+                )}
+              </div>
+            </div>
+            <ActionButton
+              icon={X}
+              label="Fechar"
+              onClick={closeFlowModal}
+              variant="neutral"
+            />
+          </div>
+
+          {/* ── Body scrollável ── */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+
+            {/* ═══ STEP 1: Busca de cliente ═══ */}
+            {step === "search" && (
+              <div className="p-5 space-y-4">
+                {/* Input de busca — captura as setas e Enter aqui */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    {isSearching || isLoadingClient ? (
+                      <Loader2 size={18} className="animate-spin text-primary-500" />
+                    ) : (
+                      <Search size={18} className="text-neutral-400" />
+                    )}
+                  </div>
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    className="block w-full pl-10 pr-9 h-[44px] border-2 border-neutral-200 rounded-xl bg-white placeholder-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-semibold text-neutral-800 text-sm"
+                    placeholder="Nome do cliente ou telefone..."
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    autoComplete="off"
+                    aria-activedescendant={
+                      activeIndex >= 0 ? `client-option-${activeIndex}` : undefined
+                    }
+                    aria-autocomplete="list"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm("");
+                        setSearchResults([]);
+                        setActiveIndex(-1);
+                        inputRef.current?.focus();
+                      }}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-neutral-400 hover:text-neutral-600 transition-colors"
+                      aria-label="Limpar busca"
+                    >
+                      <X size={15} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Dica de navegação teclado (aparece quando há resultados) */}
+                {searchResults.length > 0 && (
+                  <p className="text-[11px] text-neutral-400 font-medium px-1 -mt-1">
+                    ↑↓ navegar &nbsp;·&nbsp; Enter selecionar
+                  </p>
+                )}
+
+                {/* Aguardando digitação */}
+                {searchTerm.length < 2 && !isSearching && (
+                  <div className="text-center py-10">
+                    <div className="w-14 h-14 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <User size={26} className="text-primary-400" />
+                    </div>
+                    <p className="text-sm font-bold text-neutral-600">
+                      Digite o nome ou telefone do cliente
+                    </p>
+                    <p className="text-xs text-neutral-400 mt-1">
+                      Mínimo de 2 caracteres para iniciar a busca
+                    </p>
+                  </div>
+                )}
+
+                {/* Buscando */}
+                {isSearching && searchTerm.length >= 2 && (
+                  <div className="text-center py-10">
+                    <Loader2 size={28} className="animate-spin text-primary-400 mx-auto mb-3" />
+                    <p className="text-sm text-neutral-400 font-medium">Buscando clientes...</p>
+                  </div>
+                )}
+
+                {/* Resultados */}
+                {!isSearching && searchResults.length > 0 && (
+                  <ul
+                    ref={listRef}
+                    role="listbox"
+                    className="divide-y divide-neutral-100 border border-neutral-200 rounded-xl overflow-hidden"
+                  >
+                    {searchResults.map((c, idx) => {
+                      const name = getClientName(c);
+                      const phone = (c as any).telefone_1 || "";
+                      const isActive = idx === activeIndex;
+                      return (
+                        <li
+                          id={`client-option-${idx}`}
+                          key={c.id_cliente}
+                          role="option"
+                          aria-selected={isActive}
+                          onClick={() => handleClientSelect(c)}
+                          className={`flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors group
+                            ${isActive
+                              ? "bg-primary-50 ring-2 ring-inset ring-primary-400"
+                              : "hover:bg-primary-50"
+                            }`}
+                        >
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform
+                              ${isActive
+                                ? "bg-primary-500 text-white scale-105"
+                                : "bg-emerald-100 text-emerald-600 group-hover:scale-105"
+                              }`}
+                          >
+                            <User size={18} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className={`text-sm font-bold truncate transition-colors
+                                ${isActive ? "text-primary-700" : "text-neutral-900 group-hover:text-primary-700"}`}
+                            >
+                              {name}
+                            </p>
+                            {phone && (
+                              <p className="text-xs text-neutral-500 mt-0.5 font-medium">{phone}</p>
+                            )}
+                          </div>
+                          <ChevronLeft
+                            size={16}
+                            className={`rotate-180 shrink-0 transition-colors
+                              ${isActive ? "text-primary-400" : "text-neutral-300 group-hover:text-primary-400"}`}
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                {/* Sem resultados */}
+                {!isSearching && searchResults.length === 0 && searchTerm.length >= 2 && (
+                  <div className="text-center py-10">
+                    <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Search size={24} className="text-amber-400" />
+                    </div>
+                    <p className="text-sm font-bold text-neutral-700 mb-1">Nenhum cliente encontrado</p>
+                    <p className="text-xs text-neutral-400 mb-5">Tente outro nome ou cadastre um novo cliente.</p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={Plus}
+                      onClick={() => { closeFlowModal(); navigate("/novo-cadastro"); }}
+                    >
+                      Novo Cadastro
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ═══ STEP 2: Seleção de veículo / equipamento ═══ */}
+            {step === "select-asset" && selectedClient && (
+              <div
+                className="p-5 space-y-5 outline-none"
+                tabIndex={0}
+                onKeyDown={handleKeyDown}
+                // Recebe foco automaticamente para capturar setas
+                ref={(el) => {
+                  if (el && step === "select-asset") setTimeout(() => el.focus(), 50);
+                }}
+              >
+                {/* Dica de navegação */}
+                {assetItems.length > 0 && (
+                  <p className="text-[11px] text-neutral-400 font-medium">
+                    ↑↓ navegar pelos itens &nbsp;·&nbsp; Enter selecionar
+                  </p>
+                )}
+
+                {/* Banner do cliente */}
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="w-9 h-9 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+                    <User size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider">Cliente Selecionado</p>
+                    <p className="text-sm font-black text-neutral-800 truncate">{selectedClientName}</p>
+                  </div>
+                </div>
+
+                {/* ── Veículos ── */}
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <h4 className="text-xs font-black text-neutral-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <Car size={13} /> Veículos
+                    </h4>
+                    <span className="text-xs text-neutral-400 font-medium">
+                      {vehicleItems.length} cadastrado(s)
+                    </span>
+                  </div>
+
+                  {vehicleItems.length > 0 ? (
+                    <ul
+                      ref={step === "select-asset" ? listRef : undefined}
+                      role="listbox"
+                      className="divide-y divide-neutral-100 border border-neutral-200 rounded-xl overflow-hidden"
+                    >
+                      {vehicleItems.map((item, idx) => {
+                        const globalIdx = vehicleOffset + idx;
+                        const isActive = globalIdx === activeIndex;
+                        const v = item.raw as IVeiculo;
+                        return (
+                          <li
+                            key={item.id}
+                            role="option"
+                            aria-selected={isActive}
+                            onClick={() => selectAsset(item)}
+                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors group
+                              ${isActive
+                                ? "bg-blue-50 ring-2 ring-inset ring-blue-400"
+                                : "hover:bg-blue-50"
+                              }`}
+                          >
+                            <div
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform
+                                ${isActive
+                                  ? "bg-blue-500 text-white scale-105"
+                                  : "bg-blue-100 text-blue-600 group-hover:scale-105"
+                                }`}
+                            >
+                              <Car size={18} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-bold truncate transition-colors
+                                ${isActive ? "text-blue-700" : "text-neutral-800 group-hover:text-blue-700"}`}>
+                                {item.label}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {v.placa && (
+                                  <span className="px-1.5 py-0.5 bg-neutral-900 text-white rounded text-[10px] tracking-[0.12em] font-mono font-bold">
+                                    {v.placa}
+                                  </span>
+                                )}
+                                {v.marca && <span className="text-xs text-neutral-400 font-medium">{v.marca}</span>}
+                                {v.ano_modelo && <span className="text-xs text-neutral-400 font-medium">{v.ano_modelo}</span>}
+                              </div>
+                            </div>
+                            <ChevronLeft
+                              size={16}
+                              className={`rotate-180 shrink-0 transition-colors
+                                ${isActive ? "text-blue-400" : "text-neutral-300 group-hover:text-blue-400"}`}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <div className="border border-dashed border-neutral-200 rounded-xl py-5 text-center">
+                      <p className="text-xs text-neutral-400 font-medium">Nenhum veículo cadastrado para este cliente.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Equipamentos / Peças ── */}
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <h4 className="text-xs font-black text-neutral-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <Wrench size={13} /> Peças / Equipamentos
+                    </h4>
+                    <span className="text-xs text-neutral-400 font-medium">
+                      {equipItems.length} cadastrado(s)
+                    </span>
+                  </div>
+
+                  {equipItems.length > 0 ? (
+                    <ul
+                      role="listbox"
+                      className="divide-y divide-neutral-100 border border-neutral-200 rounded-xl overflow-hidden"
+                    >
+                      {equipItems.map((item, idx) => {
+                        const globalIdx = equipOffset + idx;
+                        const isActive = globalIdx === activeIndex;
+                        return (
+                          <li
+                            key={item.id}
+                            role="option"
+                            aria-selected={isActive}
+                            onClick={() => selectAsset(item)}
+                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors group
+                              ${isActive
+                                ? "bg-amber-50 ring-2 ring-inset ring-amber-400"
+                                : "hover:bg-amber-50"
+                              }`}
+                          >
+                            <div
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform
+                                ${isActive
+                                  ? "bg-amber-500 text-white scale-105"
+                                  : "bg-amber-100 text-amber-600 group-hover:scale-105"
+                                }`}
+                            >
+                              <Wrench size={18} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-bold truncate transition-colors
+                                ${isActive ? "text-amber-700" : "text-neutral-800 group-hover:text-amber-700"}`}>
+                                {item.label}
+                              </p>
+                              {item.sublabel && (
+                                <p className="text-xs text-neutral-400 font-medium mt-0.5">{item.sublabel}</p>
+                              )}
+                            </div>
+                            <ChevronLeft
+                              size={16}
+                              className={`rotate-180 shrink-0 transition-colors
+                                ${isActive ? "text-amber-400" : "text-neutral-300 group-hover:text-amber-400"}`}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <div className="border border-dashed border-neutral-200 rounded-xl py-5 text-center">
+                      <p className="text-xs text-neutral-400 font-medium">Nenhuma peça/equipamento cadastrado para este cliente.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Footer (só no STEP 2) ── */}
+          {step === "select-asset" && selectedClient && (
+            <div className="shrink-0 px-5 py-4 border-t border-neutral-100 bg-neutral-50 rounded-b-2xl flex flex-col sm:flex-row gap-2.5">
+              <Button
+                variant="outline"
+                size="sm"
+                icon={Car}
+                className="flex-1 justify-center"
+                onClick={() => setQuickModal("vehicle")}
+              >
+                Novo Veículo
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                icon={Wrench}
+                className="flex-1 justify-center"
+                onClick={() => setQuickModal("equipment")}
+              >
+                Nova Peça Avulsa
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+          SUB-MODAL: NOVO VEÍCULO
+      ══════════════════════════════════════════════════════════════ */}
+      {quickModal === "vehicle" && selectedClient && (
+        <Modal
+          title="Novo Veículo"
+          onClose={() => setQuickModal(null)}
+          className="max-w-2xl"
+          zIndex={60}
+        >
+          <VeiculoForm
+            clientId={selectedClient.id_cliente}
+            onSuccess={handleVehicleFormSuccess}
+            onCancel={() => setQuickModal(null)}
+          />
+        </Modal>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          SUB-MODAL: NOVA PEÇA AVULSA
+      ══════════════════════════════════════════════════════════════ */}
+      {quickModal === "equipment" && selectedClient && (
+        <Modal
+          title="Nova Peça / Equipamento"
+          onClose={() => setQuickModal(null)}
+          className="max-w-md"
+          zIndex={60}
+        >
+          <div className="space-y-5">
+            <EquipamentoFormSection ref={equipFormRef} />
+            <div className="flex gap-3 pt-2 border-t border-neutral-100">
+              <Button
+                variant="ghost"
+                onClick={() => setQuickModal(null)}
+                disabled={isSavingEquip}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                icon={Save}
+                isLoading={isSavingEquip}
+                onClick={handleEquipamentoSave}
+                className="flex-1"
+              >
+                Salvar e Abrir OS
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>,
+    document.body
+  );
+}
+
+
+
+================================================================================
 FILE PATH: client\src\components\os\OsCreationModal.tsx
 ================================================================================
 import { memo } from "react";
@@ -15453,6 +16781,7 @@ interface OsCreationModalProps {
   onSelect: (status: OsStatus) => void;
   clientName?: string;
   vehicleName?: string;
+  isLoading?: boolean;
 }
 
 export const OsCreationModal = memo(
@@ -15462,6 +16791,7 @@ export const OsCreationModal = memo(
     onSelect,
     clientName,
     vehicleName,
+    isLoading = false,
   }: OsCreationModalProps) => {
     if (!isOpen) return null;
 
@@ -15505,7 +16835,8 @@ export const OsCreationModal = memo(
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={handleSchedule}
-              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-purple-500 hover:bg-purple-50 transition-all group text-center"
+              disabled={isLoading}
+              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-purple-500 hover:bg-purple-50 transition-all group text-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="p-4 bg-purple-100 text-purple-600 rounded-full group-hover:scale-110 transition-transform">
                 <Calendar size={32} />
@@ -15522,7 +16853,8 @@ export const OsCreationModal = memo(
 
             <button
               onClick={() => onSelect(OsStatus.ORCAMENTO)}
-              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-amber-500 hover:bg-amber-50 transition-all group text-center"
+              disabled={isLoading}
+              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-amber-500 hover:bg-amber-50 transition-all group text-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="p-4 bg-amber-100 text-amber-600 rounded-full group-hover:scale-110 transition-transform">
                 <FileText size={32} />
@@ -15539,7 +16871,8 @@ export const OsCreationModal = memo(
 
             <button
               onClick={() => onSelect(OsStatus.ABERTA)}
-              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-blue-500 hover:bg-blue-50 transition-all group text-center"
+              disabled={isLoading}
+              className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-blue-500 hover:bg-blue-50 transition-all group text-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="p-4 bg-blue-100 text-blue-600 rounded-full group-hover:scale-110 transition-transform">
                 <Wrench size={32} />
@@ -17153,10 +18486,11 @@ export const PaymentOsModal = ({
 ================================================================================
 FILE PATH: client\src\components\os\Forms\ItensOsForm.tsx
 ================================================================================
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { OsItemsService } from "../../../services/osItems.service";
-import { Button, Input } from "../../ui";
+import { FornecedorService } from "../../../services/fornecedor.service";
+import { Button, Input, Select } from "../../ui";
 
 interface ItensOsFormProps {
   osId: number;
@@ -17177,6 +18511,20 @@ export const ItensOsForm = ({
   const [quantidade, setQuantidade] = useState("1");
   const [valorVenda, setValorVenda] = useState("");
   const [valorTotal, setValorTotal] = useState("");
+
+  // Compra externa / Peça avulsa fields
+  const [fornecedores, setFornecedores] = useState<any[]>([]);
+  const [idFornecedor, setIdFornecedor] = useState("");
+  const [custoReal, setCustoReal] = useState("");
+
+  useEffect(() => {
+    // Apenas carregar fornecedores se for peça externa (ou seja, se idPecasEstoque estiver vazio)
+    if (!idPecasEstoque) {
+      FornecedorService.getAll()
+        .then((data) => setFornecedores(data || []))
+        .catch(console.error);
+    }
+  }, [idPecasEstoque]);
 
   // Auto-calculate valor_total when quantidade or valor_venda changes
   const handleQuantidadeChange = (value: string) => {
@@ -17206,6 +18554,8 @@ export const ItensOsForm = ({
         quantidade: Number(quantidade),
         valor_venda: Number(valorVenda),
         valor_total: Number(valorTotal),
+        id_fornecedor: !idPecasEstoque && idFornecedor ? Number(idFornecedor) : null,
+        custo_real: !idPecasEstoque && custoReal ? Number(custoReal) : null,
       };
 
       const newItem = await OsItemsService.create(payload);
@@ -17232,7 +18582,7 @@ export const ItensOsForm = ({
             type="number"
             value={idPecasEstoque}
             onChange={(e) => setIdPecasEstoque(e.target.value)}
-            placeholder="Deixe vazio para serviço"
+            placeholder="Deixe vazio para serviço ou compra avulsa"
           />
         </div>
 
@@ -17280,6 +18630,38 @@ export const ItensOsForm = ({
             readOnly
           />
         </div>
+
+        {/* Peça externa opcional */}
+        {!idPecasEstoque && (
+          <div className="col-span-2 bg-amber-50/20 border border-amber-100/50 p-4 rounded-xl space-y-4">
+            <p className="text-xs font-bold text-amber-800 uppercase tracking-widest">
+              Compra Externa / Peça Avulsa (Opcional)
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                label="Fornecedor da Peça"
+                value={idFornecedor}
+                onChange={(e) => setIdFornecedor(e.target.value)}
+              >
+                <option value="">Não definido (Informar depois)</option>
+                {fornecedores.map((f) => (
+                  <option key={f.id_fornecedor} value={f.id_fornecedor}>
+                    {String(f.nome_fantasia || f.nome || "").toUpperCase()}
+                  </option>
+                ))}
+              </Select>
+
+              <Input
+                label="Custo Real da Peça (R$)"
+                type="number"
+                step="0.01"
+                value={custoReal}
+                onChange={(e) => setCustoReal(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 pt-4">
@@ -19032,17 +20414,21 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   icon?: React.ElementType;
+  labelClassName?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, icon: Icon, className = "", id, ...props }, ref) => {
+  ({ label, error, icon: Icon, className = "", labelClassName = "", id, ...props }, ref) => {
     const generatedId = useId();
     const inputId = id || generatedId;
 
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-gray-600">
+          <label
+            htmlFor={inputId}
+            className={`text-sm font-medium text-gray-600 ${labelClassName}`}
+          >
             {label}
           </label>
         )}
@@ -19642,6 +21028,7 @@ const menuItems = [
       { path: "/financeiro/equipe", label: "Pgto. Colaboradores" },
       { path: "/financeiro/pagamento-pecas", label: "Pgto. Auto Peças" },
       { path: "/financeiro/contas-pagar", label: "Contas a Pagar" },
+      { path: "/financeiro/notas-fiscais", label: "Central NFs 📄" },
       { path: "/financeiro/relatorios", label: "Relatórios Inteligentes ✨" },
       { path: "/fechamento-financeiro", label: "Consolidação" },
     ],
@@ -21201,8 +22588,9 @@ export interface FilterOptions<T> {
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 /**
- * Recursively extracts only primitive values (string | number | boolean)
- * from an object, concatenated with a space. Avoids JSON keys and metadata.
+ * Recursively extracts primitive values (string | number | boolean)
+ * from any object, explicitly checking relations like 'equipamento',
+ * 'veiculo', and 'cliente' to guarantee they are fully indexed for search.
  */
 function extractText(val: unknown): string {
   if (val === null || val === undefined) return "";
@@ -21210,9 +22598,68 @@ function extractText(val: unknown): string {
   if (typeof val === "number" || typeof val === "boolean") return String(val);
   if (Array.isArray(val)) return val.map(extractText).join(" ");
   if (typeof val === "object") {
-    return Object.values(val as Record<string, unknown>)
-      .map(extractText)
-      .join(" ");
+    // Treat Date objects specifically
+    if (val instanceof Date) {
+      return val.toLocaleDateString("pt-BR");
+    }
+
+    const obj = val as Record<string, unknown>;
+
+    // Handle Decimal constructor safely
+    if (obj.constructor && obj.constructor.name === "Decimal") {
+      return String(val);
+    }
+
+    let explicitParts: string[] = [];
+
+    // Explicitly grab piece avulsa (equipamento) fields
+    if ("equipamento" in obj && obj.equipamento) {
+      const eq = obj.equipamento as any;
+      if (eq.nome_peca) explicitParts.push(eq.nome_peca);
+      if (eq.fabricante) explicitParts.push(eq.fabricante);
+      if (eq.numeracao) explicitParts.push(eq.numeracao);
+      if (eq.observacoes) explicitParts.push(eq.observacoes);
+    }
+
+    // Explicitly grab vehicle fields
+    if ("veiculo" in obj && obj.veiculo) {
+      const v = obj.veiculo as any;
+      if (v.placa) explicitParts.push(v.placa);
+      if (v.marca) explicitParts.push(v.marca);
+      if (v.modelo) explicitParts.push(v.modelo);
+      if (v.cor) explicitParts.push(v.cor);
+      if (v.ano_modelo) explicitParts.push(String(v.ano_modelo));
+    }
+
+    // Explicitly grab client fields
+    if ("cliente" in obj && obj.cliente) {
+      const c = obj.cliente as any;
+      const pfName = c.pessoa_fisica?.pessoa?.nome;
+      const pjFantasia = c.pessoa_juridica?.nome_fantasia;
+      const pjRazao = c.pessoa_juridica?.razao_social;
+      if (pfName) explicitParts.push(pfName);
+      if (pjFantasia) explicitParts.push(pjFantasia);
+      if (pjRazao) explicitParts.push(pjRazao);
+      if (c.telefone_1) explicitParts.push(c.telefone_1);
+      if (c.telefone_2) explicitParts.push(c.telefone_2);
+    }
+
+    // Recursively handle any other properties, skipping relations we handled explicitly
+    const otherParts = Object.entries(obj).map(([key, value]) => {
+      if (
+        key === "created_at" ||
+        key === "updated_at" ||
+        key === "deleted_at" ||
+        key === "cliente" ||
+        key === "veiculo" ||
+        key === "equipamento"
+      ) {
+        return "";
+      }
+      return extractText(value);
+    });
+
+    return [...explicitParts, ...otherParts].filter(Boolean).join(" ");
   }
   return "";
 }
@@ -21618,8 +23065,9 @@ export const useOsItems = (osId: string | undefined) => {
       loadItems();
       toast.success("Item removido.");
       return true;
-    } catch (e) {
-      toast.error("Erro ao remover item.");
+    } catch (e: any) {
+      const errMsg = e.response?.data?.error || e.message || "Erro ao remover item.";
+      toast.error(errMsg);
       return false;
     }
   };
@@ -23624,6 +25072,7 @@ import {
 } from "lucide-react";
 import type { IContasPagar } from "../types/backend";
 import { ContaPagarModal } from "../components/financeiro/ContaPagarModal";
+import { NfSyncBadge } from "../components/financeiro/NfSyncBadge";
 
 export const ContasAPagarPage = () => {
   const [contas, setContas] = useState<IContasPagar[]>([]);
@@ -23836,6 +25285,7 @@ export const ContasAPagarPage = () => {
             <tr className="bg-neutral-50 border-b border-neutral-200 text-sm font-medium text-gray-600">
               <th className="p-4 text-left">Vencimento / Status</th>
               <th className="p-4 text-left">Descrição</th>
+              <th className="p-4 text-left">NF / Sincronização</th>
               <th className="p-4 text-left">Categoria</th>
               <th className="p-4 text-right min-w-[150px]">Valor</th>
               <th className="p-4 text-center">Ações</th>
@@ -23915,6 +25365,31 @@ export const ContasAPagarPage = () => {
                         {conta.obs || "\u00A0"}
                       </div>
                     </div>
+                  </td>
+                  <td className="p-4">
+                    {conta.nf_numero ? (
+                      <div className="flex flex-col">
+                        <div className="text-base text-neutral-900 font-semibold flex items-center gap-1.5">
+                          {conta.nf_numero}
+                        </div>
+                        <div className="text-sm text-neutral-500 font-normal min-h-[1.5rem] mt-1">
+                          {conta.nf_parcela !== null && conta.nf_parcela !== undefined && conta.nf_total_parcelas ? (
+                            `Parcela ${conta.nf_parcela} de ${conta.nf_total_parcelas}`
+                          ) : conta.nf_boleto ? (
+                            `Boleto: ${conta.nf_boleto}`
+                          ) : (
+                            "\u00A0"
+                          )}
+                        </div>
+                        <NfSyncBadge nf_numero={conta.nf_numero} />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col">
+                        <span className="text-sm text-neutral-400 italic">Sem vínculo</span>
+                        <div className="text-sm text-neutral-500 font-normal min-h-[1.5rem] mt-1">&nbsp;</div>
+                        <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
+                      </div>
+                    )}
                   </td>
                   <td className="p-4">
                     <div className="flex flex-col">
@@ -24048,31 +25523,43 @@ FILE PATH: client\src\pages\DashboardPage.tsx
 ================================================================================
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { PageLayout } from "../components/ui/PageLayout";
 
 import { OsStatus } from "../types/os.types";
-import { UnifiedSearch } from "../components/dashboard/UnifiedSearch";
+import { OsCreationFlowModal } from "../components/os/OsCreationFlowModal";
 import { OsCreationModal } from "../components/os/OsCreationModal";
 import { LoosePartOsModal } from "../components/os/LoosePartOsModal";
 import { DashboardCalendar } from "../components/dashboard/DashboardCalendar";
+import { UnifiedSearch, type SearchResult } from "../components/dashboard/UnifiedSearch";
 
 import { DashboardService } from "../services/dashboard.service";
+import { OsService } from "../services/os.service";
 import { DashboardMetrics } from "../components/dashboard/DashboardMetrics";
 import { RecentOsWidget } from "../components/dashboard/RecentOsWidget";
 import type { IDashboardStats } from "../types/dashboard.types";
+import { toast } from "react-toastify";
+
+interface OsTarget {
+  clientId: number;
+  vehicleId?: number;
+  equipamentoId?: number;
+}
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const [decisionModalOpen, setDecisionModalOpen] = useState(false);
+  // ── Modais ──
+  const [isOsFlowOpen, setIsOsFlowOpen] = useState(false);
+  const [isOsCreationModalOpen, setIsOsCreationModalOpen] = useState(false);
   const [isLoosePartModalOpen, setIsLoosePartModalOpen] = useState(false);
-  const [selectedSearch, setSelectedSearch] = useState<any>(null);
+  const [isCreatingOs, setIsCreatingOs] = useState(false);
 
-  const [handleNewRecord] = useState(() => () => navigate("/novo-cadastro"));
+  // Armazena o alvo (cliente + veículo/equipamento) para repassar ao OsCreationModal
+  const [osTarget, setOsTarget] = useState<OsTarget | null>(null);
 
+  // ── Dashboard data ──
   const [recentOss, setRecentOss] = useState<any[]>([]);
   const [stats, setStats] = useState<IDashboardStats>({
     osAberta: 0,
@@ -24090,28 +25577,12 @@ export function DashboardPage() {
   useEffect(() => {
     fetchData();
 
-    // Atualizar data/hora a cada segundo
     const timer = setInterval(() => {
       setCurrentDateTime(new Date());
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    if (location.state?.focusSearch) {
-      // Pequeno delay para garantir que o componente de busca foi renderizado
-      setTimeout(() => {
-        const input = document.querySelector(
-          "input[placeholder*='Buscar cliente, placa ou peça...']",
-        );
-        if (input) (input as HTMLElement).focus();
-      }, 100);
-
-      // Limpa o state para não focar novamente se der refresh
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location, navigate]);
 
   const fetchData = async () => {
     try {
@@ -24123,28 +25594,57 @@ export function DashboardPage() {
     }
   };
 
-  const handleSearchResultSelect = (result: any) => {
-    if (result.subtext === "Sem veículo cadastrado") {
-      navigate(`/cadastro/${result.id_cliente}`);
-      return;
-    }
-    setSelectedSearch(result);
-    setDecisionModalOpen(true);
+  // ── Recebe o retorno do OsCreationFlowModal e abre o OsCreationModal padrão ──
+  const handleOpenOs = (
+    clientId: number,
+    vehicleId?: number,
+    equipamentoId?: number
+  ) => {
+    setOsTarget({ clientId, vehicleId, equipamentoId });
+    setIsOsFlowOpen(false);
+    setIsOsCreationModalOpen(true);
   };
 
-  const handleOsSelect = (status: OsStatus) => {
-    if (!selectedSearch) return;
+  // ── Resultado selecionado no UnifiedSearch → abre fluxo de OS ──
+  const handleSearchSelect = (result: SearchResult) => {
+    handleOpenOs(
+      result.id_cliente,
+      result.id_veiculo,
+      result.id_equipamento
+    );
+  };
 
-    // Construct URL with all necessary params
-    const params = new URLSearchParams();
-    params.append("clientId", selectedSearch.id_cliente);
-    if (selectedSearch.id_veiculo) {
-      params.append("vehicleId", selectedSearch.id_veiculo);
+  // ── Recebe a seleção de status, cria a OS via API e navega para o detalhe ──
+  const handleOsSelect = async (status: OsStatus) => {
+    if (!osTarget) return;
+
+    setIsCreatingOs(true);
+    try {
+      const novaOs = await OsService.create({
+        id_cliente: osTarget.clientId,
+        id_veiculo: osTarget.vehicleId ?? undefined,
+        id_equipamento: osTarget.equipamentoId ?? undefined,
+        status,
+        parcelas: 1,
+        valor_total_cliente: 0,
+        valor_mao_de_obra: 0,
+      });
+
+      setIsOsCreationModalOpen(false);
+      setOsTarget(null);
+      // Navega direto para o detalhe da OS recém-criada (permanece no contexto do Monitor)
+      navigate(`/ordem-de-servico/${novaOs.id_os}`);
+      toast.success("OS criada com sucesso!");
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Erro ao criar a OS. Tente novamente.";
+      toast.error(msg);
+    } finally {
+      setIsCreatingOs(false);
     }
-    params.append("initialStatus", status);
-
-    navigate(`/ordem-de-servico?${params.toString()}`);
-    setDecisionModalOpen(false);
   };
 
   return (
@@ -24167,24 +25667,20 @@ export function DashboardPage() {
         </div>
       }
       actions={
-        <div className="flex-1 w-full xl:max-w-3xl mx-auto flex items-center gap-3 order-2">
-          <div className="flex-1">
+        <div className="flex items-center gap-3">
+          {/* Busca rápida ao lado dos botões */}
+          <div className="w-72">
             <UnifiedSearch
-              onSelect={handleSearchResultSelect}
-              onNewRecord={handleNewRecord}
+              onSelect={handleSearchSelect}
+              onNewRecord={() => navigate("/novo-cadastro")}
             />
           </div>
           <Button
             variant="primary"
             size="lg"
             icon={Plus}
-            className="h-[42px] px-4 shadow-lg shadow-primary-500/20 whitespace-nowrap"
-            onClick={() => {
-              const input = document.querySelector(
-                "input[placeholder*='Buscar cliente, placa ou peça...']",
-              );
-              if (input) (input as HTMLElement).focus();
-            }}
+            className="h-[42px] px-5 shadow-lg shadow-primary-500/20 whitespace-nowrap"
+            onClick={() => setIsOsFlowOpen(true)}
           >
             Nova OS
           </Button>
@@ -24198,12 +25694,13 @@ export function DashboardPage() {
         </div>
       }
     >
-      <div className="h-[calc(100vh-170px)] flex flex-col overflow-hidden space-y-4">
-        <div className="p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700 shrink-0">
+      {/* Container sem altura fixa nem overflow interno — scroll natural do documento */}
+      <div className="flex flex-col space-y-4">
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700">
           <DashboardMetrics stats={stats} />
         </div>
 
-        <main className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0">
+        <main className="space-y-4">
           <DashboardCalendar
             items={recentOss
               .filter(
@@ -24232,12 +25729,24 @@ export function DashboardPage() {
         </main>
       </div>
 
+      {/* ── Modais ── */}
+      <OsCreationFlowModal
+        isOpen={isOsFlowOpen}
+        onClose={() => setIsOsFlowOpen(false)}
+        onOpenOs={handleOpenOs}
+      />
+
       <OsCreationModal
-        isOpen={decisionModalOpen}
-        onClose={() => setDecisionModalOpen(false)}
+        isOpen={isOsCreationModalOpen}
+        onClose={() => {
+          if (isCreatingOs) return; // não fecha durante a criação
+          setIsOsCreationModalOpen(false);
+          setOsTarget(null);
+        }}
         onSelect={handleOsSelect}
-        clientName={selectedSearch?.display}
-        vehicleName={selectedSearch?.subtext}
+        isLoading={isCreatingOs}
+        clientName={undefined}
+        vehicleName={undefined}
       />
 
       <LoosePartOsModal
@@ -24261,6 +25770,7 @@ import { EntradaFornecedorForm } from "../components/estoque/EntradaFornecedorFo
 import { EntradaItensForm } from "../components/estoque/EntradaItensForm";
 import { api } from "../services/api";
 import { EstoqueService } from "../services/estoque.service";
+import { FinanceiroService } from "../services/financeiro.service";
 import type {
   IItemEntrada,
   IEntradaEstoquePayload,
@@ -24275,6 +25785,8 @@ export const EntradaEstoquePage = () => {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [obs, setObs] = useState("");
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
+  const [nfsPendentes, setNfsPendentes] = useState<any[]>([]);
+  const [nfNumero, setNfNumero] = useState("");
 
   // Items State
   const [items, setItems] = useState<IItemEntrada[]>([]);
@@ -24288,9 +25800,10 @@ export const EntradaEstoquePage = () => {
   const [finPaid, setFinPaid] = useState(false);
   const [finPayDate, setFinPayDate] = useState("");
 
-  // Load Suppliers
+  // Load Suppliers & Pending NFs
   useEffect(() => {
     loadSuppliers();
+    loadNfsPendentes();
   }, []);
 
   const loadSuppliers = () => {
@@ -24298,6 +25811,15 @@ export const EntradaEstoquePage = () => {
       .get("/fornecedor")
       .then((res) => setSuppliers(res.data))
       .catch(console.error);
+  };
+
+  const loadNfsPendentes = async () => {
+    try {
+      const data = await FinanceiroService.getNfsPendentes();
+      setNfsPendentes(data || []);
+    } catch (e) {
+      console.error("Erro ao carregar NFs pendentes:", e);
+    }
   };
 
   const totalValue = items.reduce(
@@ -24339,6 +25861,7 @@ export const EntradaEstoquePage = () => {
         data_compra: new Date(date),
         obs: obs,
         itens: items,
+        nf_numero: nfNumero.trim() || null,
         financeiro: enableFinancial
           ? {
               descricao: finDesc,
@@ -24359,6 +25882,9 @@ export const EntradaEstoquePage = () => {
       setItems([]);
       setInvoice("");
       setObs("");
+      setNfNumero("");
+      // Reload pending NFs
+      loadNfsPendentes();
     } catch (e: any) {
       console.error(e);
       toast.error(
@@ -24382,6 +25908,9 @@ export const EntradaEstoquePage = () => {
           date={date}
           setDate={setDate}
           onNewSupplier={() => setShowNewSupplierModal(true)}
+          nfsPendentes={nfsPendentes}
+          nfNumero={nfNumero}
+          setNfNumero={setNfNumero}
         />
 
         <EntradaItensForm
@@ -27762,8 +29291,479 @@ export const Login: React.FC = () => {
 
 
 ================================================================================
+FILE PATH: client\src\pages\NotasFiscaisPage.tsx
+================================================================================
+import { useState, useEffect } from "react";
+import { FinanceiroService } from "../services/financeiro.service";
+import { formatCurrency } from "../utils/formatCurrency";
+import {
+  PageLayout,
+  Card,
+  Modal,
+  Button,
+  Input,
+} from "../components/ui";
+import { NfSyncBadge } from "../components/financeiro/NfSyncBadge";
+import { toast } from "react-toastify";
+import {
+  Search,
+  Eye,
+  Calendar,
+  FileText,
+  DollarSign,
+  Package,
+  Wrench,
+  X,
+} from "lucide-react";
+
+export const NotasFiscaisPage = () => {
+  const [loading, setLoading] = useState(false);
+  const [nfs, setNfs] = useState<any[]>([]);
+  const [search, setSearch] = useState("");
+  
+  // Modal de Detalhes
+  const [selectedNf, setSelectedNf] = useState<any | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    loadNotasFiscais();
+  }, []);
+
+  const loadNotasFiscais = async () => {
+    try {
+      setLoading(true);
+      const data = await FinanceiroService.getNotasFiscaisCentral();
+      setNfs(data || []);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao carregar Central de Notas Fiscais.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Busca profunda cruzada local
+  const filteredNfs = nfs.filter((nf) => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+
+    // 1. Busca nos campos gerais da NF
+    if (
+      nf.nf_numero.toLowerCase().includes(s) ||
+      nf.credor.toLowerCase().includes(s)
+    ) {
+      return true;
+    }
+
+    // 2. Busca nos boletos (Contas a Pagar)
+    const matchesBoleto = nf.boletos.some(
+      (b: any) =>
+        (b.descricao && b.descricao.toLowerCase().includes(s)) ||
+        (b.nf_boleto && b.nf_boleto.toLowerCase().includes(s)) ||
+        (b.status && b.status.toLowerCase().includes(s))
+    );
+    if (matchesBoleto) return true;
+
+    // 3. Busca nas peças de estoque físico (EntradaEstoque)
+    const matchesEstoque = nf.pecas_estoque.some(
+      (e: any) =>
+        (e.obs && e.obs.toLowerCase().includes(s)) ||
+        (e.fornecedor && e.fornecedor.toLowerCase().includes(s)) ||
+        (e.nota_fiscal && e.nota_fiscal.toLowerCase().includes(s))
+    );
+    if (matchesEstoque) return true;
+
+    // 4. Busca nas peças aplicadas em Ordens de Serviço (PagamentoPeca)
+    const matchesOs = nf.pecas_os.some(
+      (p: any) =>
+        (p.descricao && p.descricao.toLowerCase().includes(s)) ||
+        String(p.id_os).includes(s) ||
+        (p.cliente && p.cliente.toLowerCase().includes(s)) ||
+        (p.veiculo && p.veiculo.toLowerCase().includes(s))
+    );
+    if (matchesOs) return true;
+
+    return false;
+  });
+
+  const handleOpenDetails = (nf: any) => {
+    setSelectedNf(nf);
+    setModalOpen(true);
+  };
+
+  return (
+    <PageLayout
+      title="Central de Notas Fiscais"
+      subtitle="Busca cruzada e paridade física-financeira de todas as Notas Fiscais e boletos do sistema."
+    >
+      <div className="space-y-6">
+        {/* BUSCA DE ALTA PERFORMANCE */}
+        <div className="relative">
+          <Input
+            icon={Search}
+            placeholder="Buscar por número da NF, fornecedor, placa de veículo, número da OS, cliente ou peça..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full"
+          />
+        </div>
+
+        {/* TABELA DE NOTAS FISCAIS */}
+        <Card className="p-0 overflow-hidden border-neutral-200">
+          <div className="overflow-x-auto">
+            <table className="tabela-limpa w-full">
+              <thead>
+                <tr className="bg-neutral-50 border-b border-neutral-200 text-sm font-medium text-gray-600">
+                  <th className="p-4 text-left">Número da NF</th>
+                  <th className="p-4 text-left">Fornecedor / Credor</th>
+                  <th className="p-4 text-right">Valor Planejado (Contas)</th>
+                  <th className="p-4 text-center">Status Pagamento</th>
+                  <th className="p-4 text-left">Sincronização Física</th>
+                  <th className="p-4 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-neutral-400">
+                      Carregando Central de NFs...
+                    </td>
+                  </tr>
+                ) : filteredNfs.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="p-8 text-center text-neutral-400 italic"
+                    >
+                      Nenhuma Nota Fiscal encontrada.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredNfs.map((nf) => (
+                    <tr
+                      key={nf.nf_numero}
+                      className="hover:bg-neutral-50 transition-colors group"
+                    >
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <FileText size={16} className="text-neutral-400" />
+                          <span className="text-base text-neutral-900 font-bold uppercase">
+                            {nf.nf_numero}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-base text-neutral-700 font-normal uppercase">
+                          {nf.credor}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        <span className="text-base text-neutral-900 font-medium">
+                          {formatCurrency(nf.valor_total)}
+                        </span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span
+                          className={`px-3 py-1 rounded-md text-sm font-bold uppercase tracking-wider ${
+                            nf.status === "PAGO"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-orange-100 text-orange-700"
+                          }`}
+                        >
+                          {nf.status === "PAGO" ? "QUITADO" : "PENDENTE"}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <NfSyncBadge nf_numero={nf.nf_numero} />
+                      </td>
+                      <td className="p-4 text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenDetails(nf)}
+                          icon={Eye}
+                          className="text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 active:scale-95"
+                        >
+                          Ver Detalhes
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+
+      {/* MODAL DE DETALHES DE NOTA FISCAL (2 SEÇÕES VERTICAIS UNIFICADAS) */}
+      {modalOpen && selectedNf && (
+        <Modal
+          title={`Painel Integrado da Nota Fiscal: ${selectedNf.nf_numero}`}
+          onClose={() => {
+            setModalOpen(false);
+            setSelectedNf(null);
+          }}
+          className="max-w-6xl"
+        >
+          <div className="space-y-6 pt-4">
+            
+            {/* CABEÇALHO RÁPIDO DO MODAL */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200">
+                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                  Fornecedor / Credor Principal
+                </p>
+                <p className="text-lg font-bold text-neutral-800 uppercase mt-1">
+                  {selectedNf.credor}
+                </p>
+              </div>
+              <div className="bg-amber-50/40 p-4 rounded-xl border border-amber-100 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-amber-800 uppercase tracking-widest">
+                    Batimento Físico-Financeiro
+                  </p>
+                  <div className="mt-1">
+                    <NfSyncBadge nf_numero={selectedNf.nf_numero} />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-amber-800 uppercase tracking-widest">
+                    Valor Planejado Contas
+                  </p>
+                  <p className="text-xl font-black text-neutral-800 mt-0.5">
+                    {formatCurrency(selectedNf.valor_total)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* SEÇÃO 1: INFORMAÇÕES DE PAGAMENTO (BOLETOS / CONTAS A PAGAR) */}
+            <Card className="border-neutral-200">
+              <div className="flex items-center gap-2 border-b border-neutral-100 pb-3 mb-4">
+                <div className="bg-blue-50 p-1.5 rounded-lg text-blue-600">
+                  <DollarSign size={18} />
+                </div>
+                <h3 className="text-base font-bold text-neutral-800 uppercase tracking-wider">
+                  Informações de Pagamento (Boletos / Parcelas)
+                </h3>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="tabela-limpa w-full text-sm">
+                  <thead>
+                    <tr className="bg-neutral-50 border-b border-neutral-200 text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                      <th className="p-3 text-left">Parcela / Descrição</th>
+                      <th className="p-3 text-left">Ref. Boleto</th>
+                      <th className="p-3 text-left">Vencimento</th>
+                      <th className="p-3 text-right">Valor</th>
+                      <th className="p-3 text-center">Status</th>
+                      <th className="p-3 text-left">Data Pagamento</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-50">
+                    {selectedNf.boletos.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-4 text-center text-neutral-400 italic">
+                          Sem boletos financeiros vinculados a esta NF.
+                        </td>
+                      </tr>
+                    ) : (
+                      selectedNf.boletos.map((b: any) => (
+                        <tr key={b.id_conta_pagar} className="hover:bg-neutral-50/50">
+                          <td className="p-3">
+                            <div className="font-semibold text-neutral-800">
+                              {b.nf_parcela && b.nf_total_parcelas
+                                ? `Parcela ${b.nf_parcela}/${b.nf_total_parcelas}`
+                                : b.numero_parcela && b.total_parcelas
+                                  ? `Parcela ${b.numero_parcela}/${b.total_parcelas}`
+                                  : "Parcela Única"}
+                            </div>
+                            <div className="text-xs text-neutral-500 mt-0.5">{b.descricao}</div>
+                          </td>
+                          <td className="p-3 font-mono text-neutral-600">{b.nf_boleto || "---"}</td>
+                          <td className="p-3">
+                            {new Date(b.dt_vencimento).getUTCDate().toString().padStart(2, "0")}/
+                            {(new Date(b.dt_vencimento).getUTCMonth() + 1).toString().padStart(2, "0")}/
+                            {new Date(b.dt_vencimento).getUTCFullYear()}
+                          </td>
+                          <td className="p-3 text-right font-bold text-neutral-800">
+                            {formatCurrency(b.valor)}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${
+                                b.status === "PAGO"
+                                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                  : "bg-orange-50 text-orange-600 border border-orange-100"
+                              }`}
+                            >
+                              {b.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-neutral-500 font-normal">
+                            {b.dt_pagamento
+                              ? `${new Date(b.dt_pagamento).getUTCDate().toString().padStart(2, "0")}/${(new Date(b.dt_pagamento).getUTCMonth() + 1).toString().padStart(2, "0")}/${new Date(b.dt_pagamento).getUTCFullYear()}`
+                              : "Pendente"}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* SEÇÃO 2: ITENS DA NOTA FISCAL (TABELA UNIFICADA) */}
+            <Card className="border-neutral-200">
+              <div className="flex items-center gap-2 border-b border-neutral-100 pb-3 mb-4">
+                <div className="bg-emerald-50 p-1.5 rounded-lg text-emerald-600">
+                  <Package size={18} />
+                </div>
+                <h3 className="text-base font-bold text-neutral-800 uppercase tracking-wider">
+                  Itens da Nota Fiscal (Estoque e Aplicações em OS)
+                </h3>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="tabela-limpa w-full text-sm">
+                  <thead>
+                    <tr className="bg-neutral-50 border-b border-neutral-200 text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                      <th className="p-3 text-left">Nome do Item / Lote</th>
+                      <th className="p-3 text-left">Origem</th>
+                      <th className="p-3 text-left">Destino / Aplicação</th>
+                      <th className="p-3 text-right">Valor Custo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-50">
+                    {getUnifiedItems(selectedNf).length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="p-4 text-center text-neutral-400 italic">
+                          Sem itens físicos ou de OS vinculados a esta NF.
+                        </td>
+                      </tr>
+                    ) : (
+                      getUnifiedItems(selectedNf).map((item: any) => (
+                        <tr key={item.id_unico} className="hover:bg-neutral-50/50">
+                          <td className="p-3">
+                            <div className="font-semibold text-neutral-800 uppercase">
+                              {item.nome_item}
+                            </div>
+                            <div className="text-xs text-neutral-500 mt-0.5">
+                              Entrada em: {item.data ? new Date(item.data).toLocaleDateString("pt-BR") : "N/A"}
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${
+                                item.tipo_origem === "ESTOQUE"
+                                  ? "bg-neutral-100 text-neutral-600 border border-neutral-200"
+                                  : "bg-blue-50 text-blue-700 border border-blue-100"
+                              }`}
+                            >
+                              {item.tipo_origem === "ESTOQUE" ? "Estoque" : "Peça OS"}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
+                                item.tipo_origem === "ESTOQUE"
+                                  ? "bg-neutral-100 text-neutral-700 border border-neutral-200"
+                                  : "bg-blue-50/70 text-blue-800 border border-blue-100"
+                              }`}
+                            >
+                              {item.destino_string}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right font-bold text-neutral-800">
+                            {formatCurrency(item.custo)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* BOTÃO DE FECHAMENTO DO MODAL */}
+            <div className="flex justify-end pt-4 border-t border-neutral-100">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setModalOpen(false);
+                  setSelectedNf(null);
+                }}
+                icon={X}
+              >
+                Fechar Painel
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </PageLayout>
+  );
+};
+
+// Mapper helper defined outside the component to keep codebase structured
+const getUnifiedItems = (nf: any) => {
+  if (!nf) return [];
+  
+  const estoqueItems = (nf.pecas_estoque || []).map((e: any) => ({
+    id_unico: `estoque_${e.id_entrada_estoque}`,
+    nome_item: `LOTE #${e.id_entrada_estoque} ${e.nota_fiscal ? `(NF: ${e.nota_fiscal})` : "(S/N)"}`,
+    custo: Number(e.valor_total),
+    destino_string: "Em estoque",
+    tipo_origem: "ESTOQUE",
+    data: e.data_compra,
+  }));
+
+  const osItems = (nf.pecas_os || []).map((p: any) => ({
+    id_unico: `os_${p.id_pagamento_peca}`,
+    nome_item: p.descricao || "Peça Avulsa",
+    custo: Number(p.custo_real),
+    destino_string: `OS nº ${p.id_os || "---"} | Veículo: ${p.veiculo || "N/A"} | Cliente: ${p.cliente || "Desconhecido"}`,
+    tipo_origem: "OS",
+    data: p.data_compra,
+  }));
+
+  return [...estoqueItems, ...osItems].sort(
+    (a, b) => new Date(b.data || 0).getTime() - new Date(a.data || 0).getTime()
+  );
+};
+
+
+
+================================================================================
 FILE PATH: client\src\pages\NotFoundPage.tsx
 ================================================================================
+import { Link } from 'react-router-dom';
+import { Home } from 'lucide-react';
+
+export function NotFoundPage() {
+  return (
+    <div className="min-h-[80vh] flex flex-col items-center justify-center text-center p-4">
+      <h1 className="text-9xl font-black text-slate-200">404</h1>
+      <h2 className="text-2xl font-bold text-slate-800 mt-4">Página não encontrada</h2>
+      <p className="text-slate-500 mt-2 max-w-md">
+        Ops! A rota que você tentou acessar não existe ou foi movida.
+      </p>
+      <Link 
+        to="/" 
+        className="mt-8 flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+      >
+        <Home size={20} />
+        Voltar para o Início
+      </Link>
+    </div>
+  );
+}
+
+
+
+================================================================================
+FILE PATH: client\src\pages\NovoPagamentoPage.tsx
 ================================================================================
 import { useState, useEffect, useMemo } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
@@ -30623,6 +32623,7 @@ import { ModalPagamentoUnificado } from "../components/financeiro/ModalPagamento
 import { UniversalFilters } from "../components/common/UniversalFilters";
 import type { UniversalFiltersState } from "../components/common/UniversalFilters";
 import { useUniversalFilter } from "../hooks/useUniversalFilter";
+import { NfSyncBadge } from "../components/financeiro/NfSyncBadge";
 
 export const PagamentoPecaPage = () => {
   const [loading, setLoading] = useState(false);
@@ -30631,6 +32632,7 @@ export const PagamentoPecaPage = () => {
   const [payments, setPayments] = useState<any[]>([]);
   const [fornecedores, setFornecedores] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [nfsPendentes, setNfsPendentes] = useState<any[]>([]);
 
   // --- UNIVERSAL FILTERS ---
   const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
@@ -30667,14 +32669,16 @@ export const PagamentoPecaPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [paymentsData, suppliersData, accountsData] = await Promise.all([
+      const [paymentsData, suppliersData, accountsData, nfsData] = await Promise.all([
         FinanceiroService.getPagamentosPeca(),
         FornecedorService.getAll(),
         FinanceiroService.getContasBancarias(),
+        FinanceiroService.getNfsPendentes(),
       ]);
       setPayments(paymentsData || []);
       setFornecedores(suppliersData);
       setAccounts(accountsData.filter((a: any) => a.ativo));
+      setNfsPendentes(nfsData || []);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados financeiros.");
@@ -30684,6 +32688,8 @@ export const PagamentoPecaPage = () => {
   };
 
   const toggleSelection = (id: number) => {
+    const payment = payments.find((x) => x.id_pagamento_peca === id);
+    if (payment?.nf_numero) return; // Trava de lote: impede selecionar itens com NF
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
@@ -30771,6 +32777,7 @@ export const PagamentoPecaPage = () => {
           ? String(new Date(editPayment.data_pagamento_fornecedor).toISOString())
           : null,
         pago_ao_fornecedor: editPayment.pago_ao_fornecedor,
+        nf_numero: editPayment.nf_numero || null,
       });
       if (editPayment.item_os && editPayment.ref_nota) {
         await api.put(`/itens-os/${editPayment.item_os.id_iten}`, {
@@ -30796,6 +32803,7 @@ export const PagamentoPecaPage = () => {
         ? new Date(payment.data_pagamento_fornecedor).toISOString().split("T")[0]
         : "",
       ref_nota: payment.item_os?.codigo_referencia || "",
+      nf_numero: payment.nf_numero || "",
     });
     setShowEditModal(true);
   };
@@ -30810,6 +32818,7 @@ export const PagamentoPecaPage = () => {
   const pagamentosMapeados = payments.map((p) => ({
     ...p,
     id_os: p.item_os?.id_os || p.item_os?.ordem_de_servico?.id_os,
+    id_fornecedor: p.fornecedor?.id_pessoa || p.id_pessoa || p.id_fornecedor,
   }));
 
   // --- Filtered via hook ---
@@ -30985,8 +32994,32 @@ export const PagamentoPecaPage = () => {
                         </div>
                       </td>
                       <td className="p-5">
-                        <div className="text-base text-neutral-900 font-normal">
-                          {p.item_os?.codigo_referencia || "---"}
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="text-base text-neutral-900 font-normal">
+                            {p.item_os?.codigo_referencia || "---"}
+                          </span>
+                          {p.nf_numero && (
+                            <div className="flex flex-col gap-1 mt-1 col-span-2">
+                              {p.pago_ao_fornecedor ? (
+                                <span
+                                  className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm text-center"
+                                  title={`Este pagamento está vinculado à NF ${p.nf_numero} e já foi PAGO.`}
+                                >
+                                  NF: {p.nf_numero} (Pago)
+                                </span>
+                              ) : (
+                                <span
+                                  className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm text-center"
+                                  title={`Este pagamento está vinculado à NF ${p.nf_numero} e está PENDENTE.`}
+                                >
+                                  NF: {p.nf_numero} (Pendente)
+                                </span>
+                              )}
+                              <div className="scale-95 origin-left">
+                                <NfSyncBadge nf_numero={p.nf_numero} />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="p-5">
@@ -31038,7 +33071,22 @@ export const PagamentoPecaPage = () => {
                       </td>
                       <td className="p-5 text-center">
                         <div className="flex justify-center">
-                          {p.pago_ao_fornecedor ? (
+                          {p.nf_numero ? (
+                            <div className="flex flex-col items-center">
+                              {p.pago_ao_fornecedor ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm animate-in fade-in duration-300">
+                                  ✓ Pago (NF: {p.nf_numero})
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 cursor-not-allowed select-none shadow-sm animate-in fade-in duration-300"
+                                  title={`🔒 Item vinculado à NF ${p.nf_numero}. A quitação automática ocorrerá na baixa do Contas a Pagar.`}
+                                >
+                                  Aguardando NF: {p.nf_numero}
+                                </span>
+                              )}
+                            </div>
+                          ) : p.pago_ao_fornecedor ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -31130,6 +33178,24 @@ export const PagamentoPecaPage = () => {
                   setEditPayment({ ...editPayment, custo_real: e.target.value })
                 }
               />
+            </div>
+            <div>
+              <Select
+                label="Nota Fiscal Vinculada (Sincronização)"
+                value={editPayment.nf_numero}
+                onChange={(e) =>
+                  setEditPayment({ ...editPayment, nf_numero: e.target.value })
+                }
+                labelClassName="text-amber-800 font-semibold"
+                className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 text-amber-900 font-medium"
+              >
+                <option value="">Sem Sincronização (Livre)</option>
+                {nfsPendentes.map((nf) => (
+                  <option key={nf.nf_numero} value={nf.nf_numero}>
+                    {nf.nf_numero} ({nf.credor || "Sem Credor"})
+                  </option>
+                ))}
+              </Select>
             </div>
             <div>
               <Select
@@ -31939,7 +34005,6 @@ export const PessoaPage = () => {
 
 ================================================================================
 FILE PATH: client\src\pages\RecebiveisPage.tsx
-================================================================================
 import { PageLayout } from "../components/ui";
 import { RecebiveisTab } from "../components/financeiro/RecebiveisTab";
 
@@ -34713,6 +36778,27 @@ export class FinanceiroService {
     return response.data;
   }
 
+  // --- SINCRONIZAÇÃO DE NOTAS FISCAIS (FASE 2) ---
+  static async getNfsPendentes(): Promise<any[]> {
+    const response = await api.get("/contas-pagar/nfs-pendentes");
+    return response.data;
+  }
+
+  static async getNfSyncStatus(nf_numero: string): Promise<{
+    totalContasPagar: number;
+    totalEstoque: number;
+    totalPagamentoPeca: number;
+    matchPercent: number;
+  }> {
+    const response = await api.get(`/contas-pagar/nf-sync-status/${encodeURIComponent(nf_numero)}`);
+    return response.data;
+  }
+
+  static async getNotasFiscaisCentral(): Promise<any[]> {
+    const response = await api.get("/contas-pagar/notas-fiscais");
+    return response.data;
+  }
+
   // --- FECHAMENTO & CONSOLIDAÇÃO ---
   static async getFechamentos(): Promise<any[]> {
     const response = await api.get("/fechamento-financeiro");
@@ -35519,6 +37605,12 @@ export interface IContasPagar {
   numero_parcela?: number | null;
   total_parcelas?: number | null;
 
+  // Novos campos de Nota Fiscal (FASE 2)
+  nf_numero?: string | null;
+  nf_parcela?: number | null;
+  nf_total_parcelas?: number | null;
+  nf_boleto?: string | null;
+
   obs?: string | null;
   dt_cadastro: string;
 }
@@ -35828,6 +37920,7 @@ export interface IEntradaEstoquePayload {
   data_compra: Date;
   obs: string;
   itens: IItemEntrada[];
+  nf_numero?: string | null;
   financeiro?: {
     descricao: string;
     valor: number;
@@ -35928,7 +38021,14 @@ export interface IContaPagar {
   id_recorrencia?: number;
   parcela_atual?: number;
   total_parcelas?: number;
+
+  // Novos campos de Nota Fiscal (FASE 2)
+  nf_numero?: string | null;
+  nf_parcela?: number | null;
+  nf_total_parcelas?: number | null;
+  nf_boleto?: string | null;
 }
+
 
 
 
@@ -36309,30 +38409,110 @@ export const getStatusStyle = (status: string) => {
 ================================================================================
 FILE PATH: nginx\nginx.conf
 ================================================================================
-# Certificado de origem (Cloudflare Origin CA)
+user  nginx;
+worker_processes  auto;
 
-Coloque aqui:
+events {
+  worker_connections  1024;
+}
 
-- `origin.pem` — certificado (cole o bloco "Origin Certificate" da Cloudflare)
-- `origin.key` — chave privada gerada junto com o certificado
+http {
+  include       /etc/nginx/mime.types;
+  default_type  application/octet-stream;
 
-## Como gerar (uma única vez)
+  # ----------------------------------------------------------------------
+  # Cloudflare: pega o IP real do visitante a partir do CF-Connecting-IP.
+  # Lista oficial: https://www.cloudflare.com/ips/  (atualizar se mudar)
+  # ----------------------------------------------------------------------
+  set_real_ip_from 173.245.48.0/20;
+  set_real_ip_from 103.21.244.0/22;
+  set_real_ip_from 103.22.200.0/22;
+  set_real_ip_from 103.31.4.0/22;
+  set_real_ip_from 141.101.64.0/18;
+  set_real_ip_from 108.162.192.0/18;
+  set_real_ip_from 190.93.240.0/20;
+  set_real_ip_from 188.114.96.0/20;
+  set_real_ip_from 197.234.240.0/22;
+  set_real_ip_from 198.41.128.0/17;
+  set_real_ip_from 162.158.0.0/15;
+  set_real_ip_from 104.16.0.0/13;
+  set_real_ip_from 104.24.0.0/14;
+  set_real_ip_from 172.64.0.0/13;
+  set_real_ip_from 131.0.72.0/22;
+  set_real_ip_from 2400:cb00::/32;
+  set_real_ip_from 2606:4700::/32;
+  set_real_ip_from 2803:f800::/32;
+  set_real_ip_from 2405:b500::/32;
+  set_real_ip_from 2405:8100::/32;
+  set_real_ip_from 2a06:98c0::/29;
+  set_real_ip_from 2c0f:f248::/32;
+  real_ip_header CF-Connecting-IP;
 
-1. Cloudflare → seu domínio → SSL/TLS → **Origin Server** → "Create Certificate".
-2. Hostnames: `*.gunz.com.br, gunz.com.br`.
-3. Validade: 15 anos (padrão).
-4. Salve o **Origin Certificate** em `nginx/certs/origin.pem`.
-5. Salve o **Private Key** em `nginx/certs/origin.key`.
-6. Em SSL/TLS → Overview, troque o modo para **Full (strict)**.
-7. SSL/TLS → Edge Certificates → ative **Always Use HTTPS**.
+  # WebSocket upgrade map (necessário para o HMR do Vite)
+  map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+  }
 
-## Importante
+  sendfile        on;
+  keepalive_timeout 65;
+  client_max_body_size 50m;
 
-- Os arquivos `*.pem` e `*.key` são ignorados pelo `.gitignore` — nunca commite.
-- Permissões no VPS: `chmod 600 origin.key` (não obrigatório dentro do container,
-  mas boa prática se editar no host).
+  proxy_http_version 1.1;
+  proxy_set_header Host              $host;
+  proxy_set_header X-Real-IP         $remote_addr;
+  proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_set_header Upgrade           $http_upgrade;
+  proxy_set_header Connection        $connection_upgrade;
+  proxy_read_timeout  300s;
+  proxy_send_timeout  300s;
 
+  # SSL básico (TLS 1.2/1.3)
+  ssl_protocols       TLSv1.2 TLSv1.3;
+  ssl_ciphers         HIGH:!aNULL:!MD5;
+  ssl_prefer_server_ciphers on;
+  ssl_session_cache shared:SSL:10m;
+  ssl_session_timeout 1d;
 
+  # ---------- HTTP -> HTTPS ----------
+  server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    return 301 https://$host$request_uri;
+  }
+
+  # ---------- painel.gunz.com.br -> client (Vite) ----------
+  server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name painel.gunz.com.br;
+
+    ssl_certificate     /etc/nginx/certs/origin.pem;
+    ssl_certificate_key /etc/nginx/certs/origin.key;
+
+    location / {
+      proxy_pass http://client:8080;
+    }
+  }
+
+  # ---------- hapi.gunz.com.br -> api (Express) ----------
+  server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name hapi.gunz.com.br;
+
+    ssl_certificate     /etc/nginx/certs/origin.pem;
+    ssl_certificate_key /etc/nginx/certs/origin.key;
+
+    location / {
+      proxy_pass http://api:3000;
+    }
+  }
+}
 
 ================================================================================
 FILE PATH: server\.dockerignore
@@ -37047,6 +39227,7 @@ model PagamentoPeca {
   pago_ao_fornecedor        Boolean     @default(false)
   deleted_at                DateTime?   @db.Timestamp(6)
   id_livro_caixa            Int?
+  nf_numero                 String?     @db.VarChar(50)
   fornecedor                Pessoa      @relation(fields: [id_pessoa], references: [id_pessoa])
   item_os                   ItensOs     @relation(fields: [id_item_os], references: [id_iten])
   livro_caixa               LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
@@ -37142,6 +39323,10 @@ model ContasPagar {
   id_grupo_recorrencia String?   @db.VarChar(50)
   numero_parcela       Int?
   total_parcelas       Int?
+  nf_numero            String?   @db.VarChar(50)
+  nf_parcela           Int?
+  nf_total_parcelas    Int?
+  nf_boleto            String?   @db.VarChar(100)
 
   id_categoria         Int?
   categoria_financeira CategoriaFinanceira? @relation(fields: [id_categoria], references: [id_categoria])
@@ -37218,6 +39403,7 @@ model EntradaEstoque {
   valor_total   Decimal       @db.Decimal(10, 2)
   obs           String?       @db.VarChar(500)
   created_at    DateTime      @default(now()) @db.Timestamp(6)
+  nf_numero     String?       @db.VarChar(50)
   fornecedor    Pessoa        @relation(fields: [id_pessoa], references: [id_pessoa])
   itens         ItemEntrada[]
 
@@ -37576,280 +39762,6 @@ main()
 ================================================================================
 FILE PATH: server\prisma\seed_faker.ts
 ================================================================================
-import { PrismaClient } from "@prisma/client";
-import { fakerPT_BR as faker } from "@faker-js/faker";
-
-const prisma = new PrismaClient();
-
-const SERVICOS_LISTA = [
-  "Troca de Óleo",
-  "Alinhamento",
-  "Balanceamento",
-  "Troca de Pastilha de Freio",
-  "Revisão Geral",
-  "Troca de Filtros",
-  "Limpeza de Bicos",
-  "Troca de Amortecedor",
-  "Regulagem Eletrônica",
-  "Troca de Correia Dentada",
-];
-
-const DESCRICOES_CONTAS = [
-  "Conta de Luz",
-  "Conta de Água",
-  "Aluguel do Galpão",
-  "Internet e Telefone",
-  "Fornecedor de Peças A",
-  "Fornecedor de Óleos",
-  "Serviço de Limpeza",
-  "Manutenção Elevador",
-  "Compra de Ferramentas",
-  "Impostos Mensais",
-];
-
-async function main() {
-  console.log("🌱 Iniciando o seed massivo com Faker...");
-
-  // 1. Garantir Dependências Básicas
-  // ==========================================
-
-  // 1.1 Tipo de Cliente
-  let tipoCliente = await prisma.tipo.findFirst();
-  if (!tipoCliente) {
-    tipoCliente = await prisma.tipo.create({
-      data: { funcao: "Cliente Padrão" },
-    });
-    console.log("✅ Tipo de cliente criado.");
-  }
-
-  // 1.2 Funcionário (Necessário para OS)
-  let funcionario = await prisma.funcionario.findFirst();
-  if (!funcionario) {
-    // Criar toda a cadeia de Pessoa -> PessoaFisica -> Funcionario
-    const pessoa = await prisma.pessoa.create({
-      data: {
-        nome: "Mecânico Chefe Faker",
-        genero: "Masculino",
-        pessoa_fisica: {
-          create: {
-            cpf: faker.string.numeric(11),
-            funcionario: {
-              create: {
-                ativo: "S",
-                cargo: "Mecânico Líder",
-                salario: 3500.0,
-                dt_admissao: new Date(),
-              },
-            },
-          },
-        },
-      },
-      include: {
-        pessoa_fisica: {
-          include: {
-            funcionario: true,
-          },
-        },
-      },
-    });
-    funcionario = pessoa.pessoa_fisica!.funcionario!;
-    console.log("✅ Funcionário padrão criado.");
-  }
-
-  // 2. Contas a Pagar (50 registros)
-  // ==========================================
-  console.log("💸 Gerando Contas a Pagar...");
-  const contasPromises = Array.from({ length: 50 }).map(() => {
-    const dataVencimento = faker.date.between({
-      from: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 ano atrás
-      to: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 ano futuro
-    });
-
-    const isPast = dataVencimento < new Date();
-    // Se passado, 80% chance de pago, 20% atrasado. Se futuro, Pendente.
-    let status = "PENDENTE";
-    let dtPagamento = null;
-
-    if (isPast) {
-      if (Math.random() > 0.2) {
-        status = "PAGO";
-        dtPagamento = dataVencimento; // Pagou no dia
-      } else {
-        status = "ATRASADO";
-      }
-    }
-
-    return prisma.contasPagar.create({
-      data: {
-        descricao: faker.helpers.arrayElement(DESCRICOES_CONTAS),
-        valor: faker.number.float({ min: 100, max: 5000, fractionDigits: 2 }),
-        dt_vencimento: dataVencimento,
-        dt_pagamento: dtPagamento,
-        status: status,
-        categoria: "Despesas Operacionais",
-        credor: faker.company.name(),
-      },
-    });
-  });
-
-  await Promise.all(contasPromises);
-  console.log("✅ 50 Contas a Pagar geradas.");
-
-  // 3. Ordens de Serviço (50 registros)
-  // ==========================================
-  console.log("🔧 Gerando Ordens de Serviço...");
-
-  for (let i = 0; i < 50; i++) {
-    // 3.1 Criar Cliente
-    const sexo = faker.person.sexType();
-    const nomeCliente = faker.person.fullName({ sex: sexo });
-
-    const pessoaCliente = await prisma.pessoa.create({
-      data: {
-        nome: nomeCliente.slice(0, 100),
-        genero: sexo,
-        pessoa_fisica: {
-          create: {
-            cpf: faker.string.numeric(11),
-            clientes: {
-              create: {
-                tipo_pessoa: tipoCliente!.id_tipo,
-                telefone_1: faker.phone
-                  .number({ style: "national" })
-                  .slice(0, 15),
-                email: faker.internet.email().slice(0, 100),
-                logradouro: faker.location.street().slice(0, 150),
-                nr_logradouro: faker.location.buildingNumber().slice(0, 10),
-                bairro: faker.location.secondaryAddress().slice(0, 100),
-                cidade: faker.location.city().slice(0, 100),
-                estado: faker.location.state({ abbreviated: true }).slice(0, 2),
-              },
-            },
-          },
-        },
-      },
-      include: {
-        pessoa_fisica: {
-          include: {
-            clientes: true,
-          },
-        },
-      },
-    });
-
-    const cliente = pessoaCliente.pessoa_fisica!.clientes[0];
-
-    // 3.2 Criar Veículo
-    const veiculo = await prisma.veiculo.create({
-      data: {
-        id_cliente: cliente!.id_cliente,
-        placa: faker.vehicle.vrm(), // Gera placa aleatória
-        marca: faker.vehicle.manufacturer(),
-        modelo: faker.vehicle.model(),
-        cor: faker.vehicle.color(),
-        ano_modelo: String(faker.date.past({ years: 10 }).getFullYear()),
-        combustivel: faker.helpers.arrayElement([
-          "Flex",
-          "Gasolina",
-          "Etanol",
-          "Diesel",
-        ]),
-      },
-    });
-
-    // 3.3 Gerar Datas da OS
-    const dataAbertura = faker.date.between({
-      from: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
-      to: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-    });
-
-    const diasParaEntregar = faker.number.int({ min: 2, max: 5 });
-    const dataPrevisao = new Date(dataAbertura);
-    dataPrevisao.setDate(dataPrevisao.getDate() + diasParaEntregar);
-
-    // Determinar Status
-    const isPast = dataPrevisao < new Date();
-    let statusOs = "ORCAMENTO";
-    let dataEntrega = null;
-
-    if (isPast) {
-      statusOs = "FINALIZADA";
-      dataEntrega = dataPrevisao;
-    } else if (dataAbertura < new Date() && dataPrevisao > new Date()) {
-      statusOs = "ABERTA";
-    } else {
-      statusOs = "AGENDAMENTO";
-    }
-
-    // 3.4 Criar OS
-    const os = await prisma.ordemDeServico.create({
-      data: {
-        id_cliente: cliente!.id_cliente,
-        id_veiculo: veiculo.id_veiculo,
-        id_funcionario: funcionario!.id_funcionario,
-        dt_abertura: dataAbertura,
-        dt_entrega: dataEntrega,
-        km_entrada: faker.number.int({ min: 10000, max: 150000 }),
-        status: statusOs,
-        defeito_relatado: "Barulho estranho no motor e luz de óleo acesa.",
-        diagnostico: "Necessário troca de óleo e filtros.",
-        parcelas: 1,
-      },
-    });
-
-    // 3.5 Inserir Serviços na OS
-    const qtdServicos = faker.number.int({ min: 1, max: 3 });
-    const servicosEscolhidos = faker.helpers.arrayElements(
-      SERVICOS_LISTA,
-      qtdServicos,
-    );
-
-    let totalMaoDeObra = 0;
-
-    for (const servicoDesc of servicosEscolhidos) {
-      const valorServico = faker.number.float({
-        min: 50,
-        max: 800,
-        fractionDigits: 2,
-      });
-      totalMaoDeObra += valorServico;
-
-      await prisma.servicoMaoDeObra.create({
-        data: {
-          id_os: os.id_os,
-          id_funcionario: funcionario!.id_funcionario,
-          descricao: servicoDesc,
-          valor: valorServico,
-          status_pagamento: "PENDENTE",
-        },
-      });
-    }
-
-    // Atualizar valor total da OS (Simplificado, sem peças por enquanto)
-    await prisma.ordemDeServico.update({
-      where: { id_os: os.id_os },
-      data: {
-        valor_mao_de_obra: totalMaoDeObra,
-        valor_total_cliente: totalMaoDeObra,
-        valor_final: totalMaoDeObra,
-      },
-    });
-  }
-
-  console.log("✅ 50 Ordens de Serviço geradas.");
-}
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
-
-
-
 ================================================================================
 FILE PATH: server\prisma\seed_financial.ts
 ================================================================================
@@ -38834,147 +40746,6 @@ export const remove = async (req: Request, res: Response) => {
 
 
 ================================================================================
-FILE PATH: server\src\controllers\cliente.controller.ts
-================================================================================
-import { Request, Response } from "express";
-import { ClienteRepository } from "../repositories/cliente.repository.js";
-
-const repository = new ClienteRepository();
-
-export class ClienteController {
-  async create(req: Request, res: Response) {
-    console.log("🔵 ClienteController.create - Received request");
-    console.log("📦 Request body:", JSON.stringify(req.body, null, 2));
-
-    try {
-      const cliente = await repository.create(req.body);
-      console.log("✅ ClienteController.create - Success:", cliente.id_cliente);
-      res.status(201).json(cliente);
-    } catch (error: any) {
-      console.error("❌ ClienteController.create - Error:", error);
-      console.error("❌ Error message:", error.message);
-      console.error("❌ Error stack:", error.stack);
-      res
-        .status(400)
-        .json({ error: "Failed to create Cliente", details: error.message });
-    }
-  }
-
-  async findAll(req: Request, res: Response) {
-    try {
-      const clientes = await repository.findAll();
-      res.json(clientes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Clientes" });
-    }
-  }
-
-  async findById(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const cliente = await repository.findById(id);
-      if (!cliente) {
-        return res.status(404).json({ error: "Cliente not found" });
-      }
-      res.json(cliente);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Cliente" });
-    }
-  }
-
-  async update(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const cliente = await repository.update(id, req.body);
-      res.json(cliente);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to update Cliente" });
-    }
-  }
-
-  async delete(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-
-      // Check if client has service orders or vehicles with service orders
-      const clienteWithOS = await repository.findById(id);
-
-      if (!clienteWithOS) {
-        return res.status(404).json({ error: "Cliente não encontrado." });
-      }
-
-      // Check if client has service orders directly
-      if (
-        clienteWithOS &&
-        clienteWithOS.ordens_de_servico &&
-        clienteWithOS.ordens_de_servico.length > 0
-      ) {
-        return res.status(400).json({
-          error:
-            "Não é possível excluir cliente com ordens de serviço cadastradas.",
-          message:
-            "Este cliente possui ordens de serviço associadas. Não é possível excluí-lo.",
-        });
-      }
-
-      // Check if client has vehicles with service orders
-      if (clienteWithOS.veiculos && clienteWithOS.veiculos.length > 0) {
-        // Import prisma to check each vehicle
-        const { prisma } = await import("../prisma.js");
-
-        for (const veiculo of clienteWithOS.veiculos) {
-          const veiculoWithOS = await prisma.veiculo.findUnique({
-            where: { id_veiculo: veiculo.id_veiculo },
-            include: { ordens_de_servico: true },
-          });
-
-          if (
-            veiculoWithOS &&
-            veiculoWithOS.ordens_de_servico &&
-            veiculoWithOS.ordens_de_servico.length > 0
-          ) {
-            return res.status(400).json({
-              error:
-                "Não é possível excluir cliente com veículos vinculados a ordens de serviço.",
-              message: `O veículo ${veiculoWithOS.placa} possui ordens de serviço associadas. Não é possível excluir o cliente.`,
-            });
-          }
-        }
-
-        // Delete all vehicles without OS
-        await prisma.veiculo.deleteMany({
-          where: { id_cliente: id },
-        });
-      }
-
-      await repository.delete(id);
-      res.status(204).send();
-    } catch (error: any) {
-      console.error("Error deleting cliente:", error);
-      res.status(400).json({
-        error: "Failed to delete Cliente",
-        message: error.message || "Unknown error",
-        details: error.code || "",
-      });
-    }
-  }
-
-  async searchByName(req: Request, res: Response) {
-    try {
-      const { name } = req.query;
-      if (!name || typeof name !== "string") {
-        return res
-          .status(400)
-          .json({ error: "Name query parameter is required" });
-      }
-      const clientes = await repository.searchByName(name);
-      res.json(clientes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to search Clientes" });
-    }
-  }
-}
-
 
 
 ================================================================================
@@ -39258,6 +41029,38 @@ export const deleteConta = async (req: Request, res: Response) => {
     res.status(204).send();
   } catch (error) {
     res.status(400).json({ error: "Erro ao deletar conta" });
+  }
+};
+
+export const getNfsPendentes = async (req: Request, res: Response) => {
+  try {
+    const nfs = await repository.findNfsPendentes();
+    res.json(nfs);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar notas fiscais pendentes" });
+  }
+};
+
+export const getNfSyncStatus = async (req: Request, res: Response) => {
+  try {
+    const { nf_numero } = req.params;
+    if (!nf_numero) {
+      return res.status(400).json({ error: "Número da NF é obrigatório" });
+    }
+    const status = await repository.getNfSyncStatus(nf_numero);
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar status de sincronização da NF" });
+  }
+};
+
+export const getNotasFiscaisCentral = async (req: Request, res: Response) => {
+  try {
+    const list = await repository.getNotasFiscaisCentral();
+    res.json(list);
+  } catch (error) {
+    console.error("Erro no getNotasFiscaisCentral:", error);
+    res.status(500).json({ error: "Erro ao carregar a central de notas fiscais" });
   }
 };
 
@@ -40038,6 +41841,7 @@ FILE PATH: server\src\controllers\itensOs.controller.ts
 import { Request, Response } from 'express';
 import { ItensOsRepository } from '../repositories/itensOs.repository.js';
 import { PagamentoPecaRepository } from '../repositories/pagamentoPeca.repository.js';
+import { prisma } from '../prisma.js';
 
 const repository = new ItensOsRepository();
 const pagamentoRepository = new PagamentoPecaRepository();
@@ -40055,14 +41859,27 @@ export class ItensOsController {
 
       const item = await repository.create(itemData);
       
-      if (id_fornecedor) {
-          await pagamentoRepository.create({
-              item_os: { connect: { id_iten: item.id_iten } },
-              fornecedor: { connect: { id_pessoa: Number(id_fornecedor) } },
-              custo_real: custo_real ? Number(custo_real) : 0,
-              data_compra: new Date(),
-              pago_ao_fornecedor: false
-          });
+      // Se for uma peça externa (não vinda do estoque e não interna), cria registro de PagamentoPeca imediatamente
+      if (!itemData.id_pecas_estoque && !itemData.is_interno) {
+          let supplierId = id_fornecedor ? Number(id_fornecedor) : null;
+          if (!supplierId) {
+              const defaultSupplier = await prisma.pessoa.findFirst({
+                  where: { is_fornecedor: true }
+              });
+              if (defaultSupplier) {
+                  supplierId = defaultSupplier.id_pessoa;
+              }
+          }
+          
+          if (supplierId) {
+              await pagamentoRepository.create({
+                  item_os: { connect: { id_iten: item.id_iten } },
+                  fornecedor: { connect: { id_pessoa: supplierId } },
+                  custo_real: custo_real ? Number(custo_real) : 0,
+                  data_compra: new Date(),
+                  pago_ao_fornecedor: false
+              });
+          }
       }
 
       res.status(201).json(item);
@@ -40163,8 +41980,8 @@ export class ItensOsController {
       const id = Number(req.params.id);
       await repository.delete(id);
       res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to delete Item OS' });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to delete Item OS' });
     }
   }
 
@@ -41439,7 +43256,7 @@ const repository = new PagamentoPecaRepository();
 export class PagamentoPecaController {
   async create(req: Request, res: Response) {
     try {
-      const { id_item_os, id_pessoa, id_fornecedor, custo_real, pago_ao_fornecedor, data_compra } = req.body;
+      const { id_item_os, id_pessoa, id_fornecedor, custo_real, pago_ao_fornecedor, data_compra, nf_numero } = req.body;
       
       const parsedIdPessoa = id_pessoa !== undefined && id_pessoa !== null && id_pessoa !== "" ? id_pessoa : id_fornecedor;
       const hasValidFornecedor = parsedIdPessoa !== undefined && parsedIdPessoa !== null && parsedIdPessoa !== "" && !isNaN(Number(parsedIdPessoa)) && Number(parsedIdPessoa) > 0;
@@ -41451,6 +43268,7 @@ export class PagamentoPecaController {
         custo_real: Number(custo_real),
         pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
         data_compra: data_compra ? new Date(data_compra) : new Date(),
+        nf_numero: nf_numero || undefined,
       };
 
       const pagamento = await repository.create(payload as any);
@@ -41495,7 +43313,8 @@ export class PagamentoPecaController {
         id_pessoa,
         id_fornecedor,
         custo_real,
-        data_compra
+        data_compra,
+        nf_numero
       } = req.body;
 
       const parsedIdPessoa = id_pessoa !== undefined && id_pessoa !== null && id_pessoa !== "" ? id_pessoa : id_fornecedor;
@@ -41515,6 +43334,7 @@ export class PagamentoPecaController {
           if (parsedIdPessoa !== undefined) payload.id_pessoa = fornecedorId;
           if (custo_real !== undefined) payload.custo_real = Number(custo_real);
           if (data_compra !== undefined) payload.data_compra = new Date(data_compra);
+          if (nf_numero !== undefined) payload.nf_numero = nf_numero || null;
 
           const p = await repository.update(id, payload);
           return res.json(p);
@@ -41548,6 +43368,7 @@ export class PagamentoPecaController {
       if (parsedIdPessoa !== undefined) payload.id_pessoa = fornecedorId;
       if (custo_real !== undefined) payload.custo_real = Number(custo_real);
       if (data_compra !== undefined) payload.data_compra = new Date(data_compra);
+      if (nf_numero !== undefined) payload.nf_numero = nf_numero || null;
 
       const pagamento = await repository.update(id, payload);
       res.json(pagamento);
@@ -41620,7 +43441,11 @@ export class PecasEstoqueController {
 
   async createEntry(req: Request, res: Response) {
     try {
-        const entry = await repository.createEntry(req.body);
+        const payload = req.body;
+        if (payload && typeof payload.nf_numero === 'string') {
+          payload.nf_numero = payload.nf_numero.trim() || null;
+        }
+        const entry = await repository.createEntry(payload);
         res.status(201).json(entry);
     } catch (error) {
         console.error(error);
@@ -43680,6 +45505,12 @@ export class ContasPagarRepository {
           `${mainData.obs || ""} (Recorrência 1/${totalParcelas})`.trim();
       }
 
+      // Sincronizar campos nf_parcela e nf_total_parcelas se houver nf_numero e recorrência
+      if (grupoId && mainData.nf_numero) {
+        mainData.nf_parcela = 1;
+        mainData.nf_total_parcelas = totalParcelas;
+      }
+
       const created = await tx.contasPagar.create({ data: mainData });
       console.log("[ContasPagarRepo] Created Status:", created.status);
 
@@ -43701,6 +45532,30 @@ export class ContasPagarRepository {
             obs: `Referente à conta a pagar #${created.id_conta_pagar}. ${mainData.obs || ""}`,
           },
         });
+
+        // ── Passo 4: Sincronização de Notas Fiscais na Criação ──
+        if (created.nf_numero) {
+          const pendentesCount = await tx.contasPagar.count({
+            where: {
+              nf_numero: created.nf_numero,
+              status: { not: "PAGO" },
+              deleted_at: null,
+            },
+          });
+          if (pendentesCount === 0) {
+            await tx.pagamentoPeca.updateMany({
+              where: {
+                nf_numero: created.nf_numero,
+                pago_ao_fornecedor: false,
+                deleted_at: null,
+              },
+              data: {
+                pago_ao_fornecedor: true,
+                data_pagamento_fornecedor: created.dt_pagamento || new Date(),
+              },
+            });
+          }
+        }
       }
 
       // Lógica de Repetição (Novas Parcelas)
@@ -43721,6 +45576,12 @@ export class ContasPagarRepository {
           repData.id_grupo_recorrencia = grupoId;
           repData.numero_parcela = i + 1;
           repData.total_parcelas = totalParcelas;
+
+          // Sincronizar campos de parcelas da nota fiscal
+          if (repData.nf_numero) {
+            repData.nf_parcela = i + 1;
+            repData.nf_total_parcelas = totalParcelas;
+          }
 
           // Remover a observação antiga e adicionar a nova
           const baseObs = (mainData.obs || "")
@@ -43833,6 +45694,30 @@ export class ContasPagarRepository {
             where: { id_conta: id_conta_bancaria },
             data: { saldo_atual: { decrement: updated.valor } },
           });
+        }
+
+        // ── Passo 4: Sincronização de Notas Fiscais ao Pagar ──
+        if (updated.nf_numero) {
+          const pendentesCount = await tx.contasPagar.count({
+            where: {
+              nf_numero: updated.nf_numero,
+              status: { not: "PAGO" },
+              deleted_at: null,
+            },
+          });
+          if (pendentesCount === 0) {
+            await tx.pagamentoPeca.updateMany({
+              where: {
+                nf_numero: updated.nf_numero,
+                pago_ao_fornecedor: false,
+                deleted_at: null,
+              },
+              data: {
+                pago_ao_fornecedor: true,
+                data_pagamento_fornecedor: updated.dt_pagamento || new Date(),
+              },
+            });
+          }
         }
       }
 
@@ -43992,10 +45877,12 @@ export class ContasPagarRepository {
         delete updateData.repetir_parcelas;
         delete updateData.applyToAllRecurrences;
 
-        // Manter os campos de recorrência originais
+        // Manter os campos de recorrência e NF originais para não quebrar a ordem das parcelas da série
         delete updateData.id_grupo_recorrencia;
         delete updateData.numero_parcela;
         delete updateData.total_parcelas;
+        delete updateData.nf_parcela;
+        delete updateData.nf_total_parcelas;
 
         // Smart Date Shifting
         // If we have a delta, apply it to the original date of THIS installment
@@ -44092,6 +45979,184 @@ export class ContasPagarRepository {
     return prisma.contasPagar.update({
       where: { id_conta_pagar: id },
       data: { deleted_at: new Date() },
+    });
+  }
+
+  // ── Rota A: NFs Pendentes ──
+  async findNfsPendentes() {
+    return await prisma.contasPagar.findMany({
+      where: {
+        nf_numero: { not: null },
+        status: { not: "PAGO" },
+        deleted_at: null,
+      },
+      distinct: ["nf_numero"],
+      select: {
+        nf_numero: true,
+        credor: true,
+        valor: true,
+      },
+    });
+  }
+
+  // ── Rota B: Status de Sincronização da NF ──
+  async getNfSyncStatus(nfNumero: string) {
+    const contas = await prisma.contasPagar.findMany({
+      where: { nf_numero: nfNumero, deleted_at: null }
+    });
+    const somaContas = contas.reduce((acc, c) => acc + Number(c.valor), 0);
+
+    const estoque = await prisma.entradaEstoque.findMany({
+      where: { nf_numero: nfNumero }
+    });
+    const somaEstoque = estoque.reduce((acc, e) => acc + Number(e.valor_total), 0);
+
+    const pecas = await prisma.pagamentoPeca.findMany({
+      where: { nf_numero: nfNumero, deleted_at: null }
+    });
+    const somaPecas = pecas.reduce((acc, p) => acc + Number(p.custo_real), 0);
+
+    const somaRealizada = somaEstoque + somaPecas;
+
+    let percent = 0;
+    let flag = "OK";
+
+    if (somaContas > 0) {
+      percent = Number(((somaRealizada / somaContas) * 100).toFixed(2));
+      if (percent > 100) {
+        percent = 100;
+        flag = "VALOR_DIVERGENTE";
+      }
+    } else if (somaRealizada > 0) {
+      percent = 0;
+      flag = "VALOR_DIVERGENTE";
+    }
+
+    return {
+      nf_numero: nfNumero,
+      totalContasPagar: Number(somaContas.toFixed(2)),
+      totalEstoque: Number(somaEstoque.toFixed(2)),
+      totalPagamentoPeca: Number(somaPecas.toFixed(2)),
+      totalRealizado: Number(somaRealizada.toFixed(2)),
+      matchPercent: percent,
+      status: flag
+    };
+  }
+
+  // ── Rota C: Agregação da Central de Notas Fiscais (FASE 4) ──
+  async getNotasFiscaisCentral() {
+    // 1. Executa as 3 consultas de lote indexadas em paralelo
+    const [contasPagarList, entradaEstoqueList, pagamentoPecaList] = await Promise.all([
+      prisma.contasPagar.findMany({
+        where: { nf_numero: { not: null }, deleted_at: null },
+        orderBy: { dt_vencimento: "asc" }
+      }),
+      prisma.entradaEstoque.findMany({
+        where: { nf_numero: { not: null } },
+        include: { fornecedor: true }
+      }),
+      prisma.pagamentoPeca.findMany({
+        where: { nf_numero: { not: null }, deleted_at: null },
+        include: {
+          fornecedor: true,
+          item_os: {
+            include: {
+              ordem_de_servico: {
+                include: {
+                  cliente: {
+                    include: {
+                      pessoa_fisica: { include: { pessoa: true } },
+                      pessoa_juridica: { include: { pessoa: true } }
+                    }
+                  },
+                  veiculo: true
+                }
+              }
+            }
+          }
+        }
+      })
+    ]);
+
+    // 2. Agrupa em memória linear O(N)
+    const uniqueNfs = new Set<string>();
+    contasPagarList.forEach((c) => c.nf_numero && uniqueNfs.add(c.nf_numero));
+    entradaEstoqueList.forEach((e) => e.nf_numero && uniqueNfs.add(e.nf_numero));
+    pagamentoPecaList.forEach((p) => p.nf_numero && uniqueNfs.add(p.nf_numero));
+
+    return Array.from(uniqueNfs).map((nf) => {
+      const contas = contasPagarList.filter((c) => c.nf_numero === nf);
+      const estoques = entradaEstoqueList.filter((e) => e.nf_numero === nf);
+      const pecas = pagamentoPecaList.filter((p) => p.nf_numero === nf);
+
+      // Determina o Fornecedor Principal (Credor)
+      const credor =
+        contas[0]?.credor ||
+        estoques[0]?.fornecedor?.nome ||
+        (estoques[0]?.fornecedor as any)?.nome_fantasia ||
+        pecas[0]?.fornecedor?.nome ||
+        (pecas[0]?.fornecedor as any)?.nome_fantasia ||
+        "FORNECEDOR NÃO INFORMADO";
+
+      // Calcula o valor total planejado de Contas a Pagar
+      const valorTotal = contas.reduce((sum, c) => sum + Number(c.valor), 0);
+
+      // Status consolidado da NF: pago se todas as parcelas forem "PAGO"
+      const statusConsolidado =
+        contas.length > 0 && contas.every((c) => c.status === "PAGO") ? "PAGO" : "PENDENTE";
+
+      return {
+        nf_numero: nf,
+        credor: credor.toUpperCase(),
+        valor_total: Number(valorTotal.toFixed(2)),
+        status: statusConsolidado,
+        boletos: contas.map((c) => ({
+          id_conta_pagar: c.id_conta_pagar,
+          descricao: c.descricao,
+          valor: Number(c.valor),
+          dt_vencimento: c.dt_vencimento,
+          dt_pagamento: c.dt_pagamento,
+          status: c.status,
+          numero_parcela: c.numero_parcela,
+          total_parcelas: c.total_parcelas,
+          nf_parcela: c.nf_parcela,
+          nf_total_parcelas: c.nf_total_parcelas,
+          nf_boleto: c.nf_boleto,
+        })),
+        pecas_estoque: estoques.map((e) => ({
+          id_entrada_estoque: e.id_entrada,
+          nota_fiscal: e.nota_fiscal,
+          data_compra: e.data_compra,
+          valor_total: Number(e.valor_total),
+          obs: e.obs,
+          fornecedor: (e.fornecedor as any)?.nome_fantasia || e.fornecedor?.nome || "Desconhecido",
+        })),
+        pecas_os: pecas.map((p) => {
+          const os = p.item_os?.ordem_de_servico;
+          let clientName = "Cliente não cadastrado";
+
+          if (os?.cliente) {
+            if (os.cliente.tipo_pessoa === 2 && os.cliente.pessoa_juridica?.pessoa?.nome) {
+              clientName = os.cliente.pessoa_juridica.pessoa.nome;
+            } else if (os.cliente.pessoa_fisica?.pessoa?.nome) {
+              clientName = os.cliente.pessoa_fisica.pessoa.nome;
+            }
+          }
+
+          return {
+            id_pagamento_peca: p.id_pagamento_peca,
+            descricao: p.item_os?.descricao || "Peça Avulsa",
+            custo_real: Number(p.custo_real),
+            data_compra: p.data_compra,
+            pago_ao_fornecedor: p.pago_ao_fornecedor,
+            id_os: os?.id_os,
+            cliente: clientName.toUpperCase(),
+            veiculo: os?.veiculo
+              ? `${os.veiculo.modelo} (${os.veiculo.placa})`.toUpperCase()
+              : "SEM VEÍCULO",
+          };
+        }),
+      };
     });
   }
 }
@@ -45211,120 +47276,6 @@ export class FuncionarioRepository {
 ================================================================================
 FILE PATH: server\src\repositories\itensOs.repository.ts
 ================================================================================
-import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma.js';
-import { AuditLogRepository } from './auditLog.repository.js';
-import { OrdemDeServicoRepository } from './ordemDeServico.repository.js';
-
-const auditRepo = new AuditLogRepository();
-const osRepo = new OrdemDeServicoRepository();
-
-export class ItensOsRepository {
-  async create(data: Prisma.ItensOsCreateInput) {
-    const created = await prisma.itensOs.create({
-      data,
-    });
-    
-    await auditRepo.create({
-        tabela: 'itens_os',
-        registro_id: created.id_iten,
-        acao: 'CREATE',
-        valor_novo: created
-    });
-
-    // Recalculate OS totals
-    await osRepo.recalculateTotals(created.id_os);
-    
-    return created;
-  }
-
-  async findAll(includeInternal: boolean = false) {
-    return await prisma.itensOs.findMany({
-        where: { 
-          deleted_at: null,
-          ...(includeInternal ? {} : { is_interno: false })
-        },
-        include: { ordem_de_servico: true, pecas_estoque: true, pagamentos_peca: true }
-    });
-  }
-
-  async findById(id: number) {
-    return await prisma.itensOs.findUnique({
-      where: { id_iten: id },
-        include: { ordem_de_servico: true, pecas_estoque: true, pagamentos_peca: true }
-    });
-  }
-
-  async findByOsId(idOs: number, includeInternal: boolean = false) {
-    return await prisma.itensOs.findMany({
-      where: { 
-        id_os: idOs, 
-        deleted_at: null,
-        ...(includeInternal ? {} : { is_interno: false })
-      },
-      include: { pecas_estoque: true, pagamentos_peca: true }
-    });
-  }
-
-  async update(id: number, data: Prisma.ItensOsUpdateInput) {
-    const current = await this.findById(id);
-    const updated = await prisma.itensOs.update({
-      where: { id_iten: id },
-      data,
-    });
-
-    await auditRepo.create({
-        tabela: 'itens_os',
-        registro_id: id,
-        acao: 'UPDATE',
-        valor_antigo: current,
-        valor_novo: updated
-    });
-    
-    // Recalculate OS totals
-    await osRepo.recalculateTotals(updated.id_os);
-
-    return updated;
-  }
-
-  async delete(id: number) {
-    const current = await this.findById(id);
-    if (!current) throw new Error('Item not found');
-
-    const updated = await prisma.itensOs.update({
-      where: { id_iten: id },
-      data: { deleted_at: new Date() }
-    });
-
-    await auditRepo.create({
-        tabela: 'itens_os',
-        registro_id: id,
-        acao: 'SOFT_DELETE',
-        valor_antigo: current
-    });
-    
-    // Recalculate OS totals
-    await osRepo.recalculateTotals(current.id_os);
-
-    return updated;
-  }
-
-  async search(query: string) {
-    // Busca descrições únicas na tabela de itens já usados
-    return await prisma.itensOs.findMany({
-      where: {
-        descricao: { contains: query, mode: 'insensitive' },
-        deleted_at: null
-      },
-      distinct: ['descricao'],
-      take: 10
-    });
-  }
-}
-
-
-
-================================================================================
 FILE PATH: server\src\repositories\ordemDeServico.repository.ts
 ================================================================================
 import { Prisma } from '@prisma/client';
@@ -45880,11 +47831,13 @@ export class PagamentoPecaRepository {
         orderBy: { data_compra: "desc" },
         select: {
           id_pagamento_peca: true,
+          id_item_os: true,
           custo_real: true,
           data_compra: true,
           data_pagamento_fornecedor: true,
           pago_ao_fornecedor: true,
           id_livro_caixa: true,
+          nf_numero: true,
           fornecedor: {
             select: {
               id_pessoa: true,
@@ -45893,8 +47846,10 @@ export class PagamentoPecaRepository {
           },
           item_os: {
             select: {
+              id_iten: true,
               id_os: true,
               descricao: true,
+              codigo_referencia: true,
               dt_cadastro: true,
               ordem_de_servico: {
                 select: {
@@ -46276,10 +48231,12 @@ export class PecasEstoqueRepository {
   }
 
   async createEntry(data: {
-    id_pessoa: number;
+    id_pessoa?: number;
+    id_fornecedor?: number;
     nota_fiscal?: string;
     data_compra?: Date;
     obs?: string;
+    nf_numero?: string | null;
     itens: {
       id_pecas_estoque?: number;
       new_part_data?: any; // Name, Description, etc.
@@ -46291,11 +48248,17 @@ export class PecasEstoqueRepository {
       obs?: string;
     }[];
   }) {
+    const idPessoa = Number(data.id_pessoa || data.id_fornecedor);
+    if (!idPessoa || isNaN(idPessoa)) {
+      throw new Error("Fornecedor (id_pessoa ou id_fornecedor) é obrigatório.");
+    }
+    const nfNumeroNormalized = data.nf_numero ? data.nf_numero.trim() || null : null;
+
     return await prisma.$transaction(async (tx) => {
       // 1. Create Entry Header
       const entrada = await tx.entradaEstoque.create({
         data: {
-          id_pessoa: data.id_pessoa,
+          id_pessoa: idPessoa,
           nota_fiscal: data.nota_fiscal || null,
           data_compra: data.data_compra || new Date(),
           valor_total: data.itens.reduce(
@@ -46303,6 +48266,7 @@ export class PecasEstoqueRepository {
             0,
           ),
           obs: data.obs || null,
+          nf_numero: nfNumeroNormalized,
         },
       });
 
@@ -46376,6 +48340,7 @@ export class PecasEstoqueRepository {
             status: fin.status,
             categoria: "PEÇAS",
             obs: `Ref. Entrada Estoque #${entrada.id_entrada}`,
+            nf_numero: nfNumeroNormalized,
           },
         });
 
@@ -46542,6 +48507,48 @@ export class PessoaFisicaRepository {
 
 ================================================================================
 FILE PATH: server\src\repositories\pessoaJuridica.repository.ts
+================================================================================
+import { Prisma } from '@prisma/client';
+import { prisma } from '../prisma.js';
+
+export class PessoaJuridicaRepository {
+  async create(data: Prisma.PessoaJuridicaCreateInput) {
+    return await prisma.pessoaJuridica.create({
+      data,
+    });
+  }
+
+  async findAll() {
+    return await prisma.pessoaJuridica.findMany({
+        include: { pessoa: true }
+    });
+  }
+
+  async findById(id: number) {
+    return await prisma.pessoaJuridica.findUnique({
+      where: { id_pessoa_juridica: id },
+      include: { pessoa: true }
+    });
+  }
+
+  async update(id: number, data: Prisma.PessoaJuridicaUpdateInput) {
+    return await prisma.pessoaJuridica.update({
+      where: { id_pessoa_juridica: id },
+      data,
+    });
+  }
+
+  async delete(id: number) {
+    return await prisma.pessoaJuridica.delete({
+      where: { id_pessoa_juridica: id },
+    });
+  }
+}
+
+
+
+================================================================================
+FILE PATH: server\src\repositories\recebivelCartao.repository.ts
 ================================================================================
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
@@ -47627,13 +49634,19 @@ import {
   deleteConta,
   getDistinct,
   buscarDescricao,
-  buscarCredor
+  buscarCredor,
+  getNfsPendentes,
+  getNfSyncStatus,
+  getNotasFiscaisCentral
 } from "../controllers/contasPagar.controller.js";
 
 const router = Router();
 
 router.post("/", createConta);
 router.get("/", getContas);
+router.get("/nfs-pendentes", getNfsPendentes);
+router.get("/nf-sync-status/:nf_numero", getNfSyncStatus);
+router.get("/notas-fiscais", getNotasFiscaisCentral);
 router.get("/distinct/:field", getDistinct);
 router.get("/buscar-descricao", buscarDescricao);
 router.get("/buscar-credor", buscarCredor);

@@ -393,20 +393,17 @@ export const FechamentoFinanceiroForm = ({
         })
         .filter(Boolean);
 
-      // 2. Atualizar status da OS para PRONTO PARA FINANCEIRO (ANTES de consolidar)
-      if (
-        osData.status !== "FINALIZADA" &&
-        osData.status !== "PRONTO PARA FINANCEIRO"
-      ) {
-        try {
-          await OsService.update(Number(idOs), {
-            status: "PRONTO PARA FINANCEIRO",
-            valor_final: totalReceita,
-            valor_pecas: totalItemsRevenue,
-          });
-        } catch (err) {
-          console.error("Erro ao atualizar status da OS:", err);
-        }
+      // 2. Atualizar valores da OS (e status, se aplicável)
+      const isStatusProtegido = ["FINALIZADA", "PRONTO PARA FINANCEIRO", "ABERTA", "EM_ANDAMENTO"].includes(osData.status);
+      
+      try {
+        await OsService.update(Number(idOs), {
+          status: isStatusProtegido ? osData.status : "PRONTO PARA FINANCEIRO",
+          valor_final: totalReceita,
+          valor_pecas: totalItemsRevenue,
+        });
+      } catch (err) {
+        console.error("Erro ao atualizar OS:", err);
       }
 
       // 3. CONSOLIDAR FINANCEIRAMENTE (Novo endpoint que faz TUDO)

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Package, Search, Plus, Trash2, Edit, Save } from "lucide-react";
+import { Package, Search, Plus, Trash2, Edit, Save, RotateCcw } from "lucide-react";
 import { toast } from "react-toastify";
 import { Card, Input, Select, Button, ActionButton } from "../ui";
 import { formatCurrency } from "../../utils/formatCurrency";
@@ -11,6 +11,8 @@ interface EntradaItensFormProps {
   setItems: (items: IItemEntrada[]) => void;
   onSubmit: () => void;
   totalValue: number;
+  /** Modo edição: exibe itens já salvos com badge e permite marcá-los para remoção */
+  isEditMode?: boolean;
 }
 
 export const EntradaItensForm = ({
@@ -18,6 +20,7 @@ export const EntradaItensForm = ({
   setItems,
   onSubmit,
   totalValue,
+  isEditMode = false,
 }: EntradaItensFormProps) => {
   // New Item Input State
   const [partSearch, setPartSearch] = useState("");
@@ -93,7 +96,7 @@ export const EntradaItensForm = ({
     setIsNewPart(false);
 
     setRowSale(Number(p.valor_venda || 0).toFixed(2));
-    setRowCost(Number(p.valor_custo || 0).toFixed(2)); // Suggest last cost
+    setRowCost(Number(p.valor_custo || 0).toFixed(2));
   };
 
   const handleAddItem = () => {
@@ -146,12 +149,30 @@ export const EntradaItensForm = ({
     setNewPartFab("");
   };
 
+  /** Remove item novo (sem id_item_entrada) ou marca item salvo para exclusão */
   const handleRemoveItem = (tempId: number) => {
-    setItems(items.filter((i) => i.tempId !== tempId));
+    setItems(
+      items.map((i) => {
+        if (i.tempId !== tempId) return i;
+        // Item já salvo no banco: marcar como _delete em vez de remover
+        if ((i as any).id_item_entrada) {
+          return { ...i, _delete: true };
+        }
+        return { ...i, _markedForRemoval: true }; // novo item ainda não salvo
+      }).filter((i) => !(i as any)._markedForRemoval),
+    );
+  };
+
+  /** Desfaz a marcação de exclusão de um item salvo */
+  const handleRestoreItem = (tempId: number) => {
+    setItems(
+      items.map((i) =>
+        i.tempId === tempId ? { ...i, _delete: false } : i,
+      ),
+    );
   };
 
   const handleEditItem = (item: IItemEntrada) => {
-    // Load item back into inputs
     if (item.new_part_data) {
       setIsNewPart(true);
       setPartSearch(item.new_part_data.nome);
@@ -163,14 +184,6 @@ export const EntradaItensForm = ({
       setIsNewPart(false);
       setPartSearch(item.displayName);
       if (item.id_pecas_estoque) {
-        // We don't have the full object here, but we can mock it enough for selection
-        // or just set the ID and display name.
-        // For simplicity, we just won't re-select the stock part object fully from DB
-        // but we'll set the ID so logic knows it's an existing part.
-        // To be safe, try to fetch it or just rely on ID.
-        // Let's rely on the fact we store ID.
-        // Wait, selectPart expects IPecasEstoque.
-        // We will just simulate it.
         setSelectedStockPart({
           id_pecas_estoque: item.id_pecas_estoque,
           nome: item.displayName,
@@ -188,9 +201,11 @@ export const EntradaItensForm = ({
     setRowObs(item.obs || "");
     setRowMinStock(String(item.new_part_data?.estoque_minimo || 0));
 
-    // Remove from list so it can be re-added
     handleRemoveItem(item.tempId);
   };
+
+  // Itens visíveis para contagem no cabeçalho (exclui novos removidos)
+  const activeItems = items.filter((i) => !(i as any)._delete);
 
   return (
     <>
@@ -261,7 +276,7 @@ export const EntradaItensForm = ({
                     </button>
                   </div>
                 )}
-            </div>
+          </div>
 
           {/* If New Part: Extra Fields */}
           {isNewPart && (
@@ -367,7 +382,7 @@ export const EntradaItensForm = ({
             Itens na Lista
           </h3>
           <span className="text-xs font-bold text-neutral-400">
-            {items.length} itens
+            {activeItems.length} itens
           </span>
         </div>
 
@@ -387,57 +402,94 @@ export const EntradaItensForm = ({
               </thead>
             </thead>
             <tbody>
-              {items.map((i) => (
-                <tr
-                  key={i.tempId}
-                  className="hover:bg-neutral-50 transition-colors group"
-                >
-                  <td className="p-4">
-                    <div className="flex flex-col">
-                      <span className="text-base text-gray-900 font-medium">
-                        {i.displayName}
-                      </span>
-                      <span className="text-xs text-gray-500">{i.ref_cod}</span>
-                      {i.new_part_data && (
-                        <span className="text-sm bg-blue-100 text-blue-700 w-fit px-1 rounded uppercase font-bold mt-1">
-                          NOVO CADASTRO
+              {items.map((i) => {
+                const isDeleted = (i as any)._delete === true;
+                const isSaved = !!(i as any).id_item_entrada;
+
+                return (
+                  <tr
+                    key={i.tempId}
+                    className={`transition-colors group ${
+                      isDeleted
+                        ? "bg-red-50/60 opacity-60"
+                        : "hover:bg-neutral-50"
+                    }`}
+                  >
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span
+                          className={`text-base text-gray-900 font-medium ${isDeleted ? "line-through text-red-500" : ""}`}
+                        >
+                          {i.displayName}
                         </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4 text-center text-base text-gray-900 font-medium">
-                    {i.quantidade}
-                  </td>
-                  <td className="p-4 text-right text-base text-gray-900 font-medium">
-                    {formatCurrency(i.valor_custo)}
-                  </td>
-                  <td className="p-4 text-right text-base text-primary-600 font-medium">
-                    {i.margem_lucro?.toFixed(1)}%
-                  </td>
-                  <td className="p-4 text-right text-base text-gray-900 font-bold">
-                    {formatCurrency(i.valor_venda)}
-                  </td>
-                  <td className="p-4 text-right text-base text-gray-500 font-medium">
-                    {formatCurrency(i.quantidade * i.valor_custo)}
-                  </td>
-                  <td>
-                    <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ActionButton
-                        icon={Edit}
-                        label="Editar"
-                        variant="neutral"
-                        onClick={() => handleEditItem(i)}
-                      />
-                      <ActionButton
-                        icon={Trash2}
-                        label="Remover"
-                        variant="danger"
-                        onClick={() => handleRemoveItem(i.tempId)}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        <span className="text-xs text-gray-500">{i.ref_cod}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          {i.new_part_data && (
+                            <span className="text-sm bg-blue-100 text-blue-700 w-fit px-1 rounded uppercase font-bold">
+                              NOVO CADASTRO
+                            </span>
+                          )}
+                          {isSaved && !isDeleted && (
+                            <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase border border-emerald-200">
+                              JÁ SALVO
+                            </span>
+                          )}
+                          {isDeleted && (
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold uppercase border border-red-200 animate-pulse">
+                              SERÁ REMOVIDO
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className={`p-4 text-center text-base text-gray-900 font-medium ${isDeleted ? "line-through text-red-400" : ""}`}>
+                      {i.quantidade}
+                    </td>
+                    <td className={`p-4 text-right text-base text-gray-900 font-medium ${isDeleted ? "line-through text-red-400" : ""}`}>
+                      {formatCurrency(i.valor_custo)}
+                    </td>
+                    <td className={`p-4 text-right text-base text-primary-600 font-medium ${isDeleted ? "opacity-50" : ""}`}>
+                      {i.margem_lucro?.toFixed(1)}%
+                    </td>
+                    <td className={`p-4 text-right text-base text-gray-900 font-bold ${isDeleted ? "line-through text-red-400" : ""}`}>
+                      {formatCurrency(i.valor_venda)}
+                    </td>
+                    <td className={`p-4 text-right text-base text-gray-500 font-medium ${isDeleted ? "line-through text-red-400" : ""}`}>
+                      {formatCurrency(i.quantidade * i.valor_custo)}
+                    </td>
+                    <td>
+                      <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        {isDeleted ? (
+                          // Botão para desfazer exclusão
+                          <ActionButton
+                            icon={RotateCcw}
+                            label="Desfazer"
+                            variant="neutral"
+                            onClick={() => handleRestoreItem(i.tempId)}
+                          />
+                        ) : (
+                          <>
+                            {!isSaved && (
+                              <ActionButton
+                                icon={Edit}
+                                label="Editar"
+                                variant="neutral"
+                                onClick={() => handleEditItem(i)}
+                              />
+                            )}
+                            <ActionButton
+                              icon={Trash2}
+                              label="Remover"
+                              variant="danger"
+                              onClick={() => handleRemoveItem(i.tempId)}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {items.length === 0 && (
                 <tr>
                   <td
@@ -468,7 +520,7 @@ export const EntradaItensForm = ({
               className="h-14 px-8 text-lg shadow-xl shadow-primary-500/20"
               icon={Save}
             >
-              FINALIZAR ENTRADA
+              {isEditMode ? "SALVAR ALTERAÇÕES" : "FINALIZAR ENTRADA"}
             </Button>
           </div>
         )}

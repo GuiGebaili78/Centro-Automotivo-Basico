@@ -45,9 +45,9 @@ export const OrdemDeServicoPage = () => {
   const location = useLocation();
 
   // --- DATA LOADING ---
-  const loadOss = useCallback(async () => {
+  const loadOss = useCallback(async (searchTerm?: string) => {
     try {
-      const data = await OsService.getAll();
+      const data = await OsService.getAll(searchTerm);
       setOss(data);
     } catch (error) {
       toast.error("Erro ao carregar Ordens de Serviço.");
@@ -63,6 +63,7 @@ export const OrdemDeServicoPage = () => {
   const [wizardInitialStatus, setWizardInitialStatus] = useState<OsStatus>(
     OsStatus.ABERTA,
   );
+  const [wizardInitialKm, setWizardInitialKm] = useState<number>(0);
   const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [clientSearchResults, setClientSearchResults] = useState<any[]>([]);
 
@@ -106,13 +107,16 @@ export const OrdemDeServicoPage = () => {
   }, [clientSearchTerm, newOsWizardStep]);
 
   useEffect(() => {
-    loadOss();
+    loadOss(filters.search);
+  }, [filters.search, loadOss]);
 
+  useEffect(() => {
     const params = new URLSearchParams(location.search);
     const osId = params.get("id");
     const paramClientId = params.get("clientId");
     const paramVehicleId = params.get("vehicleId");
     const paramStatus = params.get("initialStatus"); // ORCAMENTO
+    const paramKm = params.get("km");
 
     if (osId) {
       handleOpenFromId(Number(osId));
@@ -134,6 +138,7 @@ export const OrdemDeServicoPage = () => {
             : OsStatus.ABERTA;
 
           setWizardInitialStatus(validStatus);
+          if (paramKm) setWizardInitialKm(Number(paramKm));
           setNewOsWizardStep("CONFIRM");
         } catch (e) {
           console.error("Error loading for direct open", e);
@@ -194,6 +199,7 @@ export const OrdemDeServicoPage = () => {
     setClientSearchResults([]);
     setWizardClient(null);
     setWizardVehicle(null);
+    setWizardInitialKm(0);
 
     // Check params directly to safely navigate back if opened via deep link
     const params = new URLSearchParams(location.search);
@@ -215,7 +221,7 @@ export const OrdemDeServicoPage = () => {
   };
 
   // FILTER LOGIC
-  const filteredOss = useUniversalFilter(oss, filters, {
+  const filteredOss = useUniversalFilter(oss, { ...filters, search: "" }, {
     dateField: "dt_abertura",
     statusField: "status",
     osIdField: "id_os",
@@ -503,7 +509,7 @@ export const OrdemDeServicoPage = () => {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                handleCreateOsFinal(null, 0, "");
+                handleCreateOsFinal(null, wizardInitialKm, "");
               }}
             >
               <div className="pt-2 flex gap-3">

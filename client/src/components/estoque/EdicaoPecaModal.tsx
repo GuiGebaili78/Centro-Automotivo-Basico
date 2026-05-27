@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { CheckCircle, Trash2 } from "lucide-react";
+import { CheckCircle, Trash2, FileEdit } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -24,6 +25,18 @@ export const EdicaoPecaModal = ({
   onSuccess,
   onDeleteRequest,
 }: EdicaoPecaModalProps) => {
+  const navigate = useNavigate();
+
+  const handleEditEntry = () => {
+    // Pega o id_entrada do último item de entrada da peça
+    const lastEntryId = (peca as any)?.itens_entrada?.[0]?.entrada?.id_entrada;
+    if (!lastEntryId) {
+      toast.warn("Esta peça não possui uma entrada de estoque vinculada.");
+      return;
+    }
+    onClose();
+    navigate(`/entrada-estoque?editId=${lastEntryId}`);
+  };
   const [formData, setFormData] = useState({
     nome: "",
     fabricante: "",
@@ -240,15 +253,26 @@ export const EdicaoPecaModal = ({
 
         {/* FOOTER ACTIONS */}
         <div className="flex justify-between items-center pt-6 border-t border-neutral-100">
-          <Button
-            type="button"
-            onClick={() => onDeleteRequest(peca)}
-            variant="danger"
-            icon={Trash2}
-            className="opacity-70 hover:opacity-100"
-          >
-            Excluir
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              onClick={() => onDeleteRequest(peca)}
+              variant="danger"
+              icon={Trash2}
+              className="opacity-70 hover:opacity-100"
+            >
+              Excluir
+            </Button>
+            <Button
+              type="button"
+              onClick={handleEditEntry}
+              variant="ghost"
+              icon={FileEdit}
+              className="text-amber-700 border border-amber-200 hover:bg-amber-50"
+            >
+              Editar Entrada
+            </Button>
+          </div>
           <div className="flex gap-3">
             <Button
               type="button"

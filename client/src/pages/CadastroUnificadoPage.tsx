@@ -314,7 +314,7 @@ export const CadastroUnificadoPage = () => {
   // ─── OS navigation ─────────────────────────────────────────────────────────
 
   const handleOsSelect = useCallback(
-    (status: OsStatus) => {
+    (status: OsStatus, km?: number) => {
       if (!savedData) return;
       const params = new URLSearchParams();
       params.append("clientId", savedData.clientId.toString());
@@ -323,6 +323,7 @@ export const CadastroUnificadoPage = () => {
       if (savedData.equipId)
         params.append("equipId", savedData.equipId.toString());
       params.append("initialStatus", status);
+      if (km !== undefined) params.append("km", km.toString());
       navigate(`/ordem-de-servico?${params.toString()}`);
     },
     [navigate, savedData],
@@ -560,6 +561,7 @@ export const CadastroUnificadoPage = () => {
       <OsCreationModal
         isOpen={decisionModalOpen}
         onClose={() => setDecisionModalOpen(false)}
+        hasVehicle={!!savedData?.vehicleId}
         onSelect={handleOsSelect}
         clientName={savedData?.clientName}
         vehicleName={savedData?.vehicleName}

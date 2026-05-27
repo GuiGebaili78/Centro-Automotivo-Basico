@@ -1,15 +1,17 @@
-import { memo } from "react";
-import { Modal, Button } from "../ui";
+import { memo, useState, useRef, useEffect } from "react";
+import { Modal, Button, Input } from "../ui";
 import { Calendar, Wrench, FileText } from "lucide-react";
+import { toast } from "react-toastify";
 
 import { OsStatus } from "../../types/os.types";
 
 interface OsCreationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (status: OsStatus) => void;
+  onSelect: (status: OsStatus, km?: number) => void;
   clientName?: string;
   vehicleName?: string;
+  hasVehicle?: boolean;
   isLoading?: boolean;
 }
 
@@ -20,14 +22,33 @@ export const OsCreationModal = memo(
     onSelect,
     clientName,
     vehicleName,
+    hasVehicle = false,
     isLoading = false,
   }: OsCreationModalProps) => {
+    const [km, setKm] = useState("");
+    const kmInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+      if (isOpen) {
+        setKm("");
+      }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
+    const handleSelectAction = (status: OsStatus) => {
+      if (hasVehicle && km.trim() === "") {
+        toast.warn(
+          "É obrigatório informar a Quilometragem (Km) do veículo para abrir a OS. Caso não tenha a informação agora, insira 0."
+        );
+        kmInputRef.current?.focus();
+        return;
+      }
+      onSelect(status, km.trim() !== "" ? Number(km) : undefined);
+    };
+
     const handleSchedule = () => {
-      // Agora implementado oficialmente
-      onSelect(OsStatus.AGENDAMENTO);
-      onClose();
+      handleSelectAction(OsStatus.AGENDAMENTO);
     };
 
     return (
@@ -48,6 +69,20 @@ export const OsCreationModal = memo(
               <p className="text-base text-neutral-600 font-medium">
                 {vehicleName || "Veículo"}
               </p>
+            </div>
+          )}
+
+          {hasVehicle && (
+            <div className="bg-white p-4 rounded-xl border border-neutral-200">
+              <Input
+                label="Quilometragem (Km) *"
+                placeholder="Ex: 50000"
+                type="number"
+                value={km}
+                onChange={(e) => setKm(e.target.value)}
+                ref={kmInputRef}
+                disabled={isLoading}
+              />
             </div>
           )}
 
@@ -81,7 +116,7 @@ export const OsCreationModal = memo(
             </button>
 
             <button
-              onClick={() => onSelect(OsStatus.ORCAMENTO)}
+              onClick={() => handleSelectAction(OsStatus.ORCAMENTO)}
               disabled={isLoading}
               className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-amber-500 hover:bg-amber-50 transition-all group text-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -99,7 +134,7 @@ export const OsCreationModal = memo(
             </button>
 
             <button
-              onClick={() => onSelect(OsStatus.ABERTA)}
+              onClick={() => handleSelectAction(OsStatus.ABERTA)}
               disabled={isLoading}
               className="flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-neutral-200 hover:border-blue-500 hover:bg-blue-50 transition-all group text-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
