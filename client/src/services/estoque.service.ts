@@ -42,6 +42,10 @@ export const EstoqueService = {
     return response.data;
   },
 
+  deleteEntry: async (id: number) => {
+    await api.delete(`/pecas-estoque/entry/${id}`);
+  },
+
   create: async (data: any) => {
     const response = await api.post<IPecasEstoque>("/pecas-estoque", data);
     return response.data;

@@ -7,6 +7,7 @@ const controller = new PecasEstoqueController();
 pecasEstoqueRoutes.post('/entry', controller.createEntry);
 pecasEstoqueRoutes.get('/entry/:id', controller.findEntryById);  // deve vir antes de /:id
 pecasEstoqueRoutes.put('/entry/:id', controller.updateEntry);     // deve vir antes de /:id
+pecasEstoqueRoutes.delete('/entry/:id', controller.deleteEntry);
 pecasEstoqueRoutes.post('/', controller.create);
 pecasEstoqueRoutes.get('/', controller.findAll);
 pecasEstoqueRoutes.get('/search', controller.search);

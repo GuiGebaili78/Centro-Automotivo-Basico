@@ -20,6 +20,7 @@ export class PagamentoPecaRepository {
         select: {
           id_pagamento_peca: true,
           id_item_os: true,
+          id_pessoa: true,
           custo_real: true,
           data_compra: true,
           data_pagamento_fornecedor: true,
@@ -30,6 +31,12 @@ export class PagamentoPecaRepository {
             select: {
               id_pessoa: true,
               nome: true,
+              pessoa_juridica: {
+                select: {
+                  nome_fantasia: true,
+                  razao_social: true,
+                },
+              },
             },
           },
           item_os: {
@@ -70,6 +77,30 @@ export class PagamentoPecaRepository {
       }),
       prisma.pagamentoPeca.count({ where: { deleted_at: null } }),
     ]);
+    // CORREÇÃO DO BUG DO FORNECEDOR (Mapeamento Manual)
+    // O id_pessoa salvo no PagamentoPeca é, na verdade, o id_fornecedor da nova tabela de Fornecedores.
+    const fornecedoresIds = [...new Set(data.map((p) => p.id_pessoa).filter(Boolean))];
+    if (fornecedoresIds.length > 0) {
+      const fornecedores = await prisma.fornecedor.findMany({
+        where: { id_fornecedor: { in: fornecedoresIds as number[] } }
+      });
+
+      const mapFornecedores = new Map(fornecedores.map((f) => [f.id_fornecedor, f]));
+
+      data.forEach((p: any) => {
+        if (p.id_pessoa && mapFornecedores.has(p.id_pessoa)) {
+          const realFornecedor = mapFornecedores.get(p.id_pessoa)!;
+          p.fornecedor = {
+            id_pessoa: realFornecedor.id_fornecedor,
+            nome: realFornecedor.nome,
+            pessoa_juridica: {
+              nome_fantasia: realFornecedor.nome_fantasia,
+              razao_social: realFornecedor.nome, // fallback para manter compatibilidade com frontend
+            }
+          };
+        }
+      });
+    }
 
     return {
       data,

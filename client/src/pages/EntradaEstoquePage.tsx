@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { PageLayout, Modal, Button } from "../components/ui";
+import { PageLayout, Modal, Button, ConfirmModal } from "../components/ui";
 import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
 import { EntradaFornecedorForm } from "../components/estoque/EntradaFornecedorForm";
 import { EntradaItensForm } from "../components/estoque/EntradaItensForm";
@@ -12,9 +12,10 @@ import type {
   IItemEntrada,
   IEntradaEstoquePayload,
 } from "../types/estoque.types";
-import { Edit } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 
 export const EntradaEstoquePage = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("editId") ? Number(searchParams.get("editId")) : null;
   const isEditMode = !!editId;
@@ -29,6 +30,7 @@ export const EntradaEstoquePage = () => {
   const [nfsPendentes, setNfsPendentes] = useState<any[]>([]);
   const [nfNumero, setNfNumero] = useState("");
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   // Items State
   const [items, setItems] = useState<IItemEntrada[]>([]);
@@ -49,14 +51,14 @@ export const EntradaEstoquePage = () => {
   const loadSuppliers = () => {
     api
       .get("/fornecedor")
-      .then((res) => setSuppliers(res.data))
+      .then((res) => setSuppliers(Array.isArray(res.data) ? res.data : []))
       .catch(console.error);
   };
 
   const loadNfsPendentes = async () => {
     try {
       const data = await FinanceiroService.getNfsPendentes();
-      setNfsPendentes(data || []);
+      setNfsPendentes(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("Erro ao carregar NFs pendentes:", e);
     }
@@ -166,6 +168,22 @@ export const EntradaEstoquePage = () => {
     }
   };
 
+  const handleDeleteEntry = async () => {
+    if (!editId) return;
+    try {
+      await EstoqueService.deleteEntry(editId);
+      toast.success("Entrada de estoque e itens removidos com sucesso!");
+      navigate("/notas-fiscais");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(
+        "Erro ao excluir entrada: " + (e.response?.data?.error || e.message)
+      );
+    } finally {
+      setShowConfirmDelete(false);
+    }
+  };
+
   if (loadingEdit) {
     return (
       <PageLayout
@@ -186,6 +204,18 @@ export const EntradaEstoquePage = () => {
         isEditMode
           ? "Adicione ou remova itens desta entrada. Itens em uso em Ordens de Serviço ativas não podem ser removidos."
           : "Registre novas aquisições de peças e atualize o estoque automaticamente."
+      }
+      actions={
+        isEditMode ? (
+          <Button
+            variant="danger"
+            icon={Trash2}
+            onClick={() => setShowConfirmDelete(true)}
+            className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+          >
+            Excluir Entrada
+          </Button>
+        ) : undefined
       }
     >
       <div className="space-y-6">
@@ -244,6 +274,17 @@ export const EntradaEstoquePage = () => {
           </Modal>
         )}
       </div>
+
+      {showConfirmDelete && (
+        <ConfirmModal
+          isOpen={showConfirmDelete}
+          onClose={() => setShowConfirmDelete(false)}
+          onConfirm={handleDeleteEntry}
+          title="Excluir Entrada de Estoque"
+          description="Tem a certeza que deseja excluir esta entrada de estoque e todos os seus itens? Esta ação não pode ser desfeita e reverterá a quantidade no estoque. Peças já utilizadas em OS ativas bloquearão a exclusão."
+          variant="danger"
+        />
+      )}
     </PageLayout>
   );
 };

@@ -70,13 +70,7 @@ export const EstoqueTable = ({
               </td>
               <td className="text-left">
                 <div className="flex flex-col items-start">
-                  <span
-                    className="text-base font-bold text-neutral-600 truncate max-w-[200px] uppercase"
-                    title={fornecedorName}
-                  >
-                    {fornecedorName}
-                  </span>
-                  <span className="text-base text-neutral-400">
+                  <span className="text-base font-bold text-neutral-600">
                     {dataCompra}
                   </span>
                   {lastEntry?.nf_numero && (

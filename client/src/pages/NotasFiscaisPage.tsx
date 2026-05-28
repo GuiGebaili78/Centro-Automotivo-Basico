@@ -123,7 +123,7 @@ export const NotasFiscaisPage = () => {
                   <th className="p-4 text-left">Fornecedor / Credor</th>
                   <th className="p-4 text-right">Valor Planejado (Contas)</th>
                   <th className="p-4 text-center">Status Pagamento</th>
-                  <th className="p-4 text-left">Sincronização Física</th>
+                  <th className="p-4 text-left">Conciliação da NF</th>
                   <th className="p-4 text-center">Ações</th>
                 </tr>
               </thead>

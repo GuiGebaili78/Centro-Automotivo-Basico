@@ -85,7 +85,7 @@ export const PagamentoPecaPage = () => {
       setPayments(paymentsData || []);
       setFornecedores(suppliersData);
       setAccounts(accountsData.filter((a: any) => a.ativo));
-      setNfsPendentes(nfsData || []);
+      setNfsPendentes(Array.isArray(nfsData) ? nfsData : []);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados financeiros.");
@@ -448,7 +448,9 @@ export const PagamentoPecaPage = () => {
                         <div className="flex items-center gap-2 text-base text-neutral-900 font-normal">
                           <Truck size={14} className="text-neutral-400" />
                           <span>
-                            {String(p.fornecedor?.nome_fantasia || p.fornecedor?.nome || "N/I").toUpperCase()}
+                            {p.fornecedor?.pessoa_juridica?.nome_fantasia || p.fornecedor?.pessoa_juridica?.razao_social || p.fornecedor?.nome 
+                              ? String(p.fornecedor?.pessoa_juridica?.nome_fantasia || p.fornecedor?.pessoa_juridica?.razao_social || p.fornecedor?.nome).toUpperCase() 
+                              : "AGUARDANDO CONSOLIDAÇÃO"}
                           </span>
                         </div>
                       </td>

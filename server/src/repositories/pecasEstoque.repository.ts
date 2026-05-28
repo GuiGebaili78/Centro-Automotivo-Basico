@@ -405,4 +405,76 @@ export class PecasEstoqueRepository {
       reserved,
     };
   }
+
+  async deleteEntry(id: number) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Fetch the entry and its items
+      const entrada = await tx.entradaEstoque.findUnique({
+        where: { id_entrada: id },
+        include: {
+          itens: {
+            include: { peca: true },
+          },
+        },
+      });
+
+      if (!entrada) {
+        throw new Error("Entrada de estoque não encontrada.");
+      }
+
+      // 2. Validate safety and process decrements
+      for (const item of entrada.itens) {
+        const partId = item.id_pecas_estoque;
+
+        // Check 2a: Was this part used in an active OS after it was bought?
+        // Wait, any active OS using this part restricts deletion if the remaining stock would not cover it, or just strictly block it if it has ANY OS relation.
+        // As per requirement: "Se algum item dessa entrada já possui movimentação ou foi vinculado a uma OS, bloqueie a exclusão"
+        // Let's check for any OS item usage. Actually, checking if `estoque_atual - quantidade < 0` is the mathematical guarantee.
+        // We will ALSO check if there's any active OS that prevents us from taking it back.
+        
+        const osAtivas = await tx.itensOs.count({
+          where: {
+            id_pecas_estoque: partId,
+            deleted_at: null,
+            ordem_de_servico: {
+              status: { notIn: ["CANCELADA"] },
+              deleted_at: null,
+            },
+          },
+        });
+
+        if (osAtivas > 0) {
+          const nomePeca = item.peca?.nome || `ID ${partId}`;
+          throw new Error(
+            `Não é possível excluir esta entrada. A peça "${nomePeca}" já foi vinculada a uma Ordem de Serviço.`
+          );
+        }
+
+        // Check 2b: Mathematical guarantee
+        if (Number(item.peca.estoque_atual) - item.quantidade < 0) {
+          const nomePeca = item.peca?.nome || `ID ${partId}`;
+          throw new Error(
+            `Não é possível excluir esta entrada. O estoque da peça "${nomePeca}" ficaria negativo.`
+          );
+        }
+
+        // Process Decrement
+        await tx.pecasEstoque.update({
+          where: { id_pecas_estoque: partId },
+          data: { estoque_atual: { decrement: item.quantidade } },
+        });
+      }
+
+      // 3. Cascade Delete: Items first, then the Entry
+      await tx.itemEntrada.deleteMany({
+        where: { id_entrada: id },
+      });
+
+      await tx.entradaEstoque.delete({
+        where: { id_entrada: id },
+      });
+
+      return { success: true };
+    });
+  }
 }

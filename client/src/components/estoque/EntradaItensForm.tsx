@@ -44,32 +44,31 @@ export const EntradaItensForm = ({
   const [newPartFab, setNewPartFab] = useState("");
   const [newPartUnit, setNewPartUnit] = useState("UN");
 
-  // Price Calc Effect
-  useEffect(() => {
-    if (rowCost && rowMargin) {
-      const cost = Number(rowCost);
-      const margin = Number(rowMargin);
+  const handleCostChange = (val: string) => {
+    setRowCost(val);
+    const cost = Number(val);
+    const margin = Number(rowMargin);
+    if (cost > 0 && rowMargin !== "") {
       const sale = cost + cost * (margin / 100);
       setRowSale(sale.toFixed(2));
     }
-  }, [rowCost, rowMargin]);
+  };
 
-  useEffect(() => {
-    if (rowCost && rowSale && !rowMargin) {
-      const cost = Number(rowCost);
-      const sale = Number(rowSale);
-      if (cost > 0) {
-        const margin = ((sale - cost) / cost) * 100;
-        setRowMargin(margin.toFixed(2));
-      }
-    }
-  }, [rowSale, rowCost]);
-
-  const handleRecalcMargin = (saleVal: string) => {
-    setRowSale(saleVal);
+  const handleMarginChange = (val: string) => {
+    setRowMargin(val);
     const cost = Number(rowCost);
-    const sale = Number(saleVal);
-    if (cost > 0 && sale > 0) {
+    const margin = Number(val);
+    if (cost > 0 && val !== "") {
+      const sale = cost + cost * (margin / 100);
+      setRowSale(sale.toFixed(2));
+    }
+  };
+
+  const handleSaleChange = (val: string) => {
+    setRowSale(val);
+    const cost = Number(rowCost);
+    const sale = Number(val);
+    if (cost > 0 && val !== "") {
       const m = ((sale - cost) / cost) * 100;
       setRowMargin(m.toFixed(2));
     }
@@ -95,8 +94,17 @@ export const EntradaItensForm = ({
     setPartResults([]);
     setIsNewPart(false);
 
-    setRowSale(Number(p.valor_venda || 0).toFixed(2));
-    setRowCost(Number(p.valor_custo || 0).toFixed(2));
+    const cost = Number(p.valor_custo || 0);
+    const sale = Number(p.valor_venda || 0);
+    setRowCost(cost.toFixed(2));
+    setRowSale(sale.toFixed(2));
+
+    if (cost > 0) {
+      const m = ((sale - cost) / cost) * 100;
+      setRowMargin(m.toFixed(2));
+    } else {
+      setRowMargin("");
+    }
   };
 
   const handleAddItem = () => {
@@ -323,7 +331,7 @@ export const EntradaItensForm = ({
               className="text-right font-medium"
               placeholder="0.00"
               value={rowCost}
-              onChange={(e) => setRowCost(e.target.value)}
+              onChange={(e) => handleCostChange(e.target.value)}
             />
           </div>
           <div className="md:col-span-2">
@@ -333,7 +341,7 @@ export const EntradaItensForm = ({
               className="text-center font-medium"
               placeholder="%"
               value={rowMargin}
-              onChange={(e) => setRowMargin(e.target.value)}
+              onChange={(e) => handleMarginChange(e.target.value)}
             />
           </div>
           <div className="md:col-span-2">
@@ -343,7 +351,7 @@ export const EntradaItensForm = ({
               className="text-right border-emerald-200 bg-emerald-50 text-emerald-800 font-bold"
               placeholder="0.00"
               value={rowSale}
-              onChange={(e) => handleRecalcMargin(e.target.value)}
+              onChange={(e) => handleSaleChange(e.target.value)}
             />
           </div>
           <div className="md:col-span-2">

@@ -54,6 +54,17 @@ export class PecasEstoqueController {
     }
   }
 
+  async deleteEntry(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.deleteEntry(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error(error);
+      res.status(400).json({ error: error.message || 'Erro ao deletar entrada de estoque.' });
+    }
+  }
+
   async getAvailability(req: Request, res: Response) {
       try {
           const id = Number(req.params.id);

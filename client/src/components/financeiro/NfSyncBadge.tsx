@@ -135,28 +135,34 @@ export const NfSyncBadge: React.FC<NfSyncBadgeProps> = ({ nf_numero }) => {
       )}
 
       {status === "success" && percent !== null && (
-        <div className="flex items-center gap-1.5">
-          {percent >= 100 ? (
-            <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold shadow-sm">
-              <CheckCircle2 size={10} className="text-emerald-500" /> 100% Sincronizado
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-bold shadow-sm">
-              <AlertCircle size={10} className="text-amber-500" /> {percent.toFixed(1)}% Sinc.
-            </span>
-          )}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5">
+            {percent >= 100 ? (
+              <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold shadow-sm">
+                <CheckCircle2 size={10} className="text-emerald-500" /> 💲 Valor: {Math.round(percent)}%
+              </span>
+            ) : percent === 0 ? (
+              <span className="inline-flex items-center gap-1 text-red-700 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full font-bold shadow-sm">
+                <AlertCircle size={10} className="text-red-500" /> 💲 Valor: {Math.round(percent)}%
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-bold shadow-sm">
+                <AlertCircle size={10} className="text-amber-500" /> 💲 Valor: {Math.round(percent)}%
+              </span>
+            )}
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              loadStatus(true);
-            }}
-            className="text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 p-1 rounded-md transition-all active:scale-95"
-            title="Atualizar Status de Sincronização"
-          >
-            <RefreshCw size={10} />
-          </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                loadStatus(true);
+              }}
+              className="text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 p-1 rounded-md transition-all active:scale-95"
+              title="Atualizar Status de Sincronização"
+            >
+              <RefreshCw size={10} />
+            </button>
+          </div>
         </div>
       )}
     </div>
