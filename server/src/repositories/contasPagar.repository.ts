@@ -133,7 +133,11 @@ export class ContasPagarRepository {
     return prisma.contasPagar.findMany({
       where: { deleted_at: null },
       orderBy: { dt_vencimento: "asc" },
-      include: { categoria_financeira: true }, // Include category details
+      include: { 
+        categoria_financeira: {
+          include: { parent: true }
+        }
+      },
     });
   }
 
@@ -513,20 +517,41 @@ export class ContasPagarRepository {
   }
 
   // ── Rota A: NFs Pendentes ──
-  async findNfsPendentes() {
-    return await prisma.contasPagar.findMany({
-      where: {
-        nf_numero: { not: null },
-        status: { not: "PAGO" },
-        deleted_at: null,
-      },
+  async findNfsPendentes(params?: { search?: string; skip?: number; take?: number }) {
+    const { search, skip, take } = params || {};
+    
+    const whereClause: any = {
+      nf_numero: { not: null },
+      status: { not: "PAGO" },
+      deleted_at: null,
+    };
+
+    if (search) {
+      whereClause.nf_numero = { contains: search, mode: "insensitive" };
+    }
+
+    const nfs = await prisma.contasPagar.findMany({
+      where: whereClause,
       distinct: ["nf_numero"],
       select: {
         nf_numero: true,
         credor: true,
         valor: true,
       },
+      skip: skip,
+      take: take,
     });
+
+    const countQuery = await prisma.contasPagar.findMany({
+      where: whereClause,
+      distinct: ["nf_numero"],
+      select: { nf_numero: true }
+    });
+    
+    return {
+      data: nfs,
+      total: countQuery.length
+    };
   }
 
   // ── Rota B: Status de Sincronização da NF ──

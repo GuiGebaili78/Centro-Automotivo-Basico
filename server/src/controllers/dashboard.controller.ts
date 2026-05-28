@@ -12,10 +12,12 @@ export class DashboardController {
 
       // Use UTC range for "Today" to match how the frontend was doing it (startsWith todayLocal)
       // or better, use local time range.
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date();
-      endOfDay.setHours(23, 59, 59, 999);
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const date = now.getDate();
+      
+      const startOfDay = new Date(Date.UTC(year, month, date, 0, 0, 0, 0));
+      const endOfDay = new Date(Date.UTC(year, month, date, 23, 59, 59, 999));
 
       // --- AGGREGATIONS / COUNTS ---
 
@@ -28,11 +30,10 @@ export class DashboardController {
       });
 
       // 2. Contas a Pagar (Split)
-      // Pending: status PENDENTE and date >= today
+      // Pending: status PENDENTE (Total)
       const contasPagarPending = await prisma.contasPagar.count({
         where: {
           status: "PENDENTE",
-          dt_vencimento: { gte: startOfDay },
           deleted_at: null,
         },
       });
@@ -45,6 +46,33 @@ export class DashboardController {
           deleted_at: null,
         },
       });
+
+      const tomorrowStart = new Date(startOfDay);
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+      const tomorrowEnd = new Date(endOfDay);
+      tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+
+      const next7DaysStart = new Date(startOfDay);
+      const next7DaysEnd = new Date(endOfDay);
+      next7DaysEnd.setDate(next7DaysEnd.getDate() + 7);
+
+      const contasPagarHojeList = await prisma.contasPagar.findMany({
+        where: { status: "PENDENTE", dt_vencimento: { gte: startOfDay, lte: endOfDay }, deleted_at: null },
+      });
+      const contasPagarHojeCount = contasPagarHojeList.length;
+      const contasPagarHojeValor = contasPagarHojeList.reduce((sum, c) => sum + Number(c.valor), 0);
+
+      const contasPagarAmanhaList = await prisma.contasPagar.findMany({
+        where: { status: "PENDENTE", dt_vencimento: { gte: tomorrowStart, lte: tomorrowEnd }, deleted_at: null },
+      });
+      const contasPagarAmanhaCount = contasPagarAmanhaList.length;
+      const contasPagarAmanhaValor = contasPagarAmanhaList.reduce((sum, c) => sum + Number(c.valor), 0);
+
+      const contasPagar7DiasList = await prisma.contasPagar.findMany({
+        where: { status: "PENDENTE", dt_vencimento: { gte: next7DaysStart, lte: next7DaysEnd }, deleted_at: null },
+      });
+      const contasPagar7DiasCount = contasPagar7DiasList.length;
+      const contasPagar7DiasValor = contasPagar7DiasList.reduce((sum, c) => sum + Number(c.valor), 0);
 
       // 3. Livro Caixa Entries (Today)
       // Matches manual + auto entries
@@ -132,6 +160,12 @@ export class DashboardController {
           osAberta,
           contasPagarPending,
           contasPagarOverdue,
+          contasPagarHojeCount,
+          contasPagarHojeValor,
+          contasPagarAmanhaCount,
+          contasPagarAmanhaValor,
+          contasPagar7DiasCount,
+          contasPagar7DiasValor,
           livroCaixaEntries: libroCaixaEntries,
           livroCaixaExits: libroCaixaExits,
           autoPecasPendentes,

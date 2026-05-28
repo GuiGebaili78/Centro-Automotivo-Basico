@@ -450,7 +450,11 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                       )}
                     </div>
                     <div className="text-sm font-bold text-gray-500 uppercase bg-neutral-100 px-2 py-0.5 rounded w-fit mt-1 border border-neutral-200">
-                      {conta.categoria}
+                      {conta.categoria_financeira 
+                        ? (conta.categoria_financeira.parent 
+                            ? `${conta.categoria_financeira.parent.nome} / ${conta.categoria_financeira.nome}`
+                            : conta.categoria_financeira.nome)
+                        : conta.categoria}
                     </div>
                     {conta.obs && (
                       <div className="text-sm text-neutral-500 mt-1 italic max-w-[200px] truncate">

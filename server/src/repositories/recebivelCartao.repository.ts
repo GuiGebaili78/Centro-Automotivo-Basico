@@ -71,6 +71,7 @@ export class RecebivelCartaoRepository {
       valor_bruto: p.valor,
       valor_liquido: p.valor, // PIX não tem taxa no sistema atual
       taxa_aplicada: 0,
+      tipo_parcelamento: "PIX",
       num_parcela: 1,
       total_parcelas: 1,
       data_venda: p.data_pagamento,
@@ -217,7 +218,7 @@ export class RecebivelCartaoRepository {
     });
   }
 
-  async confirmarRecebimento(id: number, confirmadoPor: string) {
+  async confirmarRecebimento(id: number, confirmadoPor: string, idContaBancaria: number | null = null) {
     return await prisma.$transaction(async (tx) => {
       // 1. Buscar recebível
       const recebivel = await tx.recebivelCartao.findUnique({
@@ -239,31 +240,60 @@ export class RecebivelCartaoRepository {
         throw new Error("Recebível já foi confirmado");
       }
 
-      // 2. Atualizar saldo da conta bancária (VALOR LÍQUIDO)
-      await tx.contaBancaria.update({
-        where: { id_conta: recebivel.operadora.id_conta_destino },
-        data: {
-          saldo_atual: {
-            increment: Number(recebivel.valor_liquido),
-          },
-        },
-      });
+      const isCard = recebivel.id_operadora != null;
+      const isDinheiro = recebivel.tipo_parcelamento?.toUpperCase() === "DINHEIRO";
+      
+      let targetAccountId = null;
+      if (isCard) {
+        targetAccountId = recebivel.operadora?.id_conta_destino;
+      } else if (!isDinheiro) {
+        targetAccountId = idContaBancaria;
+      }
 
-      // 3. Criar lançamento no LivroCaixa APENAS para o extrato bancário
-      // Obs: id_conta_bancaria preenchido faz aparecer no extrato.
-      // Categoria diferenciada para não inflar faturamento diário se for filtrado.
-      await tx.livroCaixa.create({
-        data: {
-          descricao: `${recebivel.operadora.nome} / ${recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome} (OS | ${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`,
-          valor: recebivel.valor_liquido,
-          tipo_movimentacao: "ENTRADA",
-          categoria: "CONCILIACAO_CARTAO",
-          dt_movimentacao: new Date(),
-          origem: "AUTOMATICA",
-          id_conta_bancaria: recebivel.operadora.id_conta_destino,
-          obs: `[REC_ID:${id}]`,
-        },
-      });
+      // 2. Atualizar saldo da conta bancária se houver (PIX, Transf, Cartão)
+      if (targetAccountId) {
+        await tx.contaBancaria.update({
+          where: { id_conta: targetAccountId },
+          data: {
+            saldo_atual: {
+              increment: Number(recebivel.valor_liquido),
+            },
+          },
+        });
+
+        const nomeBanco = isCard && recebivel.operadora?.conta_destino
+          ? (recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome)
+          : `Conta #${targetAccountId}`; 
+
+        await tx.livroCaixa.create({
+          data: {
+            descricao: isCard 
+              ? `${recebivel.operadora?.nome} / ${nomeBanco} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`
+              : `Recebimento OS #${recebivel.id_os} - Conciliação Bancária`,
+            valor: recebivel.valor_liquido,
+            tipo_movimentacao: "ENTRADA",
+            categoria: isCard ? "CONCILIACAO_CARTAO" : "CONCILIACAO",
+            dt_movimentacao: new Date(),
+            origem: "AUTOMATICA",
+            id_conta_bancaria: targetAccountId,
+            obs: `[REC_ID:${id}]`,
+          },
+        });
+      } else {
+        // Dinheiro (Caixa físico, sem conta vinculada)
+        await tx.livroCaixa.create({
+          data: {
+            descricao: `Recebimento OS #${recebivel.id_os} - Conciliação em Dinheiro`,
+            valor: recebivel.valor_liquido,
+            tipo_movimentacao: "ENTRADA",
+            categoria: "CONCILIACAO_DINHEIRO",
+            dt_movimentacao: new Date(),
+            origem: "AUTOMATICA",
+            id_conta_bancaria: null,
+            obs: `[REC_ID:${id}]`,
+          },
+        });
+      }
 
       // 4. Atualizar status do recebível
       return await tx.recebivelCartao.update({
@@ -447,7 +477,7 @@ export class RecebivelCartaoRepository {
   }
 
   // Confirmação em lote
-  async confirmarRecebimentoLote(ids: number[], confirmadoPor: string) {
+  async confirmarRecebimentoLote(ids: number[], confirmadoPor: string, idContaBancaria: number | null = null) {
     return await prisma.$transaction(async (tx) => {
       const resultados = [];
 
@@ -506,7 +536,7 @@ export class RecebivelCartaoRepository {
           continue;
         }
 
-        // --- FLUXO CARTÃO (ID POSITIVO) - MANTIDO ---
+        // --- FLUXO PADRÃO (ID POSITIVO) ---
         // Buscar recebível
         const recebivel = await tx.recebivelCartao.findUnique({
           where: { id_recebivel: id },
@@ -527,29 +557,61 @@ export class RecebivelCartaoRepository {
           continue; // Já confirmado, pula
         }
 
-        // Atualizar saldo da conta bancária
-        await tx.contaBancaria.update({
-          where: { id_conta: recebivel.operadora.id_conta_destino },
-          data: {
-            saldo_atual: {
-              increment: Number(recebivel.valor_liquido),
-            },
-          },
-        });
+        const isCard = recebivel.id_operadora != null;
+        const isDinheiro = recebivel.tipo_parcelamento?.toUpperCase() === "DINHEIRO";
+        
+        let targetAccountId: number | null | undefined = null;
+        if (isCard) {
+          targetAccountId = recebivel.operadora?.id_conta_destino;
+        } else if (!isDinheiro) {
+          targetAccountId = idContaBancaria;
+        }
 
-        // Registrar no extrato (LivroCaixa com conta vinculada)
-        await tx.livroCaixa.create({
-          data: {
-            descricao: `${recebivel.operadora.nome} / ${recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`,
-            valor: recebivel.valor_liquido,
-            tipo_movimentacao: "ENTRADA",
-            categoria: "CONCILIACAO_CARTAO",
-            dt_movimentacao: new Date(),
-            origem: "AUTOMATICA",
-            id_conta_bancaria: recebivel.operadora.id_conta_destino,
-            obs: `[REC_ID:${id}]`,
-          },
-        });
+        if (targetAccountId) {
+          // Atualizar saldo da conta bancária
+          await tx.contaBancaria.update({
+            where: { id_conta: targetAccountId },
+            data: {
+              saldo_atual: {
+                increment: Number(recebivel.valor_liquido),
+              },
+            },
+          });
+
+          const nomeBanco = isCard && recebivel.operadora?.conta_destino
+            ? (recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome)
+            : `Conta #${targetAccountId}`;
+
+          // Registrar no extrato (LivroCaixa com conta vinculada)
+          await tx.livroCaixa.create({
+            data: {
+              descricao: isCard
+                ? `${recebivel.operadora?.nome} / ${nomeBanco} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`
+                : `Recebimento Lote OS #${recebivel.id_os} - Conciliação Bancária`,
+              valor: recebivel.valor_liquido,
+              tipo_movimentacao: "ENTRADA",
+              categoria: isCard ? "CONCILIACAO_CARTAO" : "CONCILIACAO",
+              dt_movimentacao: new Date(),
+              origem: "AUTOMATICA",
+              id_conta_bancaria: targetAccountId,
+              obs: `[REC_ID:${id}]`,
+            },
+          });
+        } else {
+          // Dinheiro
+          await tx.livroCaixa.create({
+            data: {
+              descricao: `Recebimento Lote OS #${recebivel.id_os} - Conciliação Dinheiro`,
+              valor: recebivel.valor_liquido,
+              tipo_movimentacao: "ENTRADA",
+              categoria: "CONCILIACAO_DINHEIRO",
+              dt_movimentacao: new Date(),
+              origem: "AUTOMATICA",
+              id_conta_bancaria: null,
+              obs: `[REC_ID:${id}]`,
+            },
+          });
+        }
 
         // Atualizar status do recebível
         const updated = await tx.recebivelCartao.update({

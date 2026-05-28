@@ -105,8 +105,14 @@ export const deleteConta = async (req: Request, res: Response) => {
 
 export const getNfsPendentes = async (req: Request, res: Response) => {
   try {
-    const nfs = await repository.findNfsPendentes();
-    res.json(nfs);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = (req.query.search as string) || "";
+    
+    const skip = (page - 1) * limit;
+
+    const nfs = await repository.findNfsPendentes({ search, skip, take: limit });
+    res.json(nfs); // Returning { data, total }
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar notas fiscais pendentes" });
   }

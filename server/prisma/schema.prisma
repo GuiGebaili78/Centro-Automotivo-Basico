@@ -557,7 +557,7 @@ model TaxaOperadoraCartao {
 model RecebivelCartao {
   id_recebivel      Int             @id @default(autoincrement())
   id_os             Int?
-  id_operadora      Int
+  id_operadora      Int?
   num_parcela       Int             @default(1)
   total_parcelas    Int             @default(1)
   valor_bruto       Decimal         @db.Decimal(10, 2)
@@ -570,8 +570,9 @@ model RecebivelCartao {
   status            String          @default("PENDENTE")
   confirmado_em     DateTime?       @db.Timestamp(6)
   confirmado_por    String?         @db.VarChar(100)
-  operadora         OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
-  ordem_de_servico  OrdemDeServico? @relation(fields: [id_os], references: [id_os])
+
+  operadora         OperadoraCartao? @relation(fields: [id_operadora], references: [id_operadora])
+  ordem_de_servico  OrdemDeServico?  @relation(fields: [id_os], references: [id_os])
 
   @@map("recebivel_cartao")
 }

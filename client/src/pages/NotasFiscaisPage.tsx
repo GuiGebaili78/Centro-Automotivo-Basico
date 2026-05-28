@@ -168,15 +168,34 @@ export const NotasFiscaisPage = () => {
                         </span>
                       </td>
                       <td className="p-4 text-center">
-                        <span
-                          className={`px-3 py-1 rounded-md text-sm font-bold uppercase tracking-wider ${
-                            nf.status === "PAGO"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-orange-100 text-orange-700"
-                          }`}
-                        >
-                          {nf.status === "PAGO" ? "QUITADO" : "PENDENTE"}
-                        </span>
+                        {(() => {
+                          const totalBoletos = nf.boletos?.length || 0;
+                          const paidBoletos = nf.boletos?.filter((b: any) => b.status === "PAGO").length || 0;
+                          
+                          let badgeText = nf.status === "PAGO" ? "QUITADO" : "PENDENTE";
+                          let badgeStyle = nf.status === "PAGO" ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700";
+
+                          if (totalBoletos > 0) {
+                            if (paidBoletos === totalBoletos) {
+                              badgeText = `PAGO ${paidBoletos}/${totalBoletos}`;
+                              badgeStyle = "bg-emerald-100 text-emerald-700";
+                            } else if (paidBoletos > 0) {
+                              badgeText = `PAGO ${paidBoletos}/${totalBoletos}`;
+                              badgeStyle = "bg-blue-100 text-blue-700";
+                            } else {
+                              badgeText = `PAGO 0/${totalBoletos}`;
+                              badgeStyle = "bg-orange-100 text-orange-700";
+                            }
+                          }
+
+                          return (
+                            <span
+                              className={`px-3 py-1 rounded-md text-sm font-bold uppercase tracking-wider ${badgeStyle}`}
+                            >
+                              {badgeText}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="p-4">
                         <NfSyncBadge nf_numero={nf.nf_numero} />

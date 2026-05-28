@@ -85,7 +85,8 @@ export class VeiculoController {
     try {
       const termo = (req.query.q as string) || '';
       const resultados = await repository.buscarMarcas(termo);
-      res.json(resultados.map(r => r.marca).filter(Boolean));
+      const unique = Array.from(new Set(resultados.map(r => r.marca?.toUpperCase()).filter(Boolean)));
+      res.json(unique);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch brands", details: error });
     }
@@ -95,7 +96,8 @@ export class VeiculoController {
     try {
       const termo = (req.query.q as string) || '';
       const resultados = await repository.buscarModelos(termo);
-      res.json(resultados.map(r => r.modelo).filter(Boolean));
+      const unique = Array.from(new Set(resultados.map(r => r.modelo?.toUpperCase()).filter(Boolean)));
+      res.json(unique);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch models", details: error });
     }
@@ -105,7 +107,8 @@ export class VeiculoController {
     try {
       const termo = (req.query.q as string) || '';
       const resultados = await repository.buscarCores(termo);
-      res.json(resultados.map(r => r.cor).filter(Boolean));
+      const unique = Array.from(new Set(resultados.map(r => r.cor?.toUpperCase()).filter(Boolean)));
+      res.json(unique);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch colors", details: error });
     }

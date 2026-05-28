@@ -2,6 +2,12 @@ export interface IDashboardStats {
   osAberta: number;
   contasPagarPending: number;
   contasPagarOverdue: number;
+  contasPagarHojeCount?: number;
+  contasPagarHojeValor?: number;
+  contasPagarAmanhaCount?: number;
+  contasPagarAmanhaValor?: number;
+  contasPagar7DiasCount?: number;
+  contasPagar7DiasValor?: number;
   livroCaixaEntries: number;
   livroCaixaExits: number;
   autoPecasPendentes: number;

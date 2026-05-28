@@ -39,7 +39,7 @@ export const ContasAPagarPage = () => {
 
   // Filters
   const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
-    search: "", osId: "", status: "ALL", operadora: "", fornecedor: "",
+    search: "", osId: "", status: "PENDING", operadora: "", fornecedor: "",
     startDate: "", endDate: "", activePeriod: "ALL",
   });
   const [fornecedoresList, setFornecedoresList] = useState<any[]>([]);
@@ -220,6 +220,7 @@ export const ContasAPagarPage = () => {
       <div className="mb-6">
         <UniversalFilters
           onFilterChange={setUniversalFilters}
+          initialState={{ status: "PENDING" }}
           config={{
             enableFornecedor: true,
             enableOperadora: false,
@@ -241,7 +242,7 @@ export const ContasAPagarPage = () => {
             <tr className="bg-neutral-50 border-b border-neutral-200 text-sm font-medium text-gray-600">
               <th className="p-4 text-left">Vencimento / Status</th>
               <th className="p-4 text-left">Descrição</th>
-              <th className="p-4 text-left">NF / Sincronização</th>
+              <th className="p-4 text-left">Sincronização Financeira (Boletos)</th>
               <th className="p-4 text-left">Categoria</th>
               <th className="p-4 text-right min-w-[150px]">Valor</th>
               <th className="p-4 text-center">Ações</th>
@@ -264,7 +265,28 @@ export const ContasAPagarPage = () => {
                 </td>
               </tr>
             ) : (
-              filteredContas.map((conta) => (
+              filteredContas.map((conta) => {
+                const getStatusInfo = () => {
+                  if (conta.status === "PAGO") return { label: "PAGO", color: "bg-emerald-100 text-emerald-700" };
+                  
+                  const venc = new Date(conta.dt_vencimento);
+                  const today = new Date();
+                  
+                  // Extract the day using UTC since dt_vencimento is saved in UTC noon/midnight
+                  const vencDay = new Date(venc.getUTCFullYear(), venc.getUTCMonth(), venc.getUTCDate()).getTime();
+                  const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+
+                  if (vencDay === todayDay) {
+                    return { label: "PAGAR HOJE", color: "bg-blue-100 text-blue-700" };
+                  } else if (vencDay < todayDay) {
+                    return { label: "ATRASADO", color: "bg-red-100 text-red-600" };
+                  }
+                  
+                  return { label: "PENDENTE", color: "bg-orange-100 text-orange-700" };
+                };
+                const statusInfo = getStatusInfo();
+
+                return (
                 <tr
                   key={conta.id_conta_pagar}
                   className="hover:bg-neutral-50 transition-colors group"
@@ -278,18 +300,8 @@ export const ContasAPagarPage = () => {
                         {new Date(conta.dt_vencimento).getUTCFullYear()}
                       </div>
                       <div className="mt-1 min-h-[1.5rem]">
-                        <span className={`px-2 py-0.5 rounded-md text-sm uppercase tracking-wider ${
-                          conta.status === "PAGO"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : new Date(conta.dt_vencimento) < new Date() && conta.status !== "PAGO"
-                              ? "bg-red-100 text-red-600"
-                              : "bg-orange-100 text-orange-700"
-                        }`}>
-                          {conta.status === "PAGO"
-                            ? "PAGO"
-                            : new Date(conta.dt_vencimento) < new Date() && conta.status !== "PAGO"
-                              ? "ATRASADO"
-                              : "PENDENTE"}
+                        <span className={`px-2 py-0.5 rounded-md text-sm font-bold uppercase tracking-wider ${statusInfo.color}`}>
+                          {statusInfo.label}
                         </span>
                       </div>
                       <div className="text-sm text-neutral-500 font-normal mt-1 min-h-[1.25rem]">
@@ -382,7 +394,8 @@ export const ContasAPagarPage = () => {
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

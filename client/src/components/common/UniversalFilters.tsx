@@ -30,6 +30,7 @@ export interface UniversalFiltersConfig {
 interface UniversalFiltersProps {
   onFilterChange: (filters: UniversalFiltersState) => void;
   config?: UniversalFiltersConfig;
+  initialState?: Partial<UniversalFiltersState>;
 }
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
@@ -103,6 +104,7 @@ const labelCls =
 export const UniversalFilters = ({
   onFilterChange,
   config = {},
+  initialState = {},
 }: UniversalFiltersProps) => {
   const {
     enableFornecedor = true,
@@ -115,11 +117,12 @@ export const UniversalFilters = ({
   const fornecedores = config.fornecedores ?? [];
   const operadoras = config.operadoras ?? [];
 
-  const [filters, setFilters] = useState<UniversalFiltersState>(INITIAL_STATE);
+  const defaultState = { ...INITIAL_STATE, ...initialState };
+  const [filters, setFilters] = useState<UniversalFiltersState>(defaultState);
   const [manualDate, setManualDate] = useState({ start: false, end: false });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const filtersRef = useRef<UniversalFiltersState>(INITIAL_STATE);
+  const filtersRef = useRef<UniversalFiltersState>(defaultState);
 
   useEffect(() => {
     filtersRef.current = filters;
@@ -176,8 +179,8 @@ export const UniversalFilters = ({
 
   const handleClear = () => {
     setManualDate({ start: false, end: false });
-    setFilters(INITIAL_STATE);
-    onFilterChange(INITIAL_STATE);
+    setFilters(defaultState);
+    onFilterChange(defaultState);
   };
 
   const periodBtnCls = (key: string) => {

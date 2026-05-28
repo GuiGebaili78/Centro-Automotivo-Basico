@@ -125,10 +125,11 @@ export class FinanceiroService {
     return response.data;
   }
 
-  static async confirmarRecebiveis(ids: number[], data_recebimento?: string): Promise<void> {
+  static async confirmarRecebiveis(ids: number[], data_recebimento?: string, idContaBancaria?: number | null): Promise<void> {
     await api.post("/recebivel-cartao/confirmar", { 
       ids, 
-      data_recebimento: data_recebimento || new Date().toISOString() 
+      data_recebimento: data_recebimento || new Date().toISOString(),
+      idContaBancaria 
     });
   }
 
@@ -261,8 +262,8 @@ export class FinanceiroService {
   }
 
   // --- SINCRONIZAÇÃO DE NOTAS FISCAIS (FASE 2) ---
-  static async getNfsPendentes(): Promise<any[]> {
-    const response = await api.get("/contas-pagar/nfs-pendentes");
+  static async getNfsPendentes(params?: { search?: string; page?: number; limit?: number }): Promise<{ data: any[]; total: number }> {
+    const response = await api.get("/contas-pagar/nfs-pendentes", { params });
     return response.data;
   }
 

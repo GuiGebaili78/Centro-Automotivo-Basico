@@ -90,9 +90,9 @@ export class RecebivelCartaoController {
   async confirmarRecebimento(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
-      const { confirmadoPor } = req.body;
+      const { confirmadoPor, idContaBancaria } = req.body;
       
-      const recebivel = await repository.confirmarRecebimento(id, confirmadoPor || 'Sistema');
+      const recebivel = await repository.confirmarRecebimento(id, confirmadoPor || 'Sistema', idContaBancaria ? Number(idContaBancaria) : null);
       res.json(recebivel);
     } catch (error: any) {
       res.status(400).json({ error: 'Failed to confirm Recebível', details: error.message });
@@ -147,7 +147,8 @@ export class RecebivelCartaoController {
       }
 
       const confirmadoPor = req.body.confirmadoPor || 'Sistema';
-      const resultados = await repository.confirmarRecebimentoLote(ids, confirmadoPor);
+      const idContaBancaria = req.body.idContaBancaria ? Number(req.body.idContaBancaria) : null;
+      const resultados = await repository.confirmarRecebimentoLote(ids, confirmadoPor, idContaBancaria);
       
       res.json({ 
         message: `${resultados.length} recebimento(s) confirmado(s) com sucesso`,

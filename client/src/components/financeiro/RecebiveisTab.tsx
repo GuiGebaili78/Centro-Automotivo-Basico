@@ -18,6 +18,7 @@ import { useUniversalFilter } from "../../hooks/useUniversalFilter";
 export const RecebiveisTab = () => {
   const [recebiveis, setRecebiveis] = useState<IRecebivelCartao[]>([]);
   const [operadoras, setOperadoras] = useState<any[]>([]);
+  const [contasBancarias, setContasBancarias] = useState<any[]>([]);
 
   // Universal Filters
   const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
@@ -28,11 +29,21 @@ export const RecebiveisTab = () => {
   // Selection
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showConciliateModal, setShowConciliateModal] = useState(false);
+  const [selectedContaBancaria, setSelectedContaBancaria] = useState<string>("");
 
   useEffect(() => {
     loadOperadoras();
+    loadContasBancarias();
   }, []);
 
+  const loadContasBancarias = async () => {
+    try {
+      const data = await FinanceiroService.getContasBancarias();
+      setContasBancarias(data);
+    } catch (error) {
+      console.error("Erro ao carregar contas bancárias:", error);
+    }
+  };
 
   const loadOperadoras = async () => {
     try {
@@ -99,11 +110,23 @@ export const RecebiveisTab = () => {
 
   const executeConciliacao = async () => {
     try {
-      await FinanceiroService.confirmarRecebiveis(selectedIds, new Date().toISOString());
+      const requiresContaBancaria = filteredData
+        .filter((r) => selectedIds.includes(r.id_recebivel))
+        .some((r) => r.id_operadora === null && (r as any).tipo_parcelamento?.toUpperCase() !== 'DINHEIRO');
+
+      if (requiresContaBancaria && selectedContaBancaria === "") {
+        toast.error("Selecione a Conta Bancária de destino para o PIX/Transferência.");
+        return;
+      }
+
+      const accountId = selectedContaBancaria === "" ? null : Number(selectedContaBancaria);
+
+      await FinanceiroService.confirmarRecebiveis(selectedIds, new Date().toISOString(), accountId);
       toast.success("Recebimentos confirmados e conciliados!");
       setSelectedIds([]);
       loadData(universalFilters.startDate, universalFilters.endDate);
       setShowConciliateModal(false);
+      setSelectedContaBancaria("");
     } catch (error: any) {
       console.error(error);
       const msg =
@@ -127,6 +150,10 @@ export const RecebiveisTab = () => {
     (acc, r) => acc + Number(r.valor_liquido),
     0,
   );
+
+  const requiresContaBancaria = filteredData
+    .filter((r) => selectedIds.includes(r.id_recebivel))
+    .some((r) => r.id_operadora === null && (r as any).tipo_parcelamento?.toUpperCase() !== 'DINHEIRO');
 
   // Filter Logic — handled by useUniversalFilter above
 
@@ -280,11 +307,13 @@ export const RecebiveisTab = () => {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-black text-sm">
-                          {(r as any).operadora?.nome?.substring(0, 1) || "O"}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${r.id_operadora === null ? 'bg-amber-100 text-amber-600' : 'bg-primary-100 text-primary-600'}`}>
+                          {r.id_operadora === null ? "$" : ((r as any).operadora?.nome?.substring(0, 1) || "O")}
                         </div>
                         <span className="text-base text-gray-900 font-medium">
-                          {(r as any).operadora?.nome || "Operadora"}
+                          {r.id_operadora === null 
+                            ? ((r as any).tipo_parcelamento?.toUpperCase() === 'DINHEIRO' ? 'Dinheiro' : 'PIX / Transf.')
+                            : ((r as any).operadora?.nome || "Operadora")}
                         </span>
                       </div>
                     </td>
@@ -390,11 +419,34 @@ export const RecebiveisTab = () => {
                   recebidas?
                   <br />
                   <span className="text-xs opacity-75">
-                    Isso atualizará o saldo das contas vinculadas.
+                    Isso atualizará o saldo das contas vinculadas ou do Caixa.
                   </span>
                 </p>
               </div>
             </div>
+
+            {requiresContaBancaria && (
+              <div className="mt-4 border border-amber-200 bg-amber-50 rounded-xl p-4">
+                <label className="block text-sm font-bold text-amber-900 mb-2">
+                  Destino do PIX / Transferência
+                </label>
+                <p className="text-xs text-amber-700 mb-3">
+                  Pelo menos um dos recebimentos selecionados foi pago via PIX/Transferência. Por favor, indique para qual conta bancária esse valor foi destinado.
+                </p>
+                <select
+                  value={selectedContaBancaria}
+                  onChange={(e) => setSelectedContaBancaria(e.target.value)}
+                  className="w-full bg-white border border-amber-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="" disabled>-- Selecione a Conta Bancária --</option>
+                  {contasBancarias.map((conta) => (
+                    <option key={conta.id_conta} value={conta.id_conta}>
+                      {conta.nome} - {conta.banco} ({formatCurrency(Number(conta.saldo_atual))})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="bg-neutral-50 p-3 rounded-lg border border-neutral-100">
               <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">

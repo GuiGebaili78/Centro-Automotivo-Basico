@@ -136,9 +136,9 @@ export class PagamentoPecaRepository {
 
       // FORMATAR DESCRIÇÃO
       // "Pg. Peças - OS Nº {id} - {fornecedor_fantasia} | {nome_peca}"
-      const idOs = pagamento.item_os.ordem_de_servico.id_os;
-      const fornecedor = pagamento.fornecedor.nome;
-      const nomePeca = pagamento.item_os.descricao;
+      const idOs = pagamento.item_os?.ordem_de_servico?.id_os || "Avulsa";
+      const fornecedor = pagamento.fornecedor?.nome || pagamento.fornecedor?.nome_fantasia || "Fornecedor N/I";
+      const nomePeca = pagamento.item_os?.descricao || "Peça N/I";
       const descricao = `Pg. Peças - OS Nº ${idOs} - ${fornecedor} | ${nomePeca}`;
 
       // 1. Debit Account
@@ -242,10 +242,10 @@ export class PagamentoPecaRepository {
       for (const p of pagamentos) {
         // Regra: (valor_peca / valor_total_selecionado) * desconto_total_aplicado
         const valorPeca = Number(p.custo_real);
-        // Garantir precisão de 2 casas decimais para o rateio
-        const descontoRateado = Number(
-          ((valorPeca / valorTotalBruto) * descontoTotal).toFixed(2),
-        );
+        // Garantir precisão de 2 casas decimais para o rateio e evitar divisão por zero
+        const descontoRateado = valorTotalBruto > 0
+          ? Number(((valorPeca / valorTotalBruto) * descontoTotal).toFixed(2))
+          : 0;
         const custoLiquido = Number((valorPeca - descontoRateado).toFixed(2));
 
         await tx.pagamentoPeca.update({
@@ -272,13 +272,17 @@ export class PagamentoPecaRepository {
 
       // 6. Create Livro Caixa Entry (Valor Líquido)
       const idOsUnicos = [
-        ...new Set(pagamentos.map((p) => p.item_os.ordem_de_servico.id_os)),
+        ...new Set(
+          pagamentos
+            .map((p) => p.item_os?.ordem_de_servico?.id_os)
+            .filter((id) => id !== undefined && id !== null)
+        ),
       ];
 
       // 6.1 Recalcular Fechamento Financeiro para cada OS impactada
       for (const idOs of idOsUnicos) {
         const fechamento = await tx.fechamentoFinanceiro.findFirst({
-          where: { id_os: idOs },
+          where: { id_os: Number(idOs) },
         });
 
         if (fechamento) {
@@ -309,12 +313,13 @@ export class PagamentoPecaRepository {
       const fornecedoresUnicos = [
         ...new Set(
           pagamentos.map(
-            (p) => p.fornecedor.nome,
+            (p) => p.fornecedor?.nome || p.fornecedor?.nome_fantasia || "Fornecedor N/I",
           ),
         ),
       ];
 
-      const descricao = `Pg. Peças em Lote - OS: ${idOsUnicos.join(", ")} - Fornecedores: ${fornecedoresUnicos.join(", ")} | Desc.: R$ ${descontoTotal.toFixed(2)}`;
+      const osIdsText = idOsUnicos.length > 0 ? idOsUnicos.join(", ") : "Avulsa";
+      const descricao = `Pg. Peças em Lote - OS: ${osIdsText} - Fornecedores: ${fornecedoresUnicos.join(", ")} | Desc.: R$ ${descontoTotal.toFixed(2)}`;
 
       const lc = await tx.livroCaixa.create({
         data: {

@@ -62,6 +62,7 @@ export const PagamentoPecaPage = () => {
     isOpen: boolean;
     id: number | null;
   }>({ isOpen: false, id: null });
+  const [showZeroCostWarning, setShowZeroCostWarning] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -128,6 +129,16 @@ export const PagamentoPecaPage = () => {
       toast.warning("Nenhum item selecionado para pagamento.");
       return;
     }
+
+    const hasZeroCost = payments.some(
+      (p) => selectedIds.includes(p.id_pagamento_peca) && Number(p.custo_real) === 0
+    );
+
+    if (hasZeroCost) {
+      setShowZeroCostWarning(true);
+      return;
+    }
+
     setPaymentModal((prev) => ({ ...prev, isOpen: true }));
   };
 
@@ -276,23 +287,24 @@ export const PagamentoPecaPage = () => {
     >
       <div className="space-y-6">
 
-        {/* Universal Filters */}
+        {/* FILTERS */}
+      <div className="mb-6">
         <UniversalFilters
           onFilterChange={setUniversalFilters}
+          initialState={{ status: "PENDING" }}
           config={{
             enableFornecedor: true,
             enableOperadora: false,
             enableOsId: true,
-            fornecedores: fornecedoresList,
+            fornecedores: fornecedoresList.map(f => ({ id: f.nome, nome: f.nome })),
             statusOptions: [
-              { value: "ALL", label: "Todos" },
+              { value: "ALL", label: "Todas" },
               { value: "PENDING", label: "Pendentes" },
-              { value: "PAID", label: "Pagos" },
+              { value: "PAID", label: "Pagas" },
             ],
           }}
         />
-
-        {/* Totals Summary Cards */}
+      </div>    {/* Totals Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {selectedIds.length > 0 ? (
             <div className="bg-blue-50 p-6 rounded-xl flex items-center justify-between border border-blue-200 shadow-sm animate-in zoom-in duration-300">
@@ -348,7 +360,7 @@ export const PagamentoPecaPage = () => {
               <thead>
                 <tr className="bg-neutral-50 text-sm font-bold text-neutral-500 uppercase tracking-widest">
                   <th className="p-5 text-left">OS / Data</th>
-                  <th className="p-5 text-left">Ref / Nota</th>
+                  <th className="p-5 text-left">NF (Sincronização de Itens)</th>
                   <th className="p-5 text-left">Peça / Veículo</th>
                   <th className="p-5 text-left">Fornecedor</th>
                   <th className="p-5 text-center">Status OS</th>
@@ -406,21 +418,12 @@ export const PagamentoPecaPage = () => {
                           </span>
                           {p.nf_numero && (
                             <div className="flex flex-col gap-1 mt-1 col-span-2">
-                              {p.pago_ao_fornecedor ? (
-                                <span
-                                  className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm text-center"
-                                  title={`Este pagamento está vinculado à NF ${p.nf_numero} e já foi PAGO.`}
-                                >
-                                  NF: {p.nf_numero} (Pago)
-                                </span>
-                              ) : (
-                                <span
-                                  className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm text-center"
-                                  title={`Este pagamento está vinculado à NF ${p.nf_numero} e está PENDENTE.`}
-                                >
-                                  NF: {p.nf_numero} (Pendente)
-                                </span>
-                              )}
+                              <span
+                                className="px-2 py-0.5 rounded-full text-xs font-bold bg-neutral-100 text-neutral-700 border border-neutral-200 shadow-sm text-center"
+                                title={`Sincronização com a NF ${p.nf_numero}`}
+                              >
+                                NF: {p.nf_numero}
+                              </span>
                               <div className="scale-95 origin-left">
                                 <NfSyncBadge nf_numero={p.nf_numero} />
                               </div>
@@ -660,6 +663,20 @@ export const PagamentoPecaPage = () => {
         title="Estornar Pagamento"
         description="Deseja marcar este item como pendente novamente? O lançamento no livro caixa referente ao pagamento será mantido para histórico, mas o status voltará para 'Pendente'."
         confirmText="Estornar"
+        variant="primary"
+      />
+
+      {/* Zero Cost Warning Modal */}
+      <ConfirmModal
+        isOpen={showZeroCostWarning}
+        onClose={() => setShowZeroCostWarning(false)}
+        onConfirm={() => {
+          setShowZeroCostWarning(false);
+          setPaymentModal((prev) => ({ ...prev, isOpen: true }));
+        }}
+        title="Atenção: Custo Zerado"
+        description="O valor de custo de uma ou mais peças selecionadas é R$ 0,00. Esqueceu de preencher o valor? Tem certeza que deseja continuar?"
+        confirmText="Continuar Mesmo Assim"
         variant="primary"
       />
     </PageLayout>

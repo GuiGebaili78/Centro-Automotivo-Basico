@@ -58,59 +58,10 @@ export class PagamentoClienteController {
         const placa = os.veiculo?.placa || "S/Placa";
         const descricaoPadrao = `OS Nº ${data.id_os} - ${nomeCliente} | ${placa} | ${pagamento.metodo_pagamento}`;
 
-        // Get Category "Serviços"
-        const categoriaServicos = await tx.categoriaFinanceira.findFirst({
-          where: {
-            nome: "Serviços",
-            parent: { nome: "Receita" },
-          },
-        });
+        // Get Category "Serviços" (no longer immediately used for LivroCaixa, but maybe useful later or we can skip it here)
+        // We will skip creating LivroCaixa here. The reconciliation step will do it.
 
-        // 2. Create LivroCaixa (Cash Book) for ALL methods
-        const livroCaixa = await tx.livroCaixa.create({
-          data: {
-            descricao: descricaoPadrao,
-            valor: Number(data.valor),
-            tipo_movimentacao: "ENTRADA",
-            categoria: "Serviços",
-            id_categoria: categoriaServicos?.id_categoria || null,
-            dt_movimentacao: new Date(),
-            origem: "AUTOMATICA",
-            id_conta_bancaria: data.id_conta_bancaria
-              ? Number(data.id_conta_bancaria)
-              : null, // Null for Dinheiro/Credit until settled? Or immediate? User asked for immediate entry.
-            // Note: For Credit Card, usually it doesn't hit the bank account immediately.
-            // However, the user said "credito e debito devem entrar no livro caixa também".
-            // Typically this is a "Provision" or "Receivable" entry in Cash Book if linked to an account, creates confusion.
-            // But if linked to NO account, it's just a registry.
-            // Let's keep id_conta_bancaria NULL for Credit/Debit initially unless it's Debit appearing instantly?
-            // User did not specify Debit vs Credit behavior difference in Cash Book, just that it enters.
-            // We will link to account IF provided (Pix), otherwise null (Dinheiro/Card - waiting settlement or physical cash).
-          },
-        });
-
-        // Link Pagamento to LivroCaixa
-        await tx.pagamentoCliente.update({
-          where: { id_pagamento_cliente: pagamento.id_pagamento_cliente },
-          data: { id_livro_caixa: livroCaixa.id_livro_caixa },
-        });
-
-        // 2.1 Update Balance for PIX immediately
-        if (data.metodo_pagamento === "PIX" && data.id_conta_bancaria) {
-          // PIX Banco: full value, no fees — just update balance
-          await tx.contaBancaria.update({
-            where: { id_conta: Number(data.id_conta_bancaria) },
-            data: { saldo_atual: { increment: Number(data.valor) } },
-          });
-
-          // PIX Banco: skip receivables entirely
-          if (!pix_destino || pix_destino === "BANCO") {
-            return pagamento;
-          }
-          // PIX Máquina: falls through to receivables creation below
-        }
-
-        // 3. If Operator selected (Card / PIX Máquina), create Receivables
+        // 2. Create Receivables for ALL methods
         if (
           id_operadora &&
           (
@@ -125,20 +76,10 @@ export class PagamentoClienteController {
           });
           if (!operadora) throw new Error("Operadora não encontrada");
 
-          // Update LivroCaixa description with Operator Name
-          await tx.livroCaixa.update({
-            where: { id_livro_caixa: livroCaixa.id_livro_caixa },
-            data: { descricao: `${descricaoPadrao} (${operadora.nome})` },
-          });
-
           const parcelas = data.qtd_parcelas || 1;
           const valorTotal = Number(data.valor);
 
           // Determine modalidade da taxa:
-          // CREDITO_AVISTA = crédito à vista (recebimento antecipado, sem parcelamento)
-          // CREDITO = crédito parcelado (1x a 18x com prazo)
-          // DEBITO = débito
-          // PIX (com pix_destino=MAQUINA) = usa taxa de modalidade PIX
           let modalidade: string;
           if (data.metodo_pagamento === "PIX") {
             modalidade = "PIX";
@@ -245,6 +186,23 @@ export class PagamentoClienteController {
               },
             });
           }
+        } else {
+          // Flow for Dinheiro, PIX Banco, Transf, or any other method without an operator
+          await tx.recebivelCartao.create({
+            data: {
+              id_os: data.id_os,
+              id_operadora: null, // Null to indicate no operator
+              num_parcela: 1,
+              total_parcelas: 1,
+              valor_bruto: Number(data.valor),
+              valor_liquido: Number(data.valor), // No fees
+              taxa_aplicada: 0,
+              tipo_parcelamento: data.metodo_pagamento, // Save the actual method (e.g. 'Dinheiro', 'PIX') here
+              data_venda: new Date(),
+              data_prevista: new Date(), // Due immediately
+              status: "PENDENTE",
+            },
+          });
         }
 
         return pagamento;
@@ -367,20 +325,16 @@ export class PagamentoClienteController {
           data.metodo_pagamento === "CREDITO" ||
           data.metodo_pagamento === "DEBITO";
 
-        if (wasCard) {
-          // Delete old receivables to be safe/clean
-          // But only if status is PENDENTE. If finalized, we might block?
-          // Assuming open OS edits are allowed.
-          // Delete old receivables for this SPECIFIC payment (matching Operator/Parcels)
-          await tx.recebivelCartao.deleteMany({
-            where: {
-              id_os: original.id_os,
-              id_operadora: Number(original.id_operadora),
-              status: "PENDENTE",
-              // Match parcels to identify the correct set of receivables
-              total_parcelas: original.qtd_parcelas || 1,
-            },
-          });
+        // Always clean up old pending receivables for this specific payment before creating new ones if needed.
+        // Since we now generate receivables for ALL methods, we should delete the old ones regardless of wasCard.
+        await tx.recebivelCartao.deleteMany({
+          where: {
+            id_os: original.id_os,
+            id_operadora: original.id_operadora, // handles null too
+            status: "PENDENTE",
+            total_parcelas: original.qtd_parcelas || 1,
+          },
+        });
           // Since we don't have direct link in Schema (it links to OS), this is imperfect.
           // Ideally schema update: RecebivelCartao -> PagamentoCliente relation.
           // As I cannot change Schema easily without migration/restart risk, I will skip complex regeneration for this specific MVP step
@@ -399,7 +353,6 @@ export class PagamentoClienteController {
           // BUT, if I don't handle it, data rots.
           // Strategy: Verify if I can identity the observables.
           // They have exact same amounts/dates?
-        }
 
         // Return updated
         return pagamento;
@@ -447,26 +400,20 @@ export class PagamentoClienteController {
           }
 
           // 3. Delete Receivables (Sync with Payment Deletion)
-          if (original.id_operadora) {
-            const qtdParcelas = original.qtd_parcelas || 1;
-            const valorParcela = Number(original.valor) / qtdParcelas;
+          const qtdParcelas = original.qtd_parcelas || 1;
+          const valorParcela = Number(original.valor) / qtdParcelas;
 
-            // Attempt to find and delete matching pending receivables
-            // Logic: Match OS, Operator, and approximate Value/Installment count
-            await tx.recebivelCartao.deleteMany({
-              where: {
-                id_os: original.id_os,
-                id_operadora: original.id_operadora,
-                status: "PENDENTE",
-                // Safety: Try to match value roughly or just by Operator/OS/Status?
-                // Given the user wants "Sync", deleting all PENDING for this Operator/OS seems acceptable
-                // IF we assume 1 payment per operator per OS usually, or if they delete the payment they likely wait to reset.
-                // A more specific check would be better but Schema limits us.
-                // Match via total_parcelas helps
-                total_parcelas: qtdParcelas,
-              },
-            });
-          }
+          // Attempt to find and delete matching pending receivables
+          // Logic: Match OS, Operator (or null), and approximate Installment count
+          await tx.recebivelCartao.deleteMany({
+            where: {
+              id_os: original.id_os,
+              id_operadora: original.id_operadora,
+              status: "PENDENTE",
+              // Match via total_parcelas helps
+              total_parcelas: qtdParcelas,
+            },
+          });
         }
       });
 

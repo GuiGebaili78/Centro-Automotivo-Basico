@@ -308,6 +308,14 @@ export interface IContasPagar {
   status: string;
   id_categoria?: number | null;
   categoria?: string | null;
+  categoria_financeira?: {
+    id_categoria: number;
+    nome: string;
+    parent?: {
+      id_categoria: number;
+      nome: string;
+    } | null;
+  } | null;
 
   // New
   credor?: string | null;
