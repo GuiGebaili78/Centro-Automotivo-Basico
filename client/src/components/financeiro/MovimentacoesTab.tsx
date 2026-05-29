@@ -84,21 +84,18 @@ export const MovimentacoesTab = () => {
     balance: 0,
   });
 
-  // Summary cards — re-fetch when date/search changes
-  useEffect(() => {
-    FinanceiroService.getSummary({
-      startDate: universalFilters.startDate,
-      endDate: universalFilters.endDate,
-      source: "ALL",
-      category: "ALL",
-      search: universalFilters.search,
-    })
-      .then(setSummaries)
-      .catch((err) => console.error("Erro ao buscar resumo financeiro", err));
-  }, [universalFilters.startDate, universalFilters.endDate, universalFilters.search]);
-
+  // Fetch data whenever backend filters change
   useEffect(() => {
     loadData();
+  }, [
+    universalFilters.startDate,
+    universalFilters.endDate,
+    universalFilters.search,
+    universalFilters.status,
+    universalFilters.osId
+  ]);
+
+  useEffect(() => {
     loadCategories();
   }, []);
 
@@ -113,259 +110,33 @@ export const MovimentacoesTab = () => {
 
   const loadData = async () => {
     try {
-      const [manual, payments, inflows, ops] = await Promise.all([
-        FinanceiroService.getLivroCaixa(),
-        FinanceiroService.getPagamentosPeca(),
-        FinanceiroService.getPagamentosCliente(),
-        FinanceiroService.getOperadorasCartao(),
-      ]);
-
-      // Build Operators Map
-      const opMap: Record<number, string> = {};
-      (ops || []).forEach((op: any) => {
-        opMap[op.id_operadora] = op.nome;
+      const response = await FinanceiroService.getMovimentacoes({
+        startDate: universalFilters.startDate,
+        endDate: universalFilters.endDate,
+        search: universalFilters.search,
+        status: universalFilters.status,
+        osId: universalFilters.osId,
       });
 
-      // Build Payment Maps (Link LivroCaixa ID -> Payment Data)
-      const lcPaymentMap: Record<number, any> = {};
-      (inflows || []).forEach((p: any) => {
-        if (p.id_livro_caixa) {
-          lcPaymentMap[p.id_livro_caixa] = p;
-        }
+      setCashBookEntries(response.data);
+      setSummaries({
+        totalInflow: response.totalInflow,
+        totalOutflow: response.totalOutflow,
+        balance: response.balance,
       });
 
-      const lcSupplierMap: Record<number, string> = {};
-      let paymentsData = (payments as any)?.data || payments || [];
-      paymentsData.forEach((p: any) => {
-        if (p.id_livro_caixa) {
-          // If multiple parts share same LC (batch), we'll just take the supplier from the record
-          // (Batch entries usually have a generic description anyway, but individual ones will have specific suppliers)
-          const name =
-            p.fornecedor?.nome_fantasia || p.fornecedor?.nome || "Fornecedor";
-          if (!lcSupplierMap[p.id_livro_caixa]) {
-            lcSupplierMap[p.id_livro_caixa] = name;
-          } else if (!lcSupplierMap[p.id_livro_caixa].includes(name)) {
-            // If multiple suppliers in a batch, it gets messy, but usually batch description handles it.
-            // For simplicity, let's keep the first or join them if it's small.
-            lcSupplierMap[p.id_livro_caixa] += `, ${name}`;
-          }
-        }
-      });
-
-      // 1. Manual Entries (from Libro Caixa)
-      // Enrich with values from Linked Payment if available
-      const manualEntries = manual
-        .filter((e: any) => e.categoria !== "CONCILIACAO_CARTAO")
-        .map((e: any) => {
-          const linkedP = lcPaymentMap[e.id_livro_caixa];
-          let methodDisplay = null;
-
-          if (linkedP) {
-            // Enrich from Linked Payment
-            const method = linkedP.metodo_pagamento;
-            if (method === "CREDITO") {
-              const opName =
-                opMap[linkedP.id_operadora] ||
-                linkedP.bandeira_cartao ||
-                "Cartão";
-              const parc =
-                linkedP.qtd_parcelas > 1
-                  ? ` (${linkedP.qtd_parcelas}x)`
-                  : " (À Vista)";
-              methodDisplay = `CRÉDITO ${opName}${parc}`;
-            } else if (method === "DEBITO") {
-              const opName =
-                opMap[linkedP.id_operadora] ||
-                linkedP.bandeira_cartao ||
-                "Cartão";
-              methodDisplay = `DÉBITO ${opName}`;
-            } else if (method === "PIX") {
-              const nsu = linkedP.codigo_transacao
-                ? ` | ID: ${linkedP.codigo_transacao}`
-                : "";
-              const bankInfo = linkedP.conta_bancaria?.nome
-                ? ` (${linkedP.conta_bancaria.nome})`
-                : "";
-              methodDisplay = `PIX${bankInfo}${nsu}`;
-            } else if (method === "DINHEIRO") {
-              const bankInfo = linkedP.conta_bancaria?.nome
-                ? ` (${linkedP.conta_bancaria.nome})`
-                : "";
-              methodDisplay = `DINHEIRO${bankInfo}`;
-            }
-          }
-
-          return {
-            id: `man-${e.id_livro_caixa}`,
-            rawId: e.id_livro_caixa,
-            date: e.dt_movimentacao,
-            description: e.descricao,
-            type: e.tipo_movimentacao === "ENTRADA" ? "IN" : "OUT",
-            value: Number(e.valor),
-            category: e.category || e.categoria,
-            obs: e.obs,
-            source: e.origem === "AUTOMATICA" ? "AUTO" : "MANUAL",
-            deleted_at: e.deleted_at,
-            originalData: e,
-            conta_bancaria: e.conta ? e.conta.nome : null,
-            supplier: lcSupplierMap[e.id_livro_caixa] || null,
-            paymentMethod: methodDisplay, // Enriched info
-          };
-        });
-
-      // 2. Auto Outflows (Payments to Suppliers)
-      // BREAKING CHANGE: API now returns { data: [...], pagination: {...} }
-      paymentsData = (payments as any)?.data || payments || [];
-      const outflows = paymentsData
-        .filter(
-          (p: any) =>
-            // Only show if NOT linked to LivroCaixa (prevent duplication)
-            !p.id_livro_caixa &&
-            !p.livro_caixa &&
-            ((p.pago_ao_fornecedor && p.data_pagamento_fornecedor) ||
-              p.deleted_at),
-        )
-        .map((p: any) => {
-          const os = p.item_os?.ordem_de_servico;
-          const veh = os?.veiculo;
-          const cli = os?.cliente;
-          const clientName =
-            cli?.pessoa_fisica?.pessoa?.nome ||
-            cli?.pessoa_juridica?.nome_fantasia ||
-            cli?.pessoa_juridica?.razao_social ||
-            "Desconhecido";
-          const vehicleText = veh
-            ? `${veh.placa} - ${veh.modelo} (${veh.cor})`
-            : "";
-          const supplierName = p.fornecedor?.nome || "Fornecedor";
-
-          return {
-            id: `out-${p.id_pagamento_peca}`,
-            rawId: p.id_pagamento_peca,
-            date: p.data_pagamento_fornecedor || p.data_compra,
-            description: `OS Nº ${p.item_os?.id_os ?? "?"} - ${veh?.modelo ?? "Veículo"} ${veh?.cor ? veh.cor : ""} (${veh?.placa ?? "SEM-PLACA"}) - ${p.item_os?.descricao ?? "Peça"}`,
-            type: "OUT",
-            value: Number(p.custo_real),
-            category: "Auto Peças",
-            vehicle: vehicleText,
-            client: clientName,
-            supplier: supplierName,
-            obs: "",
-            source: "AUTO",
-            deleted_at: p.deleted_at,
-            originalData: p,
-          };
-        });
-
-      // 3. Auto Inflows (Payments from Clients)
-      // ONLY show payments that have are NOT consolidated/linked to prevent duplication
-      // (The consolidated entry comes from manualRes/LivroCaixa)
-      const outflowsInflows = (inflows || [])
-        .filter((p: any) => !p.livro_caixa && !p.id_livro_caixa) // Check if relation exists
-        .map((p: any) => {
-          const os = p.ordem_de_servico;
-          const veh = os?.veiculo;
-          const cli = os?.cliente;
-          const clientName =
-            cli?.pessoa_fisica?.pessoa?.nome ||
-            cli?.pessoa_juridica?.nome_fantasia ||
-            cli?.pessoa_juridica?.razao_social ||
-            "Desconhecido";
-          const vehicleText = veh
-            ? `${veh.placa} - ${veh.modelo} (${veh.cor})`
-            : "";
-
-          // Determine display method
-          let methodDisplay = p.metodo_pagamento;
-          let opName = null;
-
-          if (methodDisplay === "CREDITO") {
-            opName = opMap[p.id_operadora] || p.bandeira_cartao || "Cartão";
-            const parc =
-              p.qtd_parcelas > 1 ? ` (${p.qtd_parcelas}x)` : " (À Vista)";
-            const nsu = p.codigo_transacao
-              ? ` | NSU/Aut: ${p.codigo_transacao}`
-              : "";
-            methodDisplay = `CRÉDITO ${opName}${parc} - ${p.bandeira_cartao || ""}${nsu}`;
-          }
-          if (methodDisplay === "DEBITO") {
-            opName = opMap[p.id_operadora] || p.bandeira_cartao || "Cartão";
-            const nsu = p.codigo_transacao
-              ? ` | NSU/Aut: ${p.codigo_transacao}`
-              : "";
-            methodDisplay = `DÉBITO ${opName} - ${p.bandeira_cartao || ""}${nsu}`;
-          }
-          if (methodDisplay === "PIX") {
-            const nsu = p.codigo_transacao
-              ? ` | ID: ${p.codigo_transacao}`
-              : "";
-            const bankInfo = p.conta_bancaria?.nome
-              ? ` (${p.conta_bancaria.nome})`
-              : "";
-            methodDisplay = `PIX${bankInfo}${nsu}`;
-          }
-          if (methodDisplay === "DINHEIRO") {
-            const bankInfo = p.conta_bancaria?.nome
-              ? ` (${p.conta_bancaria.nome})`
-              : "";
-            methodDisplay = `DINHEIRO${bankInfo}`;
-          }
-          const contaDisplay = p.conta_bancaria
-            ? p.conta_bancaria.nome
-            : opName || null;
-
-          return {
-            id: `in-${p.id_pagamento_cliente}`,
-            rawId: p.id_pagamento_cliente,
-            date: p.data_pagamento,
-            description: `Serviços: OS Nº ${os?.id_os ?? "?"} - ${veh?.modelo ?? "Veículo"} ${veh?.placa ? `(${veh.placa})` : ""}`,
-            type: "IN",
-            value: Number(p.valor),
-            category: "Receita",
-            vehicle: vehicleText,
-            client: clientName,
-            obs: p.obs || p.observacao || p.livro_caixa?.obs || "",
-            source: "AUTO",
-            deleted_at: p.deleted_at,
-            originalData: p,
-            // Store method + account for display
-            paymentMethod: methodDisplay,
-            conta_bancaria: contaDisplay,
-          };
-        });
-
-      const combined = [...manualEntries, ...outflows, ...outflowsInflows].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
-      setCashBookEntries(combined);
-
-      // Build lists for UniversalFilters selects
-      const uniqueSuppliers = [
-        ...new Map(
-          combined
-            .filter((e) => e.supplier)
-            .map((e) => [e.supplier, { id: e.supplier!, nome: e.supplier! }])
-        ).values(),
-      ];
-      setFornecedoresList(uniqueSuppliers);
-      setOperadorasList(
-        (ops || []).map((op: any) => ({ id: op.nome, nome: op.nome }))
-      );
+      // Operadora and Fornecedor filters are disabled for Livro Caixa,
+      // but if we ever want to re-enable them, we can build the lists here.
+      setFornecedoresList([]);
+      setOperadorasList([]);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados financeiros.");
     }
   };
 
-  // Filtered via hook
-  const filteredCashBook = useUniversalFilter(cashBookEntries, universalFilters, {
-    dateField: "date",
-    statusField: "type",
-    paidValue: "IN",
-    pendingValue: "OUT",
-    fornecedorField: "supplier",
-    operadoraField: "conta_bancaria",
-  });
+  // We rely fully on backend for filtering.
+  const filteredCashBook = cashBookEntries;
 
 
   const { totalInflow, totalOutflow, balance } = summaries;
@@ -489,8 +260,8 @@ export const MovimentacoesTab = () => {
         <UniversalFilters
           onFilterChange={setUniversalFilters}
           config={{
-            enableFornecedor: true,
-            enableOperadora: true,
+            enableFornecedor: false,
+            enableOperadora: false,
             enableOsId: true,
             fornecedores: fornecedoresList,
             operadoras: operadorasList,

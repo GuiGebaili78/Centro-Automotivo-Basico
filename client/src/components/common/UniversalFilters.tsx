@@ -205,6 +205,7 @@ export const UniversalFilters = ({
             placeholder="Pesquisar por cliente, placa, peça ou ID..."
             value={filters.search}
             onChange={(e) => update({ search: e.target.value }, true)}
+            className={filters.search ? "bg-blue-50 border-blue-300 text-blue-800" : ""}
           />
         </div>
 
@@ -218,7 +219,7 @@ export const UniversalFilters = ({
             value={filters.osId}
             onChange={(e) => enableOsId && update({ osId: e.target.value })}
             disabled={!enableOsId}
-            className={!enableOsId ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : ""}
+            className={!enableOsId ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : (filters.osId ? "bg-blue-50 border-blue-300 text-blue-800" : "")}
           />
         </div>
 
@@ -229,7 +230,7 @@ export const UniversalFilters = ({
             value={filters.status}
             onChange={(e) => enableStatus && update({ status: e.target.value })}
             disabled={!enableStatus}
-            className={!enableStatus ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : ""}
+            className={!enableStatus ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : (filters.status !== "ALL" ? "bg-blue-50 border-blue-300 text-blue-800" : "")}
           >
             {enableStatus ? (
               statusOptions.map((o) => (
@@ -328,8 +329,8 @@ export const UniversalFilters = ({
             label="De"
             type="date"
             icon={Calendar}
-            className={manualDate.start ? "text-primary-600 font-semibold" : "text-neutral-600"}
-            value={filters.startDate}
+            className={filters.activePeriod === "CUSTOM" && filters.startDate ? "bg-blue-50 border-blue-300 text-blue-800 font-semibold" : "text-neutral-600"}
+            value={filters.activePeriod === "CUSTOM" ? filters.startDate : ""}
             onChange={(e) => handleDate("startDate", e.target.value)}
           />
         </div>
@@ -340,8 +341,8 @@ export const UniversalFilters = ({
             label="Até"
             type="date"
             icon={Calendar}
-            className={manualDate.end ? "text-primary-600 font-semibold" : "text-neutral-600"}
-            value={filters.endDate}
+            className={filters.activePeriod === "CUSTOM" && filters.endDate ? "bg-blue-50 border-blue-300 text-blue-800 font-semibold" : "text-neutral-600"}
+            value={filters.activePeriod === "CUSTOM" ? filters.endDate : ""}
             onChange={(e) => handleDate("endDate", e.target.value)}
           />
         </div>

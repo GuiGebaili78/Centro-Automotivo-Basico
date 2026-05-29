@@ -7,5 +7,6 @@ const controller = new FinanceiroController();
 financeiroRoutes.get("/summary", controller.getGeneralSummary);
 financeiroRoutes.get("/kpis", controller.getKPIs);
 financeiroRoutes.get("/evolution", controller.getEvolution);
+financeiroRoutes.get("/movimentacoes", controller.getMovimentacoes);
 
 export { financeiroRoutes };

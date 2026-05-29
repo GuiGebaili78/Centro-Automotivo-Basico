@@ -160,6 +160,12 @@ export class FinanceiroService {
   }
 
   // --- GERAL (Caixa) ---
+  static async getMovimentacoes(filters?: any): Promise<{ data: any[], totalInflow: number, totalOutflow: number, balance: number }> {
+    const params = new URLSearchParams(filters);
+    const response = await api.get(`/financeiro/movimentacoes?${params.toString()}`);
+    return response.data;
+  }
+
   static async getLivroCaixa(filters?: any): Promise<any[]> {
     const params = new URLSearchParams(filters);
     const response = await api.get(`/livro-caixa?${params.toString()}`);
