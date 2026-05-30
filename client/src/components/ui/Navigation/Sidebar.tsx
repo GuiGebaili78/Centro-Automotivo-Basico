@@ -15,8 +15,6 @@ import {
   Settings,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { useFechamentoAlert } from "../../../hooks/useFechamentoAlert";
-import { toast } from "react-toastify";
 
 const menuItems = [
   { path: "/", label: "Monitor", icon: LayoutDashboard },
@@ -74,35 +72,6 @@ export const Sidebar = () => {
   const [expandedMenus, setExpandedMenus] = useState<string[]>(["Financeiro"]);
   const [config, setConfig] = useState<Configuracao | null>(null);
   const [logoVersion, setLogoVersion] = useState(Date.now());
-  const { shouldAlert, dismissAlert } = useFechamentoAlert();
-
-  useEffect(() => {
-    if (shouldAlert && !sessionStorage.getItem('fechamentoToastShown')) {
-      toast.warning(
-        <div className="flex flex-col gap-2">
-          <span className="font-bold text-amber-900">Atenção Operacional!</span>
-          <span className="text-sm text-amber-800">Já passou das 16:00. Não esqueça de realizar a Consolidação de Caixa de hoje!</span>
-          <button 
-            onClick={() => {
-              dismissAlert();
-              toast.dismiss('fechamento-alert');
-            }} 
-            className="mt-1 bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-md text-xs font-bold w-fit transition-colors"
-          >
-            Entendi
-          </button>
-        </div>, 
-        { 
-          toastId: 'fechamento-alert',
-          autoClose: false, 
-          closeOnClick: false,
-          draggable: false,
-          position: "top-right"
-        }
-      );
-      sessionStorage.setItem('fechamentoToastShown', 'true');
-    }
-  }, [shouldAlert, dismissAlert]);
 
   useEffect(() => {
     const loadConfig = () => {
@@ -218,7 +187,6 @@ export const Sidebar = () => {
                 <div className="mt-1 ml-4 space-y-1 border-l-2 border-slate-800 pl-2">
                   {item.subItems.map((sub) => {
                     const isSubActive = location.pathname === sub.path;
-                    const isRecebiveis = sub.path === "/recebiveis";
 
                     return (
                       <Link
@@ -231,12 +199,6 @@ export const Sidebar = () => {
                         }`}
                       >
                         {sub.label}
-                        {isRecebiveis && shouldAlert && (
-                          <span className="flex h-2 w-2 relative ml-auto">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                          </span>
-                        )}
                       </Link>
                     );
                   })}

@@ -6,7 +6,6 @@ import {
   ActionButton,
   Button,
   Card,
-  Checkbox,
   FilterButton,
   Input,
   Select,
@@ -29,12 +28,22 @@ import {
 } from "lucide-react";
 import type { IContasPagar } from "../../types/backend";
 import { ContaPagarModal } from "./ContaPagarModal";
+import { useAlerts } from "../../contexts/AlertsContext";
 
 interface ContasGeraisTabProps {
   onUpdate: () => void;
 }
 
 export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
+  const { getSyncedDate } = useAlerts();
+
+  const formatDateToYYYYMMDD = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
   const [contas, setContas] = useState<IContasPagar[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -69,7 +78,6 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
 
   // Confirm Delete Modal
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const [deleteAllRecurrences, setDeleteAllRecurrences] = useState(false);
 
   useEffect(() => {
     loadContas();
@@ -107,28 +115,30 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (deleteAll: boolean) => {
     if (!confirmDeleteId) return;
     try {
+      setLoading(true);
       await FinanceiroService.deleteContaPagar(
         confirmDeleteId,
-        deleteAllRecurrences,
+        deleteAll,
       );
       toast.success(
-        deleteAllRecurrences ? "Série de contas excluída." : "Conta excluída.",
+        deleteAll ? "Contas pendentes do parcelamento excluídas." : "Conta excluída.",
       );
-      loadContas();
+      await loadContas();
       onUpdate();
       setConfirmDeleteId(null);
-      setDeleteAllRecurrences(false);
     } catch (error) {
       toast.error("Erro ao excluir conta.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleQuickPay = (conta: any) => {
     setSelectedConta(conta);
-    setPaymentDate(new Date().toISOString().split("T")[0]); // Default to today
+    setPaymentDate(formatDateToYYYYMMDD(getSyncedDate())); // Default to today (Server Time)
     setPaymentValue(Number(conta.valor).toFixed(2));
     setSelectedBank(""); // Reset bank selection
     setPayModalOpen(true);
@@ -164,8 +174,8 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
 
   const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH" | "ALL") => {
     setActiveFilter(type as any);
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-CA"); // Local YYYY-MM-DD
+    const now = getSyncedDate();
+    const todayStr = formatDateToYYYYMMDD(now);
 
     if (type === "TODAY") {
       setFilterStart(todayStr);
@@ -173,13 +183,13 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
     } else if (type === "WEEK") {
       const weekStart = new Date(now);
       weekStart.setDate(now.getDate() - 7); // Last 7 days
-      setFilterStart(weekStart.toLocaleDateString("en-CA"));
+      setFilterStart(formatDateToYYYYMMDD(weekStart));
       setFilterEnd(todayStr);
     } else if (type === "MONTH") {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      setFilterStart(firstDay.toLocaleDateString("en-CA"));
-      setFilterEnd(lastDay.toLocaleDateString("en-CA"));
+      setFilterStart(formatDateToYYYYMMDD(firstDay));
+      setFilterEnd(formatDateToYYYYMMDD(lastDay));
     } else if (type === "ALL") {
       setFilterStart("");
       setFilterEnd("");
@@ -194,14 +204,18 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
 
   // Calculations
   const filteredContas = contas.filter((c) => {
-    // Date Filter (Vencimento) - Only apply if not ALL
+    // Date Filter - Only apply if not ALL
     if (activeFilter !== "ALL") {
+      // Se a conta está PAGA, o filtro de data deve aplicar sobre a data de pagamento (dt_pagamento)
+      // Se está PENDENTE, aplica sobre a data de vencimento (dt_vencimento)
+      const dateToCompare = (c.status === "PAGO" && c.dt_pagamento) ? c.dt_pagamento : c.dt_vencimento;
+      const datePart = dateToCompare ? dateToCompare.split("T")[0] : "";
+
       if (filterStart) {
-        if (c.dt_vencimento < filterStart) return false;
+        if (datePart < filterStart) return false;
       }
       if (filterEnd) {
-        const vencC = c.dt_vencimento.split("T")[0];
-        if (vencC > filterEnd) return false;
+        if (datePart > filterEnd) return false;
       }
     }
 
@@ -235,6 +249,11 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
   const totalPaid = filteredContas
     .filter((c) => c.status === "PAGO")
     .reduce((acc, c) => acc + Number(c.valor), 0);
+
+  const selectedContaForDelete = contas.find(c => c.id_conta_pagar === confirmDeleteId);
+  const hasOtherInstallments = selectedContaForDelete?.id_grupo_recorrencia
+    ? contas.some(c => c.id_grupo_recorrencia === selectedContaForDelete.id_grupo_recorrencia && c.id_conta_pagar !== selectedContaForDelete.id_conta_pagar)
+    : false;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -559,7 +578,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                     >
                       {conta.status === "PAGO"
                         ? "PAGO"
-                        : new Date(conta.dt_vencimento) < new Date()
+                        : new Date(conta.dt_vencimento) < getSyncedDate()
                           ? "ATRASADO"
                           : "PENDENTE"}
                     </span>
@@ -572,6 +591,7 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                           icon={CheckCircle}
                           label="Pagar"
                           variant="primary"
+                          disabled={loading}
                         />
                       )}
                       <ActionButton
@@ -579,12 +599,14 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                         icon={Edit}
                         label="Editar"
                         variant="accent"
+                        disabled={loading}
                       />
                       <ActionButton
                         onClick={() => setConfirmDeleteId(conta.id_conta_pagar)}
                         icon={Trash2}
                         label="Excluir"
                         variant="danger"
+                        disabled={loading}
                       />
                     </div>
                   </td>
@@ -596,40 +618,113 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
       </Card>
 
       {/* CONFIRM DELETE MODAL */}
-      {!!confirmDeleteId && (
+      {!!confirmDeleteId && selectedContaForDelete && (
         <Modal
           title="Confirmar Exclusão"
           onClose={() => {
             setConfirmDeleteId(null);
-            setDeleteAllRecurrences(false);
           }}
         >
-          <div className="space-y-4">
-            <p>Tem certeza que deseja excluir esta conta?</p>
-            <div className="flex items-center gap-2 mb-4">
-              <Checkbox
-                label="Excluir toda a série (Recorrência)?"
-                id="delSeries"
-                checked={deleteAllRecurrences}
-                onChange={(e) =>
-                  setDeleteAllRecurrences((e.target as any).checked)
-                }
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setConfirmDeleteId(null);
-                  setDeleteAllRecurrences(false);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button variant="danger" onClick={handleDelete}>
-                Excluir
-              </Button>
-            </div>
+          <div className="space-y-4 pt-2">
+            {hasOtherInstallments ? (
+              // --- CASO SEJA RECORRENTE / PARCELADA ---
+              <div className="space-y-4">
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+                  <div className="bg-amber-100 p-2 rounded-xl text-amber-700">
+                    <Trash2 size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-amber-900">Conta com Parcelamento</h3>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Esta conta faz parte de um parcelamento. Deseja excluir apenas este boleto ou todos os boletos pendentes deste grupo?
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">
+                    Conta Selecionada
+                  </p>
+                  <p className="text-sm font-bold text-slate-800">
+                    {selectedContaForDelete.descricao} - {formatCurrency(Number(selectedContaForDelete.valor))}
+                  </p>
+                  {selectedContaForDelete.numero_parcela && selectedContaForDelete.total_parcelas && (
+                    <p className="text-xs font-semibold text-slate-400 mt-0.5">
+                      Parcela {selectedContaForDelete.numero_parcela} de {selectedContaForDelete.total_parcelas}
+                    </p>
+                  )}
+                </div>
+
+                {/* Safety Disclaimer */}
+                <div className="bg-red-50 border border-red-100 p-3.5 rounded-xl">
+                  <p className="text-xs font-bold text-red-700 leading-normal">
+                    Nota de Segurança: Se você optar por excluir todos os boletos do grupo, parcelas que já foram pagas ou baixadas serão mantidas para proteger o histórico de caixa.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t border-slate-100">
+                  <Button
+                    variant="ghost"
+                    disabled={loading}
+                    onClick={() => {
+                      setConfirmDeleteId(null);
+                    }}
+                    className="w-full sm:w-auto font-bold uppercase text-xs"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={loading}
+                    onClick={() => handleDelete(false)}
+                    className="w-full sm:w-auto font-bold uppercase text-xs border-amber-500 text-amber-600 hover:bg-amber-50"
+                  >
+                    Apenas este
+                  </Button>
+                  <Button
+                    variant="danger"
+                    disabled={loading}
+                    onClick={() => handleDelete(true)}
+                    className="w-full sm:w-auto font-bold uppercase text-xs shadow-md"
+                  >
+                    Todos os pendentes
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              // --- CASO SEJA PARCELA ÚNICA / SIMPLES ---
+              <div className="space-y-4">
+                <p className="text-base text-slate-700 leading-normal">
+                  Tem certeza que deseja excluir esta conta? Esta ação não poderá ser desfeita.
+                </p>
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">
+                    Detalhes da Conta
+                  </p>
+                  <p className="text-sm font-bold text-slate-800">
+                    {selectedContaForDelete.descricao} - {formatCurrency(Number(selectedContaForDelete.valor))}
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                  <Button
+                    variant="ghost"
+                    disabled={loading}
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="font-bold uppercase text-xs"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="danger"
+                    disabled={loading}
+                    onClick={() => handleDelete(false)}
+                    className="font-bold uppercase text-xs shadow-md"
+                  >
+                    Excluir
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}

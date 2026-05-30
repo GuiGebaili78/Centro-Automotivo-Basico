@@ -139,4 +139,8 @@ export class AuthController {
       return res.status(500).json({ error: "Erro interno do servidor." });
     }
   }
+
+  async getServerTime(req: Request, res: Response): Promise<Response> {
+    return res.status(200).json({ serverTime: new Date().toISOString() });
+  }
 }

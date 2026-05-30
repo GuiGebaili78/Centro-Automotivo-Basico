@@ -7,6 +7,7 @@ const authController = new AuthController();
 
 authRoutes.post("/setup", authController.setupAdmin);
 authRoutes.post("/login", authController.login);
+authRoutes.get("/time", (req, res) => authController.getServerTime(req, res));
 authRoutes.post(
   "/change-password",
   authMiddleware,

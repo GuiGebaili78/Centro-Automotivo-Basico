@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FinanceiroService } from "../../services/financeiro.service";
 import { Modal, Button, Input, AutocompleteInput, Checkbox, Select } from "../ui";
+import { useAlerts } from "../../contexts/AlertsContext";
 import { CategorySelector } from "./CategorySelector";
 import { toast } from "react-toastify";
 import { Upload } from "lucide-react";
@@ -26,6 +27,17 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
   onSuccess,
   editingId,
 }) => {
+  const { getSyncedDate } = useAlerts();
+
+  const formatDateToYYYYMMDD = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const todaySyncedStr = formatDateToYYYYMMDD(getSyncedDate());
+
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [recurrenceInfo, setRecurrenceInfo] = useState<IRecurrenceInfo | null>(null);
@@ -37,8 +49,8 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
     categoria: "OUTROS",
     id_categoria: undefined as number | undefined,
     valor: "",
-    dt_emissao: new Date().toISOString().split("T")[0],
-    dt_vencimento: new Date().toISOString().split("T")[0],
+    dt_emissao: todaySyncedStr,
+    dt_vencimento: todaySyncedStr,
     num_documento: "",
     status: "PENDENTE",
     dt_pagamento: "",
@@ -53,7 +65,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
     {
       id_local: 1,
       identificador: "",
-      vencimento: new Date().toISOString().split("T")[0],
+      vencimento: todaySyncedStr,
       valor: ""
     }
   ]);
@@ -76,7 +88,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
     setBoletos(prev => {
       const newList = [...prev];
       if (qtdBoletos > prev.length) {
-        const baseDate = new Date(prev[0]?.vencimento || formData.dt_vencimento || new Date());
+        const baseDate = new Date(prev[0]?.vencimento || formData.dt_vencimento || getSyncedDate());
         
         // Let's divide value by qtd if possible, or just leave blank
         const baseValor = Number(formData.valor) / qtdBoletos;
@@ -161,14 +173,15 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
   };
 
   const resetForm = () => {
+    const todayStr = formatDateToYYYYMMDD(getSyncedDate());
     setFormData({
       descricao: "",
       credor: "",
       categoria: "OUTROS",
       id_categoria: undefined,
       valor: "",
-      dt_emissao: new Date().toISOString().split("T")[0],
-      dt_vencimento: new Date().toISOString().split("T")[0],
+      dt_emissao: todayStr,
+      dt_vencimento: todayStr,
       num_documento: "",
       status: "PENDENTE",
       dt_pagamento: "",
@@ -181,7 +194,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
     setBoletos([{
       id_local: 1,
       identificador: "",
-      vencimento: new Date().toISOString().split("T")[0],
+      vencimento: todayStr,
       valor: ""
     }]);
     setRecurrenceInfo(null);
@@ -205,7 +218,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
           valor: b ? Number(b.valor || formData.valor) : Number(formData.valor),
           applyToAllRecurrences,
           dt_pagamento: formData.status === "PAGO" 
-            ? (formData.dt_pagamento ? new Date(formData.dt_pagamento).toISOString() : new Date().toISOString()) 
+            ? (formData.dt_pagamento ? new Date(formData.dt_pagamento).toISOString() : getSyncedDate().toISOString()) 
             : null,
           dt_vencimento: new Date(b?.vencimento || formData.dt_vencimento).toISOString(),
           dt_emissao: formData.dt_emissao ? new Date(formData.dt_emissao).toISOString() : null,
@@ -235,7 +248,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             applyToAllRecurrences: false,
             repetir_parcelas: 0,
             dt_pagamento: formData.status === "PAGO" 
-              ? (formData.dt_pagamento ? new Date(formData.dt_pagamento).toISOString() : new Date().toISOString()) 
+              ? (formData.dt_pagamento ? new Date(formData.dt_pagamento).toISOString() : getSyncedDate().toISOString()) 
               : null,
             dt_vencimento: new Date(b.vencimento).toISOString(),
             dt_emissao: formData.dt_emissao ? new Date(formData.dt_emissao).toISOString() : null,

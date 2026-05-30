@@ -11,6 +11,8 @@ interface OsTotalsSectionProps {
   onManagePayments: () => void;
   onFinish: () => void;
   onReopen: () => void;
+  isPulsing?: boolean;
+  disabled?: boolean;
 }
 
 export const OsTotalsSection = ({
@@ -22,6 +24,8 @@ export const OsTotalsSection = ({
   onManagePayments,
   onFinish,
   onReopen,
+  isPulsing = false,
+  disabled = false,
 }: OsTotalsSectionProps) => {
   const totalPaid = payments
     .filter((p) => !p.deleted_at)
@@ -100,6 +104,7 @@ export const OsTotalsSection = ({
             <Button
               variant="ghost"
               onClick={onManagePayments}
+              disabled={disabled}
               className="bg-white text-primary-600 hover:bg-neutral-50 font-bold uppercase text-sm h-11 px-6 ml-4 shadow-xl active:scale-95 transition-all"
             >
               Gerenciar
@@ -111,7 +116,10 @@ export const OsTotalsSection = ({
               <Button
                 onClick={onFinish}
                 variant="success"
-                className="w-full lg:w-auto px-8 py-5 h-auto text-lg font-bold uppercase tracking-widest shadow-xl bg-emerald-500 border-none hover:bg-emerald-400 text-white flex-1 lg:flex-none justify-center"
+                disabled={disabled}
+                className={`w-full lg:w-auto px-8 py-5 h-auto text-lg font-bold uppercase tracking-widest shadow-xl bg-emerald-500 border-none hover:bg-emerald-400 text-white flex-1 lg:flex-none justify-center transition-all ${
+                  isPulsing ? "animate-pulse-highlight" : ""
+                }`}
               >
                 <CheckCircle className="mr-3" size={24} strokeWidth={2} />{" "}
                 FINALIZAR OS
@@ -123,6 +131,7 @@ export const OsTotalsSection = ({
                   <Button
                     variant="secondary"
                     onClick={onReopen}
+                    disabled={disabled}
                     className="bg-transparent border-2 border-dashed border-white/40 text-white hover:bg-white/10 hover:border-white px-6 py-4 h-auto w-full sm:w-auto font-bold uppercase transition-all"
                   >
                     REABRIR OS

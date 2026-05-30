@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 // Hooks
 import { useOrdemServico } from "../hooks/useOrdemServico";
@@ -66,6 +67,20 @@ export const OrdemDeServicoDetalhePage = () => {
   const { confirmState, requestConfirm, closeConfirm } = useConfirm();
   const [showDateEdit, setShowDateEdit] = useState(false);
 
+  // Declarative UI state and Ref
+  const [isPulsing, setIsPulsing] = useState(false);
+  const totalsSectionRef = useRef<HTMLDivElement>(null);
+  const pulseTimerRef = useRef<any>(null);
+
+  // Clear timeout on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (pulseTimerRef.current) {
+        clearTimeout(pulseTimerRef.current);
+      }
+    };
+  }, []);
+
   // --- HANDLERS ---
   const handleBack = () => navigate("/");
 
@@ -117,7 +132,7 @@ export const OrdemDeServicoDetalhePage = () => {
     );
   };
 
-  if (loading || !os) {
+  if (!os) {
     return (
       <div className="p-8 text-center text-neutral-500">
         Carregando detalhes da OS...
@@ -156,6 +171,33 @@ export const OrdemDeServicoDetalhePage = () => {
         onSuccess={() => {
           setPaymentModalOpen(false);
           refetch();
+          
+          // Toast verde de sucesso
+          toast.success(
+            <div className="flex flex-col gap-1">
+              <span className="font-bold text-emerald-900">Pagamento confirmado!</span>
+              <span className="text-sm text-emerald-800">Deseja finalizar a Ordem de Serviço agora?</span>
+            </div>,
+            {
+              autoClose: 6000,
+              closeOnClick: true,
+              draggable: true,
+              position: "top-right"
+            }
+          );
+
+          // Rolar suavemente até o botão através da Ref do container
+          setTimeout(() => {
+            if (totalsSectionRef.current) {
+              totalsSectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+            setIsPulsing(true);
+
+            if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+            pulseTimerRef.current = setTimeout(() => {
+              setIsPulsing(false);
+            }, 3000);
+          }, 300);
         }}
       />
 
@@ -231,18 +273,22 @@ export const OrdemDeServicoDetalhePage = () => {
       </Card>
 
       {/* TOTALS & FINANCE */}
-      <Card className="p-6 overflow-hidden">
-        <OsTotalsSection
-          totalParts={totals.parts}
-          totalLabor={totals.labor}
-          totalGeneral={totals.general}
-          payments={os.pagamentos_cliente || []}
-          osStatus={os.status}
-          onManagePayments={() => setPaymentModalOpen(true)}
-          onFinish={handleFinish}
-          onReopen={handleReopen}
-        />
-      </Card>
+      <div ref={totalsSectionRef}>
+        <Card className="p-6 overflow-hidden">
+          <OsTotalsSection
+            totalParts={totals.parts}
+            totalLabor={totals.labor}
+            totalGeneral={totals.general}
+            payments={os.pagamentos_cliente || []}
+            osStatus={os.status}
+            onManagePayments={() => setPaymentModalOpen(true)}
+            onFinish={handleFinish}
+            onReopen={handleReopen}
+            isPulsing={isPulsing}
+            disabled={loading} // Proteção contra duplos cliques (desabilitado enquanto atualiza)
+          />
+        </Card>
+      </div>
     </PageLayout>
   );
 };

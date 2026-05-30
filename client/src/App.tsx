@@ -45,6 +45,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { Login } from "./pages/Login";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage";
+import { AlertsProvider } from "./contexts/AlertsContext";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -149,7 +150,9 @@ const router = createBrowserRouter(
 function App() {
   return (
     <AuthProvider>
-      <RouterProvider router={router} />
+      <AlertsProvider>
+        <RouterProvider router={router} />
+      </AlertsProvider>
     </AuthProvider>
   );
 }

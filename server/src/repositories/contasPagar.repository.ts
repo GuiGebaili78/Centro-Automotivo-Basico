@@ -461,20 +461,18 @@ export class ContasPagarRepository {
 
     const recInfo = await this.findRecurrenceInfo(id);
     if (!recInfo || !recInfo.id_grupo) {
-      // Se não tem grupo, deleta apenas esta conta
       return this.delete(id);
     }
 
-    // Buscar todas as contas do grupo
-    const seriesContas = await this.findByGrupoRecorrencia(recInfo.id_grupo);
-
-    return prisma.$transaction(async (tx) => {
-      for (const c of seriesContas) {
-        await tx.contasPagar.update({
-          where: { id_conta_pagar: c.id_conta_pagar },
-          data: { deleted_at: new Date() },
-        });
-      }
+    return prisma.contasPagar.updateMany({
+      where: {
+        id_grupo_recorrencia: recInfo.id_grupo,
+        status: { in: ["PENDENTE", "ATRASADO"] },
+        deleted_at: null,
+      },
+      data: {
+        deleted_at: new Date(),
+      },
     });
   }
 
