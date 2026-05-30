@@ -74,25 +74,36 @@ const maskEmail = (email: string) => {
   return `${maskedUser}@${domain}`;
 };
 
-const formatPhone = (phone: string) => {
-  // Keep original formatter for internal use if needed,
-  // but we will use maskPhone for the PDF output where requested.
-  // Or just replace this function?
-  // The requirement is "Implement data masking".
-  // I'll use `maskPhone` in the PDF generation logic.
+const formatPhone = (phone: string): string => {
   if (!phone) return "";
   const cleaned = phone.replace(/\D/g, "");
   if (cleaned.length === 11) {
-    return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 3)} ${cleaned.slice(3, 7)}-${cleaned.slice(7)}`;
   }
   if (cleaned.length === 10) {
-    return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
   }
   return phone;
 };
 
+const formatIE = (ie: string): string => {
+  if (!ie) return "";
+  const val = ie.toUpperCase();
+  if (val.includes("ISENTO") || "ISENTO".startsWith(val) && val.length > 0) {
+    return val;
+  }
+  const digits = val.replace(/[^0-9]/g, "");
+  return digits.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+};
+
+const formatCnpj = (cnpj: string): string => {
+  if (!cnpj) return "";
+  const digits = cnpj.replace(/\D/g, "");
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+};
+
 export class DocumentoService {
-  async generatePdf(osId: number): Promise<Buffer> {
+  async generatePdf(osId: number): Promise<{ buffer: Buffer; filename: string }> {
     try {
       console.log(`[PDF] Iniciando geração de PDF para OS Nº ${osId}`);
 
@@ -108,6 +119,7 @@ export class DocumentoService {
           veiculo: true,
           equipamento: true,
           itens_os: true,
+          pagamentos_cliente: true,
           servicos_mao_de_obra: {
             where: { deleted_at: null },
             include: {
@@ -120,6 +132,28 @@ export class DocumentoService {
       });
 
       if (!os) throw new Error("OS não encontrada");
+
+      // Filename construction
+      const clientNameRaw = os.cliente.pessoa_fisica?.pessoa.nome || os.cliente.pessoa_juridica?.nome_fantasia || os.cliente.pessoa_juridica?.razao_social || "Cliente";
+      let itemDesc = "Documento";
+      
+      if (os.veiculo) {
+        const marca = os.veiculo.marca || "";
+        const modelo = os.veiculo.modelo || "";
+        const cor = os.veiculo.cor || "";
+        const placa = os.veiculo.placa || "";
+        itemDesc = `${marca} ${modelo} ${cor} ${placa}`.trim();
+      } else if (os.equipamento) {
+        const peca = os.equipamento.nome_peca || "";
+        const fabricante = os.equipamento.fabricante || "";
+        const numeracao = os.equipamento.numeracao || "";
+        itemDesc = `${peca} ${fabricante} ${numeracao}`.trim();
+      }
+      
+      const isOrcamento = os.status !== "FINALIZADA" && os.status !== "PAGA_CLIENTE";
+      const docType = isOrcamento ? "Orcamento" : "OS";
+      const rawFilename = `${docType}_${os.id_os} - ${itemDesc} - ${clientNameRaw}`;
+      const filename = rawFilename.replace(/[/\\?%*:|"<>\s]+/g, " ").trim() + ".pdf";
 
       const config = await prisma.configuracao.findFirst();
 
@@ -145,18 +179,21 @@ export class DocumentoService {
       );
       const totalGeral = totalPecas + totalMaoDeObra;
 
-      const isOrcamento =
-        os.status !== "FINALIZADA" && os.status !== "PAGA_CLIENTE";
+      const activePayments = os.pagamentos_cliente?.filter((p: any) => !p.deleted_at) || [];
+      const totalPago = activePayments.reduce((acc, p) => acc + Number(p.valor), 0);
+      const saldoRestante = totalGeral - totalPago;
+      const isQuitada = totalPago >= totalGeral;
 
       // Logo Logic
       let logoImage = null;
-      if (config?.logoUrl) {
+      const logoBase = config?.logoImpressaoUrl ? config.logoImpressaoUrl : config?.logoUrl;
+      if (logoBase) {
         const uploadsDir = path.resolve(__dirname, "..", "..", "uploads");
-        const logoFilename = path.basename(config.logoUrl);
+        const logoFilename = path.basename(logoBase);
         const logoPath = path.join(uploadsDir, logoFilename);
 
         console.log("[PDF] Tentando carregar logo:", {
-          logoUrl: config.logoUrl,
+          logoBase,
           logoFilename,
           logoPath,
           exists: fs.existsSync(logoPath),
@@ -203,9 +240,16 @@ export class DocumentoService {
                     fontSize: 16,
                     bold: true,
                   },
-                  { text: config?.razaoSocial || "", fontSize: 10 },
                   {
-                    text: `${config?.endereco || ""} - ${config?.telefone || ""}`,
+                    text: config?.razaoSocial || "",
+                    fontSize: 10,
+                  },
+                  {
+                    text: `CNPJ: ${config?.cnpj ? formatCnpj(config.cnpj) : "-"} ${config?.inscricaoEstadual ? ` | IE: ${formatIE(config.inscricaoEstadual)}` : ""}`,
+                    fontSize: 9,
+                  },
+                  {
+                    text: `${config?.endereco || ""} - Tel: ${config?.telefone ? formatPhone(config.telefone) : "-"}`,
                     fontSize: 9,
                   },
                   { text: config?.email || "", fontSize: 9 },
@@ -275,9 +319,23 @@ export class DocumentoService {
                     fontSize: 9,
                     margin: [0, 5, 0, 2],
                   },
-                  { text: `Veículo: ${veiculoDesc}` },
-                  { text: `Cor: ${os.veiculo?.cor || "N/A"}` },
-                  { text: `KM: ${os.km_entrada}` },
+                  os.veiculo
+                    ? {
+                        stack: [
+                          { text: `Veículo: ${os.veiculo.marca || ""} ${os.veiculo.modelo || ""} - ${os.veiculo.cor || "N/A"}` },
+                          { text: `Ano (Fab/Mod): ${os.veiculo.ano_fabricacao || "-"}/${os.veiculo.ano_modelo || "-"} | Placa: ${os.veiculo.placa}` },
+                          { text: `KM: ${os.km_entrada || "-"} km | Combustível: ${os.veiculo.combustivel || "-"}` },
+                        ]
+                      }
+                    : os.equipamento
+                    ? {
+                        stack: [
+                          { text: `Peça: ${os.equipamento.nome_peca}` },
+                          { text: `Fabricante: ${os.equipamento.fabricante || "-"}` },
+                          { text: `Nº Série: ${os.equipamento.numeracao || "-"}` },
+                        ]
+                      }
+                    : { text: "Nenhum veículo ou peça vinculado." },
                 ],
               },
             ],
@@ -286,7 +344,7 @@ export class DocumentoService {
 
           // SERVICES TABLE
           {
-            text: "SERVIÇOS (MÃO DE OBRA)",
+            text: "SERVIÇOS EXECUTADOS (MÃO DE OBRA)",
             bold: true,
             fontSize: 11,
             margin: [0, 10, 0, 5],
@@ -302,7 +360,7 @@ export class DocumentoService {
                   { text: "Valor", style: "tableHeader" },
                 ],
                 ...os.servicos_mao_de_obra.map((s) => [
-                  s.descricao || "Serviço",
+                  s.descricao || s.funcionario?.cargo || s.funcionario?.especialidade || "Serviço Executado",
                   s.funcionario?.pessoa_fisica?.pessoa.nome || "-",
                   {
                     text: `R$ ${Number(s.valor).toFixed(2)}`,
@@ -392,6 +450,54 @@ export class DocumentoService {
             ],
           },
 
+          // LINE
+          {
+            canvas: [
+              { type: "line", x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 1 },
+            ],
+            margin: [0, 10, 0, 10],
+          },
+          // PAYMENTS BLOCK
+          {
+            text: "INFORMAÇÕES DE PAGAMENTO",
+            bold: true,
+            fontSize: 9,
+            margin: [0, 5, 0, 5],
+          },
+          {
+            table: {
+              widths: ["*", "auto", "auto"],
+              body: [
+                [
+                  { text: "Forma de Pagamento", style: "tableHeader" },
+                  { text: "Valor", style: "tableHeader" },
+                  { text: "Data", style: "tableHeader" },
+                ],
+                ...(activePayments.length > 0
+                  ? activePayments.map((p) => [
+                      p.metodo_pagamento + (p.qtd_parcelas && p.qtd_parcelas > 1 ? ` (${p.qtd_parcelas}x)` : ""),
+                      `R$ ${Number(p.valor).toFixed(2)}`,
+                      format(new Date(p.data_pagamento), "dd/MM/yyyy"),
+                    ])
+                  : [["Nenhum pagamento registrado.", "", ""]]),
+              ],
+            },
+            layout: "lightHorizontalLines",
+          },
+          {
+            columns: [
+              { text: `Total Pago: R$ ${totalPago.toFixed(2)}`, bold: true, fontSize: 9 },
+              {
+                text: isQuitada ? "OS QUITADA" : `Saldo Restante: R$ ${saldoRestante.toFixed(2)}`,
+                bold: true,
+                fontSize: 9,
+                alignment: "right",
+                color: isQuitada ? "green" : "red",
+              },
+            ],
+            margin: [0, 5, 0, 10],
+          },
+
           // FOOTER NOTES (Body notes, separate from page footer)
           { text: "Observações:", bold: true, margin: [0, 20, 0, 2] },
           {
@@ -411,7 +517,7 @@ export class DocumentoService {
                     alignment: "center",
                   },
                   {
-                    text: "Assinatura do Responsável",
+                    text: config?.nomeFantasia || "Responsável Técnico",
                     alignment: "center",
                     fontSize: 8,
                   },
@@ -432,6 +538,14 @@ export class DocumentoService {
               },
             ],
             margin: [0, 50, 0, 0],
+          },
+          // INSTITUTIONAL MESSAGE
+          {
+            text: "Agradecemos a preferência! Volte sempre!!",
+            alignment: "center",
+            bold: true,
+            fontSize: 10,
+            margin: [0, 20, 0, 0],
           },
         ],
         styles: {
@@ -460,7 +574,7 @@ export class DocumentoService {
         pdfDoc.on("data", (chunk: any) => chunks.push(chunk));
         pdfDoc.on("end", () => {
           console.log("[PDF] PDF gerado com sucesso");
-          resolve(Buffer.concat(chunks));
+          resolve({ buffer: Buffer.concat(chunks), filename });
         });
         pdfDoc.on("error", (err: any) => {
           console.error("[PDF] Erro no PDFKit:", err);
@@ -478,7 +592,7 @@ export class DocumentoService {
     }
   }
 
-  async sendEmail(pdfBuffer: Buffer, email: string): Promise<void> {
+  async sendEmail(pdfBuffer: Buffer, email: string, filename: string = "documento.pdf"): Promise<void> {
     console.log(`[DocumentoService] Enviando e-mail para ${email}...`);
     await notificationService.sendEmail(
       email,
@@ -486,14 +600,14 @@ export class DocumentoService {
       "<p>Segue em anexo o documento solicitado.</p>",
       [
         {
-          filename: "documento.pdf",
+          filename,
           content: pdfBuffer,
         },
       ],
     );
   }
 
-  async sendTelegram(pdfBuffer: Buffer, chatId: string): Promise<void> {
+  async sendTelegram(pdfBuffer: Buffer, chatId: string, filename: string = "documento.pdf"): Promise<void> {
     console.log(
       `[DocumentoService] Enviando Telegram para chat_id ${chatId}...`,
     );
@@ -501,7 +615,7 @@ export class DocumentoService {
       chatId,
       "Segue seu documento:",
       pdfBuffer,
-      "documento.pdf",
+      filename,
     );
   }
 }

@@ -58,11 +58,14 @@ const router = createBrowserRouter(
         {/* Alterar senha: protegida, porém fora do MainLayout para
             permitir que o usuário obrigado a trocar a senha acesse a tela */}
         <Route path="/alterar-senha" element={<ChangePasswordPage />} />
+        
+        {/* Rota de Impressão: Protegida, mas fora do MainLayout para isolar de Sidebar/Header */}
+        <Route path="/print/os/:id" element={<OsPrintView />} />
+
         <Route element={<MainLayout />}>
           <Route path="/" element={<DashboardPage />} />
           {/* Páginas Modernizadas */}
           <Route path="/cliente" element={<ClientePage />} />
-          <Route path="/print/os/:id" element={<OsPrintView />} />
           {/* Páginas Legadas (Ainda funcionam dentro do layout novo!) */}
           <Route path="/veiculo" element={<VeiculoPage />} />
           <Route path="/ordem-de-servico" element={<OrdemDeServicoPage />} />

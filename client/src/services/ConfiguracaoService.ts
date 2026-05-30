@@ -9,8 +9,10 @@ export type Configuracao = {
   inscricaoEstadual?: string;
   endereco?: string;
   telefone?: string;
+  telefone2?: string;
   email?: string;
   logoUrl?: string; // URL from backend
+  logoImpressaoUrl?: string;
   smtpHost?: string;
   smtpPort?: number;
   smtpUser?: string;
@@ -25,6 +27,17 @@ export const ConfiguracaoService = {
 
   save: async (formData: FormData): Promise<Configuracao> => {
     const response = await axios.post(`${API_BASE}/configuracao`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+
+  uploadLogoImpressao: async (file: File): Promise<Configuracao> => {
+    const formData = new FormData();
+    formData.append("logoImpressao", file);
+    const response = await axios.post(`${API_BASE}/configuracao/upload-logo-impressao`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },

@@ -66,32 +66,40 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
   const handleEmployeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
     let cat = newLaborService.categoria;
+    let desc = newLaborService.descricao;
 
     if (id) {
       const emp = employees.find(
         (e) => String(e.id_funcionario) === String(id),
       );
       if (emp) {
-        const role = (emp.cargo || "").toUpperCase();
+        const role = emp.cargo || "";
+        const roleUpper = role.toUpperCase();
         const spec = (emp.especialidade || "").toUpperCase();
 
         if (
-          role.includes("ELETRIC") ||
+          roleUpper.includes("ELETRIC") ||
           spec.includes("ELETRIC") ||
-          role.includes("ELÉTRIC") ||
+          roleUpper.includes("ELÉTRIC") ||
           spec.includes("ELÉTRIC")
         ) {
           cat = "ELETRICA";
         } else {
           cat = "MECANICA";
         }
+
+        // Autopreencher a descrição/tipo de serviço com a função (cargo) do funcionário
+        desc = role;
       }
+    } else {
+      desc = "";
     }
 
     setNewLaborService({
       ...newLaborService,
       id_funcionario: id,
       categoria: cat,
+      descricao: desc,
     });
   };
 
@@ -389,7 +397,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             <tbody className="divide-y divide-neutral-50">
               {laborServices.map((svc) => (
                 <tr
-                  className="hover:bg-neutral-50 transition-colors group"
+                  className="bg-green-50/60 hover:bg-green-100/60 print:bg-transparent transition-colors group"
                   key={svc.id_servico_mao_de_obra || svc.id_temporary}
                 >
                   <td className="pl-6 py-3 text-base text-gray-900">

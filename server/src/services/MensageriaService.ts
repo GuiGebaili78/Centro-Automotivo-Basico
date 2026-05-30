@@ -5,6 +5,49 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+const formatPhone = (phone: string): string => {
+  if (!phone) return "";
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 11) {
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 3)} ${cleaned.slice(3, 7)}-${cleaned.slice(7)}`;
+  }
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
+  }
+  return phone;
+};
+
+const formatIE = (ie: string): string => {
+  if (!ie) return "";
+  const val = ie.toUpperCase();
+  if (val.includes("ISENTO") || "ISENTO".startsWith(val) && val.length > 0) {
+    return val;
+  }
+  const digits = val.replace(/[^0-9]/g, "");
+  return digits.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+};
+
+const formatCnpj = (cnpj: string): string => {
+  if (!cnpj) return "";
+  const digits = cnpj.replace(/\D/g, "");
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+};
+
+const formatDoc = (doc: string): string => {
+  if (!doc) return "";
+  const cleaned = doc.replace(/\D/g, "");
+  if (cleaned.length === 11) {
+    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  }
+  if (cleaned.length === 14) {
+    return cleaned.replace(
+      /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
+      "$1.$2.$3/$4-$5",
+    );
+  }
+  return doc;
+};
+
 export class MensageriaService {
   private notificationService: NotificationService;
 
@@ -43,9 +86,15 @@ export class MensageriaService {
       ) || 0;
     const totalGeral = totalPecas + totalServicos;
 
-    const logoHtml = config?.logoUrl
-      ? `<img src="${process.env.API_URL || "http://localhost:3000"}${config.logoUrl}" style="max-height: 60px; margin-bottom: 10px;" />`
+    const logoBase = config?.logoImpressaoUrl ? config.logoImpressaoUrl : config?.logoUrl;
+    const logoHtml = logoBase
+      ? `<img src="${process.env.API_URL || "http://localhost:3000"}${logoBase}" style="max-height: 60px; object-fit: contain; margin-bottom: 10px;" />`
       : "";
+
+    const activePayments = os.pagamentos_cliente?.filter((p: any) => !p.deleted_at) || [];
+    const totalPago = activePayments.reduce((acc: number, p: any) => acc + Number(p.valor || 0), 0);
+    const saldoRestante = totalGeral - totalPago;
+    const isQuitada = totalPago >= totalGeral;
 
     return `
       <!DOCTYPE html>
@@ -83,10 +132,10 @@ export class MensageriaService {
           <h1>${config?.nomeFantasia || "Centro Automotivo"}</h1>
           <div class="company-info">
              <strong>${config?.razaoSocial || ""}</strong><br/>
-             CNPJ: ${config?.cnpj || "-"} 
-             ${config?.inscricaoEstadual ? ` • IE: ${config.inscricaoEstadual}` : ""} <br/>
+             CNPJ: ${config?.cnpj ? formatCnpj(config.cnpj) : "-"} 
+             ${config?.inscricaoEstadual ? ` • IE: ${formatIE(config.inscricaoEstadual)}` : ""} <br/>
              ${config?.endereco || "Endereço não configurado"} <br/>
-             Tel: ${config?.telefone || "-"} • Email: ${config?.email || "-"}
+             Tel: ${config?.telefone ? formatPhone(config.telefone) : "-"} • Email: ${config?.email || "-"}
           </div>
         </div>
 
@@ -107,15 +156,23 @@ export class MensageriaService {
           <div style="flex: 1;">
             <div style="font-weight: bold; margin-bottom: 5px; font-size: 13px;">DADOS DO CLIENTE</div>
             Nome: <strong>${os.cliente?.pessoa?.nome || os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.pessoa?.nome || "Consumidor"}</strong><br>
-            CPF/CNPJ: ${os.cliente?.pessoa?.cpf || os.cliente?.pessoa?.cnpj || os.cliente?.pessoa_fisica?.pessoa?.cnpj || "-"}<br>
-            Telefone: ${os.cliente?.pessoa?.telefone || os.cliente?.telefone_1 || "-"}<br>
+            CPF/CNPJ: ${formatDoc(os.cliente?.pessoa?.cpf || os.cliente?.pessoa?.cnpj || os.cliente?.pessoa_fisica?.pessoa?.cnpj || "") || "-"}<br>
+            Telefone: ${os.cliente?.pessoa?.telefone || os.cliente?.telefone_1 ? formatPhone(os.cliente.pessoa?.telefone || os.cliente.telefone_1 || "") : "-"}<br>
             Endereço: ${os.cliente?.logradouro ? `${os.cliente.logradouro}, ${os.cliente.nr_logradouro} - ${os.cliente.cidade}/${os.cliente.estado}` : "-"}
           </div>
           <div style="flex: 1; text-align: right; padding-left: 20px;">
              <div style="font-weight: bold; margin-bottom: 5px; font-size: 13px;">DADOS DO VEÍCULO</div>
-             Veículo: <strong>${os.veiculo?.modelo || "-"}</strong><br>
-             Placa: <strong>${os.veiculo?.placa || "-"}</strong> • Km: ${os.km_entrada || "-"}<br>
-             Marca: ${os.veiculo?.marca || "-"} • Cor: ${os.veiculo?.cor || "-"}
+             ${
+               os.veiculo
+                 ? `Veículo: <strong>${os.veiculo.marca || "-"} / ${os.veiculo.modelo || "-"} / ${os.veiculo.cor || "N/A"}</strong><br>
+                    Ano (Fab/Mod): <strong>${os.veiculo.ano_fabricacao || "-"}/${os.veiculo.ano_modelo || "-"}</strong> | Placa: <strong>${os.veiculo.placa || "-"}</strong><br>
+                    KM: <strong>${os.km_entrada || "-"}</strong> | Combustível: <strong>${os.veiculo.combustivel || "-"}</strong>`
+                 : os.equipamento
+                 ? `Peça: <strong>${os.equipamento.nome_peca || "-"}</strong><br>
+                    Fabricante: <strong>${os.equipamento.fabricante || "-"}</strong><br>
+                    Nº Série: <strong>${os.equipamento.numeracao || "-"}</strong>`
+                 : `<span style="font-style: italic; color: #999;">Nenhum veículo ou peça vinculado.</span>`
+             }
           </div>
         </div>
 
@@ -162,7 +219,7 @@ export class MensageriaService {
         </div>
 
         <div class="section">
-          <div class="section-title">SERVIÇOS (MÃO DE OBRA)</div>
+          <div class="section-title">SERVIÇOS EXECUTADOS (MÃO DE OBRA)</div>
           <table>
             <thead>
               <tr>
@@ -178,7 +235,7 @@ export class MensageriaService {
                       .map(
                         (svc: any) => `
                   <tr>
-                    <td>${svc.descricao || "Serviço"}</td>
+                    <td>${svc.descricao || svc.funcionario?.cargo || svc.funcionario?.especialidade || "Serviço Executado"}</td>
                     <td>${svc.funcionario?.pessoa_fisica?.pessoa?.nome || "-"}</td>
                     <td style="text-align: right;">R$ ${Number(svc.valor || 0).toFixed(2)}</td>
                   </tr>
@@ -208,6 +265,47 @@ export class MensageriaService {
           </table>
         </div>
 
+        <div class="section" style="margin-top: 20px;">
+          <div class="section-title">INFORMAÇÕES DE PAGAMENTO</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Forma de Pagamento</th>
+                <th style="width: 100px; text-align: right;">Valor</th>
+                <th style="width: 100px; text-align: center;">Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                activePayments.length
+                  ? activePayments
+                      .map(
+                        (p: any) => `
+                  <tr>
+                    <td style="text-transform: capitalize;">
+                      ${p.metodo_pagamento?.toLowerCase()}
+                      ${p.qtd_parcelas && p.qtd_parcelas > 1 ? ` (${p.qtd_parcelas}x)` : ""}
+                    </td>
+                    <td style="text-align: right; font-weight: bold;">R$ ${Number(p.valor || 0).toFixed(2)}</td>
+                    <td style="text-align: center;">${format(new Date(p.data_pagamento), "dd/MM/yyyy")}</td>
+                  </tr>
+                `,
+                      )
+                      .join("")
+                  : '<tr><td colspan="3" style="text-align: center; color: #999; font-style: italic;">Nenhum pagamento registrado.</td></tr>'
+              }
+            </tbody>
+          </table>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; font-weight: bold; font-size: 13px;">
+            <span>Total Pago: R$ ${totalPago.toFixed(2)}</span>
+            ${
+              isQuitada
+                ? `<span style="color: green; background: #e6f4ea; padding: 2px 8px; border-radius: 4px; font-size: 11px;">OS QUITADA</span>`
+                : `<span style="color: red; font-size: 12px;">Saldo Restante: R$ ${saldoRestante.toFixed(2)}</span>`
+            }
+          </div>
+        </div>
+
         ${
           isBudget
             ? `<div class="watermark">DOCUMENTO SEM VALOR FISCAL - SERVIÇO NÃO REALIZADO / APENAS ORÇAMENTO</div>`
@@ -225,6 +323,10 @@ export class MensageriaService {
             </div>
         </div>
 
+        <div style="text-align: center; font-weight: bold; font-size: 14px; margin-top: 25px; margin-bottom: 10px; text-transform: uppercase;">
+          Agradecemos a preferência! Volte sempre!!
+        </div>
+
         <div class="footer">
           Documento gerado em ${format(new Date(), "dd/MM/yyyy HH:mm:ss")} pelo Sistema
         </div>
@@ -232,6 +334,7 @@ export class MensageriaService {
       </html>
     `;
   }
+
 
   async gerarPdfOs(osData: any): Promise<Buffer> {
     const html = await this.generateHtml(osData);

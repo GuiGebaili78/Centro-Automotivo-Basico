@@ -21,8 +21,10 @@ export const ConfiguracaoController = {
           inscricaoEstadual: "",
           endereco: "",
           telefone: "",
+          telefone2: "",
           email: "",
           logoUrl: null,
+          logoImpressaoUrl: null,
         },
       );
     } catch (error) {
@@ -40,16 +42,31 @@ export const ConfiguracaoController = {
         inscricaoEstadual: "",
         endereco: "",
         telefone: "",
+        telefone2: "",
         email: "",
         logoUrl: null,
+        logoImpressaoUrl: null,
       });
     }
   },
 
   upsert: async (req: Request, res: Response) => {
     try {
-      const { nomeFantasia, razaoSocial, cnpj, endereco, telefone, email } =
-        req.body;
+      const {
+        nomeFantasia,
+        razaoSocial,
+        cnpj,
+        inscricaoEstadual,
+        endereco,
+        telefone,
+        telefone2,
+        email,
+        smtpHost,
+        smtpPort,
+        smtpUser,
+        smtpPass,
+      } = req.body;
+
       let logoUrl = undefined;
 
       const request = req as AuthenticatedRequest;
@@ -89,9 +106,15 @@ export const ConfiguracaoController = {
         nomeFantasia,
         razaoSocial,
         cnpj,
+        inscricaoEstadual,
         endereco,
         telefone,
+        telefone2,
         email,
+        smtpHost,
+        smtpPort: smtpPort ? Number(smtpPort) : null,
+        smtpUser,
+        smtpPass,
       };
 
       if (logoUrl !== undefined) {
@@ -103,6 +126,47 @@ export const ConfiguracaoController = {
     } catch (error) {
       console.error("Error saving configuracao:", error);
       return res.status(500).json({ error: "Erro ao salvar configurações" });
+    }
+  },
+
+  uploadLogoImpressao: async (req: Request, res: Response) => {
+    try {
+      const request = req as AuthenticatedRequest;
+      if (!request.file) {
+        return res.status(400).json({ error: "Nenhum arquivo enviado." });
+      }
+
+      const logoImpressaoUrl = `/uploads/${request.file.filename}`;
+
+      // Get current config to check for existing logo impressao to delete
+      const currentConfig = await ConfiguracaoRepository.get();
+
+      if (currentConfig?.logoImpressaoUrl) {
+        const oldLogoPath = path.join(
+          process.cwd(),
+          "uploads",
+          path.basename(currentConfig.logoImpressaoUrl)
+        );
+        if (fs.existsSync(oldLogoPath)) {
+          fs.unlinkSync(oldLogoPath);
+        }
+      }
+
+      const data: any = {
+        logoImpressaoUrl,
+      };
+
+      if (!currentConfig) {
+        // Se por algum motivo for a primeira inserção da tabela inteira,
+        // precisamos de um nome fantasia padrão obrigatório para não violar a restrição de NOT NULL
+        data.nomeFantasia = "Oficina";
+      }
+
+      const config = await ConfiguracaoRepository.upsert(data);
+      return res.json(config);
+    } catch (error) {
+      console.error("Error uploading logo impressao:", error);
+      return res.status(500).json({ error: "Erro ao fazer upload da logo de impressão" });
     }
   },
 };

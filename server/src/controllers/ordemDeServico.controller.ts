@@ -108,8 +108,30 @@ export class OrdemDeServicoController {
 
       const pdfBuffer = await mensageria.gerarPdfOs(os);
 
+      // Filename construction
+      const clientNameRaw = os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.nome_fantasia || os.cliente?.pessoa_juridica?.razao_social || "Cliente";
+      let itemDesc = "Documento";
+      
+      if (os.veiculo) {
+        const marca = os.veiculo.marca || "";
+        const modelo = os.veiculo.modelo || "";
+        const cor = os.veiculo.cor || "";
+        const placa = os.veiculo.placa || "";
+        itemDesc = `${marca} ${modelo} ${cor} ${placa}`.trim();
+      } else if (os.equipamento) {
+        const peca = os.equipamento.nome_peca || "";
+        const fabricante = os.equipamento.fabricante || "";
+        const numeracao = os.equipamento.numeracao || "";
+        itemDesc = `${peca} ${fabricante} ${numeracao}`.trim();
+      }
+      
+      const isOrcamento = os.status !== "FINALIZADA" && os.status !== "PAGA_CLIENTE";
+      const docType = isOrcamento ? "Orcamento" : "OS";
+      const rawFilename = `${docType}_${os.id_os} - ${itemDesc} - ${clientNameRaw}`;
+      const filename = rawFilename.replace(/[/\\?%*:|"<>\s]+/g, " ").trim() + ".pdf";
+
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename=OS-${id}.pdf`);
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.send(pdfBuffer);
     } catch (error) {
       console.error("PDF Generation Error:", error);

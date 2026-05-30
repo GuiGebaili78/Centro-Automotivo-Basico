@@ -6,6 +6,7 @@ import {
 } from "../services/ConfiguracaoService";
 import { STATIC_BASE } from "../services/api";
 import { toast } from "react-toastify";
+import { formatCnpj, formatPhone, formatIE } from "../utils/normalize";
 import {
   Save,
   Upload,
@@ -14,11 +15,6 @@ import {
   Mail,
   FileText,
   MapPin,
-  Server,
-  Hash,
-  User,
-  Lock,
-  AlertCircle,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -30,8 +26,10 @@ export const ConfiguracaoPage = () => {
     nomeFantasia: "",
     razaoSocial: "",
     cnpj: "",
+    inscricaoEstadual: "",
     endereco: "",
     telefone: "",
+    telefone2: "",
     email: "",
     logoUrl: "",
     smtpHost: "",
@@ -46,6 +44,9 @@ export const ConfiguracaoPage = () => {
   const [isNewUpload, setIsNewUpload] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [logoImpressaoPreview, setLogoImpressaoPreview] = useState<string | null>(null);
+  const printFileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     loadConfig();
   }, []);
@@ -59,12 +60,36 @@ export const ConfiguracaoPage = () => {
           setLogoPreview(`${STATIC_BASE}${config.logoUrl}?t=${Date.now()}`);
           setIsNewUpload(false);
         }
+        if (config.logoImpressaoUrl) {
+          setLogoImpressaoPreview(`${STATIC_BASE}${config.logoImpressaoUrl}?t=${Date.now()}`);
+        }
       }
     } catch (error) {
       console.error("Erro ao carregar configurações:", error);
       toast.error("Erro ao carregar configurações.");
     } finally {
       setInitialLoading(false);
+    }
+  };
+
+  const handlePrintLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    try {
+      const updatedConfig = await ConfiguracaoService.uploadLogoImpressao(file);
+      setFormData(updatedConfig);
+      if (updatedConfig.logoImpressaoUrl) {
+        setLogoImpressaoPreview(`${STATIC_BASE}${updatedConfig.logoImpressaoUrl}?t=${Date.now()}`);
+      }
+      toast.success("Logo de impressão atualizada com sucesso!");
+      window.dispatchEvent(new Event("configuracao-updated"));
+    } catch (error) {
+      console.error("Erro ao subir logo de impressão:", error);
+      toast.error("Erro ao subir logo de impressão.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -145,30 +170,6 @@ export const ConfiguracaoPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validação SMTP: Se preencher um, obriga preencher todos (Host, Port, User, Pass)
-    const smtpFields = [
-      formData.smtpHost,
-      formData.smtpPort,
-      formData.smtpUser,
-      formData.smtpPass,
-    ];
-    const anySmtpFilled = smtpFields.some(
-      (field) =>
-        field !== undefined && String(field).trim() !== "" && field !== 0,
-    );
-    const allSmtpFilled = smtpFields.every(
-      (field) =>
-        field !== undefined && String(field).trim() !== "" && field !== 0,
-    );
-
-    if (anySmtpFilled && !allSmtpFilled) {
-      toast.error(
-        "Para configurar o e-mail, todos os campos SMTP (Servidor, Porta, Usuário e Senha) devem ser preenchidos.",
-      );
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -179,6 +180,7 @@ export const ConfiguracaoPage = () => {
       data.append("inscricaoEstadual", formData.inscricaoEstadual || "");
       data.append("endereco", formData.endereco || "");
       data.append("telefone", formData.telefone || "");
+      data.append("telefone2", formData.telefone2 || "");
       data.append("email", formData.email || "");
       data.append("smtpHost", formData.smtpHost || "");
       data.append("smtpPort", String(formData.smtpPort || ""));
@@ -242,125 +244,193 @@ export const ConfiguracaoPage = () => {
           <div className="lg:col-span-1">
             <Card
               title="Logotipo"
-              description="Imagem que sairá nas impressões"
+              description="Imagem que sairá nas impressões e sistema"
             >
-              <div className="flex flex-col items-center gap-4">
-                <div
-                  className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 overflow-hidden relative flex items-center justify-center"
-                  onClick={() => {
-                    if (!logoPreview) triggerFileInput();
-                  }}
-                >
-                  {logoPreview ? (
+              <div className="flex flex-col items-center gap-6">
+                {/* 1. LOGO PRINCIPAL */}
+                <div className="w-full space-y-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">
+                    Logotipo Principal (Geral)
+                  </span>
+                  <div className="flex flex-col items-center gap-3">
                     <div
-                      className="w-full h-full flex items-center justify-center cursor-move"
-                      style={
-                        isNewUpload
-                          ? {
-                              transform: `scale(${logoZoom / 100})`,
-                              transformOrigin: `${logoPosition.x}% ${logoPosition.y}%`,
-                            }
-                          : undefined
-                      }
-                      onMouseDown={(e) => {
-                        if (isNewUpload) {
-                          setIsDragging(true);
-                          e.preventDefault();
-                        }
+                      className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 overflow-hidden relative flex items-center justify-center cursor-pointer"
+                      onClick={() => {
+                        if (!logoPreview) triggerFileInput();
                       }}
-                      onMouseMove={(e) => {
-                        if (isDragging && isNewUpload) {
-                          const rect =
-                            e.currentTarget.parentElement!.getBoundingClientRect();
-                          const x =
-                            ((e.clientX - rect.left) / rect.width) * 100;
-                          const y =
-                            ((e.clientY - rect.top) / rect.height) * 100;
-                          setLogoPosition({
-                            x: Math.max(0, Math.min(100, x)),
-                            y: Math.max(0, Math.min(100, y)),
-                          });
-                        }
-                      }}
-                      onMouseUp={() => setIsDragging(false)}
-                      onMouseLeave={() => setIsDragging(false)}
                     >
-                      <img
-                        src={logoPreview}
-                        alt="Logo Preview"
-                        className="w-full h-full object-contain pointer-events-none"
-                        draggable={false}
-                      />
+                      {logoPreview ? (
+                        <div
+                          className="w-full h-full flex items-center justify-center cursor-move"
+                          style={
+                            isNewUpload
+                              ? {
+                                  transform: `scale(${logoZoom / 100})`,
+                                  transformOrigin: `${logoPosition.x}% ${logoPosition.y}%`,
+                                }
+                              : undefined
+                          }
+                          onMouseDown={(e) => {
+                            if (isNewUpload) {
+                              setIsDragging(true);
+                              e.preventDefault();
+                            }
+                          }}
+                          onMouseMove={(e) => {
+                            if (isDragging && isNewUpload) {
+                              const rect =
+                                e.currentTarget.parentElement!.getBoundingClientRect();
+                              const x =
+                                ((e.clientX - rect.left) / rect.width) * 100;
+                              const y =
+                                ((e.clientY - rect.top) / rect.height) * 100;
+                              setLogoPosition({
+                                x: Math.max(0, Math.min(100, x)),
+                                y: Math.max(0, Math.min(100, y)),
+                              });
+                            }
+                          }}
+                          onMouseUp={() => setIsDragging(false)}
+                          onMouseLeave={() => setIsDragging(false)}
+                        >
+                          <img
+                            src={logoPreview}
+                            alt="Logo Preview"
+                            className="w-full h-full object-contain pointer-events-none"
+                            draggable={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center hover:bg-slate-100 transition-colors">
+                          <div className="text-center p-4">
+                            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-1" />
+                            <span className="text-xs text-slate-500 font-medium">
+                              Clique para enviar
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors">
-                      <div className="text-center p-4">
-                        <Upload className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-                        <span className="text-sm text-slate-500 font-medium">
-                          Clique para enviar
-                        </span>
+
+                    {logoPreview && (
+                      <div className="w-full max-w-[256px] space-y-2">
+                        {isNewUpload && (
+                          <>
+                            <Input
+                              label={`Zoom: ${logoZoom}%`}
+                              type="range"
+                              min="50"
+                              max="200"
+                              value={logoZoom}
+                              onChange={(e) =>
+                                setLogoZoom(Number(e.target.value))
+                              }
+                              className="!w-full !h-2 !bg-slate-200 !rounded-lg !appearance-none !cursor-pointer !accent-primary-600 !border-0 !p-0 !ring-0"
+                            />
+                            <p className="text-[10px] text-slate-500 text-center">
+                              💡 Arraste o logo para reposicionar
+                            </p>
+                          </>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = "";
+                                fileInputRef.current.click();
+                              }
+                            }}
+                            className="text-primary-600 hover:bg-primary-50 border border-primary-200"
+                            icon={Plus}
+                          >
+                            {isNewUpload ? "Trocar" : "Alterar"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="danger"
+                            size="sm"
+                            onClick={() => {
+                              setLogoPreview(null);
+                              setIsNewUpload(false);
+                              setFormData({ ...formData, logoUrl: "" });
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = "";
+                              }
+                            }}
+                            className="border border-red-200"
+                            icon={Trash2}
+                          >
+                            Remover
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
-                {logoPreview && (
-                  <div className="w-full space-y-3">
-                    {isNewUpload && (
-                      <>
-                        <Input
-                          label={`Zoom: ${logoZoom}%`}
-                          type="range"
-                          min="50"
-                          max="200"
-                          value={logoZoom}
-                          onChange={(e) =>
-                            setLogoZoom(Number(e.target.value))
-                          }
-                          className="!w-full !h-2 !bg-slate-200 !rounded-lg !appearance-none !cursor-pointer !accent-primary-600 !border-0 !p-0 !ring-0"
-                        />
-                        <p className="text-xs text-slate-500 text-center">
-                          💡 Arraste o logo para reposicionar
-                        </p>
-                      </>
-                    )}
-                    <div className="grid grid-cols-2 gap-2">
+                <hr className="w-full border-slate-200" />
+
+                {/* 2. LOGO DE IMPRESSÃO */}
+                <div className="w-full space-y-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">
+                    Logo de Impressão (Fundo Branco)
+                  </span>
+                  <div className="flex flex-col items-center gap-3">
+                    <div
+                      className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-white overflow-hidden relative flex items-center justify-center cursor-pointer shadow-inner"
+                      onClick={() => {
+                        printFileInputRef.current?.click();
+                      }}
+                    >
+                      {logoImpressaoPreview ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <img
+                            src={logoImpressaoPreview}
+                            alt="Logo Impressão Preview"
+                            className="w-full h-full object-contain pointer-events-none"
+                            draggable={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center hover:bg-slate-50 transition-colors">
+                          <div className="text-center p-4">
+                            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-1" />
+                            <span className="text-xs text-slate-500 font-medium">
+                              Clique para enviar logo impressa
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-[10px] text-slate-400 text-center leading-normal max-w-[240px]">
+                      Utilizada em orçamentos e documentos impressos. Recomenda-se imagem com alto contraste para folhas A4.
+                    </p>
+
+                    <div className="w-full max-w-[256px]">
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                            fileInputRef.current.click();
+                          if (printFileInputRef.current) {
+                            printFileInputRef.current.value = "";
+                            printFileInputRef.current.click();
                           }
                         }}
-                        className="text-primary-600 hover:bg-primary-50 border border-primary-200"
+                        className="text-primary-600 hover:bg-primary-50 border border-primary-200 w-full"
                         icon={Plus}
                       >
-                        {isNewUpload ? "Trocar" : "Alterar"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="danger"
-                        size="sm"
-                        onClick={() => {
-                          setLogoPreview(null);
-                          setIsNewUpload(false);
-                          setFormData({ ...formData, logoUrl: "" });
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                          }
-                        }}
-                        className="border border-red-200"
-                        icon={Trash2}
-                      >
-                        Remover
+                        {logoImpressaoPreview ? "Alterar Imagem" : "Enviar Imagem"}
                       </Button>
                     </div>
                   </div>
-                )}
+                </div>
 
+                {/* Inputs do tipo File ocultos */}
                 <div className="hidden">
                   <Input
                     type="file"
@@ -368,13 +438,13 @@ export const ConfiguracaoPage = () => {
                     onChange={handleFileChange}
                     accept="image/*"
                   />
+                  <Input
+                    type="file"
+                    ref={printFileInputRef}
+                    onChange={handlePrintLogoUpload}
+                    accept="image/*"
+                  />
                 </div>
-
-                {!logoPreview && (
-                  <p className="text-xs text-slate-500 text-center">
-                    Recomendado: Imagem PNG ou JPG quadrada ou retangular.
-                  </p>
-                )}
               </div>
             </Card>
           </div>
@@ -411,7 +481,10 @@ export const ConfiguracaoPage = () => {
                     label="CNPJ"
                     name="cnpj"
                     value={formData.cnpj || ""}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const formatted = formatCnpj(e.target.value);
+                      setFormData((prev) => ({ ...prev, cnpj: formatted }));
+                    }}
                     placeholder="00.000.000/0001-00"
                     icon={FileText}
                   />
@@ -422,8 +495,11 @@ export const ConfiguracaoPage = () => {
                     label="Inscrição Estadual"
                     name="inscricaoEstadual"
                     value={formData.inscricaoEstadual || ""}
-                    onChange={handleChange}
-                    placeholder="IE Isento ou Número"
+                    onChange={(e) => {
+                      const formatted = formatIE(e.target.value);
+                      setFormData((prev) => ({ ...prev, inscricaoEstadual: formatted }));
+                    }}
+                    placeholder="IE Isento ou Número (ex: 123.456.789)"
                     icon={FileText}
                   />
                 </div>
@@ -434,13 +510,30 @@ export const ConfiguracaoPage = () => {
               title="Contato e Endereço"
               description="Canais de comunicação e localização"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-1">
                   <Input
-                    label="Telefone / WhatsApp"
+                    label="Telefone 1"
                     name="telefone"
                     value={formData.telefone || ""}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const formatted = formatPhone(e.target.value);
+                      setFormData((prev) => ({ ...prev, telefone: formatted }));
+                    }}
+                    placeholder="(00) 00000-0000"
+                    icon={Phone}
+                  />
+                </div>
+
+                <div className="md:col-span-1">
+                  <Input
+                    label="Telefone 2"
+                    name="telefone2"
+                    value={formData.telefone2 || ""}
+                    onChange={(e) => {
+                      const formatted = formatPhone(e.target.value);
+                      setFormData((prev) => ({ ...prev, telefone2: formatted }));
+                    }}
                     placeholder="(00) 00000-0000"
                     icon={Phone}
                   />
@@ -458,7 +551,7 @@ export const ConfiguracaoPage = () => {
                   />
                 </div>
 
-                <div className="md:col-span-2">
+                <div className="md:col-span-3">
                   <Input
                     label="Endereço Completo"
                     name="endereco"
@@ -471,6 +564,8 @@ export const ConfiguracaoPage = () => {
               </div>
             </Card>
 
+            {/* Configurações de E-mail (SMTP) desativadas temporariamente a pedido da administração */}
+            {/* 
             <Card
               title="Configurações de E-mail (SMTP)"
               description="Configurações para envio automático de OS e orçamentos"
@@ -535,6 +630,7 @@ export const ConfiguracaoPage = () => {
                 </div>
               </div>
             </Card>
+            */}
 
             <div className="flex justify-end pt-4">
               <Button

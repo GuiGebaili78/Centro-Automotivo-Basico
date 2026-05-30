@@ -49,6 +49,13 @@ export const FechamentoFinanceiroPage = () => {
     clienteNome: string;
     clienteEmail: string;
     clienteTelefone: string;
+    veiculoMarca?: string;
+    veiculoModelo?: string;
+    veiculoCor?: string;
+    veiculoPlaca?: string;
+    equipamentoPeca?: string;
+    equipamentoFabricante?: string;
+    equipamentoNumeracao?: string;
   } | null>(null);
 
 
@@ -131,6 +138,13 @@ export const FechamentoFinanceiroPage = () => {
       clienteNome: getClientName(os),
       clienteEmail: os.cliente?.email || "",
       clienteTelefone: os.cliente?.telefone_1 || "",
+      veiculoMarca: os.veiculo?.marca,
+      veiculoModelo: os.veiculo?.modelo,
+      veiculoCor: os.veiculo?.cor,
+      veiculoPlaca: os.veiculo?.placa,
+      equipamentoPeca: os.equipamento?.nome_peca,
+      equipamentoFabricante: os.equipamento?.fabricante,
+      equipamentoNumeracao: os.equipamento?.numeracao,
     });
   };
 
@@ -470,6 +484,13 @@ export const FechamentoFinanceiroPage = () => {
           clienteNome={printData.clienteNome}
           clienteEmail={printData.clienteEmail}
           clienteTelefone={printData.clienteTelefone}
+          veiculoMarca={printData.veiculoMarca}
+          veiculoModelo={printData.veiculoModelo}
+          veiculoCor={printData.veiculoCor}
+          veiculoPlaca={printData.veiculoPlaca}
+          equipamentoPeca={printData.equipamentoPeca}
+          equipamentoFabricante={printData.equipamentoFabricante}
+          equipamentoNumeracao={printData.equipamentoNumeracao}
         />
       )}
     </PageLayout>

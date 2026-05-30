@@ -3,7 +3,7 @@ import { ClienteDataForm } from "./ClienteDataForm";
 import { Button } from "../../ui";
 import { Save } from "lucide-react";
 import { ClienteService } from "../../../services/cliente.service";
-import { unmask } from "../../../utils/normalize";
+import { unmask, formatPhone } from "../../../utils/normalize";
 import { toast } from "react-toastify";
 
 interface ClienteFormProps {
@@ -22,6 +22,10 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
   const [ie, setIe] = useState("");
   const [telefone, setTelefone] = useState("");
   const [telefone2, setTelefone2] = useState("");
+
+  const handleSetTelefone = (val: string) => setTelefone(formatPhone(val));
+  const handleSetTelefone2 = (val: string) => setTelefone2(formatPhone(val));
+
   const [email, setEmail] = useState("");
   const [cep, setCep] = useState("");
   const [logradouro, setLogradouro] = useState("");
@@ -111,9 +115,9 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
         ie={ie}
         setIe={setIe}
         telefone={telefone}
-        setTelefone={setTelefone}
+        setTelefone={handleSetTelefone}
         telefone2={telefone2}
-        setTelefone2={setTelefone2}
+        setTelefone2={handleSetTelefone2}
         email={email}
         setEmail={setEmail}
         cep={cep}

@@ -13,6 +13,13 @@ interface DocumentoModalProps {
   clienteEmail?: string;
   clienteTelefone?: string;
   clienteNome?: string;
+  veiculoMarca?: string;
+  veiculoModelo?: string;
+  veiculoCor?: string;
+  veiculoPlaca?: string;
+  equipamentoPeca?: string;
+  equipamentoFabricante?: string;
+  equipamentoNumeracao?: string;
 }
 
 export const DocumentoModal = ({
@@ -22,6 +29,13 @@ export const DocumentoModal = ({
   status,
   clienteEmail,
   clienteNome,
+  veiculoMarca,
+  veiculoModelo,
+  veiculoCor,
+  veiculoPlaca,
+  equipamentoPeca,
+  equipamentoFabricante,
+  equipamentoNumeracao,
 }: DocumentoModalProps) => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(clienteEmail || "");
@@ -49,9 +63,30 @@ export const DocumentoModal = ({
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement("a");
         link.href = url;
-        const fileName = isOrcamento
-          ? `orcamento-${osId}.pdf`
-          : `os-${osId}.pdf`;
+
+        // Try reading content-disposition header
+        const contentDisposition = response.headers["content-disposition"] || response.headers["Content-Disposition"];
+        let fileName = "";
+        if (contentDisposition) {
+          const match = contentDisposition.match(/filename="?([^";]+)"?/);
+          if (match && match[1]) {
+            fileName = match[1];
+          }
+        }
+
+        // Fallback filename calculation
+        if (!fileName) {
+          let itemDesc = "";
+          if (veiculoMarca || veiculoModelo || veiculoPlaca) {
+            itemDesc = `${veiculoMarca || ""} ${veiculoModelo || ""} ${veiculoCor || ""} ${veiculoPlaca || ""}`.trim();
+          } else if (equipamentoPeca) {
+            itemDesc = `${equipamentoPeca} ${equipamentoFabricante || ""} ${equipamentoNumeracao || ""}`.trim();
+          }
+          const docType = isOrcamento ? "Orcamento" : "OS";
+          const rawFilename = `${docType}_${osId}${itemDesc ? ` - ${itemDesc}` : ""}${clienteNome ? ` - ${clienteNome}` : ""}`;
+          fileName = rawFilename.replace(/[/\\?%*:|"<>\s]+/g, " ").trim() + ".pdf";
+        }
+
         link.setAttribute("download", fileName);
         document.body.appendChild(link);
         link.click();

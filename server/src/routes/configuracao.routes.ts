@@ -6,5 +6,6 @@ const router = Router();
 
 router.get("/", ConfiguracaoController.get);
 router.post("/", upload.single("logo"), ConfiguracaoController.upsert);
+router.post("/upload-logo-impressao", upload.single("logoImpressao"), ConfiguracaoController.uploadLogoImpressao);
 
 export default router;

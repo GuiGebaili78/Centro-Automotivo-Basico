@@ -28,7 +28,7 @@ import {
   Hash,
 } from "lucide-react";
 import { Input } from "../../ui/Input";
-import { formatCpf, formatCnpj, formatCep, formatPhone, unmask } from "../../../utils/normalize";
+import { formatCpf, formatCnpj, formatCep, formatPhone, unmask, formatIE } from "../../../utils/normalize";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -275,8 +275,8 @@ export const ClienteFormSection = memo(
                   <Input
                     label="IE"
                     value={ie}
-                    onChange={(e) => setIe(e.target.value)}
-                    placeholder="Inscrição Estadual"
+                    onChange={(e) => setIe(formatIE(e.target.value))}
+                    placeholder="IE Isento ou Número (ex: 123.456.789)"
                   />
                 </div>
               </>

@@ -11,11 +11,11 @@ export class DocumentoController {
         return res.status(400).json({ error: "ID inválido" });
       }
 
-      const pdfBuffer = await service.generatePdf(id);
+      const { buffer, filename } = await service.generatePdf(id);
 
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `inline; filename=os-${id}.pdf`);
-      res.send(pdfBuffer);
+      res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      res.send(buffer);
     } catch (error: any) {
       console.error("Erro ao gerar PDF:", error);
       res.status(500).json({
@@ -38,8 +38,8 @@ export class DocumentoController {
         return res.status(400).json({ error: "Email é obrigatório" });
       }
 
-      const pdfBuffer = await service.generatePdf(id);
-      await service.sendEmail(pdfBuffer, email);
+      const { buffer, filename } = await service.generatePdf(id);
+      await service.sendEmail(buffer, email, filename);
 
       res.json({ success: true, message: "Email enviado com sucesso" });
     } catch (error: any) {
@@ -64,8 +64,8 @@ export class DocumentoController {
         return res.status(400).json({ error: "Chat ID é obrigatório" });
       }
 
-      const pdfBuffer = await service.generatePdf(id);
-      await service.sendTelegram(pdfBuffer, chatId);
+      const { buffer, filename } = await service.generatePdf(id);
+      await service.sendTelegram(buffer, chatId, filename);
 
       res.json({ success: true, message: "Telegram enviado com sucesso" });
     } catch (error: any) {

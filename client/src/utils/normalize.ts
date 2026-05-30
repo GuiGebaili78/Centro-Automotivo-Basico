@@ -103,6 +103,10 @@ export const unmask = (value: string): string => {
  * Formata Inscrição Estadual (IE) adicionando pontos a cada 3 dígitos da direita para a esquerda
  */
 export const formatIE = (ie: string): string => {
-  const digits = ie.replace(/\D/g, "");
+  const val = ie.toUpperCase();
+  if (val.includes("ISENTO") || "ISENTO".startsWith(val) && val.length > 0) {
+    return val;
+  }
+  const digits = val.replace(/[^0-9]/g, "");
   return digits.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
 };
