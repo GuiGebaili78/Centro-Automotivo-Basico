@@ -48,6 +48,84 @@ interface Category {
 export const MovimentacoesTab = () => {
   const [cashBookEntries, setCashBookEntries] = useState<CashBookEntry[]>([]);
 
+  // Helper: normaliza o valor bruto de category vindo do backend para o label correto
+  const formatCategory = (entry: CashBookEntry): string => {
+    const descLower = (entry.description || "").toLowerCase();
+    const raw = entry.category || "";
+    const rawLower = raw.toLowerCase();
+
+    // 1. Pagamento de Equipe / Colaboradores
+    const isEquipe = 
+      entry.id.startsWith("man-") && (
+        descLower.includes("pagamento equipe") ||
+        descLower.includes("pg. equipe") ||
+        descLower.includes("comissão") ||
+        descLower.includes("comissao") ||
+        descLower.includes("salário") ||
+        descLower.includes("salario") ||
+        descLower.includes("vale") ||
+        descLower.includes("adiantamento")
+      );
+
+    if (
+      isEquipe ||
+      rawLower.includes("equipe") ||
+      rawLower.includes("colaborador") ||
+      rawLower.includes("pagamento_equipe") ||
+      rawLower.includes("comissao") ||
+      rawLower.includes("comissão") ||
+      rawLower.includes("salario") ||
+      rawLower.includes("salário") ||
+      rawLower.includes("vale")
+    ) {
+      return "Pgto de Colaborador";
+    }
+
+    // 2. Pagamentos de auto peças
+    const isAutoPecas = 
+      entry.id.startsWith("out-") || (
+        entry.type === "OUT" && (
+          descLower.includes("auto peças") ||
+          descLower.includes("auto pecas") ||
+          descLower.includes("fornecedor") ||
+          descLower.includes("peça") ||
+          descLower.includes("peca") ||
+          descLower.includes("nf ") ||
+          descLower.includes("nota fiscal") ||
+          descLower.includes("compra de estoque") ||
+          descLower.includes("compra estoque")
+        )
+      );
+
+    if (isAutoPecas) {
+      return "Pgto Auto Peças";
+    }
+
+    // 3. Recebimentos de OS / Serviços
+    const isServicos = 
+      entry.id.startsWith("in-") || (
+        entry.type === "IN" && (
+          descLower.includes("os nº") ||
+          descLower.includes("os #") ||
+          descLower.includes("recebimento") ||
+          descLower.includes("ordem de serviço") ||
+          descLower.includes("ordem de servico")
+        )
+      );
+
+    if (isServicos) {
+      return "Serviços";
+    }
+
+    // Demais (contas a pagar e manuais): exibe apenas o último segmento após ' - '
+    // e aplica Title Case
+    const lastSegment = raw.split(" - ").pop()?.trim() || raw;
+    return lastSegment
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+
   // Filters
   const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
     search: "", osId: "", status: "ALL", operadora: "", fornecedor: "",
@@ -135,11 +213,86 @@ export const MovimentacoesTab = () => {
     }
   };
 
-  // We rely fully on backend for filtering.
-  const filteredCashBook = cashBookEntries;
+  // Filter by Category and Subcategory in-memory
+  const filteredCashBook = cashBookEntries.filter((entry) => {
+    // 1. Filter by Categoria (Parent or child)
+    if (universalFilters.categoriaId) {
+      const catId = Number(universalFilters.categoriaId);
+      const selectedCat = categories.find((c) => c.id_categoria === catId);
+      if (selectedCat) {
+        const catNameLower = selectedCat.nome.toLowerCase();
+        const friendlyName = formatCategory(entry);
 
+        // Child categories under the selected parent
+        const children = categories.filter((c) => c.parentId === catId);
+        const childNames = children.map((c) => c.nome.toLowerCase());
 
-  const { totalInflow, totalOutflow, balance } = summaries;
+        // Smart match:
+        // A. Direct ID match
+        const hasDirectIdMatch = 
+          entry.originalData?.id_categoria === catId ||
+          (entry as any).id_categoria === catId ||
+          categories.find(c => c.id_categoria === (entry as any).id_categoria)?.parentId === catId ||
+          categories.find(c => c.id_categoria === entry.originalData?.id_categoria)?.parentId === catId;
+
+        // B. Friendly Name match
+        let hasFriendlyMatch = false;
+        if (friendlyName === "Pgto de Colaborador" && (catNameLower === "pessoal" || childNames.some(n => n.includes("comiss") || n.includes("vale") || n.includes("salari")))) {
+          hasFriendlyMatch = true;
+        } else if (friendlyName === "Serviços" && (catNameLower === "receita" || childNames.includes("serviços") || childNames.includes("servicos"))) {
+          hasFriendlyMatch = true;
+        } else if (friendlyName === "Pgto Auto Peças" && (catNameLower === "auto peças" || catNameLower === "auto pecas" || childNames.some(n => n.includes("fornec") || n.includes("peça") || n.includes("peca")))) {
+          hasFriendlyMatch = true;
+        } else if (friendlyName.toLowerCase() === catNameLower || childNames.includes(friendlyName.toLowerCase())) {
+          hasFriendlyMatch = true;
+        }
+
+        if (!hasDirectIdMatch && !hasFriendlyMatch) return false;
+      }
+    }
+
+    // 2. Filter by Subcategoria (Specific child)
+    if (universalFilters.subcategoriaId) {
+      const subcatId = Number(universalFilters.subcategoriaId);
+      const selectedSubcat = categories.find((c) => c.id_categoria === subcatId);
+      if (selectedSubcat) {
+        const subcatNameLower = selectedSubcat.nome.toLowerCase();
+        const friendlyName = formatCategory(entry);
+
+        // A. Direct ID match
+        const hasDirectIdMatch = 
+          entry.originalData?.id_categoria === subcatId ||
+          (entry as any).id_categoria === subcatId;
+
+        // B. Friendly Name match
+        let hasFriendlyMatch = false;
+        if (friendlyName === "Pgto de Colaborador" && (subcatNameLower.includes("comiss") || subcatNameLower.includes("vale") || subcatNameLower.includes("salari"))) {
+          hasFriendlyMatch = true;
+        } else if (friendlyName === "Serviços" && (subcatNameLower === "serviços" || subcatNameLower === "servicos")) {
+          hasFriendlyMatch = true;
+        } else if (friendlyName === "Pgto Auto Peças" && (subcatNameLower.includes("fornec") || subcatNameLower.includes("peça") || subcatNameLower.includes("peca"))) {
+          hasFriendlyMatch = true;
+        } else if (friendlyName.toLowerCase() === subcatNameLower) {
+          hasFriendlyMatch = true;
+        }
+
+        if (!hasDirectIdMatch && !hasFriendlyMatch) return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Calculate sums for active filtered entries
+  const totalInflow = filteredCashBook
+    .filter((e) => e.type === "IN" && !e.deleted_at)
+    .reduce((acc, e) => acc + e.value, 0);
+
+  const totalOutflow = filteredCashBook
+    .filter((e) => e.type === "OUT" && !e.deleted_at)
+    .reduce((acc, e) => acc + e.value, 0);
+
+  const balance = totalInflow - totalOutflow;
 
 
 
@@ -263,6 +416,8 @@ export const MovimentacoesTab = () => {
             enableFornecedor: false,
             enableOperadora: false,
             enableOsId: true,
+            enableCategoria: true,
+            enableSubcategoria: true,
             fornecedores: fornecedoresList,
             operadoras: operadorasList,
             statusOptions: [
@@ -445,41 +600,42 @@ export const MovimentacoesTab = () => {
                       </span>
                     </td>
                     <td className="p-4">
-                      {/* Categoria L1 lowercase conforme regra geral */}
                        <div className="flex flex-col">
-                          <div className="text-base text-neutral-900 font-normal lowercase">{entry.category || "outros"}</div>
+                          <div className="text-base text-neutral-900 font-normal capitalize">{formatCategory(entry)}</div>
                           <div className="text-sm font-normal min-h-[1.25rem]">&nbsp;</div>
                           <div className="text-sm font-normal min-h-[1.25rem]">&nbsp;</div>
                        </div>
                     </td>
                     <td className="p-4">
-                      {/* Conta / Origem com lógica de 3 linhas (referida como Categoria pelo usuário para as condicionais) */}
+                      {/* Conta / Origem com lógica de 3 linhas */}
                       {(() => {
-                         const bancoLowerCase = (entry.conta_bancaria || "Caixa Geral Indefinido").toLowerCase();
+                         const bancoDisplay = entry.conta_bancaria
+                            ? entry.conta_bancaria
+                                .toLowerCase()
+                                .replace(/\b\w/g, (c) => c.toUpperCase())
+                            : "Caixa Geral";
                          if (entry.id.startsWith("out-") || entry.id.startsWith("man-")) {
-                            // Pg Fornecedores / Equipes / Contas usam esse fallback (L2/L3 vazios)
                             return (
                                <div className="flex flex-col">
-                                  <div className="text-base text-neutral-600 font-normal lowercase">{bancoLowerCase}</div>
+                                  <div className="text-base text-neutral-600 font-normal capitalize">{bancoDisplay}</div>
                                   <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                                   <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                                </div>
                             );
                          }
                          if (entry.id.startsWith("in-")) {
-                            // Recebimento OS
                             const method = entry.paymentMethod || entry.originalData?.forma_pagamento || "Não informado";
                             return (
                                <div className="flex flex-col">
-                                  <div className="text-base text-neutral-600 font-normal lowercase">{bancoLowerCase}</div>
-                                  <div className="text-base text-neutral-600 font-normal">{method}</div>
+                                  <div className="text-base text-neutral-600 font-normal capitalize">{bancoDisplay}</div>
+                                  <div className="text-base text-neutral-600 font-normal capitalize">{method.toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}</div>
                                   <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                                </div>
                             );
                          }
                          return (
                              <div className="flex flex-col">
-                                <div className="text-base text-neutral-600 font-normal lowercase">{bancoLowerCase}</div>
+                                <div className="text-base text-neutral-600 font-normal capitalize">{bancoDisplay}</div>
                                 <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                                 <div className="text-sm text-neutral-500 font-normal min-h-[1.25rem]">&nbsp;</div>
                              </div>

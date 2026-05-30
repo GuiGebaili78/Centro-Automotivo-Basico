@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
-import { Button, FilterButton, Input } from "../ui";
+import { Button, FilterButton, Input, Select } from "../ui";
 import {
   Search,
   Calendar,
@@ -28,6 +28,7 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
 
   const [filters, setFilters] = useState<ICashBookFilters>(initialState);
   const [activeFilter, setActiveFilter] = useState<string>("");
+  const [filterCategoria, setFilterCategoria] = useState(""); // "Peças / Fornecedores" | "Recebimentos" | ""
 
   const applyQuickFilter = (type: "TODAY" | "WEEK" | "MONTH") => {
     setActiveFilter(type);
@@ -61,6 +62,7 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
   const clearFilters = () => {
     setFilters(initialState);
     setActiveFilter("");
+    setFilterCategoria("");
   };
 
   // Filter Logic
@@ -82,6 +84,8 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
       const matchDetails = entry.details.toLowerCase().includes(searchLower);
       if (!matchDesc && !matchDetails) return false;
     }
+    // Filtro de categoria derivada
+    if (filterCategoria && entry.categoria !== filterCategoria) return false;
     return true;
   });
 
@@ -143,6 +147,21 @@ export const LivroCaixaTab = ({ entries }: LivroCaixaTabProps) => {
           >
             Novo Lançamento
           </Button>
+        </div>
+
+        {/* FILTRO DE CATEGORIA DERIVADA */}
+        <div className="flex items-end gap-4 border-t border-neutral-100 pt-4">
+          <div className="w-full sm:w-64">
+            <Select
+              label="Categoria"
+              value={filterCategoria}
+              onChange={(e) => setFilterCategoria(e.target.value)}
+            >
+              <option value="">Todas as categorias</option>
+              <option value="Recebimentos">Recebimentos</option>
+              <option value="Peças / Fornecedores">Peças / Fornecedores</option>
+            </Select>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-neutral-100 pt-4">

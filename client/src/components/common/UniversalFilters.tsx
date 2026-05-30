@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X, Calendar } from "lucide-react";
 import { Input, Select } from "../ui";
+import { FinanceiroService } from "../../services/financeiro.service";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +16,8 @@ export interface UniversalFiltersState {
   /** Strictly YYYY-MM-DD — no time. Hook injects T00:00:00 / T23:59:59 when comparing. */
   endDate: string;
   activePeriod: "TODAY" | "7D" | "30D" | "MONTH" | "CUSTOM" | "ALL";
+  categoriaId?: string;
+  subcategoriaId?: string;
 }
 
 export interface UniversalFiltersConfig {
@@ -22,6 +25,8 @@ export interface UniversalFiltersConfig {
   enableOperadora?: boolean;
   enableOsId?: boolean;
   enableStatus?: boolean;
+  enableCategoria?: boolean;
+  enableSubcategoria?: boolean;
   fornecedores?: { id: number | string; nome: string }[];
   operadoras?: { id: number | string; nome: string }[];
   statusOptions?: { value: string; label: string }[];
@@ -50,6 +55,8 @@ const INITIAL_STATE: UniversalFiltersState = {
   startDate: "",
   endDate: "",
   activePeriod: "ALL",
+  categoriaId: "",
+  subcategoriaId: "",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -111,11 +118,23 @@ export const UniversalFilters = ({
     enableOperadora = true,
     enableOsId = true,
     enableStatus = true,
+    enableCategoria = false,
+    enableSubcategoria = false,
     statusOptions = DEFAULT_STATUS_OPTIONS,
   } = config;
 
   const fornecedores = config.fornecedores ?? [];
   const operadoras = config.operadoras ?? [];
+
+  const [categorias, setCategorias] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (enableCategoria) {
+      FinanceiroService.getCategoriasFinanceiras()
+        .then(setCategorias)
+        .catch(console.error);
+    }
+  }, [enableCategoria]);
 
   const defaultState = { ...INITIAL_STATE, ...initialState };
   const [filters, setFilters] = useState<UniversalFiltersState>(defaultState);
@@ -359,6 +378,81 @@ export const UniversalFilters = ({
           </button>
         </div>
       </div>
+
+      {/* ── LINHA 3: Categoria e Subcategoria ─────────────────────────── */}
+      {enableCategoria && (
+        <div className="w-full flex flex-col lg:flex-row items-end gap-4 border-t border-neutral-100 pt-4">
+          <div className="w-full lg:flex-1">
+            <Select
+              label="Categoria"
+              value={filters.categoriaId || ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                update({ categoriaId: val, subcategoriaId: "" });
+              }}
+            >
+              <option value="">Todas as categorias</option>
+              {categorias
+                .filter((c) => !c.parentId)
+                .map((c) => (
+                  <option key={c.id_categoria} value={c.id_categoria}>
+                    {c.nome}
+                  </option>
+                ))}
+            </Select>
+          </div>
+          {enableSubcategoria && (
+            <div className="w-full lg:flex-1">
+              <Select
+                label="Subcategoria"
+                value={filters.subcategoriaId || ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val) {
+                    update({ subcategoriaId: "" });
+                    return;
+                  }
+                  const subcat = categorias.find((c) => String(c.id_categoria) === String(val));
+                  if (subcat && subcat.parentId && !filters.categoriaId) {
+                    update({
+                      categoriaId: String(subcat.parentId),
+                      subcategoriaId: val,
+                    });
+                  } else {
+                    update({ subcategoriaId: val });
+                  }
+                }}
+                disabled={
+                  filters.categoriaId
+                    ? categorias.filter((c) => c.parentId === Number(filters.categoriaId)).length === 0
+                    : categorias.filter((c) => c.parentId).length === 0
+                }
+              >
+                <option value="">Todas as subcategorias</option>
+                {filters.categoriaId
+                  ? categorias
+                      .filter((c) => c.parentId === Number(filters.categoriaId))
+                      .map((c) => (
+                        <option key={c.id_categoria} value={c.id_categoria}>
+                          {c.nome}
+                        </option>
+                      ))
+                  : categorias
+                      .filter((c) => c.parentId)
+                      .map((c) => {
+                        const parent = categorias.find((p) => p.id_categoria === c.parentId);
+                        const label = parent ? `${c.nome} (${parent.nome})` : c.nome;
+                        return (
+                          <option key={c.id_categoria} value={c.id_categoria}>
+                            {label}
+                          </option>
+                        );
+                      })}
+              </Select>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

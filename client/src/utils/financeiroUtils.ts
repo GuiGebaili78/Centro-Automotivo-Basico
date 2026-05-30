@@ -12,9 +12,10 @@ export const calculateCashBookEntries = (
       id: `out-${p.id_pagamento_peca}`,
       date: p.data_pagamento_fornecedor || p.data_compra,
       description: `Pagamento Fornecedor - ${p.item_os?.descricao || "Peça"}`,
-      type: "OUT",
+      type: "OUT" as const,
       value: Number(p.custo_real),
       details: `OS Nº ${p.item_os?.id_os || "?"} - ${p.fornecedor?.nome || "Fornecedor"}`,
+      categoria: "Peças / Fornecedores",
     }));
 
   // Map Inflows (Payments from Clients)
@@ -22,9 +23,10 @@ export const calculateCashBookEntries = (
     id: `in-${p.id_pagamento_cliente}`,
     date: p.data_pagamento,
     description: `Recebimento OS Nº ${p.id_os || "?"}`,
-    type: "IN",
+    type: "IN" as const,
     value: Number(p.valor),
     details: `Forma: ${p.metodo_pagamento}`,
+    categoria: "Recebimentos",
   }));
 
   return [...outflows, ...inflowsMapped].sort(

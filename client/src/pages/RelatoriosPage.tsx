@@ -16,6 +16,7 @@ import type {
   EvolucaoMensal,
   EvolucaoDespesa,
   EvolucaoDespesaTemporal,
+  TimelineDespesasResponse,
   OperadoraStats,
 } from "../types/relatorios.types";
 import { RelatoriosService } from "../services/relatorios.service";
@@ -45,6 +46,7 @@ import {
   ArrowDownRight,
   BarChart2,
   Filter,
+  AlertTriangle,
 } from "lucide-react";
 import { FilterButton, Input, Select } from "../components/ui";
 
@@ -70,6 +72,9 @@ export const RelatoriosPage = () => {
   const [operadorasStats, setOperadorasStats] = useState<OperadoraStats[]>([]);
   const [categoriasFinanceiras, setCategoriasFinanceiras] = useState<any[]>([]);
 
+  // Datas globais do filtro superior para sincronizar Timeline de Despesas
+  const [globalDates, setGlobalDates] = useState({ startDate: "", endDate: "" });
+
   useEffect(() => {
     const fetchCategorias = async () => {
       try {
@@ -85,6 +90,7 @@ export const RelatoriosPage = () => {
   // Estado localizado — Evolução Financeira
   const [evolucao, setEvolucao] = useState<EvolucaoMensal[]>([]);
   const [evolGroupBy, setEvolGroupBy] = useState<GroupByOption>("month");
+  const [evolView, setEvolView] = useState<"bruto" | "liquido">("bruto");
   const [evolStart, setEvolStart] = useState(
     format(startOfMonth(new Date()), "yyyy-MM-dd"),
   );
@@ -93,17 +99,19 @@ export const RelatoriosPage = () => {
   );
   const [evolLoading, setEvolLoading] = useState(false);
 
-  // Estado localizado — Timeline de Despesas
-  const [timelineCategoria, setTimelineCategoria] = useState("");
+  // Estado localizado — Timeline de Despesas (dinâmica com datas globais)
   const [timeline, setTimeline] = useState<EvolucaoDespesaTemporal[]>([]);
+  const [timelineKeys, setTimelineKeys] = useState<string[]>([]);
+  const [timelineView, setTimelineView] = useState<"categoria" | "subcategoria">("categoria");
   const [timelineLoading, setTimelineLoading] = useState(false);
 
-  // Cores do Pie chart
-  const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
+  // Cores do Pie chart e Timeline dinâmico
+  const COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6", "#6366F1"];
 
   // ── Fetch principal (filtro global) ──────────────────────────────────────────
   const fetchReports = async (startDate: string, endDate: string) => {
     setLoading(true);
+    setGlobalDates({ startDate, endDate });
     try {
       const [resumoData, equipeData, evolucaoDespesasData, operadorasData] = await Promise.all([
         RelatoriosService.getResumoFinanceiro(startDate, endDate),
@@ -128,11 +136,11 @@ export const RelatoriosPage = () => {
     const fetchEvolucao = async () => {
       setEvolLoading(true);
       try {
-        const data = await FinanceiroService.getEvolution({
-          startDate: evolStart,
-          endDate: evolEnd,
-          groupBy: evolGroupBy as "day" | "month",
-        });
+        const data = await RelatoriosService.getEvolucaoMensal(
+          evolStart,
+          evolEnd,
+          evolGroupBy
+        );
         setEvolucao(data);
       } catch (error) {
         console.error(error);
@@ -144,8 +152,6 @@ export const RelatoriosPage = () => {
   }, [evolGroupBy, evolStart, evolEnd]);
 
   // ── handleEvolucaoPreset ───────────────────────────────────────────────
-  // Ao clicar nos bottons de agrupamento, atualiza TANTO o groupBy QUANTO
-  // as datas para um intervalo lógico correspondente, de forma automática.
   const handleEvolucaoPreset = (preset: GroupByOption) => {
     const today = new Date();
     let newStart: Date;
@@ -153,22 +159,18 @@ export const RelatoriosPage = () => {
 
     switch (preset) {
       case "month":
-        // Últimos 12 meses
         newStart = startOfMonth(subMonths(today, 11));
         newEnd = endOfMonth(today);
         break;
       case "quarter":
-        // Último 1 ano completo (4 trimestres)
         newStart = startOfMonth(subMonths(today, 11));
         newEnd = endOfMonth(today);
         break;
       case "semester":
-        // Últimos 2 anos (4 semestres)
         newStart = startOfYear(subYears(today, 1));
         newEnd = endOfYear(today);
         break;
       case "year":
-        // Últimos 3 anos
         newStart = startOfYear(subYears(today, 2));
         newEnd = endOfYear(today);
         break;
@@ -179,15 +181,20 @@ export const RelatoriosPage = () => {
     setEvolEnd(format(newEnd, "yyyy-MM-dd"));
   };
 
-  // ── Timeline de Despesas (10 meses) ──────────────────────────────────────────
+  // ── Timeline de Despesas (dinâmica e pivotada com filtro global de datas) ─────
   useEffect(() => {
+    if (!globalDates.startDate || !globalDates.endDate) return;
+
     const fetchTimeline = async () => {
       setTimelineLoading(true);
       try {
-        const data = await RelatoriosService.getEvolucaoDespesasTemporal(
-          timelineCategoria || undefined,
+        const response = await RelatoriosService.getEvolucaoDespesasTemporal(
+          globalDates.startDate,
+          globalDates.endDate,
+          timelineView
         );
-        setTimeline(data);
+        setTimeline(response.data);
+        setTimelineKeys(response.keys);
       } catch (error) {
         console.error(error);
       } finally {
@@ -195,47 +202,18 @@ export const RelatoriosPage = () => {
       }
     };
     fetchTimeline();
-  }, [timelineCategoria]);
+  }, [globalDates.startDate, globalDates.endDate, timelineView]);
 
   // ── Dados do Pie Chart ────────────────────────────────────────────────────────
   const dataPizza = resumo
     ? [
-        { name: "M.O.", value: resumo.liquida.maoDeObra || 0 },
-        { name: "Estoque", value: resumo.liquida.pecasEstoque || 0 },
-        { name: "Peças/Terceiros", value: resumo.liquida.pecasTerceiros || 0 },
+        { name: "Mão de Obra", value: resumo.liquida.maoDeObra || 0 },
+        { name: "Estoque", value: resumo.liquida.estoque || 0 },
+        { name: "Auto Peças", value: resumo.liquida.autoPecas || 0 },
       ].filter((d) => d.value > 0)
     : [];
 
-  // ── Cálculos: Despesas Bancárias e Taxas ──────────────────────────────────────────────
-  const valorA = operadorasStats.reduce(
-    (acc, op) => acc + Number(op.totalTaxas || 0),
-    0
-  );
-
-  const getValorB = () => {
-    if (!resumo || categoriasFinanceiras.length === 0) return { total: 0, missingCategoria: false };
-    const parent = categoriasFinanceiras.find((c) => c.nome === "Taxas e Tarifas");
-    if (!parent) return { total: 0, missingCategoria: true }; // Se não existir, avisa
-
-    const validNames = [
-      parent.nome,
-      ...categoriasFinanceiras
-        .filter((c) => c.parentId === parent.id_categoria)
-        .map((c) => c.nome),
-    ];
-
-    let totalB = 0;
-    resumo.despesasPorCategoria.forEach((cat) => {
-      if (validNames.includes(cat.categoria)) {
-        totalB += Number(cat.valor || 0);
-      }
-    });
-    return { total: totalB, missingCategoria: false };
-  };
-
-  const valorBInfo = getValorB();
-  const valorB = valorBInfo.total;
-  const totalDespesasBancarias = valorA + valorB;
+  //
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -256,41 +234,7 @@ export const RelatoriosPage = () => {
           </div>
         ) : (
           <>
-            {/* ── Despesas Bancárias e Taxas ── */}
-            {resumo && (
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-100 mb-6 flex flex-col md:flex-row items-center justify-between gap-4 animate-in zoom-in-95 duration-300">
-                <div className="flex items-center gap-4">
-                  <div className="bg-red-50 p-4 rounded-xl text-red-500 border border-red-100">
-                    <TrendingDown size={32} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-neutral-800 tracking-tight">Despesas Bancárias e Taxas</h3>
-                    <p className="text-sm text-neutral-500">
-                      Consolidação de descontos em maquininhas e tarifas de Livro Caixa.
-                    </p>
-                    {valorBInfo.missingCategoria && (
-                      <p className="text-xs text-amber-600 font-medium mt-1">
-                        Aviso: A categoria "Taxas e Tarifas" não foi encontrada. Crie ela nas configurações financeiras para mapear o Valor B.
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-8 text-right">
-                  <div className="hidden lg:block">
-                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">Valor A (Operadoras)</p>
-                    <p className="text-lg font-semibold text-neutral-700">{formatCurrency(valorA)}</p>
-                  </div>
-                  <div className="hidden lg:block">
-                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">Valor B (Tarifas)</p>
-                    <p className="text-lg font-semibold text-neutral-700">{formatCurrency(valorB)}</p>
-                  </div>
-                  <div className="border-l border-neutral-200 pl-8">
-                    <p className="text-xs font-black text-red-400 uppercase tracking-wider mb-1">Total Consolidado</p>
-                    <p className="text-3xl font-black text-red-600 tracking-tighter">{formatCurrency(totalDespesasBancarias)}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            
 
             {/* ── Row 1: 4 KPI Cards ── */}
             {resumo && (
@@ -321,10 +265,10 @@ export const RelatoriosPage = () => {
                     </div>
                     <div className="text-center border-l border-neutral-100">
                       <span className="block text-neutral-400 mb-0.5">
-                        Peças/Terc.
+                        Auto Peças
                       </span>
                       <span className="font-semibold text-neutral-600 truncate">
-                        {formatCurrency(resumo.bruta.pecasTerceiros)}
+                        {formatCurrency(resumo.bruta.autoPecas)}
                       </span>
                     </div>
                     <div className="text-center border-l border-neutral-100">
@@ -332,7 +276,7 @@ export const RelatoriosPage = () => {
                         Estoque
                       </span>
                       <span className="font-semibold text-neutral-600 truncate">
-                        {formatCurrency(resumo.bruta.pecasEstoque)}
+                        {formatCurrency(resumo.bruta.estoque)}
                       </span>
                     </div>
                   </div>
@@ -378,10 +322,10 @@ export const RelatoriosPage = () => {
                     </div>
                     <div className="text-center border-l border-neutral-100">
                       <span className="block text-neutral-400 mb-0.5">
-                        Peças/Terc.
+                        Auto Peças
                       </span>
                       <span className="font-bold text-blue-600 truncate">
-                        {formatCurrency(resumo.liquida.pecasTerceiros)}
+                        {formatCurrency(resumo.liquida.autoPecas)}
                       </span>
                     </div>
                     <div className="text-center border-l border-neutral-100">
@@ -389,7 +333,7 @@ export const RelatoriosPage = () => {
                         Estoque
                       </span>
                       <span className="font-bold text-blue-600 truncate">
-                        {formatCurrency(resumo.liquida.pecasEstoque)}
+                        {formatCurrency(resumo.liquida.estoque)}
                       </span>
                     </div>
                   </div>
@@ -414,53 +358,47 @@ export const RelatoriosPage = () => {
                     <div className="flex justify-between">
                       <span className="text-neutral-500">Operacional:</span>
                       <strong className="text-neutral-700">
-                        {formatCurrency(resumo.despesas.operacional)}
+                        {formatCurrency(resumo.despesas.oficina)}
                       </strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-neutral-500">Fornecedor:</span>
+                      <span className="text-neutral-500">Auto Peças:</span>
                       <strong className="text-neutral-700">
-                        {formatCurrency(resumo.despesas.fornecedor)}
+                        {formatCurrency(resumo.despesas.autoPecas)}
                       </strong>
                     </div>
                   </div>
                 </div>
 
-                {/* 4. Média Mensal */}
+                {/* 4. Prejuízos */}
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-neutral-100 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <p className="text-xs font-semibold uppercase text-neutral-400 tracking-wider">
-                        Média Mensal
+                        Prejuízos
                       </p>
-                      <h3 className="text-2xl font-bold text-violet-600 mt-1">
-                        {formatCurrency(resumo.medias.receitaBruta)}
+                      <h3 className="text-2xl font-bold text-amber-600 mt-1">
+                        {formatCurrency(resumo.prejuizos?.total || 0)}
                       </h3>
-                      <span className="text-sm text-neutral-400">
-                        receita/mês
+                      <span className="text-xs text-neutral-400 block mt-0.5">
+                        consumo interno
                       </span>
                     </div>
-                    <div className="bg-violet-50 p-2 rounded-lg">
-                      <BarChart2 size={20} className="text-violet-500" />
+                    <div className="bg-amber-50 p-2 rounded-lg">
+                      <AlertTriangle size={20} className="text-amber-500" />
                     </div>
                   </div>
                   <div className="flex flex-col gap-1 text-xs border-t border-neutral-50 pt-3">
                     <div className="flex justify-between">
-                      <span className="text-neutral-500">Lucro Líq.:</span>
-                      <strong
-                        className={
-                          resumo.medias.lucroLiquido >= 0
-                            ? "text-blue-600"
-                            : "text-red-500"
-                        }
-                      >
-                        {formatCurrency(resumo.medias.lucroLiquido)}
+                      <span className="text-neutral-500">Estoque:</span>
+                      <strong className="text-neutral-700">
+                        {formatCurrency(resumo.prejuizos?.estoque || 0)}
                       </strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-neutral-500">Despesas:</span>
-                      <strong className="text-red-500">
-                        {formatCurrency(resumo.medias.despesasTotais)}
+                      <span className="text-neutral-500">Auto Peças:</span>
+                      <strong className="text-neutral-700">
+                        {formatCurrency(resumo.prejuizos?.autoPecas || 0)}
                       </strong>
                     </div>
                   </div>
@@ -473,10 +411,38 @@ export const RelatoriosPage = () => {
               {/* Evolução Financeira — controles locais independentes */}
               <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-neutral-100">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                  <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
-                    <Calendar size={20} className="text-neutral-500" />
-                    Evolução Financeira
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
+                      <Calendar size={20} className="text-neutral-500" />
+                      Evolução Financeira
+                    </h3>
+                    
+                    {/* Toggle Bruto vs Líquido */}
+                    <div className="flex bg-neutral-100 p-0.5 rounded-lg border border-neutral-200">
+                      <button
+                        type="button"
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                          evolView === "bruto"
+                            ? "bg-white text-neutral-800 shadow-sm"
+                            : "text-neutral-500 hover:text-neutral-800"
+                        }`}
+                        onClick={() => setEvolView("bruto")}
+                      >
+                        Bruto
+                      </button>
+                      <button
+                        type="button"
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                          evolView === "liquido"
+                            ? "bg-white text-neutral-800 shadow-sm"
+                            : "text-neutral-500 hover:text-neutral-800"
+                        }`}
+                        onClick={() => setEvolView("liquido")}
+                      >
+                        Líquido
+                      </button>
+                    </div>
+                  </div>
 
                   {/* GroupBy pills */}
                   <div className="flex bg-neutral-100 p-1 rounded-lg gap-1">
@@ -559,18 +525,45 @@ export const RelatoriosPage = () => {
                           cursor={{ fill: "#F3F4F6" }}
                         />
                         <Legend iconType="circle" />
-                        <Bar
-                          dataKey="receita"
-                          name="Receita"
-                          fill="#10B981"
-                          radius={[4, 4, 0, 0]}
-                        />
-                        <Bar
-                          dataKey="despesa"
-                          name="Despesa"
-                          fill="#EF4444"
-                          radius={[4, 4, 0, 0]}
-                        />
+                        
+                        {evolView === "bruto" ? (
+                          <>
+                            <Bar
+                              dataKey="receita"
+                              name="Receita"
+                              fill="#10B981"
+                              radius={[4, 4, 0, 0]}
+                            />
+                            <Bar
+                              dataKey="despesa"
+                              name="Despesa"
+                              fill="#EF4444"
+                              radius={[4, 4, 0, 0]}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <Bar
+                              dataKey="lucroMaoDeObra"
+                              name="Mão de Obra"
+                              fill="#3B82F6"
+                              stackId="a"
+                            />
+                            <Bar
+                              dataKey="lucroEstoque"
+                              name="Estoque"
+                              fill="#F59E0B"
+                              stackId="a"
+                            />
+                            <Bar
+                              dataKey="lucroAutoPecas"
+                              name="Auto Peças"
+                              fill="#10B981"
+                              stackId="a"
+                              radius={[4, 4, 0, 0]}
+                            />
+                          </>
+                        )}
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -674,28 +667,37 @@ export const RelatoriosPage = () => {
 
             {/* ── Row 4: Timeline de Despesas — largura total ── */}
             <div className="w-full bg-white p-6 rounded-xl shadow-sm border border-neutral-100 flex flex-col">
-              {/* Cabeçalho com select de categoria */}
+              {/* Cabeçalho com toggle de categorias/subcategorias */}
               <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                 <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
                   <Filter size={20} className="text-neutral-500" />
                   Timeline de Despesas
-                  <span className="text-xs font-normal text-neutral-400">
-                    (6 meses passados + 4 futuros)
-                  </span>
                 </h3>
-                <div className="w-48 sm:w-56">
-                  <Select
-                    value={timelineCategoria}
-                    onChange={(e) => setTimelineCategoria(e.target.value)}
-                    className="!py-1.5 !px-3 !text-xs !rounded-lg bg-white"
+                
+                {/* Toggle Categorias vs Subcategorias */}
+                <div className="flex bg-neutral-100 p-0.5 rounded-lg border border-neutral-200">
+                  <button
+                    type="button"
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                      timelineView === "categoria"
+                        ? "bg-white text-neutral-800 shadow-sm"
+                        : "text-neutral-500 hover:text-neutral-800"
+                    }`}
+                    onClick={() => setTimelineView("categoria")}
                   >
-                    <option value="">Todas as Categorias</option>
-                    {resumo?.despesasPorCategoria.map((cat) => (
-                      <option key={cat.categoria} value={cat.categoria}>
-                        {cat.categoria}
-                      </option>
-                    ))}
-                  </Select>
+                    Categorias
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                      timelineView === "subcategoria"
+                        ? "bg-white text-neutral-800 shadow-sm"
+                        : "text-neutral-500 hover:text-neutral-800"
+                    }`}
+                    onClick={() => setTimelineView("subcategoria")}
+                  >
+                    Subcategorias
+                  </button>
                 </div>
               </div>
 
@@ -734,12 +736,7 @@ export const RelatoriosPage = () => {
                         tickFormatter={(val) => `R$${(val / 1000).toFixed(0)}k`}
                       />
                       <Tooltip
-                        formatter={(value: any, name?: string) => [
-                          formatCurrency(Number(value)),
-                          name === "realizado"
-                            ? "Realizado"
-                            : "Previsto/A Pagar",
-                        ]}
+                        formatter={(value: any) => formatCurrency(Number(value))}
                         contentStyle={{
                           borderRadius: "8px",
                           border: "none",
@@ -747,107 +744,29 @@ export const RelatoriosPage = () => {
                         }}
                       />
                       <Legend iconType="circle" />
-                      {/* Realizado: vermelho escuro */}
-                      <Bar
-                        dataKey="realizado"
-                        name="Realizado"
-                        fill="#991B1B"
-                        radius={[4, 4, 0, 0]}
-                        barSize={22}
-                      />
-                      {/* Previsto: vermelho claro/translúcido */}
-                      <Bar
-                        dataKey="previsto"
-                        name="Previsto/A Pagar"
-                        fill="#FCA5A5"
-                        radius={[4, 4, 0, 0]}
-                        barSize={22}
-                        opacity={0.85}
-                      />
+                      
+                      {timelineKeys.map((key, index) => (
+                        <Bar
+                          key={key}
+                          dataKey={key}
+                          name={key}
+                          stackId="a"
+                          fill={COLORS[index % COLORS.length]}
+                          radius={index === timelineKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                          barSize={24}
+                        />
+                      ))}
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="h-full flex items-center justify-center text-neutral-400 text-sm">
-                    Sem dados de despesas na janela de 10 meses.
+                    Sem dados de despesas no período selecionado.
                   </div>
                 )}
               </div>
-
-              {/* Legenda de cores */}
-              <div className="flex gap-4 mt-3 pt-3 border-t border-neutral-50 text-xs text-neutral-500">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm inline-block bg-[#991B1B]" />
-                  Realizado (pago)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm inline-block bg-[#FCA5A5]" />
-                  Previsto (a pagar)
-                </span>
-              </div>
             </div>
 
-            {/* ── Row 4: Comparativo de Despesas por Categoria ── */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-100">
-              <h3 className="text-lg font-bold text-neutral-800 mb-4">
-                Comparativo de Despesas por Categoria
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-xs text-neutral-400 uppercase bg-neutral-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Categoria</th>
-                      <th className="px-4 py-2 text-right">Anterior</th>
-                      <th className="px-4 py-2 text-right">Atual</th>
-                      <th className="px-4 py-2 text-right">Var %</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-50">
-                    {evolucaoDespesas.map((cat, idx) => {
-                      const isIncrease = cat.variacaoPercentual > 0;
-                      const isDecrease = cat.variacaoPercentual < 0;
-                      return (
-                        <tr key={idx} className="hover:bg-neutral-50">
-                          <td className="px-4 py-3 font-medium text-neutral-700">
-                            {cat.categoria}
-                          </td>
-                          <td className="px-4 py-3 text-right text-neutral-400">
-                            {formatCurrency(cat.valorAnterior)}
-                          </td>
-                          <td className="px-4 py-3 text-right text-neutral-700 font-semibold">
-                            {formatCurrency(cat.valorAtual)}
-                          </td>
-                          <td
-                            className={`px-4 py-3 text-right font-bold text-xs ${
-                              isIncrease
-                                ? "text-red-500"
-                                : isDecrease
-                                  ? "text-emerald-500"
-                                  : "text-neutral-400"
-                            }`}
-                          >
-                            <div className="flex items-center justify-end gap-1">
-                              {isIncrease && <ArrowUpRight size={14} />}
-                              {isDecrease && <ArrowDownRight size={14} />}
-                              {Math.abs(cat.variacaoPercentual).toFixed(1)}%
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {evolucaoDespesas.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={4}
-                          className="text-center py-8 text-neutral-400"
-                        >
-                          Dados insuficientes para comparação.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            
           </>
         )}
       </div>

@@ -13,14 +13,31 @@ export interface ResumoFinanceiro {
   periodo: Periodo;
   bruta: {
     maoDeObra: number;
-    pecasTerceiros: number;
-    pecasEstoque: number;
+    autoPecas: number;
+    estoque: number;
     total: number;
+    pecasTerceiros?: number;
+    pecasEstoque?: number;
+  };
+  despesas: {
+    maoDeObra: number;
+    autoPecas: number;
+    oficina: number;
+    total: number;
+    operacional?: number;
+    fornecedor?: number;
   };
   liquida: {
     maoDeObra: number;
-    pecasTerceiros: number;
-    pecasEstoque: number;
+    autoPecas: number;
+    estoque: number;
+    total: number;
+    pecasTerceiros?: number;
+    pecasEstoque?: number;
+  };
+  prejuizos?: {
+    estoque: number;
+    autoPecas: number;
     total: number;
   };
   custos: {
@@ -30,11 +47,6 @@ export interface ResumoFinanceiro {
     contas: number;
     total: number;
   };
-  despesas: {
-    operacional: number;
-    fornecedor: number;
-    total: number;
-  };
   medias: {
     receitaBruta: number;
     lucroLiquido: number;
@@ -42,6 +54,7 @@ export interface ResumoFinanceiro {
   };
   despesasPorCategoria: { categoria: string; valor: number }[];
   indicadores: IndicadoresFinanceiros;
+  consumoInterno?: number;
 }
 
 export interface PerformanceFuncionario {
@@ -55,8 +68,12 @@ export interface PerformanceFuncionario {
 
 export interface EvolucaoDespesaTemporal {
   mes: string;
-  realizado: number;
-  previsto: number;
+  [key: string]: any;
+}
+
+export interface TimelineDespesasResponse {
+  data: EvolucaoDespesaTemporal[];
+  keys: string[];
 }
 
 export interface EvolucaoDespesa {
@@ -79,4 +96,7 @@ export interface EvolucaoMensal {
   receita: number;
   despesa: number;
   lucro: number;
+  lucroMaoDeObra?: number;
+  lucroEstoque?: number;
+  lucroAutoPecas?: number;
 }

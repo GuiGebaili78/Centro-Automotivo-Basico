@@ -40,10 +40,13 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
 
   // Categories
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [categorias, setCategorias] = useState<any[]>([]);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("PENDENTE"); // TODOS, PENDENTE, PAGO
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategoria, setFilterCategoria] = useState("");    // id da categoria raiz
+  const [filterSubcategoria, setFilterSubcategoria] = useState(""); // id da subcategoria
   const [activeFilter, setActiveFilter] = useState<
     "TODAY" | "WEEK" | "MONTH" | "ALL" | "CUSTOM"
   >("ALL");
@@ -71,7 +74,17 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
   useEffect(() => {
     loadContas();
     loadAccounts();
+    loadCategorias();
   }, []);
+
+  const loadCategorias = async () => {
+    try {
+      const data = await FinanceiroService.getCategoriasFinanceiras();
+      setCategorias(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const loadAccounts = async () => {
     try {
@@ -173,6 +186,12 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
     }
   };
 
+  // Derivadas de categoria para filtros
+  const categoriasRaiz = categorias.filter((c) => !c.parentId);
+  const subcategoriasDaRaiz = categorias.filter(
+    (c) => c.parentId === Number(filterCategoria)
+  );
+
   // Calculations
   const filteredContas = contas.filter((c) => {
     // Date Filter (Vencimento) - Only apply if not ALL
@@ -187,6 +206,17 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
     }
 
     if (filterStatus !== "TODOS" && c.status !== filterStatus) return false;
+
+    // Filtro de Subcategoria (mais específico — aplicado primeiro)
+    if (filterSubcategoria) {
+      if (c.id_categoria !== Number(filterSubcategoria)) return false;
+    } else if (filterCategoria) {
+      // Filtro de Categoria Raiz: aceita a própria categoria OU qualquer filha dela
+      const matchRaiz = c.id_categoria === Number(filterCategoria);
+      const matchFilho = (c as any).categoria_financeira?.parentId === Number(filterCategoria);
+      if (!matchRaiz && !matchFilho) return false;
+    }
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       return (
@@ -304,6 +334,42 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
           </div>
         </div>
 
+        {/* FILTROS DE CATEGORIA E SUBCATEGORIA */}
+        <div className="flex flex-col sm:flex-row items-end gap-4">
+          <div className="w-full sm:flex-1">
+            <Select
+              label="Categoria"
+              value={filterCategoria}
+              onChange={(e) => {
+                setFilterCategoria(e.target.value);
+                setFilterSubcategoria(""); // reseta subcategoria ao trocar pai
+              }}
+            >
+              <option value="">Todas as categorias</option>
+              {categoriasRaiz.map((c) => (
+                <option key={c.id_categoria} value={c.id_categoria}>
+                  {c.nome}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-full sm:flex-1">
+            <Select
+              label="Subcategoria"
+              value={filterSubcategoria}
+              onChange={(e) => setFilterSubcategoria(e.target.value)}
+              disabled={!filterCategoria || subcategoriasDaRaiz.length === 0}
+            >
+              <option value="">Todas as subcategorias</option>
+              {subcategoriasDaRaiz.map((c) => (
+                <option key={c.id_categoria} value={c.id_categoria}>
+                  {c.nome}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
         <div className="flex flex-col md:flex-row items-end md:items-center gap-4 border-t border-neutral-100 pt-4">
           <div className="flex flex-col sm:flex-row items-center gap-2">
             <span className="text-sm font-bold text-neutral-500 uppercase tracking-widest min-w-[90px]">
@@ -367,6 +433,8 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
             onClick={() => {
               setSearchTerm("");
               setFilterStatus("PENDENTE");
+              setFilterCategoria("");
+              setFilterSubcategoria("");
               applyQuickFilter("ALL");
             }}
             variant="outline"
@@ -450,11 +518,11 @@ export const ContasGeraisTab = ({ onUpdate }: ContasGeraisTabProps) => {
                       )}
                     </div>
                     <div className="text-sm font-bold text-gray-500 uppercase bg-neutral-100 px-2 py-0.5 rounded w-fit mt-1 border border-neutral-200">
-                      {conta.categoria_financeira 
-                        ? (conta.categoria_financeira.parent 
+                      {conta.categoria_financeira
+                        ? (conta.categoria_financeira.parent
                             ? `${conta.categoria_financeira.parent.nome} / ${conta.categoria_financeira.nome}`
                             : conta.categoria_financeira.nome)
-                        : conta.categoria}
+                        : conta.categoria?.split(' - ').pop()?.trim() || conta.categoria}
                     </div>
                     {conta.obs && (
                       <div className="text-sm text-neutral-500 mt-1 italic max-w-[200px] truncate">

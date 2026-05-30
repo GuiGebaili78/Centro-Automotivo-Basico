@@ -112,9 +112,22 @@ export class RelatoriosController {
 
   async getEvolucaoDespesasTemporal(req: Request, res: Response) {
     try {
-      const { categoriaFiltro } = req.query;
+      const { startDate, endDate, type } = req.query;
+
+      if (!startDate || !endDate) {
+        return res
+          .status(400)
+          .json({ error: "startDate and endDate are required" });
+      }
+
+      const start = new Date((startDate as string) + "T00:00:00");
+      const end = new Date((endDate as string) + "T23:59:59");
+      const groupType = (type as "categoria" | "subcategoria") || "categoria";
+
       const data = await relatoriosService.getEvolucaoDespesasTemporal(
-        categoriaFiltro as string | undefined,
+        start,
+        end,
+        groupType
       );
       return res.json(data);
     } catch (error) {

@@ -225,6 +225,8 @@ export const ContasAPagarPage = () => {
             enableFornecedor: true,
             enableOperadora: false,
             enableOsId: false,
+            enableCategoria: true,
+            enableSubcategoria: true,
             fornecedores: fornecedoresList.map(f => ({ id: f.nome, nome: f.nome })),
             statusOptions: [
               { value: "ALL", label: "Todas" },

@@ -61,10 +61,12 @@ export const RelatoriosService = {
   },
 
   getEvolucaoDespesasTemporal: async (
-    categoriaFiltro?: string,
-  ): Promise<EvolucaoDespesaTemporal[]> => {
+    startDate: string,
+    endDate: string,
+    type: "categoria" | "subcategoria",
+  ): Promise<TimelineDespesasResponse> => {
     const response = await api.get("/relatorios/despesas-temporal", {
-      params: categoriaFiltro ? { categoriaFiltro } : {},
+      params: { startDate, endDate, type },
     });
     return response.data;
   },

@@ -20,6 +20,7 @@ export interface ICashBookEntry {
   type: CashBookEntryType;
   value: number;
   details: string;
+  categoria: string; // derivado da natureza do lançamento em financeiroUtils.ts
 }
 
 export interface IPaymentFilters {

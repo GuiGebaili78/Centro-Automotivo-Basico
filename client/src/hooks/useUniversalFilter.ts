@@ -249,6 +249,20 @@ export function useUniversalFilter<T extends object>(
         if (String(i[field]) !== filters.osId) return false;
       }
 
+      // ── 4b. Categoria ──────────────────────────────────────────────────────
+      if (filters.categoriaId && filters.categoriaId !== "") {
+        const catId = Number(filters.categoriaId);
+        const matchProp = i.id_categoria === catId;
+        const matchParent = i.categoria_financeira?.parentId === catId;
+        if (!matchProp && !matchParent) return false;
+      }
+
+      // ── 4c. Subcategoria ───────────────────────────────────────────────────
+      if (filters.subcategoriaId && filters.subcategoriaId !== "") {
+        const subcatId = Number(filters.subcategoriaId);
+        if (i.id_categoria !== subcatId) return false;
+      }
+
       // ── 5. Date range (open-ended + null-safe) ─────────────────────────────
       if (startDate || endDate) {
         const resolvedField = dateField ?? detectDateField(item);
