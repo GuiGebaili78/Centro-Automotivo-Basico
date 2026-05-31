@@ -85,7 +85,7 @@ export const PagamentoPecaPage = () => {
       setPayments(paymentsData || []);
       setFornecedores(suppliersData);
       setAccounts(accountsData.filter((a: any) => a.ativo));
-      setNfsPendentes(Array.isArray(nfsData) ? nfsData : []);
+      setNfsPendentes(Array.isArray(nfsData) ? nfsData : (nfsData?.data ?? []));
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados financeiros.");
@@ -225,17 +225,22 @@ export const PagamentoPecaPage = () => {
     setShowEditModal(true);
   };
 
-  // --- Supplier list for UniversalFilters ---
-  const fornecedoresList = fornecedores.map((f) => ({
-    id: String(f.id_fornecedor),
-    nome: String(f.nome_fantasia || f.nome || "").toUpperCase(),
-  }));
+  // --- Supplier list for UniversalFilters (memoized to avoid cascade re-renders) ---
+  const fornecedoresList = useMemo(
+    () =>
+      fornecedores.map((f) => ({
+        id: String(f.id_fornecedor),
+        nome: String(f.nome_fantasia || f.nome || "").toUpperCase(),
+      })),
+    [fornecedores]
+  );
 
-  // --- Elevate id_os to root for hook comparison ---
+  // --- Elevate id_os and id_fornecedor to root for hook comparison ---
   const pagamentosMapeados = payments.map((p) => ({
     ...p,
     id_os: p.item_os?.id_os || p.item_os?.ordem_de_servico?.id_os,
-    id_fornecedor: p.fornecedor?.id_pessoa || p.id_pessoa || p.id_fornecedor,
+    // id_pessoa armazena o id_fornecedor da nova tabela Fornecedor
+    id_fornecedor: p.id_pessoa,
   }));
 
   // --- Filtered via hook ---
@@ -296,7 +301,7 @@ export const PagamentoPecaPage = () => {
             enableFornecedor: true,
             enableOperadora: false,
             enableOsId: true,
-            fornecedores: fornecedoresList.map(f => ({ id: f.nome, nome: f.nome })),
+            fornecedores: fornecedoresList,
             statusOptions: [
               { value: "ALL", label: "Todas" },
               { value: "PENDING", label: "Pendentes" },

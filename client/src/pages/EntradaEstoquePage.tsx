@@ -57,8 +57,10 @@ export const EntradaEstoquePage = () => {
 
   const loadNfsPendentes = async () => {
     try {
-      const data = await FinanceiroService.getNfsPendentes();
-      setNfsPendentes(Array.isArray(data) ? data : []);
+      const response = await FinanceiroService.getNfsPendentes();
+      // Backend retorna { data: [], total: N } — extrair o array interno
+      const list = Array.isArray(response) ? response : (response?.data ?? []);
+      setNfsPendentes(list);
     } catch (e) {
       console.error("Erro ao carregar NFs pendentes:", e);
     }

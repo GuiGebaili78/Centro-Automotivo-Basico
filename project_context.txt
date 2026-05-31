@@ -1,4 +1,4 @@
-PROJECT DUMP - 31/05/2026 10:27
+PROJECT DUMP - 31/05/2026 14:19
 =========================================
 
 --- FILE: client_logs.txt ---
@@ -1992,6 +1992,362 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
 };
 
 
+--- FILE: client\src\components\clientes\Forms\ClienteFormSection.tsx ---
+/**
+ * ClienteFormSection
+ *
+ * Responsabilidades:
+ *  - Gerenciar o estado interno de TODOS os campos do cliente.
+ *  - Expor `getData()` via useImperativeHandle para que a página pai
+ *    colete os dados SOMENTE no momento do submit (sem prop drilling de state).
+ *  - Usar React.memo + forwardRef, eliminando re-renderizações causadas
+ *    pelo estado de componentes irmãos (ex: VeiculoFormSection).
+ *
+ * Padrão adoptado: estado totalmente local + imperativeHandle (pull on submit)
+ */
+import {
+  memo,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+  useCallback,
+  useEffect,
+} from "react";
+import {
+  User,
+  Phone,
+  Mail,
+  Search,
+  MapPin,
+  Building2,
+  Hash,
+} from "lucide-react";
+import { Input } from "../../ui/Input";
+import { formatCpf, formatCnpj, formatCep, formatPhone, unmask, formatIE } from "../../../utils/normalize";
+// ─── Types ────────────────────────────────────────────────────────────────────
+export interface ClienteFormData {
+  tipoPessoa: "PF" | "PJ";
+  nome: string;
+  cpf: string;
+  razaoSocial: string;
+  nomeFantasia: string;
+  cnpj: string;
+  ie: string;
+  telefone: string;
+  telefone2: string;
+  email: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complLogradouro: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+}
+export interface ClienteFormSectionRef {
+  getData: () => ClienteFormData;
+}
+interface ClienteFormSectionProps {
+  /** Dados iniciais (edição). Em modo criação, pode ser omitido. */
+  initialData?: Partial<ClienteFormData>;
+  /** Em modo de edição, campos do nome/tipo ficam desabilitados. */
+  isEditMode?: boolean;
+  /** Ref para o input "nome" principal para autoFocus no modo criação. */
+  nameInputRef?: React.RefObject<HTMLInputElement | null>;
+}
+// ─── Component ────────────────────────────────────────────────────────────────
+export const ClienteFormSection = memo(
+  forwardRef<ClienteFormSectionRef, ClienteFormSectionProps>(
+    ({ initialData, isEditMode = false, nameInputRef }, ref) => {
+      // ── Local state (não sobe para o pai até o submit) ──
+      const [tipoPessoa, setTipoPessoa] = useState<"PF" | "PJ">(
+        initialData?.tipoPessoa ?? "PF",
+      );
+      const [nome, setNome] = useState(initialData?.nome ?? "");
+      const [cpf, setCpf] = useState(initialData?.cpf ?? "");
+      const [razaoSocial, setRazaoSocial] = useState(
+        initialData?.razaoSocial ?? "",
+      );
+      const [nomeFantasia, setNomeFantasia] = useState(
+        initialData?.nomeFantasia ?? "",
+      );
+      const [cnpj, setCnpj] = useState(initialData?.cnpj ?? "");
+      const [ie, setIe] = useState(initialData?.ie ?? "");
+      const [telefone, setTelefone] = useState(initialData?.telefone ?? "");
+      const [telefone2, setTelefone2] = useState(initialData?.telefone2 ?? "");
+      const [email, setEmail] = useState(initialData?.email ?? "");
+      const [cep, setCep] = useState(initialData?.cep ?? "");
+      const [logradouro, setLogradouro] = useState(
+        initialData?.logradouro ?? "",
+      );
+      const [numero, setNumero] = useState(initialData?.numero ?? "");
+      const [complLogradouro, setComplLogradouro] = useState(
+        initialData?.complLogradouro ?? "",
+      );
+      const [bairro, setBairro] = useState(initialData?.bairro ?? "");
+      const [cidade, setCidade] = useState(initialData?.cidade ?? "São Paulo");
+      const [estado, setEstado] = useState(initialData?.estado ?? "SP");
+      // Sincroniza quando os dados iniciais chegam (modo edição assíncrono)
+      useEffect(() => {
+        if (!initialData) return;
+        if (initialData.tipoPessoa) setTipoPessoa(initialData.tipoPessoa);
+        if (initialData.nome !== undefined) setNome(initialData.nome);
+        if (initialData.cpf !== undefined) setCpf(initialData.cpf);
+        if (initialData.razaoSocial !== undefined)
+          setRazaoSocial(initialData.razaoSocial);
+        if (initialData.nomeFantasia !== undefined)
+          setNomeFantasia(initialData.nomeFantasia);
+        if (initialData.cnpj !== undefined) setCnpj(initialData.cnpj);
+        if (initialData.ie !== undefined) setIe(initialData.ie);
+        if (initialData.telefone !== undefined)
+          setTelefone(initialData.telefone);
+        if (initialData.telefone2 !== undefined)
+          setTelefone2(initialData.telefone2);
+        if (initialData.email !== undefined) setEmail(initialData.email);
+        if (initialData.cep !== undefined) setCep(initialData.cep);
+        if (initialData.logradouro !== undefined)
+          setLogradouro(initialData.logradouro);
+        if (initialData.numero !== undefined) setNumero(initialData.numero);
+        if (initialData.complLogradouro !== undefined)
+          setComplLogradouro(initialData.complLogradouro);
+        if (initialData.bairro !== undefined) setBairro(initialData.bairro);
+        if (initialData.cidade !== undefined) setCidade(initialData.cidade);
+        if (initialData.estado !== undefined) setEstado(initialData.estado);
+        // Dependência intencional: só roda quando initialData mudar de referência
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [initialData]);
+      // ── Expõe getData() para a página pai ──
+      useImperativeHandle(
+        ref,
+        () => ({
+          getData: () => ({
+            tipoPessoa,
+            nome,
+            cpf: unmask(cpf),
+            razaoSocial,
+            nomeFantasia,
+            cnpj: unmask(cnpj),
+            ie,
+            telefone: unmask(telefone),
+            telefone2: unmask(telefone2),
+            email,
+            cep: unmask(cep),
+            logradouro,
+            numero,
+            complLogradouro,
+            bairro,
+            cidade,
+            estado,
+          }),
+        }),
+        [
+          tipoPessoa,
+          nome,
+          cpf,
+          razaoSocial,
+          nomeFantasia,
+          cnpj,
+          ie,
+          telefone,
+          telefone2,
+          email,
+          cep,
+          logradouro,
+          numero,
+          complLogradouro,
+          bairro,
+          cidade,
+          estado,
+        ],
+      );
+      // ── Busca de CEP ViaCEP ──
+      const handleCepBlur = useCallback(async () => {
+        const cepRaw = cep.replace(/\D/g, "");
+        if (cepRaw.length !== 8) return;
+        try {
+          const res = await fetch(`https://viacep.com.br/ws/${cepRaw}/json/`);
+          const data = await res.json();
+          if (!data.erro) {
+            setLogradouro(data.logradouro ?? "");
+            setBairro(data.bairro ?? "");
+            setCidade(data.localidade ?? "");
+            setEstado(data.uf ?? "");
+            // Foca no campo "Número" após autocomplete
+            document.getElementById("nr_logradouro")?.focus();
+          }
+        } catch {
+          // silently fail — user can fill manually
+        }
+      }, [cep]);
+      // ─── Render ───────────────────────────────────────────────────────────
+      return (
+        <div className="bg-neutral-25 p-6 rounded-2xl border border-neutral-200 shadow-sm space-y-6">
+          {/* Header */}
+          <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
+            <div className="bg-primary-100 p-2 rounded-lg text-primary-600">
+              <User size={20} />
+            </div>
+            <h2 className="font-bold text-lg text-neutral-800">
+              Dados do Cliente
+            </h2>
+          </div>
+          {/* Tipo Pessoa Toggle */}
+          <div className="flex bg-neutral-100 p-1 rounded-lg w-fit">
+            {(["PF", "PJ"] as const).map((tipo) => (
+              <button
+                key={tipo}
+                type="button"
+                disabled={isEditMode}
+                onClick={() => !isEditMode && setTipoPessoa(tipo)}
+                className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${
+                  tipoPessoa === tipo
+                    ? "bg-neutral-25 shadow text-primary-600"
+                    : "text-neutral-500"
+                } ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {tipo === "PF" ? "Pessoa Física" : "Pessoa Jurídica"}
+              </button>
+            ))}
+          </div>
+          {/* Campos de identificação (PF / PJ) */}
+          <div className="grid grid-cols-1 gap-4">
+            {tipoPessoa === "PF" ? (
+              <>
+                <Input
+                  label="Nome Completo *"
+                  icon={User}
+                  ref={nameInputRef as React.Ref<HTMLInputElement>}
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Nome do cliente"
+                  required
+                />
+                <Input
+                  label="CPF"
+                  icon={Hash}
+                  value={cpf}
+                  onChange={(e) => setCpf(formatCpf(e.target.value))}
+                  placeholder="000.000.000-00"
+                  disabled={isEditMode}
+                />
+              </>
+            ) : (
+              <>
+                <Input
+                  label="Razão Social *"
+                  icon={Building2}
+                  ref={nameInputRef as React.Ref<HTMLInputElement>}
+                  value={razaoSocial}
+                  onChange={(e) => setRazaoSocial(e.target.value)}
+                  placeholder="Nome da Empresa"
+                  required
+                />
+                <Input
+                  label="Nome Fantasia"
+                  value={nomeFantasia}
+                  onChange={(e) => setNomeFantasia(e.target.value)}
+                  placeholder="Nome Comercial"
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="CNPJ"
+                    value={cnpj}
+                    onChange={(e) => setCnpj(formatCnpj(e.target.value))}
+                    placeholder="00.000.000/0000-00"
+                  />
+                  <Input
+                    label="IE"
+                    value={ie}
+                    onChange={(e) => setIe(formatIE(e.target.value))}
+                    placeholder="IE Isento ou Número (ex: 123.456.789)"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          {/* Contato */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-100">
+            <Input
+              label="Telefone Principal *"
+              icon={Phone}
+              value={telefone}
+              onChange={(e) => setTelefone(formatPhone(e.target.value))}
+              placeholder="(00) 00000-0000"
+              required
+            />
+            <Input
+              label="Telefone 2"
+              icon={Phone}
+              value={telefone2}
+              onChange={(e) => setTelefone2(formatPhone(e.target.value))}
+              placeholder="(00) 00000-0000"
+            />
+            <div className="sm:col-span-2">
+              <Input
+                label="Email"
+                icon={Mail}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="cliente@email.com"
+              />
+            </div>
+          </div>
+          {/* Endereço */}
+          <div className="space-y-4 pt-4 border-t border-neutral-100">
+            <div className="grid grid-cols-3 gap-4">
+              <Input
+                label="CEP"
+                icon={Search}
+                value={cep}
+                onChange={(e) => setCep(formatCep(e.target.value))}
+                onBlur={handleCepBlur}
+                placeholder="00000-000"
+              />
+              <div className="col-span-2">
+                <Input
+                  label="Logradouro"
+                  icon={MapPin}
+                  value={logradouro}
+                  onChange={(e) => setLogradouro(e.target.value)}
+                />
+              </div>
+              <Input
+                id="nr_logradouro"
+                label="Número"
+                value={numero}
+                onChange={(e) => setNumero(e.target.value)}
+              />
+              <div className="col-span-2">
+                <Input
+                  label="Complemento"
+                  value={complLogradouro}
+                  onChange={(e) => setComplLogradouro(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Bairro"
+                value={bairro}
+                onChange={(e) => setBairro(e.target.value)}
+              />
+              <Input
+                label="Cidade"
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    },
+  ),
+);
+ClienteFormSection.displayName = "ClienteFormSection";
+
+
+--- FILE: client\src\components\clientes\Forms\EquipamentoFormSection.tsx ---
 /**
  * EquipamentoFormSection
  * 
@@ -3798,6 +4154,7 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
 };
 
 
+--- FILE: client\src\components\dashboard\UnifiedSearch.tsx ---
 /**
  * UnifiedSearch
  *
@@ -4204,7 +4561,6 @@ export const UnifiedSearch = ({
 };
 
 
---- FILE: client\src\components\estoque\EdicaoPecaModal.tsx ---
 import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -19097,87 +19453,6 @@ Checkbox.displayName = "Checkbox";
 
 
 --- FILE: client\src\components\ui\ConfirmModal.tsx ---
-import { useEffect } from "react";
-import { createPortal } from "react-dom";
-import { AlertTriangle, Info } from "lucide-react";
-import { Button } from "./Button";
-interface ConfirmModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  description: React.ReactNode; // Changed from string to ReactNode
-  variant?: "danger" | "primary";
-  confirmText?: string;
-  cancelText?: string;
-}
-export const ConfirmModal = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  title,
-  description,
-  variant = "danger",
-  confirmText,
-  cancelText = "Cancelar",
-}: ConfirmModalProps) => {
-  // Close on Escape key
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) {
-      window.addEventListener("keydown", handleEsc);
-    }
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, onClose]);
-  if (!isOpen) return null;
-  const isDanger = variant === "danger";
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
-        onClick={onClose}
-      />
-      {/* Modal Content */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200 z-10">
-        {/* Icon & Header */}
-        <div className="flex items-start gap-4">
-          <div
-            className={`p-3 rounded-full ${isDanger ? "bg-red-50 text-red-600" : "bg-primary-50 text-primary-600"}`}
-          >
-            {isDanger ? <AlertTriangle size={24} /> : <Info size={24} />}
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-bold text-neutral-900 leading-6">
-              {title}
-            </h3>
-            <div className="mt-2 text-sm text-neutral-500 leading-relaxed">
-              {description}
-            </div>
-          </div>
-        </div>
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 mt-4">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="hover:bg-neutral-50"
-          >
-            {cancelText}
-          </Button>
-          <Button variant={isDanger ? "danger" : "primary"} onClick={onConfirm}>
-            {confirmText || (isDanger ? "Excluir" : "Confirmar")}
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-};
-
-
 --- FILE: client\src\components\ui\FilterButton.tsx ---
 import React from "react";
 import { Button } from "./Button";
@@ -19321,61 +19596,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   },
 );
 Input.displayName = "Input";
-
-
---- FILE: client\src\components\ui\Modal.tsx ---
-import React, { useEffect } from "react";
-import { createPortal } from "react-dom";
-import { X } from "lucide-react";
-import { ActionButton } from "./ActionButton";
-interface ModalProps {
-  title: React.ReactNode;
-  children: React.ReactNode;
-  onClose: () => void;
-  className?: string;
-  zIndex?: number;
-}
-export const Modal = ({
-  title,
-  children,
-  onClose,
-  className = "max-w-2xl",
-  zIndex = 50,
-}: ModalProps) => {
-  // Close on Escape key
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
-  return createPortal(
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
-      style={{ zIndex }}
-    >
-      <div
-        className={`bg-white rounded-xl shadow-2xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 ${className}`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-neutral-100">
-          <h2 className="text-xl font-bold text-neutral-900">{title}</h2>
-          <ActionButton
-            icon={X}
-            label="Fechar"
-            onClick={onClose}
-            variant="neutral"
-            className="-my-1"
-          />
-        </div>
-        {/* Content */}
-        <div className="p-6 overflow-y-auto custom-scrollbar">{children}</div>
-      </div>
-    </div>,
-    document.body,
-  );
-};
 
 
 --- FILE: client\src\components\ui\PageLayout.tsx ---
@@ -23586,618 +23806,6 @@ export const FuncionarioPage = () => {
 };
 
 
---- FILE: client\src\pages\ConfiguracaoPage.tsx ---
-import React, { useEffect, useState, useRef } from "react";
-import { PageLayout, Card, Input, Button } from "../components/ui";
-import {
-  ConfiguracaoService,
-  type Configuracao,
-} from "../services/ConfiguracaoService";
-import { STATIC_BASE } from "../services/api";
-import { toast } from "react-toastify";
-import { formatCnpj, formatPhone, formatIE } from "../utils/normalize";
-import {
-  Save,
-  Upload,
-  Building2,
-  Phone,
-  Mail,
-  FileText,
-  MapPin,
-  Plus,
-  Trash2,
-} from "lucide-react";
-export const ConfiguracaoPage = () => {
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [formData, setFormData] = useState<Configuracao>({
-    nomeFantasia: "",
-    razaoSocial: "",
-    cnpj: "",
-    inscricaoEstadual: "",
-    endereco: "",
-    telefone: "",
-    telefone2: "",
-    email: "",
-    logoUrl: "",
-    smtpHost: "",
-    smtpPort: 587,
-    smtpUser: "",
-    smtpPass: "",
-  });
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [logoZoom, setLogoZoom] = useState(100);
-  const [logoPosition, setLogoPosition] = useState({ x: 50, y: 50 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [isNewUpload, setIsNewUpload] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [logoImpressaoPreview, setLogoImpressaoPreview] = useState<string | null>(null);
-  const printFileInputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    loadConfig();
-  }, []);
-  const loadConfig = async () => {
-    try {
-      const config = await ConfiguracaoService.get();
-      if (config) {
-        setFormData(config);
-        if (config.logoUrl) {
-          setLogoPreview(`${STATIC_BASE}${config.logoUrl}?t=${Date.now()}`);
-          setIsNewUpload(false);
-        }
-        if (config.logoImpressaoUrl) {
-          setLogoImpressaoPreview(`${STATIC_BASE}${config.logoImpressaoUrl}?t=${Date.now()}`);
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao carregar configurações:", error);
-      toast.error("Erro ao carregar configurações.");
-    } finally {
-      setInitialLoading(false);
-    }
-  };
-  const handlePrintLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLoading(true);
-    try {
-      const updatedConfig = await ConfiguracaoService.uploadLogoImpressao(file);
-      setFormData(updatedConfig);
-      if (updatedConfig.logoImpressaoUrl) {
-        setLogoImpressaoPreview(`${STATIC_BASE}${updatedConfig.logoImpressaoUrl}?t=${Date.now()}`);
-      }
-      toast.success("Logo de impressão atualizada com sucesso!");
-      window.dispatchEvent(new Event("configuracao-updated"));
-    } catch (error) {
-      console.error("Erro ao subir logo de impressão:", error);
-      toast.error("Erro ao subir logo de impressão.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
-        setIsNewUpload(true);
-        // Reset zoom and position when new image is loaded
-        setLogoZoom(100);
-        setLogoPosition({ x: 50, y: 50 });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  const generateProcessedLogo = (): Promise<Blob | null> => {
-    return new Promise((resolve) => {
-      if (!logoPreview) {
-        resolve(null);
-        return;
-      }
-      const img = new Image();
-      img.crossOrigin = "Anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve(null);
-          return;
-        }
-        // Set canvas size to match sidebar dimensions (2:1 ratio)
-        const width = 512;
-        const height = 256;
-        canvas.width = width;
-        canvas.height = height;
-        // Calculate scaled dimensions
-        // FIX: Calculate scale to fit canvas first (like object-contain)
-        const scaleX = width / img.width;
-        const scaleY = height / img.height;
-        const baseScale = Math.min(scaleX, scaleY);
-        // Apply user zoom on top of base scale
-        const finalScale = baseScale * (logoZoom / 100);
-        const scaledWidth = img.width * finalScale;
-        const scaledHeight = img.height * finalScale;
-        // Calculate position offsets (center on the position point)
-        // Adjust logic to better match the transform-origin behavior if needed,
-        // but for now standard centering based on position works for the zoom fix.
-        // If position is 50,50 (default), this centers the image.
-        const offsetX = width / 2 - scaledWidth * (logoPosition.x / 100);
-        const offsetY = height / 2 - scaledHeight * (logoPosition.y / 100);
-        // Draw image with transformations
-        ctx.fillStyle = "transparent";
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
-        canvas.toBlob((blob) => {
-          resolve(blob);
-        }, "image/png");
-      };
-      img.src = logoPreview;
-    });
-  };
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const data = new FormData();
-      data.append("nomeFantasia", formData.nomeFantasia);
-      data.append("razaoSocial", formData.razaoSocial || "");
-      data.append("cnpj", formData.cnpj || "");
-      data.append("inscricaoEstadual", formData.inscricaoEstadual || "");
-      data.append("endereco", formData.endereco || "");
-      data.append("telefone", formData.telefone || "");
-      data.append("telefone2", formData.telefone2 || "");
-      data.append("email", formData.email || "");
-      data.append("smtpHost", formData.smtpHost || "");
-      data.append("smtpPort", String(formData.smtpPort || ""));
-      data.append("smtpUser", formData.smtpUser || "");
-      data.append("smtpPass", formData.smtpPass || "");
-      // Generate processed logo if there's a preview and it's a new upload
-      if (logoPreview && isNewUpload) {
-        const processedBlob = await generateProcessedLogo();
-        if (processedBlob) {
-          data.append("logo", processedBlob, "logo.png");
-        }
-      } else if (!logoPreview) {
-        data.append("logoUrl", "");
-      }
-      const updatedConfig = await ConfiguracaoService.save(data);
-      setFormData(updatedConfig);
-      // Update preview with new URL from server
-      if (updatedConfig.logoUrl) {
-        setLogoPreview(`${STATIC_BASE}${updatedConfig.logoUrl}?t=${Date.now()}`);
-        setIsNewUpload(false);
-        // Reset zoom and position after save
-        setLogoZoom(100);
-        setLogoPosition({ x: 50, y: 50 });
-      }
-      toast.success("Configurações salvas com sucesso!");
-      // Notifica outros componentes (como Sidebar) sobre a atualização
-      window.dispatchEvent(new Event("configuracao-updated"));
-    } catch (error) {
-      console.error("Erro ao salvar:", error);
-      toast.error("Erro ao salvar configurações.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
-  if (initialLoading) {
-    return (
-      <PageLayout title="Configurações" subtitle="">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-        </div>
-      </PageLayout>
-    );
-  }
-  return (
-    <PageLayout
-      title="Configurações da Oficina"
-      subtitle="Gerencie os dados da sua empresa para impressões e documentos"
-    >
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Coluna Esquerda: Logo */}
-          <div className="lg:col-span-1">
-            <Card
-              title="Logotipo"
-              description="Imagem que sairá nas impressões e sistema"
-            >
-              <div className="flex flex-col items-center gap-6">
-                {/* 1. LOGO PRINCIPAL */}
-                <div className="w-full space-y-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">
-                    Logotipo Principal (Geral)
-                  </span>
-                  <div className="flex flex-col items-center gap-3">
-                    <div
-                      className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 overflow-hidden relative flex items-center justify-center cursor-pointer"
-                      onClick={() => {
-                        if (!logoPreview) triggerFileInput();
-                      }}
-                    >
-                      {logoPreview ? (
-                        <div
-                          className="w-full h-full flex items-center justify-center cursor-move"
-                          style={
-                            isNewUpload
-                              ? {
-                                  transform: `scale(${logoZoom / 100})`,
-                                  transformOrigin: `${logoPosition.x}% ${logoPosition.y}%`,
-                                }
-                              : undefined
-                          }
-                          onMouseDown={(e) => {
-                            if (isNewUpload) {
-                              setIsDragging(true);
-                              e.preventDefault();
-                            }
-                          }}
-                          onMouseMove={(e) => {
-                            if (isDragging && isNewUpload) {
-                              const rect =
-                                e.currentTarget.parentElement!.getBoundingClientRect();
-                              const x =
-                                ((e.clientX - rect.left) / rect.width) * 100;
-                              const y =
-                                ((e.clientY - rect.top) / rect.height) * 100;
-                              setLogoPosition({
-                                x: Math.max(0, Math.min(100, x)),
-                                y: Math.max(0, Math.min(100, y)),
-                              });
-                            }
-                          }}
-                          onMouseUp={() => setIsDragging(false)}
-                          onMouseLeave={() => setIsDragging(false)}
-                        >
-                          <img
-                            src={logoPreview}
-                            alt="Logo Preview"
-                            className="w-full h-full object-contain pointer-events-none"
-                            draggable={false}
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center hover:bg-slate-100 transition-colors">
-                          <div className="text-center p-4">
-                            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-1" />
-                            <span className="text-xs text-slate-500 font-medium">
-                              Clique para enviar
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    {logoPreview && (
-                      <div className="w-full max-w-[256px] space-y-2">
-                        {isNewUpload && (
-                          <>
-                            <Input
-                              label={`Zoom: ${logoZoom}%`}
-                              type="range"
-                              min="50"
-                              max="200"
-                              value={logoZoom}
-                              onChange={(e) =>
-                                setLogoZoom(Number(e.target.value))
-                              }
-                              className="!w-full !h-2 !bg-slate-200 !rounded-lg !appearance-none !cursor-pointer !accent-primary-600 !border-0 !p-0 !ring-0"
-                            />
-                            <p className="text-[10px] text-slate-500 text-center">
-                              💡 Arraste o logo para reposicionar
-                            </p>
-                          </>
-                        )}
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (fileInputRef.current) {
-                                fileInputRef.current.value = "";
-                                fileInputRef.current.click();
-                              }
-                            }}
-                            className="text-primary-600 hover:bg-primary-50 border border-primary-200"
-                            icon={Plus}
-                          >
-                            {isNewUpload ? "Trocar" : "Alterar"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="danger"
-                            size="sm"
-                            onClick={() => {
-                              setLogoPreview(null);
-                              setIsNewUpload(false);
-                              setFormData({ ...formData, logoUrl: "" });
-                              if (fileInputRef.current) {
-                                fileInputRef.current.value = "";
-                              }
-                            }}
-                            className="border border-red-200"
-                            icon={Trash2}
-                          >
-                            Remover
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <hr className="w-full border-slate-200" />
-                {/* 2. LOGO DE IMPRESSÃO */}
-                <div className="w-full space-y-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">
-                    Logo de Impressão (Fundo Branco)
-                  </span>
-                  <div className="flex flex-col items-center gap-3">
-                    <div
-                      className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-white overflow-hidden relative flex items-center justify-center cursor-pointer shadow-inner"
-                      onClick={() => {
-                        printFileInputRef.current?.click();
-                      }}
-                    >
-                      {logoImpressaoPreview ? (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <img
-                            src={logoImpressaoPreview}
-                            alt="Logo Impressão Preview"
-                            className="w-full h-full object-contain pointer-events-none"
-                            draggable={false}
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center hover:bg-slate-50 transition-colors">
-                          <div className="text-center p-4">
-                            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-1" />
-                            <span className="text-xs text-slate-500 font-medium">
-                              Clique para enviar logo impressa
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-slate-400 text-center leading-normal max-w-[240px]">
-                      Utilizada em orçamentos e documentos impressos. Recomenda-se imagem com alto contraste para folhas A4.
-                    </p>
-                    <div className="w-full max-w-[256px]">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (printFileInputRef.current) {
-                            printFileInputRef.current.value = "";
-                            printFileInputRef.current.click();
-                          }
-                        }}
-                        className="text-primary-600 hover:bg-primary-50 border border-primary-200 w-full"
-                        icon={Plus}
-                      >
-                        {logoImpressaoPreview ? "Alterar Imagem" : "Enviar Imagem"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                {/* Inputs do tipo File ocultos */}
-                <div className="hidden">
-                  <Input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept="image/*"
-                  />
-                  <Input
-                    type="file"
-                    ref={printFileInputRef}
-                    onChange={handlePrintLogoUpload}
-                    accept="image/*"
-                  />
-                </div>
-              </div>
-            </Card>
-          </div>
-          {/* Coluna Direita: Dados */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card title="Dados da Empresa" description="Informações cadastrais">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <Input
-                    label="Nome Fantasia"
-                    name="nomeFantasia"
-                    value={formData.nomeFantasia}
-                    onChange={handleChange}
-                    placeholder="Ex: Centro Automotivo Silva"
-                    icon={Building2}
-                    required
-                  />
-                </div>
-                <div className="md:col-span-1">
-                  <Input
-                    label="Razão Social"
-                    name="razaoSocial"
-                    value={formData.razaoSocial || ""}
-                    onChange={handleChange}
-                    placeholder="Ex: Silva Mecânica LTDA"
-                    icon={FileText}
-                  />
-                </div>
-                <div className="md:col-span-1">
-                  <Input
-                    label="CNPJ"
-                    name="cnpj"
-                    value={formData.cnpj || ""}
-                    onChange={(e) => {
-                      const formatted = formatCnpj(e.target.value);
-                      setFormData((prev) => ({ ...prev, cnpj: formatted }));
-                    }}
-                    placeholder="00.000.000/0001-00"
-                    icon={FileText}
-                  />
-                </div>
-                <div className="md:col-span-1">
-                  <Input
-                    label="Inscrição Estadual"
-                    name="inscricaoEstadual"
-                    value={formData.inscricaoEstadual || ""}
-                    onChange={(e) => {
-                      const formatted = formatIE(e.target.value);
-                      setFormData((prev) => ({ ...prev, inscricaoEstadual: formatted }));
-                    }}
-                    placeholder="IE Isento ou Número (ex: 123.456.789)"
-                    icon={FileText}
-                  />
-                </div>
-              </div>
-            </Card>
-            <Card
-              title="Contato e Endereço"
-              description="Canais de comunicação e localização"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-1">
-                  <Input
-                    label="Telefone 1"
-                    name="telefone"
-                    value={formData.telefone || ""}
-                    onChange={(e) => {
-                      const formatted = formatPhone(e.target.value);
-                      setFormData((prev) => ({ ...prev, telefone: formatted }));
-                    }}
-                    placeholder="(00) 00000-0000"
-                    icon={Phone}
-                  />
-                </div>
-                <div className="md:col-span-1">
-                  <Input
-                    label="Telefone 2"
-                    name="telefone2"
-                    value={formData.telefone2 || ""}
-                    onChange={(e) => {
-                      const formatted = formatPhone(e.target.value);
-                      setFormData((prev) => ({ ...prev, telefone2: formatted }));
-                    }}
-                    placeholder="(00) 00000-0000"
-                    icon={Phone}
-                  />
-                </div>
-                <div className="md:col-span-1">
-                  <Input
-                    label="E-mail"
-                    name="email"
-                    type="email"
-                    value={formData.email || ""}
-                    onChange={handleChange}
-                    placeholder="contato@minhaoficina.com"
-                    icon={Mail}
-                  />
-                </div>
-                <div className="md:col-span-3">
-                  <Input
-                    label="Endereço Completo"
-                    name="endereco"
-                    value={formData.endereco || ""}
-                    onChange={handleChange}
-                    placeholder="Rua Exemplo, 123 - Bairro - Cidade/UF"
-                    icon={MapPin}
-                  />
-                </div>
-              </div>
-            </Card>
-            {/* Configurações de E-mail (SMTP) desativadas temporariamente a pedido da administração */}
-            {/* 
-            <Card
-              title="Configurações de E-mail (SMTP)"
-              description="Configurações para envio automático de OS e orçamentos"
-            >
-              <div className="space-y-4">
-                <div className="p-4 rounded-xl flex items-center gap-3 bg-amber-50 text-amber-800 border border-amber-200">
-                  <AlertCircle size={20} className="shrink-0" />
-                  <div className="text-xs">
-                    <p className="font-bold uppercase tracking-wider mb-0.5">
-                      Atenção para usuários Gmail
-                    </p>
-                    <p>
-                      É OBRIGATÓRIO gerar uma "Senha de Aplicativo" nas
-                      configurações do Google. Sua senha comum não funcionará.
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="md:col-span-3">
-                    <Input
-                      label="Servidor SMTP"
-                      name="smtpHost"
-                      value={formData.smtpHost || ""}
-                      onChange={handleChange}
-                      placeholder="Ex: smtp.gmail.com"
-                      icon={Server}
-                    />
-                  </div>
-                  <div className="md:col-span-1">
-                    <Input
-                      label="Porta"
-                      name="smtpPort"
-                      type="number"
-                      value={formData.smtpPort || ""}
-                      onChange={handleChange}
-                      placeholder="587"
-                      icon={Hash}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Input
-                      label="Usuário / E-mail do SMTP"
-                      name="smtpUser"
-                      value={formData.smtpUser || ""}
-                      onChange={handleChange}
-                      placeholder="Ex: oficina@gmail.com"
-                      icon={User}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Input
-                      label="Senha de Aplicativo / SMTP"
-                      name="smtpPass"
-                      type="password"
-                      value={formData.smtpPass || ""}
-                      onChange={handleChange}
-                      placeholder="••••••••••••••••"
-                      icon={Lock}
-                    />
-                  </div>
-                </div>
-              </div>
-            </Card>
-            */}
-            <div className="flex justify-end pt-4">
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                icon={Save}
-                isLoading={loading}
-              >
-                Salvar Configurações
-              </Button>
-            </div>
-          </div>
-        </div>
-      </form>
-    </PageLayout>
-  );
-};
-
-
 --- FILE: client\src\pages\ContasAPagarPage.tsx ---
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
@@ -28069,21 +27677,6 @@ export const ItensOsPage = () => {
 };
 
 
---- FILE: client\src\pages\LivroCaixaPage.tsx ---
-import { MovimentacoesTab } from "../components/financeiro/MovimentacoesTab";
-import { PageLayout } from "../components/ui";
-export const LivroCaixaPage = () => {
-  return (
-    <PageLayout
-      title="Caixa"
-      subtitle="Histórico de movimentações financeiras."
-    >
-      <MovimentacoesTab />
-    </PageLayout>
-  );
-};
-
-
 --- FILE: client\src\pages\Login.tsx ---
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -29558,276 +29151,6 @@ export const OperadoraCartaoPage = () => {
 
 
 --- FILE: client\src\pages\OrdemDeServicoDetalhePage.tsx ---
-import { useState, useRef, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
-// Hooks
-import { useOrdemServico } from "../hooks/useOrdemServico";
-import { useConfirm } from "../hooks/useConfirm";
-// Components
-import { PageLayout } from "../components/ui/PageLayout";
-import { Card } from "../components/ui/Card";
-import { ConfirmModal } from "../components/ui/ConfirmModal";
-import { LaborManager } from "../components/os/LaborManager";
-import { OsShareModal } from "../components/os/OsShareModal";
-import { OsItemEditModal } from "../components/os/OsItemEditModal";
-import { PaymentOsModal } from "../components/os/PaymentOsModal";
-import { OsHeaderCard } from "../components/os/OsHeaderCard";
-// Subcomponents
-import { OsDiagnosis } from "../components/os/OsDiagnosis";
-import { OsItemsSection } from "../components/os/OsItemsSection";
-import { OsTotalsSection } from "../components/os/OsTotalsSection";
-// Icons
-import { Wrench } from "lucide-react";
-export const OrdemDeServicoDetalhePage = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  // --- SOURCE OF TRUTH (HOOK) ---
-  const {
-    os,
-    items,
-    employees,
-    loading,
-    isLocked,
-    totals,
-    totalPending,
-    updateOSField,
-    refetch,
-    finishOS,
-    openOsNow,
-    reopenOS,
-    addItem,
-    deleteItem,
-    addLabor,
-    updateLabor,
-    deleteLabor,
-    searchParts,
-    partSearchResults,
-    setPartSearchResults,
-    checkStockAvailability,
-    // UI State from hook
-    editItemModalOpen,
-    setEditItemModalOpen,
-    editingItemData,
-    setEditingItemData,
-    handleEditItem,
-    handleSaveItemEdit,
-    paymentModalOpen,
-    setPaymentModalOpen,
-    shareModalOpen,
-    setShareModalOpen,
-  } = useOrdemServico(id);
-  const { confirmState, requestConfirm, closeConfirm } = useConfirm();
-  const [showDateEdit, setShowDateEdit] = useState(false);
-  // Declarative UI state and Ref
-  const [isPulsing, setIsPulsing] = useState(false);
-  const totalsSectionRef = useRef<HTMLDivElement>(null);
-  const pulseTimerRef = useRef<any>(null);
-  // Clear timeout on unmount to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      if (pulseTimerRef.current) {
-        clearTimeout(pulseTimerRef.current);
-      }
-    };
-  }, []);
-  // --- HANDLERS ---
-  const handleBack = () => navigate("/");
-  const handleFinish = () => {
-    requestConfirm(
-      "Finalizar OS",
-      "Deseja Finalizar a OS? Isso irá gerar o financeiro e mudar o status.",
-      async () => {
-        const success = await finishOS({
-          valor_pecas: totals.parts,
-          valor_mao_de_obra: totals.labor,
-          valor_total_cliente: totals.general,
-          dt_entrega: os?.dt_entrega
-            ? new Date(os.dt_entrega).toISOString()
-            : new Date().toISOString(),
-        });
-        if (success) {
-          closeConfirm();
-          setTimeout(() => navigate("/"), 1000);
-        }
-      },
-    );
-  };
-  const handleReopen = () => {
-    if (os?.fechamento_financeiro) {
-      requestConfirm(
-        "Confirmar Reabertura",
-        "Esta OS possui fechamento financeiro. A reabertura irá remover o fechamento. Continuar?",
-        async () => {
-          await reopenOS(os.fechamento_financeiro?.id_fechamento_financeiro);
-          closeConfirm();
-        },
-      );
-    } else {
-      reopenOS();
-    }
-  };
-  const handleDeleteItem = (itemId: number) => {
-    requestConfirm(
-      "Excluir Item",
-      "Deseja excluir este item?",
-      async () => {
-        await deleteItem(itemId);
-        closeConfirm();
-      },
-      "danger",
-    );
-  };
-  if (!os) {
-    return (
-      <div className="p-8 text-center text-neutral-500">
-        Carregando detalhes da OS...
-      </div>
-    );
-  }
-  return (
-    <PageLayout
-      title=""
-      subtitle=""
-    >
-      {/* MODALS */}
-      <OsShareModal
-        isOpen={shareModalOpen}
-        onClose={() => setShareModalOpen(false)}
-        osId={os.id_os}
-        clientEmail={os.cliente?.email || undefined}
-        clientPhone={os.cliente?.telefone_1}
-      />
-      <OsItemEditModal
-        isOpen={editItemModalOpen}
-        onClose={() => setEditItemModalOpen(false)}
-        itemData={editingItemData}
-        setItemData={setEditingItemData}
-        onSave={handleSaveItemEdit}
-      />
-      <PaymentOsModal
-        isOpen={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        osId={os.id_os}
-        totalPending={totalPending}
-        pagamentos={os.pagamentos_cliente || []}
-        onSuccess={() => {
-          setPaymentModalOpen(false);
-          refetch();
-          // Toast verde de sucesso
-          toast.success(
-            <div className="flex flex-col gap-1">
-              <span className="font-bold text-emerald-900">Pagamento confirmado!</span>
-              <span className="text-sm text-emerald-800">Deseja finalizar a Ordem de Serviço agora?</span>
-            </div>,
-            {
-              autoClose: 6000,
-              closeOnClick: true,
-              draggable: true,
-              position: "top-right"
-            }
-          );
-          // Rolar suavemente até o botão através da Ref do container
-          setTimeout(() => {
-            if (totalsSectionRef.current) {
-              totalsSectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
-            setIsPulsing(true);
-            if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
-            pulseTimerRef.current = setTimeout(() => {
-              setIsPulsing(false);
-            }, 3000);
-          }, 300);
-        }}
-      />
-      <ConfirmModal
-        isOpen={confirmState.isOpen}
-        onClose={closeConfirm}
-        onConfirm={confirmState.onConfirm}
-        title={confirmState.title}
-        description={confirmState.message}
-        variant={confirmState.variant as "danger" | "primary"}
-      />
-      {/* HEADER CARD: OS Info (Unified) */}
-      <OsHeaderCard 
-        os={os}
-        onBack={handleBack}
-        onPrint={() => setShareModalOpen(true)}
-        onOpenOsNow={openOsNow}
-        showDateEdit={showDateEdit}
-        setShowDateEdit={setShowDateEdit}
-        updateOSField={updateOSField}
-      />
-      {/* MID SECTION: Diagnosis Left, Labor Right (Responsive Grid) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch mb-6">
-        <div className="h-full lg:col-span-1">
-          <OsDiagnosis
-            defeitoRelatado={os.defeito_relatado}
-            diagnostico={os.diagnostico}
-            onChangeDefeito={(val) => updateOSField("defeito_relatado", val)}
-            onBlurDefeito={(val) => updateOSField("defeito_relatado", val)}
-            onChangeDiagnostico={(val) => updateOSField("diagnostico", val)}
-            onBlurDiagnostico={(val) => updateOSField("diagnostico", val)}
-          />
-        </div>
-        <Card className="p-6 h-full flex flex-col lg:col-span-2">
-          <h3 className="text-sm font-medium text-gray-600 uppercase tracking-widest flex items-center gap-3 pb-4 border-b border-neutral-100 mb-4">
-            <div className="p-1.5 bg-primary-100 rounded-lg text-primary-600">
-              <Wrench size={18} />
-            </div>
-            Serviços Executados (Mão de Obra)
-          </h3>
-          <div className="flex-1">
-            <LaborManager
-              mode="api"
-              osId={os.id_os}
-              initialData={os.servicos_mao_de_obra || []}
-              employees={employees}
-              onChange={refetch}
-              readOnly={isLocked}
-              onAddLabor={addLabor}
-              onUpdateLabor={updateLabor}
-              onDeleteLabor={deleteLabor}
-            />
-          </div>
-        </Card>
-      </div>
-      {/* PARTS */}
-      <Card className="p-6 mb-6">
-        <OsItemsSection
-          items={items}
-          isLocked={isLocked}
-          onAdd={addItem}
-          onEdit={handleEditItem}
-          onDelete={handleDeleteItem}
-          onSearch={searchParts}
-          searchResults={partSearchResults}
-          setSearchResults={setPartSearchResults}
-          checkAvailability={checkStockAvailability}
-        />
-      </Card>
-      {/* TOTALS & FINANCE */}
-      <div ref={totalsSectionRef}>
-        <Card className="p-6 overflow-hidden">
-          <OsTotalsSection
-            totalParts={totals.parts}
-            totalLabor={totals.labor}
-            totalGeneral={totals.general}
-            payments={os.pagamentos_cliente || []}
-            osStatus={os.status}
-            onManagePayments={() => setPaymentModalOpen(true)}
-            onFinish={handleFinish}
-            onReopen={handleReopen}
-            isPulsing={isPulsing}
-            disabled={loading} // Proteção contra duplos cliques (desabilitado enquanto atualiza)
-          />
-        </Card>
-      </div>
-    </PageLayout>
-  );
-};
-
-
 --- FILE: client\src\pages\OrdemDeServicoPage.tsx ---
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -31689,7 +31012,7 @@ export const PagamentoPecaPage = () => {
             enableFornecedor: true,
             enableOperadora: false,
             enableOsId: true,
-            fornecedores: fornecedoresList.map(f => ({ id: f.nome, nome: f.nome })),
+            fornecedores: fornecedoresList.map(f => ({ id: String(f.id), nome: f.nome })),
             statusOptions: [
               { value: "ALL", label: "Todas" },
               { value: "PENDING", label: "Pendentes" },
@@ -36023,6 +35346,137 @@ export interface ILaborService {
 
 
 --- FILE: client\src\types\relatorios.types.ts ---
+export interface Periodo {
+  start: string;
+  end: string;
+}
+export interface IndicadoresFinanceiros {
+  lucroLiquido: number;
+  margemLiquida: number;
+  pontoEquilibrio: number;
+}
+export interface ResumoFinanceiro {
+  periodo: Periodo;
+  bruta: {
+    maoDeObra: number;
+    autoPecas: number;
+    estoque: number;
+    total: number;
+    pecasTerceiros?: number;
+    pecasEstoque?: number;
+  };
+  despesas: {
+    maoDeObra: number;
+    autoPecas: number;
+    oficina: number;
+    total: number;
+    operacional?: number;
+    fornecedor?: number;
+  };
+  liquida: {
+    maoDeObra: number;
+    autoPecas: number;
+    estoque: number;
+    total: number;
+    pecasTerceiros?: number;
+    pecasEstoque?: number;
+  };
+  prejuizos?: {
+    estoque: number;
+    autoPecas: number;
+    total: number;
+  };
+  custos: {
+    pecasEstoque: number;
+    pecasTerceiros: number;
+    equipe: number;
+    contas: number;
+    total: number;
+  };
+  medias: {
+    receitaBruta: number;
+    lucroLiquido: number;
+    despesasTotais: number;
+  };
+  despesasPorCategoria: { categoria: string; valor: number }[];
+  indicadores: IndicadoresFinanceiros;
+  consumoInterno?: number;
+}
+export interface PerformanceFuncionario {
+  id: number;
+  nome: string;
+  maoDeObraBruta: number;
+  comissaoPaga: number;
+  lucroMaoDeObra: number;
+  vendasEstoque: number;
+}
+export interface EvolucaoDespesaTemporal {
+  mes: string;
+  [key: string]: any;
+}
+export interface TimelineDespesasResponse {
+  data: EvolucaoDespesaTemporal[];
+  keys: string[];
+}
+export interface EvolucaoDespesa {
+  categoria: string;
+  valorAtual: number;
+  valorAnterior: number;
+  variacaoPercentual: number;
+}
+export interface OperadoraStats {
+  nome: string;
+  totalBruto: number;
+  totalTaxas: number;
+  totalLiquido: number;
+  count: number;
+}
+export interface EvolucaoMensal {
+  label: string;
+  receita: number;
+  despesa: number;
+  lucro: number;
+  lucroMaoDeObra?: number;
+  lucroEstoque?: number;
+  lucroAutoPecas?: number;
+}
+
+
+--- FILE: client\src\utils\financeiroUtils.ts ---
+import type { IPagamentoPeca, IPagamentoCliente } from "../types/backend";
+import type { ICashBookEntry } from "../types/financeiro.types";
+export const calculateCashBookEntries = (
+  payments: IPagamentoPeca[],
+  inflows: IPagamentoCliente[],
+): ICashBookEntry[] => {
+  // Map Outflows (Payments to Suppliers)
+  const outflows: ICashBookEntry[] = payments
+    .filter((p) => p.pago_ao_fornecedor && p.data_pagamento_fornecedor)
+    .map((p) => ({
+      id: `out-${p.id_pagamento_peca}`,
+      date: p.data_pagamento_fornecedor || p.data_compra,
+      description: `Pagamento Fornecedor - ${p.item_os?.descricao || "Peça"}`,
+      type: "OUT" as const,
+      value: Number(p.custo_real),
+      details: `OS Nº ${p.item_os?.id_os || "?"} - ${p.fornecedor?.nome || "Fornecedor"}`,
+      categoria: "Peças / Fornecedores",
+    }));
+  // Map Inflows (Payments from Clients)
+  const inflowsMapped: ICashBookEntry[] = (inflows || []).map((p) => ({
+    id: `in-${p.id_pagamento_cliente}`,
+    date: p.data_pagamento,
+    description: `Recebimento OS Nº ${p.id_os || "?"}`,
+    type: "IN" as const,
+    value: Number(p.valor),
+    details: `Forma: ${p.metodo_pagamento}`,
+    categoria: "Recebimentos",
+  }));
+  return [...outflows, ...inflowsMapped].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
+};
+
+
 --- FILE: client\src\utils\formatCurrency.ts ---
 export const formatCurrency = (
   value: number | string | undefined | null,
@@ -43553,33 +43007,66 @@ export class ContasPagarRepository {
   // ── Rota A: NFs Pendentes ──
   async findNfsPendentes(params?: { search?: string; skip?: number; take?: number }) {
     const { search, skip, take } = params || {};
-    const whereClause: any = {
-      nf_numero: { not: null },
-      status: { not: "PAGO" },
-      deleted_at: null,
-    };
-    if (search) {
-      whereClause.nf_numero = { contains: search, mode: "insensitive" };
-    }
-    const nfs = await prisma.contasPagar.findMany({
-      where: whereClause,
-      distinct: ["nf_numero"],
+    const contas = await prisma.contasPagar.findMany({
+      where: {
+        nf_numero: { not: null },
+        deleted_at: null,
+        ...(search ? { nf_numero: { contains: search, mode: "insensitive" } } : {})
+      },
       select: {
         nf_numero: true,
         credor: true,
         valor: true,
-      },
-      skip: skip,
-      take: take,
+        status: true,
+      }
     });
-    const countQuery = await prisma.contasPagar.findMany({
-      where: whereClause,
+    const nfMap = new Map<string, { nf_numero: string, credor: string, valor: number, isPendente: boolean }>();
+    for (const c of contas) {
+      if (!c.nf_numero) continue;
+      if (!nfMap.has(c.nf_numero)) {
+         nfMap.set(c.nf_numero, {
+            nf_numero: c.nf_numero,
+            credor: c.credor || "",
+            valor: Number(c.valor),
+            isPendente: c.status !== "PAGO"
+         });
+      } else {
+         const existing = nfMap.get(c.nf_numero)!;
+         existing.valor += Number(c.valor);
+         if (c.status !== "PAGO") existing.isPendente = true;
+      }
+    }
+    const allNfs = Array.from(nfMap.keys());
+    const nfsInEstoque = await prisma.entradaEstoque.findMany({
+      where: {
+        OR: [
+          { nf_numero: { in: allNfs } },
+          { nota_fiscal: { in: allNfs } }
+        ]
+      },
+      select: { nf_numero: true, nota_fiscal: true }
+    });
+    const nfsInPecas = await prisma.pagamentoPeca.findMany({
+      where: { nf_numero: { in: allNfs } },
       distinct: ["nf_numero"],
       select: { nf_numero: true }
     });
+    const setEstoque = new Set<string>();
+    for (const e of nfsInEstoque) {
+      if (e.nf_numero) setEstoque.add(e.nf_numero);
+      if (e.nota_fiscal) setEstoque.add(e.nota_fiscal);
+    }
+    for (const p of nfsInPecas) {
+      if (p.nf_numero) setEstoque.add(p.nf_numero);
+    }
+    const resultList = Array.from(nfMap.values()).filter(nf => {
+       return nf.isPendente || !setEstoque.has(nf.nf_numero);
+    });
+    const total = resultList.length;
+    const paginated = resultList.slice(skip || 0, (skip || 0) + (take || 10));
     return {
-      data: nfs,
-      total: countQuery.length
+      data: paginated,
+      total
     };
   }
   // ── Rota B: Status de Sincronização da NF ──
@@ -45676,6 +45163,473 @@ export class PagamentoPecaRepository {
 }
 
 
+--- FILE: server\src\repositories\pecasEstoque.repository.ts ---
+import { Prisma } from "@prisma/client";
+import { prisma } from "../prisma.js";
+export class PecasEstoqueRepository {
+  async create(data: Prisma.PecasEstoqueCreateInput) {
+    return await prisma.pecasEstoque.create({
+      data,
+    });
+  }
+  async findAll() {
+    return await prisma.pecasEstoque.findMany({
+      include: {
+        itens_entrada: {
+          take: 1,
+          orderBy: { id_item_entrada: "desc" },
+          include: {
+            entrada: {
+              include: { fornecedor: true },
+            },
+          },
+        },
+      },
+      orderBy: { nome: "asc" },
+    });
+  }
+  async findById(id: number) {
+    return await prisma.pecasEstoque.findUnique({
+      where: { id_pecas_estoque: id },
+    });
+  }
+  async update(id: number, data: Prisma.PecasEstoqueUpdateInput) {
+    return await prisma.pecasEstoque.update({
+      where: { id_pecas_estoque: id },
+      data,
+    });
+  }
+  async delete(id: number) {
+    return await prisma.pecasEstoque.delete({
+      where: { id_pecas_estoque: id },
+    });
+  }
+  async search(query: string) {
+    return await prisma.pecasEstoque.findMany({
+      where: {
+        OR: [
+          { nome: { contains: query, mode: "insensitive" } },
+          { descricao: { contains: query, mode: "insensitive" } },
+        ],
+      },
+      take: 20,
+      include: {
+        itens_entrada: {
+          take: 1,
+          orderBy: { id_item_entrada: "desc" },
+          include: {
+            entrada: {
+              include: { fornecedor: true },
+            },
+          },
+        },
+      },
+    });
+  }
+  async createEntry(data: {
+    id_pessoa?: number;
+    id_fornecedor?: number;
+    nota_fiscal?: string;
+    data_compra?: Date;
+    obs?: string;
+    nf_numero?: string | null;
+    itens: {
+      id_pecas_estoque?: number;
+      new_part_data?: any; // Name, Description, etc.
+      quantidade: number;
+      valor_custo: number;
+      valor_venda: number;
+      margem_lucro?: number;
+      ref_cod?: string;
+      obs?: string;
+    }[];
+  }) {
+    const idPessoa = Number(data.id_pessoa || data.id_fornecedor);
+    if (!idPessoa || isNaN(idPessoa)) {
+      throw new Error("Fornecedor (id_pessoa ou id_fornecedor) é obrigatório.");
+    }
+    const nfNumeroNormalized = data.nf_numero ? data.nf_numero.trim() || null : null;
+    return await prisma.$transaction(async (tx) => {
+      // 1. Create Entry Header
+      const entrada = await tx.entradaEstoque.create({
+        data: {
+          id_pessoa: idPessoa,
+          nota_fiscal: data.nota_fiscal || null,
+          data_compra: data.data_compra || new Date(),
+          valor_total: data.itens.reduce(
+            (acc, i) => acc + Number(i.valor_custo) * Number(i.quantidade),
+            0,
+          ),
+          obs: data.obs || null,
+          nf_numero: nfNumeroNormalized,
+        },
+      });
+      // 2. Process Items
+      for (const item of data.itens) {
+        let partId = item.id_pecas_estoque;
+        // 2a. Create Part if new
+        if (!partId && item.new_part_data) {
+          const newPart = await tx.pecasEstoque.create({
+            data: {
+              nome: item.new_part_data.nome,
+              descricao:
+                item.new_part_data.descricao || item.new_part_data.nome,
+              unidade_medida: item.new_part_data.unidade_medida || "UN",
+              estoque_atual: 0, // Will act increment below
+              valor_custo: item.valor_custo,
+              valor_venda: item.valor_venda,
+              estoque_minimo: item.new_part_data.estoque_minimo || 0,
+              custo_unitario_padrao: item.valor_custo, // Init standard cost
+              fabricante: item.new_part_data.fabricante || null,
+            },
+          });
+          partId = newPart.id_pecas_estoque;
+        }
+        if (!partId)
+          throw new Error("Item sem ID de peça e sem dados para cadastro.");
+        // 2b. Create ItemEntrada
+        await tx.itemEntrada.create({
+          data: {
+            id_entrada: entrada.id_entrada,
+            id_pecas_estoque: partId,
+            quantidade: item.quantidade,
+            valor_custo: item.valor_custo,
+            valor_venda: item.valor_venda,
+            margem_lucro: item.margem_lucro || null,
+            ref_cod: item.ref_cod || null,
+            obs: item.obs || null,
+          },
+        });
+        // 2c. Update Stock & Price
+        await tx.pecasEstoque.update({
+          where: { id_pecas_estoque: partId },
+          data: {
+            estoque_atual: { increment: item.quantidade },
+            valor_venda: item.valor_venda, // Always update selling price as requested
+            dt_ultima_compra: new Date(),
+            // As per request: "sem atualizar o preço de custo das peças compradas anteriormente",
+            // but we MUST update standard cost for new parts.
+            // For existing parts, we might typically update Average Cost, but ignoring cost update here as strictly requested for existing.
+            // NOTE: If it was a NEW part, we already set the cost in creation.
+          },
+        });
+      }
+      // 3. Process Financials (Contas a Pagar + Livro Caixa)
+      // We check if 'financeiro' data was passed in the 'data' argument (need to update type definition first)
+      if ((data as any).financeiro) {
+        const fin = (data as any).financeiro;
+        const conta = await tx.contasPagar.create({
+          data: {
+            descricao: fin.descricao,
+            valor: fin.valor,
+            dt_vencimento: new Date(fin.dt_vencimento),
+            dt_pagamento:
+              fin.status === "PAGO" ? new Date(fin.dt_pagamento) : null,
+            status: fin.status,
+            categoria: "PEÇAS",
+            obs: `Ref. Entrada Estoque #${entrada.id_entrada}`,
+            nf_numero: nfNumeroNormalized,
+          },
+        });
+        // If PAID, create Livro Caixa movement
+        if (fin.status === "PAGO") {
+          await tx.livroCaixa.create({
+            data: {
+              descricao: `Pagamento Compra Peças - ${fin.descricao}`,
+              valor: fin.valor,
+              tipo_movimentacao: "SAIDA",
+              categoria: "FORNECEDOR",
+              origem: "AUTOMATICA",
+              dt_movimentacao: new Date(fin.dt_pagamento),
+              obs: `Vinculado a Conta Pagar #${conta.id_conta_pagar}`,
+            },
+          });
+        }
+      }
+      return entrada;
+    });
+  }
+  async findEntryById(id: number) {
+    return await prisma.entradaEstoque.findUnique({
+      where: { id_entrada: id },
+      include: {
+        fornecedor: true,
+        itens: {
+          include: {
+            peca: true,
+          },
+        },
+      },
+    });
+  }
+  async updateEntry(
+    id: number,
+    data: {
+      id_pessoa?: number;
+      nota_fiscal?: string | null;
+      data_compra?: Date;
+      obs?: string | null;
+      nf_numero?: string | null;
+      itens: {
+        id_item_entrada?: number;      // presente → item existente
+        id_pecas_estoque?: number;     // obrigatório para novos itens
+        new_part_data?: any;           // se nova peça a cadastrar
+        quantidade: number;
+        valor_custo: number;
+        valor_venda: number;
+        margem_lucro?: number;
+        ref_cod?: string;
+        obs?: string;
+        _delete?: boolean;             // true → remover este item
+      }[];
+    },
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Verificar que a entrada existe
+      const entrada = await tx.entradaEstoque.findUnique({
+        where: { id_entrada: id },
+        include: { itens: { include: { peca: true } } },
+      });
+      if (!entrada) throw new Error("Entrada de estoque não encontrada.");
+      // 2. Processar cada item do payload
+      for (const item of data.itens) {
+        // --- REMOÇÃO ---
+        if (item._delete && item.id_item_entrada) {
+          const itemExistente = entrada.itens.find(
+            (i) => i.id_item_entrada === item.id_item_entrada,
+          );
+          if (!itemExistente) continue;
+          const partId = itemExistente.id_pecas_estoque;
+          // Validação de segurança: verificar movimentação ativa em OS
+          const osAtivas = await tx.itensOs.count({
+            where: {
+              id_pecas_estoque: partId,
+              deleted_at: null,
+              ordem_de_servico: {
+                status: { notIn: ["FINALIZADA", "CANCELADA", "PAGA_CLIENTE"] },
+                deleted_at: null,
+              },
+            },
+          });
+          if (osAtivas > 0) {
+            const nomePeca = itemExistente.peca?.nome || `ID ${partId}`;
+            throw new Error(
+              `A peça "${nomePeca}" não pode ser removida pois já está vinculada a uma Ordem de Serviço ativa. Finalize ou cancele a OS antes de remover este item.`,
+            );
+          }
+          // Decrementar estoque e remover item
+          await tx.pecasEstoque.update({
+            where: { id_pecas_estoque: partId },
+            data: { estoque_atual: { decrement: itemExistente.quantidade } },
+          });
+          await tx.itemEntrada.delete({
+            where: { id_item_entrada: item.id_item_entrada },
+          });
+          continue;
+        }
+        // --- ATUALIZAÇÃO de item existente ---
+        if (item.id_item_entrada) {
+          await tx.itemEntrada.update({
+            where: { id_item_entrada: item.id_item_entrada },
+            data: {
+              quantidade: item.quantidade,
+              valor_custo: item.valor_custo,
+              valor_venda: item.valor_venda,
+              margem_lucro: item.margem_lucro ?? null,
+              ref_cod: item.ref_cod ?? null,
+              obs: item.obs ?? null,
+            },
+          });
+          continue;
+        }
+        // --- CRIAÇÃO de novo item ---
+        let partId = item.id_pecas_estoque;
+        if (!partId && item.new_part_data) {
+          const newPart = await tx.pecasEstoque.create({
+            data: {
+              nome: item.new_part_data.nome,
+              descricao: item.new_part_data.descricao || item.new_part_data.nome,
+              unidade_medida: item.new_part_data.unidade_medida || "UN",
+              estoque_atual: 0,
+              valor_custo: item.valor_custo,
+              valor_venda: item.valor_venda,
+              estoque_minimo: item.new_part_data.estoque_minimo || 0,
+              custo_unitario_padrao: item.valor_custo,
+              fabricante: item.new_part_data.fabricante || null,
+            },
+          });
+          partId = newPart.id_pecas_estoque;
+        }
+        if (!partId) throw new Error("Item sem ID de peça e sem dados para cadastro.");
+        await tx.itemEntrada.create({
+          data: {
+            id_entrada: id,
+            id_pecas_estoque: partId,
+            quantidade: item.quantidade,
+            valor_custo: item.valor_custo,
+            valor_venda: item.valor_venda,
+            margem_lucro: item.margem_lucro ?? null,
+            ref_cod: item.ref_cod ?? null,
+            obs: item.obs ?? null,
+          },
+        });
+        await tx.pecasEstoque.update({
+          where: { id_pecas_estoque: partId },
+          data: {
+            estoque_atual: { increment: item.quantidade },
+            valor_venda: item.valor_venda,
+            dt_ultima_compra: new Date(),
+          },
+        });
+      }
+      // 3. Recalcular valor_total da entrada (itens não deletados)
+      const itensAtualizados = await tx.itemEntrada.findMany({
+        where: { id_entrada: id },
+      });
+      const novoTotal = itensAtualizados.reduce(
+        (acc, i) => acc + Number(i.valor_custo) * Number(i.quantidade),
+        0,
+      );
+      // 4. Atualizar cabeçalho da entrada
+      return await tx.entradaEstoque.update({
+        where: { id_entrada: id },
+        data: {
+          ...(data.id_pessoa !== undefined && { id_pessoa: data.id_pessoa }),
+          ...(data.nota_fiscal !== undefined && { nota_fiscal: data.nota_fiscal }),
+          ...(data.data_compra !== undefined && { data_compra: data.data_compra }),
+          ...(data.obs !== undefined && { obs: data.obs }),
+          ...(data.nf_numero !== undefined && { nf_numero: data.nf_numero?.trim() || null }),
+          valor_total: novoTotal,
+        },
+        include: {
+          itens: { include: { peca: true } },
+        },
+      });
+    });
+  }
+  async getAvailability(id: number) {
+    const part = await prisma.pecasEstoque.findUnique({
+      where: { id_pecas_estoque: id },
+      select: {
+        estoque_atual: true,
+        nome: true,
+        valor_venda: true,
+        id_pecas_estoque: true,
+      },
+    });
+    if (!part) return null;
+    const reservedItems = await prisma.itensOs.aggregate({
+      where: {
+        id_pecas_estoque: id,
+        deleted_at: null,
+        ordem_de_servico: {
+          status: {
+            notIn: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"],
+          }, // Using active statuses
+          deleted_at: null,
+        },
+      },
+      _sum: { quantidade: true },
+    });
+    const reserved = reservedItems._sum.quantidade || 0;
+    return {
+      ...part,
+      reserved,
+    };
+  }
+  async deleteEntry(id: number) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Fetch the entry and its items
+      const entrada = await tx.entradaEstoque.findUnique({
+        where: { id_entrada: id },
+        include: {
+          itens: {
+            include: { peca: true },
+          },
+        },
+      });
+      if (!entrada) {
+        throw new Error("Entrada de estoque não encontrada.");
+      }
+      // 2. Validate safety and process decrements
+      for (const item of entrada.itens) {
+        const partId = item.id_pecas_estoque;
+        // Check 2a: Was this part used in an active OS after it was bought?
+        // Wait, any active OS using this part restricts deletion if the remaining stock would not cover it, or just strictly block it if it has ANY OS relation.
+        // As per requirement: "Se algum item dessa entrada já possui movimentação ou foi vinculado a uma OS, bloqueie a exclusão"
+        // Let's check for any OS item usage. Actually, checking if `estoque_atual - quantidade < 0` is the mathematical guarantee.
+        // We will ALSO check if there's any active OS that prevents us from taking it back.
+        const osAtivas = await tx.itensOs.count({
+          where: {
+            id_pecas_estoque: partId,
+            deleted_at: null,
+            ordem_de_servico: {
+              status: { notIn: ["CANCELADA"] },
+              deleted_at: null,
+            },
+          },
+        });
+        if (osAtivas > 0) {
+          const nomePeca = item.peca?.nome || `ID ${partId}`;
+          throw new Error(
+            `Não é possível excluir esta entrada. A peça "${nomePeca}" já foi vinculada a uma Ordem de Serviço.`
+          );
+        }
+        // Check 2b: Mathematical guarantee
+        if (Number(item.peca.estoque_atual) - item.quantidade < 0) {
+          const nomePeca = item.peca?.nome || `ID ${partId}`;
+          throw new Error(
+            `Não é possível excluir esta entrada. O estoque da peça "${nomePeca}" ficaria negativo.`
+          );
+        }
+        // Process Decrement
+        await tx.pecasEstoque.update({
+          where: { id_pecas_estoque: partId },
+          data: { estoque_atual: { decrement: item.quantidade } },
+        });
+      }
+      // 3. Cascade Delete: Items first, then the Entry
+      await tx.itemEntrada.deleteMany({
+        where: { id_entrada: id },
+      });
+      await tx.entradaEstoque.delete({
+        where: { id_entrada: id },
+      });
+      return { success: true };
+    });
+  }
+}
+
+
+--- FILE: server\src\repositories\pessoa.repository.ts ---
+import { Prisma, PrismaClient } from '@prisma/client';
+import { prisma } from '../prisma.js';
+export class PessoaRepository {
+  async create(data: Prisma.PessoaCreateInput) {
+    return await prisma.pessoa.create({
+      data,
+    });
+  }
+  async findAll(where: Prisma.PessoaWhereInput = {}) {
+    return await prisma.pessoa.findMany({ where });
+  }
+  async findById(id: number) {
+    return await prisma.pessoa.findUnique({
+      where: { id_pessoa: id },
+    });
+  }
+  async update(id: number, data: Prisma.PessoaUpdateInput) {
+    return await prisma.pessoa.update({
+      where: { id_pessoa: id },
+      data,
+    });
+  }
+  async delete(id: number) {
+    return await prisma.pessoa.delete({
+      where: { id_pessoa: id },
+    });
+  }
+}
 
 
 --- FILE: server\src\repositories\pessoaFisica.repository.ts ---
@@ -47970,155 +47924,6 @@ main()
 
 
 --- FILE: server\src\scripts\clean_and_migrate.ts ---
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
-async function main() {
-  console.log("🧹 Starting cleanup and migration...");
-  const fakerDescription = "Barulho estranho no motor e luz de óleo acesa.";
-  // Find OS IDs first to delete related records
-  const osToDelete = await prisma.ordemDeServico.findMany({
-    where: { defeito_relatado: fakerDescription },
-    select: { id_os: true },
-  });
-  const ids = osToDelete.map((os) => os.id_os);
-  console.log(`🎯 Found ${ids.length} faker OSs to delete.`);
-  if (ids.length > 0) {
-    // Delete related FechamentoFinanceiro
-    await prisma.fechamentoFinanceiro.deleteMany({
-      where: { id_os: { in: ids } },
-    });
-    console.log("🗑️ Deleted related FechamentoFinanceiro records.");
-    // Delete related ServicoMaoDeObra
-    await prisma.servicoMaoDeObra.deleteMany({
-      where: { id_os: { in: ids } },
-    });
-    console.log("🗑️ Deleted related ServicoMaoDeObra records.");
-    // Delete related ItensOs (if any)
-    await prisma.itensOs.deleteMany({
-      where: { id_os: { in: ids } },
-    });
-    console.log("🗑️ Deleted related ItensOs records.");
-    // Finally delete OSs
-    const deletedOs = await prisma.ordemDeServico.deleteMany({
-      where: { id_os: { in: ids } },
-    });
-    console.log(`🗑️ Deleted ${deletedOs.count} faker OSs.`);
-  }
-  // Migrate Statuses
-  const updatedStatus = await prisma.ordemDeServico.updateMany({
-    where: { status: "PRONTO PARA FINANCEIRO" },
-    data: { status: "FINANCEIRO" },
-  });
-  console.log(
-    `🔄 Migrated ${updatedStatus.count} OSs from 'PRONTO PARA FINANCEIRO' to 'FINANCEIRO'.`,
-  );
-  const updatedFinalized = await prisma.ordemDeServico.updateMany({
-    where: { status: "FINALIZADO" },
-    data: { status: "FINALIZADA" },
-  });
-  console.log(
-    `🔄 Migrated ${updatedFinalized.count} OSs from 'FINALIZADO' to 'FINALIZADA'.`,
-  );
-}
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
-
-
---- FILE: server\src\scripts\clean_test_clients.ts ---
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
-async function main() {
-  console.log("🧹 Starting cleanup of 'Cliente Teste'...");
-  // 1. Find the specific "Cliente Teste"
-  const testClients = await prisma.cliente.findMany({
-    where: {
-      pessoa_fisica: {
-        pessoa: {
-          nome: {
-            contains: "Teste",
-            mode: "insensitive",
-          },
-        },
-      },
-    },
-    select: {
-      id_cliente: true,
-      pessoa_fisica: {
-        select: {
-          id_pessoa_fisica: true,
-          id_pessoa: true,
-        },
-      },
-    },
-  });
-  console.log(`🎯 Found ${testClients.length} clients to remove.`);
-  for (const client of testClients) {
-    console.log(`Processing Client ID: ${client.id_cliente}`);
-    // Find OS IDs
-    const osList = await prisma.ordemDeServico.findMany({
-      where: { id_cliente: client.id_cliente },
-      select: { id_os: true },
-    });
-    const osIds = osList.map((os) => os.id_os);
-    console.log(`- Found ${osIds.length} related OSs.`);
-    if (osIds.length > 0) {
-      // Delete OS Relations
-      await prisma.fechamentoFinanceiro.deleteMany({
-        where: { id_os: { in: osIds } },
-      });
-      await prisma.servicoMaoDeObra.deleteMany({
-        where: { id_os: { in: osIds } },
-      });
-      // Delete PagamentoPeca (Linked to ItensOs)
-      // First find items to find payments
-      const itensOs = await prisma.itensOs.findMany({
-        where: { id_os: { in: osIds } },
-        select: { id_iten: true },
-      });
-      const itemIds = itensOs.map((i) => i.id_iten);
-      if (itemIds.length > 0) {
-        await prisma.pagamentoPeca.deleteMany({
-          where: { id_item_os: { in: itemIds } },
-        });
-      }
-      await prisma.itensOs.deleteMany({ where: { id_os: { in: osIds } } });
-      await prisma.pagamentoCliente.deleteMany({
-        where: { id_os: { in: osIds } },
-      });
-      await prisma.recebivelCartao.deleteMany({
-        where: { id_os: { in: osIds } },
-      });
-      // Delete OSs
-      await prisma.ordemDeServico.deleteMany({
-        where: { id_os: { in: osIds } },
-      });
-      console.log(`- Deleted OSs.`);
-    }
-    // Delete Vehicles
-    await prisma.veiculo.deleteMany({
-      where: { id_cliente: client.id_cliente },
-    });
-    console.log(`- Deleted Vehicles.`);
-    // Delete Client
-    await prisma.cliente.delete({ where: { id_cliente: client.id_cliente } });
-    console.log(`- Deleted Cliente record.`);
-    // Delete Person Hierarchy if exists
-    if (client.pessoa_fisica) {
-      await prisma.pessoaFisica.delete({
-        where: { id_pessoa_fisica: client.pessoa_fisica.id_pessoa_fisica },
-      });
-      await prisma.pessoa.delete({
-        where: { id_pessoa: client.pessoa_fisica.id_pessoa },
-      });
-      console.log(`- Deleted Pessoa/PessoaFisica records.`);
-    }
-  }
-  console.log("✅ Cleanup complete.");
-}
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
 
 
 --- FILE: server\src\scripts\fix_financial_consistency.ts ---
@@ -49778,71 +49583,6 @@ export class NotificationService {
 
 
 --- FILE: server\src\services\OrdemDeServicoService.ts ---
-import { OrdemDeServicoRepository } from "../repositories/ordemDeServico.repository.js";
-import { OsStateMachine, OsStatus } from "../domain/os-state-machine.js";
-export class OrdemDeServicoService {
-  private repository: OrdemDeServicoRepository;
-  constructor() {
-    this.repository = new OrdemDeServicoRepository();
-  }
-  async create(data: any) {
-    // Verificando se é payload Unificado (com client, vehicle/equipamento, os)
-    if (data.client && (data.vehicle || data.equipamento) && data.os) {
-      if (data.os.status) OsStateMachine.validateInitialStatus(data.os.status);
-      return this.repository.createUnified(data);
-    }
-    // Payload Padrão (direto com IDs)
-    if (data.status) OsStateMachine.validateInitialStatus(data.status);
-    return this.repository.create(data);
-  }
-  async update(id: number, data: any) {
-    const currentOs = await this.repository.findById(id);
-    if (!currentOs) {
-      throw new Error("Ordem de Serviço não encontrada");
-    }
-    // Validação de Transição e Imutabilidade
-    // Se data.status estiver presente, valida a transição.
-    // Se não, valida apenas a regra de imutabilidade (não pode editar se FINALIZADA).
-    const nextStatus = data.status ? (data.status as OsStatus) : undefined;
-    OsStateMachine.validateTransition(currentOs.status as OsStatus, nextStatus);
-    // 3. Lógica de Estoque (Moved from Controller)
-    const oldStatus = currentOs.status as OsStatus;
-    if (nextStatus && nextStatus !== oldStatus) {
-      const closedStatuses = [OsStatus.FINANCEIRO, OsStatus.FINALIZADA];
-      const isClosing = closedStatuses.includes(nextStatus);
-      const wasClosed = closedStatuses.includes(oldStatus);
-      // Se movendo para status de fechamento (e não estava fechado) -> DEDUZIR
-      if (isClosing && !wasClosed) {
-        await this.repository.adjustStockForOS(id, "DEDUCT");
-      }
-      // Se voltando para aberto (e estava fechado) -> DEVOLVER
-      else if (!isClosing && wasClosed) {
-        await this.repository.adjustStockForOS(id, "RETURN");
-      }
-    }
-    // Delega para o repositório
-    return this.repository.update(id, data);
-  }
-  async findAll(filters: any) {
-    return this.repository.findAll(filters?.search);
-  }
-  async findById(id: number, includeInternal: boolean = false) {
-    return this.repository.findById(id, includeInternal);
-  }
-  async findByVehicleId(vehicleId: number) {
-    return this.repository.findByVehicleId(vehicleId);
-  }
-  async delete(id: number) {
-    const currentOs = await this.repository.findById(id);
-    if (currentOs && currentOs.status === OsStatus.FINALIZADA) {
-      throw new Error("Não é possível excluir uma OS Finalizada.");
-    }
-    return this.repository.delete(id);
-  }
-}
-
-
---- FILE: server\src\services\RelatoriosService.ts ---
 import { prisma } from "../prisma.js";
 import {
   startOfDay,

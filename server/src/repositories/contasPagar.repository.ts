@@ -518,38 +518,79 @@ export class ContasPagarRepository {
   async findNfsPendentes(params?: { search?: string; skip?: number; take?: number }) {
     const { search, skip, take } = params || {};
     
-    const whereClause: any = {
-      nf_numero: { not: null },
-      status: { not: "PAGO" },
-      deleted_at: null,
-    };
-
-    if (search) {
-      whereClause.nf_numero = { contains: search, mode: "insensitive" };
-    }
-
-    const nfs = await prisma.contasPagar.findMany({
-      where: whereClause,
-      distinct: ["nf_numero"],
+    const contas = await prisma.contasPagar.findMany({
+      where: {
+        nf_numero: { not: null },
+        deleted_at: null,
+        ...(search ? { nf_numero: { contains: search, mode: "insensitive" } } : {})
+      },
       select: {
         nf_numero: true,
         credor: true,
         valor: true,
-      },
-      skip: skip,
-      take: take,
+        status: true,
+      }
     });
 
-    const countQuery = await prisma.contasPagar.findMany({
-      where: whereClause,
+    const nfMap = new Map<string, { nf_numero: string, credor: string, valor: number, isPendente: boolean }>();
+    
+    for (const c of contas) {
+      if (!c.nf_numero) continue;
+      if (!nfMap.has(c.nf_numero)) {
+         nfMap.set(c.nf_numero, {
+            nf_numero: c.nf_numero,
+            credor: c.credor || "",
+            valor: Number(c.valor),
+            isPendente: c.status !== "PAGO"
+         });
+      } else {
+         const existing = nfMap.get(c.nf_numero)!;
+         existing.valor += Number(c.valor);
+         if (c.status !== "PAGO") existing.isPendente = true;
+      }
+    }
+
+    const allNfs = Array.from(nfMap.keys());
+
+    const nfsInEstoque = await prisma.entradaEstoque.findMany({
+      where: {
+        OR: [
+          { nf_numero: { in: allNfs } },
+          { nota_fiscal: { in: allNfs } }
+        ]
+      },
+      select: { nf_numero: true, nota_fiscal: true }
+    });
+
+    const nfsInPecas = await prisma.pagamentoPeca.findMany({
+      where: { nf_numero: { in: allNfs } },
       distinct: ["nf_numero"],
       select: { nf_numero: true }
     });
     
-    return {
-      data: nfs,
-      total: countQuery.length
-    };
+    const setEstoque = new Set<string>();
+    for (const e of nfsInEstoque) {
+      if (e.nf_numero) setEstoque.add(e.nf_numero);
+      if (e.nota_fiscal) setEstoque.add(e.nota_fiscal);
+    }
+    for (const p of nfsInPecas) {
+      if (p.nf_numero) setEstoque.add(p.nf_numero);
+    }
+
+    const resultList = Array.from(nfMap.values()).filter(nf => {
+       return nf.isPendente || !setEstoque.has(nf.nf_numero);
+    });
+
+    const total = resultList.length;
+    // Quando take não é informado, retorna todos sem paginar
+    const paginated = take
+      ? resultList.slice(skip || 0, (skip || 0) + take)
+      : resultList.slice(skip || 0);
+
+    // Remove campo interno de controle antes de enviar ao cliente
+    const data = paginated.map(({ isPendente: _drop, ...nf }) => nf);
+
+    return { data, total };
   }
 
   // ── Rota B: Status de Sincronização da NF ──
