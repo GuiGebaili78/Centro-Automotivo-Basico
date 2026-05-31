@@ -45,7 +45,6 @@ services:
     volumes:
       - ./server:/app/server
       - /app/server/node_modules
-      - ./uploads:/app/server/uploads
     networks:
       - app-network
     logging:

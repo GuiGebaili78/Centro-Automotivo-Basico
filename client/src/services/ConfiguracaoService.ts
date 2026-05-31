@@ -26,22 +26,14 @@ export const ConfiguracaoService = {
   },
 
   save: async (formData: FormData): Promise<Configuracao> => {
-    const response = await axios.post(`${API_BASE}/configuracao`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await axios.post(`${API_BASE}/configuracao`, formData);
     return response.data;
   },
 
   uploadLogoImpressao: async (file: File): Promise<Configuracao> => {
     const formData = new FormData();
     formData.append("logoImpressao", file);
-    const response = await axios.post(`${API_BASE}/configuracao/upload-logo-impressao`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await axios.post(`${API_BASE}/configuracao/upload-logo-impressao`, formData);
     return response.data;
   },
 };

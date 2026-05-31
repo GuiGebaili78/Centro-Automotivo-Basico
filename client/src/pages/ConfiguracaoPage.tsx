@@ -187,12 +187,14 @@ export const ConfiguracaoPage = () => {
       data.append("smtpUser", formData.smtpUser || "");
       data.append("smtpPass", formData.smtpPass || "");
 
-      // Generate processed logo if there's a preview
-      if (logoPreview) {
+      // Generate processed logo if there's a preview and it's a new upload
+      if (logoPreview && isNewUpload) {
         const processedBlob = await generateProcessedLogo();
         if (processedBlob) {
           data.append("logo", processedBlob, "logo.png");
         }
+      } else if (!logoPreview) {
+        data.append("logoUrl", "");
       }
 
       const updatedConfig = await ConfiguracaoService.save(data);
