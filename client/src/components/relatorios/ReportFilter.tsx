@@ -8,12 +8,28 @@ import {
   endOfYear,
 } from "date-fns";
 import { Input, Button } from "../ui";
+import { CalendarDays } from "lucide-react";
+
+type GroupByOption = "month" | "quarter" | "semester" | "year";
+
+const GROUP_BY_LABELS: Record<GroupByOption, string> = {
+  month: "Mensal",
+  quarter: "Trimestral",
+  semester: "Semestral",
+  year: "Anual",
+};
 
 interface ReportFilterProps {
   onFilterChange: (startDate: string, endDate: string) => void;
+  groupBy: GroupByOption;
+  onGroupByChange: (g: GroupByOption) => void;
 }
 
-export const ReportFilter = ({ onFilterChange }: ReportFilterProps) => {
+export const ReportFilter = ({
+  onFilterChange,
+  groupBy,
+  onGroupByChange,
+}: ReportFilterProps) => {
   const [startDate, setStartDate] = useState(
     format(startOfMonth(new Date()), "yyyy-MM-dd"),
   );
@@ -71,61 +87,100 @@ export const ReportFilter = ({ onFilterChange }: ReportFilterProps) => {
     { key: "thisYear", label: "Este Ano" },
   ];
 
+  const currentYear = new Date().getFullYear();
+
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-neutral-100 flex flex-wrap gap-4 items-center justify-between">
-      <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-        {presets.map((p) => (
-          <button
-            key={p.key}
-            onClick={() => handlePreset(p.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-              activePreset === p.key
-                ? "bg-primary-50 text-primary-600 ring-1 ring-primary-200"
-                : "text-neutral-600 hover:bg-neutral-50"
+    <div className="bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden">
+      {/* Linha 1: Presets de data + inputs manuais */}
+      <div className="p-4 flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
+          {presets.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => handlePreset(p.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                activePreset === p.key
+                  ? "bg-primary-50 text-primary-600 ring-1 ring-primary-200"
+                  : "text-neutral-600 hover:bg-neutral-50"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap sm:flex-nowrap items-end gap-3 border-l-0 sm:border-l pl-0 sm:pl-4 border-neutral-200 w-full sm:w-auto">
+          <div className="w-full sm:w-[150px]">
+            <Input
+              label="Início"
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setActivePreset("custom");
+              }}
+            />
+          </div>
+          <span className="text-neutral-300 hidden sm:inline mb-3">→</span>
+          <div className="w-full sm:w-[150px]">
+            <Input
+              label="Fim"
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setActivePreset("custom");
+              }}
+            />
+          </div>
+
+          <Button
+            onClick={handleApply}
+            variant="primary"
+            disabled={activePreset !== "custom"}
+            className={`h-11 px-6 w-full sm:w-auto shrink-0 ${
+              activePreset !== "custom"
+                ? "!bg-neutral-100 !text-neutral-400 !border-neutral-200 cursor-not-allowed shadow-none"
+                : "shadow-md shadow-primary-500/10"
             }`}
           >
-            {p.label}
-          </button>
-        ))}
+            Filtrar
+          </Button>
+        </div>
       </div>
 
-      <div className="flex flex-wrap sm:flex-nowrap items-end gap-3 border-l-0 sm:border-l pl-0 sm:pl-4 border-neutral-200 w-full sm:w-auto">
-        <div className="w-full sm:w-[150px]">
-          <Input
-            label="Início"
-            type="date"
-            value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              setActivePreset("custom");
-            }}
-          />
-        </div>
-        <span className="text-neutral-300 hidden sm:inline mb-3">→</span>
-        <div className="w-full sm:w-[150px]">
-          <Input
-            label="Fim"
-            type="date"
-            value={endDate}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              setActivePreset("custom");
-            }}
-          />
+      {/* Linha 2: Agrupamento do Ano Vigente */}
+      <div className="px-4 py-3 border-t border-neutral-100 bg-neutral-50/60 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays size={15} className="text-neutral-400" />
+          <span className="text-xs font-semibold text-neutral-500 uppercase tracking-widest">
+            Agrupamento
+          </span>
+          <span className="text-xs font-bold bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
+            {currentYear}
+          </span>
         </div>
 
-        <Button
-          onClick={handleApply}
-          variant="primary"
-          disabled={activePreset !== "custom"}
-          className={`h-11 px-6 w-full sm:w-auto shrink-0 ${
-            activePreset !== "custom"
-              ? "!bg-neutral-100 !text-neutral-400 !border-neutral-200 cursor-not-allowed shadow-none"
-              : "shadow-md shadow-primary-500/10"
-          }`}
-        >
-          Filtrar
-        </Button>
+        <div className="flex bg-white p-0.5 rounded-lg border border-neutral-200 gap-0.5">
+          {(Object.keys(GROUP_BY_LABELS) as GroupByOption[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onGroupByChange(key)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
+                groupBy === key
+                  ? "bg-primary-50 text-primary-700 ring-1 ring-primary-200 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-50"
+              }`}
+            >
+              {GROUP_BY_LABELS[key]}
+            </button>
+          ))}
+        </div>
+
+        <span className="text-xs text-neutral-400 hidden sm:inline">
+          → Afeta apenas o gráfico de Evolução Financeira
+        </span>
       </div>
     </div>
   );

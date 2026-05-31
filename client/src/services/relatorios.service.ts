@@ -64,9 +64,17 @@ export const RelatoriosService = {
     startDate: string,
     endDate: string,
     type: "categoria" | "subcategoria",
+    categoriaId?: number,
+    subcategoriaId?: number,
   ): Promise<TimelineDespesasResponse> => {
     const response = await api.get("/relatorios/despesas-temporal", {
-      params: { startDate, endDate, type },
+      params: {
+        startDate,
+        endDate,
+        type,
+        ...(categoriaId !== undefined && { categoriaId }),
+        ...(subcategoriaId !== undefined && { subcategoriaId }),
+      },
     });
     return response.data;
   },

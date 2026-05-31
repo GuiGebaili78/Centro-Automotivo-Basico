@@ -82,8 +82,20 @@ export class RelatoriosService {
   /**
    * Evolução de Despesas Temporal baseada em Categoria/Subcategoria e filtro global de datas
    */
-  async getEvolucaoDespesasTemporal(startDate: Date, endDate: Date, type: "categoria" | "subcategoria") {
-    return await relatoriosRepository.getEvolucaoDespesasTemporal(startDate, endDate, type);
+  async getEvolucaoDespesasTemporal(
+    startDate: Date,
+    endDate: Date,
+    type: "categoria" | "subcategoria",
+    categoriaId?: number,
+    subcategoriaId?: number
+  ) {
+    return await relatoriosRepository.getEvolucaoDespesasTemporal(
+      startDate,
+      endDate,
+      type,
+      categoriaId,
+      subcategoriaId
+    );
   }
 
   /**

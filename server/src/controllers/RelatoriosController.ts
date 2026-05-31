@@ -112,7 +112,7 @@ export class RelatoriosController {
 
   async getEvolucaoDespesasTemporal(req: Request, res: Response) {
     try {
-      const { startDate, endDate, type } = req.query;
+      const { startDate, endDate, type, categoriaId, subcategoriaId } = req.query;
 
       if (!startDate || !endDate) {
         return res
@@ -123,11 +123,15 @@ export class RelatoriosController {
       const start = new Date((startDate as string) + "T00:00:00");
       const end = new Date((endDate as string) + "T23:59:59");
       const groupType = (type as "categoria" | "subcategoria") || "categoria";
+      const catId = categoriaId ? parseInt(categoriaId as string, 10) : undefined;
+      const subCatId = subcategoriaId ? parseInt(subcategoriaId as string, 10) : undefined;
 
       const data = await relatoriosService.getEvolucaoDespesasTemporal(
         start,
         end,
-        groupType
+        groupType,
+        catId,
+        subCatId
       );
       return res.json(data);
     } catch (error) {

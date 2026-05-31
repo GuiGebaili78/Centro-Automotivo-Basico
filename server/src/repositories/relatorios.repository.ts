@@ -523,12 +523,31 @@ export class RelatoriosRepository {
   async getEvolucaoDespesasTemporal(
     startDate: Date,
     endDate: Date,
-    type: "categoria" | "subcategoria"
+    type: "categoria" | "subcategoria",
+    categoriaId?: number,
+    subcategoriaId?: number
   ) {
     const start = startOfDay(startDate);
     const end = endOfDay(endDate);
 
-    // Busca contas a pagar no período
+    // Monta filtro condicional de categoria para o Prisma
+    let categoriaWhere: any = {};
+    if (subcategoriaId !== undefined) {
+      // Filtro exato: apenas esta subcategoria
+      categoriaWhere = { id_categoria_financeira: subcategoriaId };
+    } else if (categoriaId !== undefined) {
+      // Filtro em árvore: categoria raiz OU qualquer filho direto
+      categoriaWhere = {
+        categoria_financeira: {
+          OR: [
+            { id_categoria_financeira: categoriaId },
+            { id_parent: categoriaId },
+          ],
+        },
+      };
+    }
+
+    // Busca contas a pagar no período com filtro de categoria
     const contas = await prisma.contasPagar.findMany({
       where: {
         OR: [
@@ -542,24 +561,28 @@ export class RelatoriosRepository {
           },
         ],
         deleted_at: null,
+        ...categoriaWhere,
       },
       include: { categoria_financeira: { include: { parent: true } } },
     });
 
-    // Exclui contas referentes a auto peças
-    const contasFiltradas = contas.filter((c) => {
-      const catName = fixEncoding(
-        c.categoria || c.categoria_financeira?.nome || "Sem Categoria"
-      );
-      const nameLower = catName.toLowerCase();
-      const isFornecedorOrAutoPecas =
-        nameLower.startsWith("auto pecas") ||
-        nameLower.startsWith("auto peças") ||
-        CATEGORIAS_FORNECEDOR.includes(catName);
-      return !isFornecedorOrAutoPecas;
-    });
+    // Exclui contas referentes a auto peças (apenas quando sem filtro de categoria específico)
+    const contasFiltradas =
+      categoriaId !== undefined || subcategoriaId !== undefined
+        ? contas
+        : contas.filter((c) => {
+            const catName = fixEncoding(
+              c.categoria || c.categoria_financeira?.nome || "Sem Categoria"
+            );
+            const nameLower = catName.toLowerCase();
+            const isFornecedorOrAutoPecas =
+              nameLower.startsWith("auto pecas") ||
+              nameLower.startsWith("auto peças") ||
+              CATEGORIAS_FORNECEDOR.includes(catName);
+            return !isFornecedorOrAutoPecas;
+          });
 
-    // Gera buckets baseados em meses dentro do período solicitado
+    // Gera buckets mensais dentro do período
     const buckets: { start: Date; end: Date; label: string }[] = [];
     let current = startOfMonth(start);
     const limit = endOfMonth(end);
