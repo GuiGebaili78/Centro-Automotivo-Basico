@@ -1,4 +1,4 @@
-PROJECT DUMP - 31/05/2026 08:27
+PROJECT DUMP - 31/05/2026 10:27
 =========================================
 
 --- FILE: client_logs.txt ---
@@ -195,7 +195,6 @@ services:
     volumes:
       - ./server:/app/server
       - /app/server/node_modules
-      - ./uploads:/app/server/uploads
     networks:
       - app-network
     logging:
@@ -1993,362 +1992,6 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
 };
 
 
---- FILE: client\src\components\clientes\Forms\ClienteFormSection.tsx ---
-/**
- * ClienteFormSection
- *
- * Responsabilidades:
- *  - Gerenciar o estado interno de TODOS os campos do cliente.
- *  - Expor `getData()` via useImperativeHandle para que a página pai
- *    colete os dados SOMENTE no momento do submit (sem prop drilling de state).
- *  - Usar React.memo + forwardRef, eliminando re-renderizações causadas
- *    pelo estado de componentes irmãos (ex: VeiculoFormSection).
- *
- * Padrão adoptado: estado totalmente local + imperativeHandle (pull on submit)
- */
-import {
-  memo,
-  useState,
-  useImperativeHandle,
-  forwardRef,
-  useCallback,
-  useEffect,
-} from "react";
-import {
-  User,
-  Phone,
-  Mail,
-  Search,
-  MapPin,
-  Building2,
-  Hash,
-} from "lucide-react";
-import { Input } from "../../ui/Input";
-import { formatCpf, formatCnpj, formatCep, formatPhone, unmask, formatIE } from "../../../utils/normalize";
-// ─── Types ────────────────────────────────────────────────────────────────────
-export interface ClienteFormData {
-  tipoPessoa: "PF" | "PJ";
-  nome: string;
-  cpf: string;
-  razaoSocial: string;
-  nomeFantasia: string;
-  cnpj: string;
-  ie: string;
-  telefone: string;
-  telefone2: string;
-  email: string;
-  cep: string;
-  logradouro: string;
-  numero: string;
-  complLogradouro: string;
-  bairro: string;
-  cidade: string;
-  estado: string;
-}
-export interface ClienteFormSectionRef {
-  getData: () => ClienteFormData;
-}
-interface ClienteFormSectionProps {
-  /** Dados iniciais (edição). Em modo criação, pode ser omitido. */
-  initialData?: Partial<ClienteFormData>;
-  /** Em modo de edição, campos do nome/tipo ficam desabilitados. */
-  isEditMode?: boolean;
-  /** Ref para o input "nome" principal para autoFocus no modo criação. */
-  nameInputRef?: React.RefObject<HTMLInputElement | null>;
-}
-// ─── Component ────────────────────────────────────────────────────────────────
-export const ClienteFormSection = memo(
-  forwardRef<ClienteFormSectionRef, ClienteFormSectionProps>(
-    ({ initialData, isEditMode = false, nameInputRef }, ref) => {
-      // ── Local state (não sobe para o pai até o submit) ──
-      const [tipoPessoa, setTipoPessoa] = useState<"PF" | "PJ">(
-        initialData?.tipoPessoa ?? "PF",
-      );
-      const [nome, setNome] = useState(initialData?.nome ?? "");
-      const [cpf, setCpf] = useState(initialData?.cpf ?? "");
-      const [razaoSocial, setRazaoSocial] = useState(
-        initialData?.razaoSocial ?? "",
-      );
-      const [nomeFantasia, setNomeFantasia] = useState(
-        initialData?.nomeFantasia ?? "",
-      );
-      const [cnpj, setCnpj] = useState(initialData?.cnpj ?? "");
-      const [ie, setIe] = useState(initialData?.ie ?? "");
-      const [telefone, setTelefone] = useState(initialData?.telefone ?? "");
-      const [telefone2, setTelefone2] = useState(initialData?.telefone2 ?? "");
-      const [email, setEmail] = useState(initialData?.email ?? "");
-      const [cep, setCep] = useState(initialData?.cep ?? "");
-      const [logradouro, setLogradouro] = useState(
-        initialData?.logradouro ?? "",
-      );
-      const [numero, setNumero] = useState(initialData?.numero ?? "");
-      const [complLogradouro, setComplLogradouro] = useState(
-        initialData?.complLogradouro ?? "",
-      );
-      const [bairro, setBairro] = useState(initialData?.bairro ?? "");
-      const [cidade, setCidade] = useState(initialData?.cidade ?? "São Paulo");
-      const [estado, setEstado] = useState(initialData?.estado ?? "SP");
-      // Sincroniza quando os dados iniciais chegam (modo edição assíncrono)
-      useEffect(() => {
-        if (!initialData) return;
-        if (initialData.tipoPessoa) setTipoPessoa(initialData.tipoPessoa);
-        if (initialData.nome !== undefined) setNome(initialData.nome);
-        if (initialData.cpf !== undefined) setCpf(initialData.cpf);
-        if (initialData.razaoSocial !== undefined)
-          setRazaoSocial(initialData.razaoSocial);
-        if (initialData.nomeFantasia !== undefined)
-          setNomeFantasia(initialData.nomeFantasia);
-        if (initialData.cnpj !== undefined) setCnpj(initialData.cnpj);
-        if (initialData.ie !== undefined) setIe(initialData.ie);
-        if (initialData.telefone !== undefined)
-          setTelefone(initialData.telefone);
-        if (initialData.telefone2 !== undefined)
-          setTelefone2(initialData.telefone2);
-        if (initialData.email !== undefined) setEmail(initialData.email);
-        if (initialData.cep !== undefined) setCep(initialData.cep);
-        if (initialData.logradouro !== undefined)
-          setLogradouro(initialData.logradouro);
-        if (initialData.numero !== undefined) setNumero(initialData.numero);
-        if (initialData.complLogradouro !== undefined)
-          setComplLogradouro(initialData.complLogradouro);
-        if (initialData.bairro !== undefined) setBairro(initialData.bairro);
-        if (initialData.cidade !== undefined) setCidade(initialData.cidade);
-        if (initialData.estado !== undefined) setEstado(initialData.estado);
-        // Dependência intencional: só roda quando initialData mudar de referência
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [initialData]);
-      // ── Expõe getData() para a página pai ──
-      useImperativeHandle(
-        ref,
-        () => ({
-          getData: () => ({
-            tipoPessoa,
-            nome,
-            cpf: unmask(cpf),
-            razaoSocial,
-            nomeFantasia,
-            cnpj: unmask(cnpj),
-            ie,
-            telefone: unmask(telefone),
-            telefone2: unmask(telefone2),
-            email,
-            cep: unmask(cep),
-            logradouro,
-            numero,
-            complLogradouro,
-            bairro,
-            cidade,
-            estado,
-          }),
-        }),
-        [
-          tipoPessoa,
-          nome,
-          cpf,
-          razaoSocial,
-          nomeFantasia,
-          cnpj,
-          ie,
-          telefone,
-          telefone2,
-          email,
-          cep,
-          logradouro,
-          numero,
-          complLogradouro,
-          bairro,
-          cidade,
-          estado,
-        ],
-      );
-      // ── Busca de CEP ViaCEP ──
-      const handleCepBlur = useCallback(async () => {
-        const cepRaw = cep.replace(/\D/g, "");
-        if (cepRaw.length !== 8) return;
-        try {
-          const res = await fetch(`https://viacep.com.br/ws/${cepRaw}/json/`);
-          const data = await res.json();
-          if (!data.erro) {
-            setLogradouro(data.logradouro ?? "");
-            setBairro(data.bairro ?? "");
-            setCidade(data.localidade ?? "");
-            setEstado(data.uf ?? "");
-            // Foca no campo "Número" após autocomplete
-            document.getElementById("nr_logradouro")?.focus();
-          }
-        } catch {
-          // silently fail — user can fill manually
-        }
-      }, [cep]);
-      // ─── Render ───────────────────────────────────────────────────────────
-      return (
-        <div className="bg-neutral-25 p-6 rounded-2xl border border-neutral-200 shadow-sm space-y-6">
-          {/* Header */}
-          <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
-            <div className="bg-primary-100 p-2 rounded-lg text-primary-600">
-              <User size={20} />
-            </div>
-            <h2 className="font-bold text-lg text-neutral-800">
-              Dados do Cliente
-            </h2>
-          </div>
-          {/* Tipo Pessoa Toggle */}
-          <div className="flex bg-neutral-100 p-1 rounded-lg w-fit">
-            {(["PF", "PJ"] as const).map((tipo) => (
-              <button
-                key={tipo}
-                type="button"
-                disabled={isEditMode}
-                onClick={() => !isEditMode && setTipoPessoa(tipo)}
-                className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${
-                  tipoPessoa === tipo
-                    ? "bg-neutral-25 shadow text-primary-600"
-                    : "text-neutral-500"
-                } ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                {tipo === "PF" ? "Pessoa Física" : "Pessoa Jurídica"}
-              </button>
-            ))}
-          </div>
-          {/* Campos de identificação (PF / PJ) */}
-          <div className="grid grid-cols-1 gap-4">
-            {tipoPessoa === "PF" ? (
-              <>
-                <Input
-                  label="Nome Completo *"
-                  icon={User}
-                  ref={nameInputRef as React.Ref<HTMLInputElement>}
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Nome do cliente"
-                  required
-                />
-                <Input
-                  label="CPF"
-                  icon={Hash}
-                  value={cpf}
-                  onChange={(e) => setCpf(formatCpf(e.target.value))}
-                  placeholder="000.000.000-00"
-                  disabled={isEditMode}
-                />
-              </>
-            ) : (
-              <>
-                <Input
-                  label="Razão Social *"
-                  icon={Building2}
-                  ref={nameInputRef as React.Ref<HTMLInputElement>}
-                  value={razaoSocial}
-                  onChange={(e) => setRazaoSocial(e.target.value)}
-                  placeholder="Nome da Empresa"
-                  required
-                />
-                <Input
-                  label="Nome Fantasia"
-                  value={nomeFantasia}
-                  onChange={(e) => setNomeFantasia(e.target.value)}
-                  placeholder="Nome Comercial"
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="CNPJ"
-                    value={cnpj}
-                    onChange={(e) => setCnpj(formatCnpj(e.target.value))}
-                    placeholder="00.000.000/0000-00"
-                  />
-                  <Input
-                    label="IE"
-                    value={ie}
-                    onChange={(e) => setIe(formatIE(e.target.value))}
-                    placeholder="IE Isento ou Número (ex: 123.456.789)"
-                  />
-                </div>
-              </>
-            )}
-          </div>
-          {/* Contato */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-100">
-            <Input
-              label="Telefone Principal *"
-              icon={Phone}
-              value={telefone}
-              onChange={(e) => setTelefone(formatPhone(e.target.value))}
-              placeholder="(00) 00000-0000"
-              required
-            />
-            <Input
-              label="Telefone 2"
-              icon={Phone}
-              value={telefone2}
-              onChange={(e) => setTelefone2(formatPhone(e.target.value))}
-              placeholder="(00) 00000-0000"
-            />
-            <div className="sm:col-span-2">
-              <Input
-                label="Email"
-                icon={Mail}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="cliente@email.com"
-              />
-            </div>
-          </div>
-          {/* Endereço */}
-          <div className="space-y-4 pt-4 border-t border-neutral-100">
-            <div className="grid grid-cols-3 gap-4">
-              <Input
-                label="CEP"
-                icon={Search}
-                value={cep}
-                onChange={(e) => setCep(formatCep(e.target.value))}
-                onBlur={handleCepBlur}
-                placeholder="00000-000"
-              />
-              <div className="col-span-2">
-                <Input
-                  label="Logradouro"
-                  icon={MapPin}
-                  value={logradouro}
-                  onChange={(e) => setLogradouro(e.target.value)}
-                />
-              </div>
-              <Input
-                id="nr_logradouro"
-                label="Número"
-                value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-              />
-              <div className="col-span-2">
-                <Input
-                  label="Complemento"
-                  value={complLogradouro}
-                  onChange={(e) => setComplLogradouro(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Bairro"
-                value={bairro}
-                onChange={(e) => setBairro(e.target.value)}
-              />
-              <Input
-                label="Cidade"
-                value={cidade}
-                onChange={(e) => setCidade(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-      );
-    },
-  ),
-);
-ClienteFormSection.displayName = "ClienteFormSection";
-
-
---- FILE: client\src\components\clientes\Forms\EquipamentoFormSection.tsx ---
 /**
  * EquipamentoFormSection
  * 
@@ -4155,7 +3798,6 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
 };
 
 
---- FILE: client\src\components\dashboard\UnifiedSearch.tsx ---
 /**
  * UnifiedSearch
  *
@@ -8407,6 +8049,7 @@ export const ModalPagamentoUnificado: React.FC<
 };
 
 
+--- FILE: client\src\components\financeiro\MovimentacoesTab.tsx ---
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { FinanceiroService } from "../../services/financeiro.service";
@@ -9897,6 +9540,8 @@ export const OperadorasTab = () => {
     </div>
   );
 };
+
+
 --- FILE: client\src\components\financeiro\PagamentoColaboradoresTab.tsx ---
 import { useState, useMemo, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
@@ -14768,7 +14413,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             Nenhum serviço de mão de obra lançado.
           </div>
         ) : (
-          <table className="tabela-limpa w-full text-left">
+          <table className="tabela-limpa w-full text-left border-separate border-spacing-y-2">
             <thead>
               <tr>
                 <th className="w-[30%] pl-6">Profissional</th>
@@ -14781,10 +14426,10 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             <tbody className="divide-y divide-neutral-50">
               {laborServices.map((svc) => (
                 <tr
-                  className="bg-green-200 hover:[&>td]:!bg-green-200 print:bg-transparent transition-colors group"
+                  className="group !bg-green-100 [&>td]:!bg-green-100 hover:[&>td]:!bg-green-100 [&>td]:border-t [&>td]:border-b [&>td]:!border-green-300 [&>td:first-child]:border-l [&>td:last-child]:border-r transition-none border-b-0 print:bg-transparent print:[&>td]:border-transparent"
                   key={svc.id_servico_mao_de_obra || svc.id_temporary}
                 >
-                  <td className="pl-6 py-3 text-base text-gray-900">
+                  <td className="pl-6 py-3 text-base text-gray-900 first:rounded-l-lg last:rounded-r-lg">
                     {svc.funcionario?.pessoa_fisica?.pessoa?.nome ||
                       employees.find(
                         (e) =>
@@ -14793,7 +14438,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                       )?.pessoa_fisica?.pessoa?.nome ||
                       "Mecânico"}
                   </td>
-                  <td className="py-3 text-center">
+                  <td className="py-3 text-center first:rounded-l-lg last:rounded-r-lg">
                     {svc.categoria === "ELETRICA" ? (
                       <span className="text-xs font-bold bg-yellow-100 text-yellow-700 px-2 py-1 rounded-md uppercase tracking-wide border border-yellow-200">
                         Elétrica
@@ -14804,13 +14449,13 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                       </span>
                     )}
                   </td>
-                  <td className="py-3 text-base text-gray-900">
+                  <td className="py-3 text-base text-gray-900 first:rounded-l-lg last:rounded-r-lg">
                     {svc.descricao || "-"}
                   </td>
-                  <td className="py-3 text-right text-base text-gray-900">
+                  <td className="py-3 text-right text-base text-gray-900 first:rounded-l-lg last:rounded-r-lg">
                     {formatCurrency(Number(svc.valor))}
                   </td>
-                  <td className="py-3 text-center">
+                  <td className="py-3 text-center first:rounded-l-lg last:rounded-r-lg">
                     {!readOnly && (
                       <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <ActionButton
@@ -16389,7 +16034,7 @@ export const OsDiagnosis = ({
           DEFEITO RELATADO (IMPRESSÃO PARA O CLIENTE)
         </label>
         <textarea
-          className="w-full bg-green-200 border border-green-400 text-emerald-950 p-3 rounded-xl text-base h-32 outline-none resize-none transition-all focus:shadow-sm placeholder:text-gray-400 print:bg-transparent print:text-black placeholder-shown:bg-neutral-25 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900 placeholder-shown:focus:border-red-300 placeholder-shown:focus:bg-neutral-25"
+          className="w-full bg-green-100 border border-green-300 text-emerald-950 p-3 rounded-xl text-base h-32 outline-none resize-none transition-all focus:shadow-sm placeholder:text-gray-400 print:bg-transparent print:text-black placeholder-shown:bg-neutral-25 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900 placeholder-shown:focus:border-red-300 placeholder-shown:focus:bg-neutral-25"
           placeholder="Descreva o defeito..."
           value={defeitoRelatado || ""}
           onChange={(e) => onChangeDefeito(e.target.value)}
@@ -16404,7 +16049,7 @@ export const OsDiagnosis = ({
           DIAGNÓSTICO (APENAS INFORMAÇÕES INTERNAS DA OFICINA)
         </label>
         <textarea
-          className="w-full bg-green-200 border border-green-400 text-emerald-950 p-3 rounded-xl text-base h-32 outline-none resize-none transition-all focus:shadow-sm placeholder:text-gray-400 print:bg-transparent print:text-black placeholder-shown:bg-neutral-25 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900 placeholder-shown:focus:border-neutral-200 placeholder-shown:focus:bg-neutral-25"
+          className="w-full bg-green-100 border border-green-300 text-emerald-950 p-3 rounded-xl text-base h-32 outline-none resize-none transition-all focus:shadow-sm placeholder:text-gray-400 print:bg-transparent print:text-black placeholder-shown:bg-neutral-25 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900 placeholder-shown:focus:border-neutral-200 placeholder-shown:focus:bg-neutral-25"
           placeholder="Insira detalhes adicionais..."
           value={diagnostico || ""}
           onChange={(e) => onChangeDiagnostico(e.target.value)}
@@ -16494,6 +16139,9 @@ export const OsHeader = ({
     </div>
   );
 };
+
+
+--- FILE: client\src\components\os\OsHeaderCard.tsx ---
 import {
   ArrowLeft,
   Printer,
@@ -16726,7 +16374,7 @@ export const OsHeaderCard = ({
               onChange={(e) =>
                 updateOSField("km_entrada", e.target.value === "" ? null : Number(e.target.value))
               }
-              className="!py-2 !px-3 !text-base !font-bold bg-green-200 border-green-400 text-emerald-950 print:bg-transparent print:text-black placeholder-shown:bg-neutral-50 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900"
+              className="!py-2 !px-3 !text-base !font-bold !bg-green-100 border-green-300 text-emerald-950 print:bg-transparent print:text-black placeholder-shown:!bg-neutral-50 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900"
             />
             <span className="text-xs font-bold text-gray-400 uppercase">
               KM
@@ -17185,7 +16833,7 @@ export const OsItemsTable = ({
 }: OsItemsTableProps) => {
   return (
     <Card className="p-0 overflow-hidden">
-      <table className="tabela-limpa w-full">
+      <table className="tabela-limpa w-full border-separate border-spacing-y-2">
         <thead>
           <tr>
             <th className="w-[40%] text-left pl-6">Item</th>
@@ -17202,9 +16850,9 @@ export const OsItemsTable = ({
             .map((item) => (
               <tr
                 key={item.id_iten}
-                className="bg-green-200 hover:[&>td]:!bg-green-200 print:bg-transparent transition-colors group"
+                className="group !bg-green-100 [&>td]:!bg-green-100 hover:[&>td]:!bg-green-100 [&>td]:border-t [&>td]:border-b [&>td]:!border-green-300 [&>td:first-child]:border-l [&>td:last-child]:border-r transition-none border-b-0 print:bg-transparent print:[&>td]:border-transparent"
               >
-                <td className="pl-6 py-3">
+                <td className="pl-6 py-3 first:rounded-l-lg last:rounded-r-lg">
                   <div className="text-base text-gray-900 flex flex-wrap items-center gap-2">
                     {item.descricao}
                     {/* STATUS PAGO */}
@@ -17225,21 +16873,21 @@ export const OsItemsTable = ({
                     )}
                   </div>
                 </td>
-                <td className="py-3">
+                <td className="py-3 first:rounded-l-lg last:rounded-r-lg">
                   <div className="text-sm text-neutral-400 font-black font-mono px-2 py-0.5 rounded-md w-fit">
                     {item.codigo_referencia || "-"}
                   </div>
                 </td>
-                <td className="text-center text-base text-gray-900 py-3">
+                <td className="text-center text-base text-gray-900 py-3 first:rounded-l-lg last:rounded-r-lg">
                   {item.quantidade}
                 </td>
-                <td className="text-center text-base text-gray-600 py-3">
+                <td className="text-center text-base text-gray-600 py-3 first:rounded-l-lg last:rounded-r-lg">
                   {formatCurrency(Number(item.valor_venda))}
                 </td>
-                <td className="text-center text-base text-gray-900 py-3">
+                <td className="text-center text-base text-gray-900 py-3 first:rounded-l-lg last:rounded-r-lg">
                   {formatCurrency(Number(item.valor_total))}
                 </td>
-                <td className="text-right pr-4 py-3">
+                <td className="text-right pr-4 py-3 first:rounded-l-lg last:rounded-r-lg">
                   {!isLocked && (
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* Lock actions if paid */}
@@ -18871,10 +18519,24 @@ import {
   endOfYear,
 } from "date-fns";
 import { Input, Button } from "../ui";
+import { CalendarDays } from "lucide-react";
+type GroupByOption = "month" | "quarter" | "semester" | "year";
+const GROUP_BY_LABELS: Record<GroupByOption, string> = {
+  month: "Mensal",
+  quarter: "Trimestral",
+  semester: "Semestral",
+  year: "Anual",
+};
 interface ReportFilterProps {
   onFilterChange: (startDate: string, endDate: string) => void;
+  groupBy: GroupByOption;
+  onGroupByChange: (g: GroupByOption) => void;
 }
-export const ReportFilter = ({ onFilterChange }: ReportFilterProps) => {
+export const ReportFilter = ({
+  onFilterChange,
+  groupBy,
+  onGroupByChange,
+}: ReportFilterProps) => {
   const [startDate, setStartDate] = useState(
     format(startOfMonth(new Date()), "yyyy-MM-dd"),
   );
@@ -18924,59 +18586,94 @@ export const ReportFilter = ({ onFilterChange }: ReportFilterProps) => {
     { key: "last6Months", label: "Últimos 6 Meses" },
     { key: "thisYear", label: "Este Ano" },
   ];
+  const currentYear = new Date().getFullYear();
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-neutral-100 flex flex-wrap gap-4 items-center justify-between">
-      <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-        {presets.map((p) => (
-          <button
-            key={p.key}
-            onClick={() => handlePreset(p.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-              activePreset === p.key
-                ? "bg-primary-50 text-primary-600 ring-1 ring-primary-200"
-                : "text-neutral-600 hover:bg-neutral-50"
+    <div className="bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden">
+      {/* Linha 1: Presets de data + inputs manuais */}
+      <div className="p-4 flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
+          {presets.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => handlePreset(p.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                activePreset === p.key
+                  ? "bg-primary-50 text-primary-600 ring-1 ring-primary-200"
+                  : "text-neutral-600 hover:bg-neutral-50"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap sm:flex-nowrap items-end gap-3 border-l-0 sm:border-l pl-0 sm:pl-4 border-neutral-200 w-full sm:w-auto">
+          <div className="w-full sm:w-[150px]">
+            <Input
+              label="Início"
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setActivePreset("custom");
+              }}
+            />
+          </div>
+          <span className="text-neutral-300 hidden sm:inline mb-3">→</span>
+          <div className="w-full sm:w-[150px]">
+            <Input
+              label="Fim"
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setActivePreset("custom");
+              }}
+            />
+          </div>
+          <Button
+            onClick={handleApply}
+            variant="primary"
+            disabled={activePreset !== "custom"}
+            className={`h-11 px-6 w-full sm:w-auto shrink-0 ${
+              activePreset !== "custom"
+                ? "!bg-neutral-100 !text-neutral-400 !border-neutral-200 cursor-not-allowed shadow-none"
+                : "shadow-md shadow-primary-500/10"
             }`}
           >
-            {p.label}
-          </button>
-        ))}
+            Filtrar
+          </Button>
+        </div>
       </div>
-      <div className="flex flex-wrap sm:flex-nowrap items-end gap-3 border-l-0 sm:border-l pl-0 sm:pl-4 border-neutral-200 w-full sm:w-auto">
-        <div className="w-full sm:w-[150px]">
-          <Input
-            label="Início"
-            type="date"
-            value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              setActivePreset("custom");
-            }}
-          />
+      {/* Linha 2: Agrupamento do Ano Vigente */}
+      <div className="px-4 py-3 border-t border-neutral-100 bg-neutral-50/60 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays size={15} className="text-neutral-400" />
+          <span className="text-xs font-semibold text-neutral-500 uppercase tracking-widest">
+            Agrupamento
+          </span>
+          <span className="text-xs font-bold bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
+            {currentYear}
+          </span>
         </div>
-        <span className="text-neutral-300 hidden sm:inline mb-3">→</span>
-        <div className="w-full sm:w-[150px]">
-          <Input
-            label="Fim"
-            type="date"
-            value={endDate}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              setActivePreset("custom");
-            }}
-          />
+        <div className="flex bg-white p-0.5 rounded-lg border border-neutral-200 gap-0.5">
+          {(Object.keys(GROUP_BY_LABELS) as GroupByOption[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onGroupByChange(key)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
+                groupBy === key
+                  ? "bg-primary-50 text-primary-700 ring-1 ring-primary-200 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-50"
+              }`}
+            >
+              {GROUP_BY_LABELS[key]}
+            </button>
+          ))}
         </div>
-        <Button
-          onClick={handleApply}
-          variant="primary"
-          disabled={activePreset !== "custom"}
-          className={`h-11 px-6 w-full sm:w-auto shrink-0 ${
-            activePreset !== "custom"
-              ? "!bg-neutral-100 !text-neutral-400 !border-neutral-200 cursor-not-allowed shadow-none"
-              : "shadow-md shadow-primary-500/10"
-          }`}
-        >
-          Filtrar
-        </Button>
+        <span className="text-xs text-neutral-400 hidden sm:inline">
+          → Afeta apenas o gráfico de Evolução Financeira
+        </span>
       </div>
     </div>
   );
@@ -24059,12 +23756,14 @@ export const ConfiguracaoPage = () => {
       data.append("smtpPort", String(formData.smtpPort || ""));
       data.append("smtpUser", formData.smtpUser || "");
       data.append("smtpPass", formData.smtpPass || "");
-      // Generate processed logo if there's a preview
-      if (logoPreview) {
+      // Generate processed logo if there's a preview and it's a new upload
+      if (logoPreview && isNewUpload) {
         const processedBlob = await generateProcessedLogo();
         if (processedBlob) {
           data.append("logo", processedBlob, "logo.png");
         }
+      } else if (!logoPreview) {
+        data.append("logoUrl", "");
       }
       const updatedConfig = await ConfiguracaoService.save(data);
       setFormData(updatedConfig);
@@ -26646,7 +26345,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 Defeito Relatado (Impressão para o Cliente)
               </label>
               <TextArea
-                className="w-full bg-green-200 border border-green-400 text-emerald-950 p-3 rounded-xl text-base font-medium h-32 outline-none resize-none transition-all focus:shadow-sm print:bg-transparent print:text-black placeholder-shown:bg-neutral-50 placeholder-shown:border-neutral-200 placeholder-shown:text-neutral-700 placeholder-shown:focus:border-red-300 placeholder-shown:focus:bg-white"
+                className="w-full !bg-green-100 border !border-green-300 text-emerald-950 p-3 rounded-xl text-base font-medium h-32 outline-none resize-none transition-all focus:shadow-sm print:bg-transparent print:text-black placeholder-shown:!bg-neutral-50 placeholder-shown:!border-neutral-200 placeholder-shown:text-neutral-700 placeholder-shown:focus:!border-red-300 placeholder-shown:focus:!bg-white"
                 placeholder="Descreva o defeito..."
                 value={osData.defeito_relatado || ""}
                 onChange={(e) => {
@@ -26663,7 +26362,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 Diagnóstico (apenas informações internas da oficina)
               </label>
               <TextArea
-                className="w-full bg-green-200 border border-green-400 text-emerald-950 p-3 rounded-xl text-base font-medium h-32 outline-none resize-none transition-all focus:shadow-sm print:bg-transparent print:text-black placeholder-shown:bg-neutral-50 placeholder-shown:border-neutral-200 placeholder-shown:text-neutral-700 placeholder-shown:focus:border-blue-300 placeholder-shown:focus:bg-white"
+                className="w-full !bg-green-100 border !border-green-300 text-emerald-950 p-3 rounded-xl text-base font-medium h-32 outline-none resize-none transition-all focus:shadow-sm print:bg-transparent print:text-black placeholder-shown:!bg-neutral-50 placeholder-shown:!border-neutral-200 placeholder-shown:text-neutral-700 placeholder-shown:focus:!border-blue-300 placeholder-shown:focus:!bg-white"
                 placeholder="Descreva o diagnóstico e a solução técnica..."
                 value={osData.diagnostico || ""}
                 onChange={(e) => {
@@ -26715,7 +26414,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             <Plus size={12} className="mr-1" /> NOVO FORNECEDOR
           </Button>
         </div>
-        <table className="w-full text-left">
+        <table className="tabela-limpa w-full text-left border-separate border-spacing-y-2">
           <thead className="bg-neutral-50/50 text-xs font-bold text-gray-400 uppercase tracking-widest">
             <tr>
               <th className="p-4 w-1/3 border-b border-neutral-50">Peça</th>
@@ -26735,9 +26434,9 @@ export const FechamentoFinanceiroDetalhePage = () => {
               .map((item) => (
                 <tr
                   key={item.id_iten}
-                  className="bg-green-200 hover:[&>td]:!bg-green-200 print:bg-transparent transition-colors group"
+                  className="group !bg-green-100 [&>td]:!bg-green-100 hover:[&>td]:!bg-green-100 [&>td]:border-t [&>td]:border-b [&>td]:!border-green-300 [&>td:first-child]:border-l [&>td:last-child]:border-r transition-none border-b-0 print:bg-transparent print:[&>td]:border-transparent"
                 >
-                  <td className="p-4 relative">
+                  <td className="p-4 relative first:rounded-l-lg last:rounded-r-lg">
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-bold text-gray-800 text-base">
@@ -26756,10 +26455,10 @@ export const FechamentoFinanceiroDetalhePage = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="p-4 text-xs font-mono font-bold text-gray-500">
+                  <td className="p-4 text-xs font-mono font-bold text-gray-500 first:rounded-l-lg last:rounded-r-lg">
                     {item.codigo_referencia || "-"}
                   </td>
-                  <td className="p-4">
+                  <td className="p-4 first:rounded-l-lg last:rounded-r-lg">
                     {item.pecas_estoque || item.id_pecas_estoque ? (
                       <div className="flex items-center gap-2 px-3 py-2 bg-neutral-100 rounded-lg border border-neutral-200 text-neutral-500 font-bold text-xs uppercase tracking-wider justify-center">
                         <Truck size={14} /> Estoque Próprio
@@ -26785,7 +26484,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                       </Select>
                     )}
                   </td>
-                  <td className="p-4">
+                  <td className="p-4 first:rounded-l-lg last:rounded-r-lg">
                     {item.pecas_estoque || item.id_pecas_estoque ? (
                       <div className="opacity-50">
                         <div className="flex items-center border border-neutral-100 rounded-lg bg-neutral-50 px-3 py-2 w-full">
@@ -26835,7 +26534,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                       </div>
                     )}
                   </td>
-                  <td className="p-4 text-center">
+                  <td className="p-4 text-center first:rounded-l-lg last:rounded-r-lg">
                     <div className="flex items-center justify-center gap-1">
                       <ActionButton
                         icon={Edit}
@@ -26875,7 +26574,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
           </Button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="tabela-limpa w-full text-left border-separate border-spacing-y-2">
             <thead className="bg-amber-50/30 text-xs font-bold text-amber-600 uppercase tracking-widest">
               <tr>
                 <th className="p-4 w-1/3">Descrição do Custo</th>
@@ -26901,15 +26600,15 @@ export const FechamentoFinanceiroDetalhePage = () => {
                   .map((item: any) => (
                     <tr
                       key={item.id_iten}
-                      className="bg-green-200 hover:[&>td]:!bg-green-200 print:bg-transparent transition-colors"
+                      className="group !bg-green-100 [&>td]:!bg-green-100 hover:[&>td]:!bg-green-100 [&>td]:border-t [&>td]:border-b [&>td]:!border-green-300 [&>td:first-child]:border-l [&>td:last-child]:border-r transition-none border-b-0 print:bg-transparent print:[&>td]:border-transparent"
                     >
-                      <td className="p-4 font-bold text-neutral-700">
+                      <td className="p-4 font-bold text-neutral-700 first:rounded-l-lg last:rounded-r-lg">
                         {item.descricao}
                       </td>
-                      <td className="p-4 text-xs font-mono text-neutral-400">
+                      <td className="p-4 text-xs font-mono text-neutral-400 first:rounded-l-lg last:rounded-r-lg">
                         {item.codigo_referencia || "-"}
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 first:rounded-l-lg last:rounded-r-lg">
                         <Select
                           className="!py-1.5 !px-3 !text-sm"
                           value={itemsState[item.id_iten]?.id_fornecedor || ""}
@@ -26932,7 +26631,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                           ))}
                         </Select>
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 first:rounded-l-lg last:rounded-r-lg">
                         <div className="flex items-center border border-amber-100 rounded-lg bg-white px-3 py-2">
                           <Input
                             type="number"
@@ -26950,7 +26649,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                           />
                         </div>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-center first:rounded-l-lg last:rounded-r-lg">
                         <div className="flex items-center justify-center gap-1">
                           <ActionButton
                             icon={Edit}
@@ -32884,6 +32583,176 @@ export const PessoaJuridicaPage = () => {
 };
 
 
+--- FILE: client\src\pages\PessoaPage.tsx ---
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
+import type { IPessoa } from '../types/backend';
+import { PessoaForm } from '../components/pessoa/Forms/PessoaForm';
+import { Modal, Input, Select } from '../components/ui';
+import { Plus, Search, Trash2, Edit, User } from 'lucide-react';
+export const PessoaPage = () => {
+    const [pessoas, setPessoas] = useState<IPessoa[]>([]);
+    const [showModal, setShowModal] = useState(false);
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IPessoa | null>(null);
+    useEffect(() => {
+        loadPessoas();
+    }, []);
+    const loadPessoas = async () => {
+        try {
+            const response = await api.get('/pessoa');
+            setPessoas(response.data);
+        } catch (error) {
+            alert('Erro ao carregar pessoas');
+        }
+    };
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/pessoa/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Pessoa não encontrada');
+            setEditData(null);
+        }
+    };
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/pessoa/${editData.id_pessoa}`, editData);
+            alert('Pessoa atualizada!');
+            loadPessoas();
+        } catch (error) {
+            alert('Erro ao atualizar pessoa');
+        }
+    };
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/pessoa/${searchId}`);
+            alert('Pessoa deletada!');
+            loadPessoas();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar pessoa');
+        }
+    };
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Gerenciar Pessoas</h1>
+                    <p className="text-slate-500">Cadastro base de pessoas (antes de PF/PJ).</p>
+                </div>
+                <button 
+                    onClick={() => setShowModal(true)}
+                    className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
+                >
+                    <Plus size={20} />
+                    Nova Pessoa
+                </button>
+            </div>
+            {/* LIST */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50">
+                        <tr>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">ID</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Nome</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Gênero</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Data Nascimento</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Cadastro</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {pessoas.map((p) => (
+                            <tr key={p.id_pessoa} className="hover:bg-slate-50">
+                                <td className="p-4 text-gray-500 font-mono">#{p.id_pessoa}</td>
+                                <td className="p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
+                                            <User size={18} />
+                                        </div>
+                                        <div className="font-medium text-slate-900">{p.nome}</div>
+                                    </div>
+                                </td>
+                                <td className="p-4 text-slate-600">{p.genero || '-'}</td>
+                                <td className="p-4 text-slate-600">
+                                    {p.dt_nascimento ? new Date(p.dt_nascimento).toLocaleDateString('pt-BR') : '-'}
+                                </td>
+                                <td className="p-4 text-xs text-slate-500">
+                                    {new Date(p.dt_cadastro).toLocaleDateString('pt-BR')}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {/* MANAGE */}
+            <div className="bg-white p-4 rounded-xl border border-gray-200">
+                <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Manutenção de Pessoa (Por ID)</h2>
+                <div className="flex gap-4 mb-4 items-end">
+                    <div className="w-64">
+                        <Input 
+                            type="number" 
+                            value={searchId} 
+                            onChange={(e) => setSearchId(e.target.value)} 
+                            placeholder="Digite o ID da Pessoa..." 
+                        />
+                    </div>
+                    <button onClick={handleSearch} className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 font-medium h-11">
+                        <Search size={18} /> Localizar
+                    </button>
+                    {searchId && <button onClick={handleDelete} className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2.5 rounded-lg hover:bg-red-200 font-medium h-11">
+                        <Trash2 size={18} /> Excluir
+                    </button>}
+                </div>
+                {editData && (
+                    <div className="bg-slate-50 p-4 rounded border animate-in fade-in">
+                        <h3 className="font-bold mb-2">Editando: {editData.nome}</h3>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="col-span-2">
+                                <Input 
+                                    label="Nome"
+                                    value={editData.nome} 
+                                    onChange={(e) => setEditData({...editData, nome: e.target.value})} 
+                                />
+                            </div>
+                            <div>
+                                <Select 
+                                    label="Gênero"
+                                    value={editData.genero || ''} 
+                                    onChange={(e) => setEditData({...editData, genero: e.target.value})} 
+                                >
+                                    <option value="">Selecione...</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Feminino">Feminino</option>
+                                    <option value="Outro">Outro</option>
+                                </Select>
+                            </div>
+                        </div>
+                        <button onClick={handleUpdate} className="flex items-center gap-2 bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold">
+                            <Edit size={18} /> Salvar Alterações
+                        </button>
+                    </div>
+                )}
+            </div>
+            {showModal && (
+                <Modal title="Nova Pessoa" onClose={() => setShowModal(false)}>
+                    <PessoaForm 
+                        onSuccess={() => {
+                            setShowModal(false);
+                            loadPessoas();
+                        }}
+                        onCancel={() => setShowModal(false)}
+                    />
+                </Modal>
+            )}
+        </div>
+    );
+};
+
+
 --- FILE: client\src\pages\RecebiveisPage.tsx ---
 import { PageLayout } from "../components/ui";
 import { RecebiveisTab } from "../components/financeiro/RecebiveisTab";
@@ -33073,13 +32942,11 @@ export function RelatoriosFinanceirosPage() {
 
 
 --- FILE: client\src\pages\RelatoriosPage.tsx ---
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   format,
   startOfMonth,
   endOfMonth,
-  subMonths,
-  subYears,
   startOfYear,
   endOfYear,
 } from "date-fns";
@@ -33122,16 +32989,11 @@ import {
   BarChart2,
   Filter,
   AlertTriangle,
+  X,
 } from "lucide-react";
-import { FilterButton, Input, Select } from "../components/ui";
+import { Select } from "../components/ui";
 // ─── Tipos locais ──────────────────────────────────────────────────────────────
 type GroupByOption = "month" | "quarter" | "semester" | "year";
-const GROUP_BY_LABELS: Record<GroupByOption, string> = {
-  month: "Mensal",
-  quarter: "Trimestral",
-  semester: "Semestral",
-  year: "Anual",
-};
 // ─── Componente principal ──────────────────────────────────────────────────────
 export const RelatoriosPage = () => {
   // Estado global (filtro do topo)
@@ -33145,6 +33007,22 @@ export const RelatoriosPage = () => {
   const [categoriasFinanceiras, setCategoriasFinanceiras] = useState<any[]>([]);
   // Datas globais do filtro superior para sincronizar Timeline de Despesas
   const [globalDates, setGlobalDates] = useState({ startDate: "", endDate: "" });
+  // Estado da Evolução Financeira — agrupamento (travado no ano vigente)
+  const [evolucao, setEvolucao] = useState<EvolucaoMensal[]>([]);
+  const [evolGroupBy, setEvolGroupBy] = useState<GroupByOption>("month");
+  const [evolView, setEvolView] = useState<"bruto" | "liquido">("bruto");
+  const [evolLoading, setEvolLoading] = useState(false);
+  // Estado da Timeline de Despesas
+  const [timeline, setTimeline] = useState<EvolucaoDespesaTemporal[]>([]);
+  const [timelineKeys, setTimelineKeys] = useState<string[]>([]);
+  const [timelineView, setTimelineView] = useState<"categoria" | "subcategoria">("categoria");
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  // Filtros de categoria da Timeline
+  const [timelineCategoriaId, setTimelineCategoriaId] = useState<number | undefined>(undefined);
+  const [timelineSubcategoriaId, setTimelineSubcategoriaId] = useState<number | undefined>(undefined);
+  // Cores para gráficos
+  const COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6", "#6366F1"];
+  // ── Fetch de categorias financeiras ──────────────────────────────────────────
   useEffect(() => {
     const fetchCategorias = async () => {
       try {
@@ -33156,26 +33034,8 @@ export const RelatoriosPage = () => {
     };
     fetchCategorias();
   }, []);
-  // Estado localizado — Evolução Financeira
-  const [evolucao, setEvolucao] = useState<EvolucaoMensal[]>([]);
-  const [evolGroupBy, setEvolGroupBy] = useState<GroupByOption>("month");
-  const [evolView, setEvolView] = useState<"bruto" | "liquido">("bruto");
-  const [evolStart, setEvolStart] = useState(
-    format(startOfMonth(new Date()), "yyyy-MM-dd"),
-  );
-  const [evolEnd, setEvolEnd] = useState(
-    format(endOfMonth(new Date()), "yyyy-MM-dd"),
-  );
-  const [evolLoading, setEvolLoading] = useState(false);
-  // Estado localizado — Timeline de Despesas (dinâmica com datas globais)
-  const [timeline, setTimeline] = useState<EvolucaoDespesaTemporal[]>([]);
-  const [timelineKeys, setTimelineKeys] = useState<string[]>([]);
-  const [timelineView, setTimelineView] = useState<"categoria" | "subcategoria">("categoria");
-  const [timelineLoading, setTimelineLoading] = useState(false);
-  // Cores do Pie chart e Timeline dinâmico
-  const COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6", "#6366F1"];
   // ── Fetch principal (filtro global) ──────────────────────────────────────────
-  const fetchReports = async (startDate: string, endDate: string) => {
+  const fetchReports = useCallback(async (startDate: string, endDate: string) => {
     setLoading(true);
     setGlobalDates({ startDate, endDate });
     try {
@@ -33195,16 +33055,19 @@ export const RelatoriosPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-  // ── Evolução Financeira isolada ───────────────────────────────────────────────
+  }, []);
+  // ── Evolução Financeira — sempre travada no ano vigente ───────────────────────
   useEffect(() => {
+    const today = new Date();
+    const yearStart = format(startOfYear(today), "yyyy-MM-dd");
+    const yearEnd = format(endOfYear(today), "yyyy-MM-dd");
     const fetchEvolucao = async () => {
       setEvolLoading(true);
       try {
         const data = await RelatoriosService.getEvolucaoMensal(
-          evolStart,
-          evolEnd,
-          evolGroupBy
+          yearStart,
+          yearEnd,
+          evolGroupBy,
         );
         setEvolucao(data);
       } catch (error) {
@@ -33214,35 +33077,8 @@ export const RelatoriosPage = () => {
       }
     };
     fetchEvolucao();
-  }, [evolGroupBy, evolStart, evolEnd]);
-  // ── handleEvolucaoPreset ───────────────────────────────────────────────
-  const handleEvolucaoPreset = (preset: GroupByOption) => {
-    const today = new Date();
-    let newStart: Date;
-    let newEnd: Date;
-    switch (preset) {
-      case "month":
-        newStart = startOfMonth(subMonths(today, 11));
-        newEnd = endOfMonth(today);
-        break;
-      case "quarter":
-        newStart = startOfMonth(subMonths(today, 11));
-        newEnd = endOfMonth(today);
-        break;
-      case "semester":
-        newStart = startOfYear(subYears(today, 1));
-        newEnd = endOfYear(today);
-        break;
-      case "year":
-        newStart = startOfYear(subYears(today, 2));
-        newEnd = endOfYear(today);
-        break;
-    }
-    setEvolGroupBy(preset);
-    setEvolStart(format(newStart, "yyyy-MM-dd"));
-    setEvolEnd(format(newEnd, "yyyy-MM-dd"));
-  };
-  // ── Timeline de Despesas (dinâmica e pivotada com filtro global de datas) ─────
+  }, [evolGroupBy]); // Datas calculadas internamente — nunca causam loop
+  // ── Timeline de Despesas — sincronizada com filtro global + filtros de categoria ──
   useEffect(() => {
     if (!globalDates.startDate || !globalDates.endDate) return;
     const fetchTimeline = async () => {
@@ -33251,7 +33087,9 @@ export const RelatoriosPage = () => {
         const response = await RelatoriosService.getEvolucaoDespesasTemporal(
           globalDates.startDate,
           globalDates.endDate,
-          timelineView
+          timelineView,
+          timelineCategoriaId,
+          timelineSubcategoriaId,
         );
         setTimeline(response.data);
         setTimelineKeys(response.keys);
@@ -33262,7 +33100,22 @@ export const RelatoriosPage = () => {
       }
     };
     fetchTimeline();
-  }, [globalDates.startDate, globalDates.endDate, timelineView]);
+  }, [
+    globalDates.startDate,
+    globalDates.endDate,
+    timelineView,
+    timelineCategoriaId,
+    timelineSubcategoriaId,
+  ]);
+  // ── Categoria raiz (sem parent) e subcategorias derivadas ──────────────────────
+  const categoriasRaiz = categoriasFinanceiras.filter((c) => !c.id_parent);
+  const subcategoriasDaCategoriaAtiva = timelineCategoriaId
+    ? categoriasFinanceiras.filter((c) => c.id_parent === timelineCategoriaId)
+    : [];
+  const handleClearTimelineFilter = () => {
+    setTimelineCategoriaId(undefined);
+    setTimelineSubcategoriaId(undefined);
+  };
   // ── Dados do Pie Chart ────────────────────────────────────────────────────────
   const dataPizza = resumo
     ? [
@@ -33271,7 +33124,6 @@ export const RelatoriosPage = () => {
         { name: "Auto Peças", value: resumo.liquida.autoPecas || 0 },
       ].filter((d) => d.value > 0)
     : [];
-  //
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <PageLayout
@@ -33281,7 +33133,11 @@ export const RelatoriosPage = () => {
       <div className="space-y-6 relative">
         {/* ── Sticky Filter Global ── */}
         <div className="sticky top-[72px] z-30 bg-slate-50/95 backdrop-blur-md pb-4 pt-2 border-b border-neutral-200 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 mb-6 transition-all duration-300">
-          <ReportFilter onFilterChange={fetchReports} />
+          <ReportFilter
+            onFilterChange={fetchReports}
+            groupBy={evolGroupBy}
+            onGroupByChange={setEvolGroupBy}
+          />
         </div>
         {loading ? (
           <div className="text-center py-20 text-neutral-500">
@@ -33310,25 +33166,19 @@ export const RelatoriosPage = () => {
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs border-t border-neutral-50 pt-3">
                     <div className="text-center">
-                      <span className="block text-neutral-400 mb-0.5">
-                        M.O.
-                      </span>
+                      <span className="block text-neutral-400 mb-0.5">M.O.</span>
                       <span className="font-semibold text-neutral-600 truncate">
                         {formatCurrency(resumo.bruta.maoDeObra)}
                       </span>
                     </div>
                     <div className="text-center border-l border-neutral-100">
-                      <span className="block text-neutral-400 mb-0.5">
-                        Auto Peças
-                      </span>
+                      <span className="block text-neutral-400 mb-0.5">Auto Peças</span>
                       <span className="font-semibold text-neutral-600 truncate">
                         {formatCurrency(resumo.bruta.autoPecas)}
                       </span>
                     </div>
                     <div className="text-center border-l border-neutral-100">
-                      <span className="block text-neutral-400 mb-0.5">
-                        Estoque
-                      </span>
+                      <span className="block text-neutral-400 mb-0.5">Estoque</span>
                       <span className="font-semibold text-neutral-600 truncate">
                         {formatCurrency(resumo.bruta.estoque)}
                       </span>
@@ -33366,25 +33216,19 @@ export const RelatoriosPage = () => {
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs border-t border-neutral-50 pt-3">
                     <div className="text-center">
-                      <span className="block text-neutral-400 mb-0.5">
-                        M.O.
-                      </span>
+                      <span className="block text-neutral-400 mb-0.5">M.O.</span>
                       <span className="font-bold text-blue-600 truncate">
                         {formatCurrency(resumo.liquida.maoDeObra)}
                       </span>
                     </div>
                     <div className="text-center border-l border-neutral-100">
-                      <span className="block text-neutral-400 mb-0.5">
-                        Auto Peças
-                      </span>
+                      <span className="block text-neutral-400 mb-0.5">Auto Peças</span>
                       <span className="font-bold text-blue-600 truncate">
                         {formatCurrency(resumo.liquida.autoPecas)}
                       </span>
                     </div>
                     <div className="text-center border-l border-neutral-100">
-                      <span className="block text-neutral-400 mb-0.5">
-                        Estoque
-                      </span>
+                      <span className="block text-neutral-400 mb-0.5">Estoque</span>
                       <span className="font-bold text-blue-600 truncate">
                         {formatCurrency(resumo.liquida.estoque)}
                       </span>
@@ -33456,9 +33300,9 @@ export const RelatoriosPage = () => {
                 </div>
               </div>
             )}
-            {/* ── Row 2: Evolução Financeira (isolada) + Origem do Lucro ── */}
+            {/* ── Row 2: Evolução Financeira + Origem do Lucro ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Evolução Financeira — controles locais independentes */}
+              {/* Evolução Financeira — travada no ano vigente, agrupamento controlado pelo ReportFilter */}
               <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-neutral-100">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                   <div className="flex items-center gap-3">
@@ -33492,40 +33336,9 @@ export const RelatoriosPage = () => {
                       </button>
                     </div>
                   </div>
-                  {/* GroupBy pills */}
-                  <div className="flex bg-neutral-100 p-1 rounded-lg gap-1">
-                    {(Object.keys(GROUP_BY_LABELS) as GroupByOption[]).map(
-                      (key) => (
-                        <FilterButton
-                          key={key}
-                          active={evolGroupBy === key}
-                          onClick={() => handleEvolucaoPreset(key)}
-                        >
-                          {GROUP_BY_LABELS[key]}
-                        </FilterButton>
-                      ),
-                    )}
-                  </div>
-                  {/* Datas locais */}
-                  <div className="flex items-center gap-2 text-xs text-neutral-500">
-                    <div className="w-28">
-                      <Input
-                        type="date"
-                        value={evolStart}
-                        onChange={(e) => setEvolStart(e.target.value)}
-                        className="!py-1 !px-2 !text-xs !rounded-lg bg-white"
-                      />
-                    </div>
-                    <span className="text-neutral-300">→</span>
-                    <div className="w-28">
-                      <Input
-                        type="date"
-                        value={evolEnd}
-                        onChange={(e) => setEvolEnd(e.target.value)}
-                        className="!py-1 !px-2 !text-xs !rounded-lg bg-white"
-                      />
-                    </div>
-                  </div>
+                  <span className="text-xs text-neutral-400 bg-neutral-50 px-2 py-1 rounded-md border border-neutral-100">
+                    Ano {new Date().getFullYear()} • Agrupamento no filtro acima
+                  </span>
                 </div>
                 <div className="h-[300px] w-full">
                   {evolLoading ? (
@@ -33654,7 +33467,7 @@ export const RelatoriosPage = () => {
                 </div>
               </div>
             </div>
-            {/* ── Row 3: Performance da Equipe (largura total) ── */}
+            {/* ── Row 3: Performance da Equipe ── */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-100">
               <h3 className="text-lg font-bold text-neutral-800 mb-6">
                 Performance Financeira da Equipe
@@ -33707,10 +33520,10 @@ export const RelatoriosPage = () => {
                 </table>
               </div>
             </div>
-            {/* ── Row 4: Timeline de Despesas — largura total ── */}
+            {/* ── Row 4: Timeline de Despesas ── */}
             <div className="w-full bg-white p-6 rounded-xl shadow-sm border border-neutral-100 flex flex-col">
-              {/* Cabeçalho com toggle de categorias/subcategorias */}
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+              {/* Cabeçalho com controles */}
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
                   <Filter size={20} className="text-neutral-500" />
                   Timeline de Despesas
@@ -33741,7 +33554,81 @@ export const RelatoriosPage = () => {
                   </button>
                 </div>
               </div>
-              {/* Gráfico de barras da timeline */}
+              {/* Filtros de Categoria e Subcategoria */}
+              <div className="flex flex-wrap items-center gap-3 mb-6 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
+                <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                  Filtrar por:
+                </span>
+                {/* Select de Categoria */}
+                <div className="w-52">
+                  <Select
+                    value={timelineCategoriaId !== undefined ? String(timelineCategoriaId) : ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTimelineCategoriaId(val ? Number(val) : undefined);
+                      setTimelineSubcategoriaId(undefined);
+                    }}
+                  >
+                    <option value="">Todas as categorias</option>
+                    {categoriasRaiz.map((cat: any) => (
+                      <option
+                        key={cat.id_categoria_financeira}
+                        value={cat.id_categoria_financeira}
+                      >
+                        {cat.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                {/* Select de Subcategoria — só aparece quando uma categoria está selecionada */}
+                {timelineCategoriaId !== undefined &&
+                  subcategoriasDaCategoriaAtiva.length > 0 && (
+                    <div className="w-52">
+                      <Select
+                        value={
+                          timelineSubcategoriaId !== undefined
+                            ? String(timelineSubcategoriaId)
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setTimelineSubcategoriaId(val ? Number(val) : undefined);
+                        }}
+                      >
+                        <option value="">Todas as subcategorias</option>
+                        {subcategoriasDaCategoriaAtiva.map((sub: any) => (
+                          <option
+                            key={sub.id_categoria_financeira}
+                            value={sub.id_categoria_financeira}
+                          >
+                            {sub.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
+                {/* Botão Limpar */}
+                {(timelineCategoriaId !== undefined ||
+                  timelineSubcategoriaId !== undefined) && (
+                  <button
+                    type="button"
+                    onClick={handleClearTimelineFilter}
+                    className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-semibold px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors border border-red-100"
+                  >
+                    <X size={12} />
+                    Limpar Filtro
+                  </button>
+                )}
+                {/* Indicador de filtro ativo */}
+                {timelineCategoriaId !== undefined && (
+                  <span className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded-full border border-primary-100 font-medium">
+                    {timelineSubcategoriaId !== undefined
+                      ? "Subcategoria específica"
+                      : "Categoria + filhas"}
+                  </span>
+                )}
+              </div>
+              {/* Gráfico */}
               <div
                 className="w-full flex-shrink-0"
                 style={{ width: "100%", height: 400 }}
@@ -33776,7 +33663,9 @@ export const RelatoriosPage = () => {
                         tickFormatter={(val) => `R$${(val / 1000).toFixed(0)}k`}
                       />
                       <Tooltip
-                        formatter={(value: any) => formatCurrency(Number(value))}
+                        formatter={(value: any) =>
+                          formatCurrency(Number(value))
+                        }
                         contentStyle={{
                           borderRadius: "8px",
                           border: "none",
@@ -33791,7 +33680,11 @@ export const RelatoriosPage = () => {
                           name={key}
                           stackId="a"
                           fill={COLORS[index % COLORS.length]}
-                          radius={index === timelineKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                          radius={
+                            index === timelineKeys.length - 1
+                              ? [4, 4, 0, 0]
+                              : [0, 0, 0, 0]
+                          }
                           barSize={24}
                         />
                       ))}
@@ -35034,21 +34927,13 @@ export const ConfiguracaoService = {
     return response.data;
   },
   save: async (formData: FormData): Promise<Configuracao> => {
-    const response = await axios.post(`${API_BASE}/configuracao`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await axios.post(`${API_BASE}/configuracao`, formData);
     return response.data;
   },
   uploadLogoImpressao: async (file: File): Promise<Configuracao> => {
     const formData = new FormData();
     formData.append("logoImpressao", file);
-    const response = await axios.post(`${API_BASE}/configuracao/upload-logo-impressao`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await axios.post(`${API_BASE}/configuracao/upload-logo-impressao`, formData);
     return response.data;
   },
 };
@@ -35666,9 +35551,17 @@ export const RelatoriosService = {
     startDate: string,
     endDate: string,
     type: "categoria" | "subcategoria",
+    categoriaId?: number,
+    subcategoriaId?: number,
   ): Promise<TimelineDespesasResponse> => {
     const response = await api.get("/relatorios/despesas-temporal", {
-      params: { startDate, endDate, type },
+      params: {
+        startDate,
+        endDate,
+        type,
+        ...(categoriaId !== undefined && { categoriaId }),
+        ...(subcategoriaId !== undefined && { subcategoriaId }),
+      },
     });
     return response.data;
   },
@@ -36130,137 +36023,6 @@ export interface ILaborService {
 
 
 --- FILE: client\src\types\relatorios.types.ts ---
-export interface Periodo {
-  start: string;
-  end: string;
-}
-export interface IndicadoresFinanceiros {
-  lucroLiquido: number;
-  margemLiquida: number;
-  pontoEquilibrio: number;
-}
-export interface ResumoFinanceiro {
-  periodo: Periodo;
-  bruta: {
-    maoDeObra: number;
-    autoPecas: number;
-    estoque: number;
-    total: number;
-    pecasTerceiros?: number;
-    pecasEstoque?: number;
-  };
-  despesas: {
-    maoDeObra: number;
-    autoPecas: number;
-    oficina: number;
-    total: number;
-    operacional?: number;
-    fornecedor?: number;
-  };
-  liquida: {
-    maoDeObra: number;
-    autoPecas: number;
-    estoque: number;
-    total: number;
-    pecasTerceiros?: number;
-    pecasEstoque?: number;
-  };
-  prejuizos?: {
-    estoque: number;
-    autoPecas: number;
-    total: number;
-  };
-  custos: {
-    pecasEstoque: number;
-    pecasTerceiros: number;
-    equipe: number;
-    contas: number;
-    total: number;
-  };
-  medias: {
-    receitaBruta: number;
-    lucroLiquido: number;
-    despesasTotais: number;
-  };
-  despesasPorCategoria: { categoria: string; valor: number }[];
-  indicadores: IndicadoresFinanceiros;
-  consumoInterno?: number;
-}
-export interface PerformanceFuncionario {
-  id: number;
-  nome: string;
-  maoDeObraBruta: number;
-  comissaoPaga: number;
-  lucroMaoDeObra: number;
-  vendasEstoque: number;
-}
-export interface EvolucaoDespesaTemporal {
-  mes: string;
-  [key: string]: any;
-}
-export interface TimelineDespesasResponse {
-  data: EvolucaoDespesaTemporal[];
-  keys: string[];
-}
-export interface EvolucaoDespesa {
-  categoria: string;
-  valorAtual: number;
-  valorAnterior: number;
-  variacaoPercentual: number;
-}
-export interface OperadoraStats {
-  nome: string;
-  totalBruto: number;
-  totalTaxas: number;
-  totalLiquido: number;
-  count: number;
-}
-export interface EvolucaoMensal {
-  label: string;
-  receita: number;
-  despesa: number;
-  lucro: number;
-  lucroMaoDeObra?: number;
-  lucroEstoque?: number;
-  lucroAutoPecas?: number;
-}
-
-
---- FILE: client\src\utils\financeiroUtils.ts ---
-import type { IPagamentoPeca, IPagamentoCliente } from "../types/backend";
-import type { ICashBookEntry } from "../types/financeiro.types";
-export const calculateCashBookEntries = (
-  payments: IPagamentoPeca[],
-  inflows: IPagamentoCliente[],
-): ICashBookEntry[] => {
-  // Map Outflows (Payments to Suppliers)
-  const outflows: ICashBookEntry[] = payments
-    .filter((p) => p.pago_ao_fornecedor && p.data_pagamento_fornecedor)
-    .map((p) => ({
-      id: `out-${p.id_pagamento_peca}`,
-      date: p.data_pagamento_fornecedor || p.data_compra,
-      description: `Pagamento Fornecedor - ${p.item_os?.descricao || "Peça"}`,
-      type: "OUT" as const,
-      value: Number(p.custo_real),
-      details: `OS Nº ${p.item_os?.id_os || "?"} - ${p.fornecedor?.nome || "Fornecedor"}`,
-      categoria: "Peças / Fornecedores",
-    }));
-  // Map Inflows (Payments from Clients)
-  const inflowsMapped: ICashBookEntry[] = (inflows || []).map((p) => ({
-    id: `in-${p.id_pagamento_cliente}`,
-    date: p.data_pagamento,
-    description: `Recebimento OS Nº ${p.id_os || "?"}`,
-    type: "IN" as const,
-    value: Number(p.valor),
-    details: `Forma: ${p.metodo_pagamento}`,
-    categoria: "Recebimentos",
-  }));
-  return [...outflows, ...inflowsMapped].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
-};
-
-
 --- FILE: client\src\utils\formatCurrency.ts ---
 export const formatCurrency = (
   value: number | string | undefined | null,
@@ -41510,6 +41272,128 @@ export class PagamentoPecaController {
 }
 
 
+--- FILE: server\src\controllers\pecasEstoque.controller.ts ---
+import { Request, Response } from 'express';
+import { PecasEstoqueRepository } from '../repositories/pecasEstoque.repository.js';
+const repository = new PecasEstoqueRepository();
+export class PecasEstoqueController {
+  async create(req: Request, res: Response) {
+    try {
+      const peca = await repository.create(req.body);
+      res.status(201).json(peca);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create Peca', details: error });
+    }
+  }
+  async createEntry(req: Request, res: Response) {
+    try {
+        const payload = req.body;
+        if (payload && typeof payload.nf_numero === 'string') {
+          payload.nf_numero = payload.nf_numero.trim() || null;
+        }
+        const entry = await repository.createEntry(payload);
+        res.status(201).json(entry);
+    } catch (error: any) {
+        console.error(error);
+        res.status(400).json({ error: 'Failed to create entry', details: error.message || error });
+    }
+  }
+  async findEntryById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const entry = await repository.findEntryById(id);
+      if (!entry) return res.status(404).json({ error: 'Entrada de estoque não encontrada.' });
+      res.json(entry);
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ error: 'Erro ao buscar entrada de estoque.', details: error.message });
+    }
+  }
+  async updateEntry(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const payload = req.body;
+      if (payload && typeof payload.nf_numero === 'string') {
+        payload.nf_numero = payload.nf_numero.trim() || null;
+      }
+      const updated = await repository.updateEntry(id, payload);
+      res.json(updated);
+    } catch (error: any) {
+      console.error(error);
+      res.status(400).json({ error: error.message || 'Erro ao atualizar entrada de estoque.' });
+    }
+  }
+  async deleteEntry(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.deleteEntry(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error(error);
+      res.status(400).json({ error: error.message || 'Erro ao deletar entrada de estoque.' });
+    }
+  }
+  async getAvailability(req: Request, res: Response) {
+      try {
+          const id = Number(req.params.id);
+          const result = await repository.getAvailability(id);
+          if (!result) return res.status(404).json({error: 'Part not found'});
+          res.json(result);
+      } catch (error) {
+          res.status(500).json({ error: 'Failed to fetch availability' });
+      }
+  }
+  async findAll(req: Request, res: Response) {
+    try {
+      const pecas = await repository.findAll();
+      res.json(pecas);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Pecas' });
+    }
+  }
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const peca = await repository.findById(id);
+      if (!peca) {
+        return res.status(404).json({ error: 'Peca not found' });
+      }
+      res.json(peca);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch Peca' });
+    }
+  }
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const peca = await repository.update(id, req.body);
+      res.json(peca);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update Peca' });
+    }
+  }
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete Peca' });
+    }
+  }
+  async search(req: Request, res: Response) {
+    try {
+      const query = req.query.q as string;
+      if (!query) return res.json([]);
+      const pecas = await repository.search(query);
+      res.json(pecas);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to search Pecas' });
+    }
+  }
+}
+
+
 --- FILE: server\src\controllers\pessoa.controller.ts ---
 import { Request, Response } from "express";
 import { PessoaRepository } from "../repositories/pessoa.repository.js";
@@ -42516,7 +42400,7 @@ export class RelatoriosController {
   }
   async getEvolucaoDespesasTemporal(req: Request, res: Response) {
     try {
-      const { startDate, endDate, type } = req.query;
+      const { startDate, endDate, type, categoriaId, subcategoriaId } = req.query;
       if (!startDate || !endDate) {
         return res
           .status(400)
@@ -42525,10 +42409,14 @@ export class RelatoriosController {
       const start = new Date((startDate as string) + "T00:00:00");
       const end = new Date((endDate as string) + "T23:59:59");
       const groupType = (type as "categoria" | "subcategoria") || "categoria";
+      const catId = categoriaId ? parseInt(categoriaId as string, 10) : undefined;
+      const subCatId = subcategoriaId ? parseInt(subcategoriaId as string, 10) : undefined;
       const data = await relatoriosService.getEvolucaoDespesasTemporal(
         start,
         end,
-        groupType
+        groupType,
+        catId,
+        subCatId
       );
       return res.json(data);
     } catch (error) {
@@ -44585,6 +44473,183 @@ export class FechamentoFinanceiroRepository {
 
 
 --- FILE: server\src\repositories\fornecedor.repository.ts ---
+import { prisma } from "../prisma.js";
+export class FornecedorRepository {
+  async create(data: any) {
+    if (data.documento) {
+      const existing = await prisma.fornecedor.findFirst({
+        where: { documento: data.documento, deleted_at: null }
+      });
+      if (existing) {
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
+    }
+    if (data.inscricao_estadual) {
+      const existing = await prisma.fornecedor.findFirst({
+        where: { inscricao_estadual: data.inscricao_estadual, deleted_at: null }
+      });
+      if (existing) {
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
+    }
+    const {
+      nome,
+      nome_fantasia,
+      documento,
+      inscricao_estadual,
+      inscricao_municipal,
+      tipo_pessoa,
+      cep,
+      logradouro,
+      numero,
+      complemento,
+      bairro,
+      cidade,
+      uf,
+      contato,
+      telefone,
+      whatsapp,
+      email,
+      banco,
+      agencia,
+      conta,
+      chave_pix,
+      categoria_produto,
+      condicoes_pagamento,
+      obs,
+    } = data;
+    return await prisma.fornecedor.create({
+      data: {
+        nome,
+        nome_fantasia: nome_fantasia || null,
+        documento: documento || null,
+        inscricao_estadual: inscricao_estadual || null,
+        inscricao_municipal: inscricao_municipal || null,
+        tipo_pessoa: tipo_pessoa || "JURIDICA",
+        cep: cep || null,
+        logradouro: logradouro || null,
+        numero: numero || null,
+        complemento: complemento || null,
+        bairro: bairro || null,
+        cidade: cidade || null,
+        uf: uf || null,
+        contato: contato || null,
+        telefone: telefone || null,
+        whatsapp: whatsapp || null,
+        email: email || null,
+        banco: banco || null,
+        agencia: agencia || null,
+        conta: conta || null,
+        chave_pix: chave_pix || null,
+        categoria_produto: categoria_produto || null,
+        condicoes_pagamento: condicoes_pagamento || null,
+        obs: obs || null,
+      },
+    });
+  }
+  async findAll() {
+    return await prisma.fornecedor.findMany({
+      where: { deleted_at: null },
+      orderBy: { nome: "asc" },
+    });
+  }
+  async findById(id: number) {
+    return await prisma.fornecedor.findUnique({
+      where: { id_fornecedor: id },
+    });
+  }
+  async update(id: number, data: any) {
+    if (data.documento) {
+      const existing = await prisma.fornecedor.findFirst({
+        where: {
+          documento: data.documento,
+          deleted_at: null,
+          id_fornecedor: { not: id }
+        }
+      });
+      if (existing) {
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
+    }
+    if (data.inscricao_estadual) {
+      const existing = await prisma.fornecedor.findFirst({
+        where: {
+          inscricao_estadual: data.inscricao_estadual,
+          deleted_at: null,
+          id_fornecedor: { not: id }
+        }
+      });
+      if (existing) {
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
+    }
+    const {
+      nome,
+      nome_fantasia,
+      documento,
+      inscricao_estadual,
+      inscricao_municipal,
+      tipo_pessoa,
+      cep,
+      logradouro,
+      numero,
+      complemento,
+      bairro,
+      cidade,
+      uf,
+      contato,
+      telefone,
+      whatsapp,
+      email,
+      banco,
+      agencia,
+      conta,
+      chave_pix,
+      categoria_produto,
+      condicoes_pagamento,
+      obs,
+    } = data;
+    return await prisma.fornecedor.update({
+      where: { id_fornecedor: id },
+      data: {
+        nome,
+        nome_fantasia: nome_fantasia || null,
+        documento: documento || null,
+        inscricao_estadual: inscricao_estadual || null,
+        inscricao_municipal: inscricao_municipal || null,
+        tipo_pessoa: tipo_pessoa || "JURIDICA",
+        cep: cep || null,
+        logradouro: logradouro || null,
+        numero: numero || null,
+        complemento: complemento || null,
+        bairro: bairro || null,
+        cidade: cidade || null,
+        uf: uf || null,
+        contato: contato || null,
+        telefone: telefone || null,
+        whatsapp: whatsapp || null,
+        email: email || null,
+        banco: banco || null,
+        agencia: agencia || null,
+        conta: conta || null,
+        chave_pix: chave_pix || null,
+        categoria_produto: categoria_produto || null,
+        condicoes_pagamento: condicoes_pagamento || null,
+        obs: obs || null,
+      },
+    });
+  }
+  async delete(id: number) {
+    // Soft delete
+    return await prisma.fornecedor.update({
+      where: { id_fornecedor: id },
+      data: { deleted_at: new Date() },
+    });
+  }
+}
+
+
+--- FILE: server\src\repositories\funcionario.repository.ts ---
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 export class FuncionarioRepository {
@@ -44660,6 +44725,9 @@ export class FuncionarioRepository {
     });
   }
 }
+
+
+--- FILE: server\src\repositories\itensOs.repository.ts ---
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { AuditLogRepository } from './auditLog.repository.js';
@@ -45603,444 +45671,6 @@ export class PagamentoPecaRepository {
         valor_liquidado: valorLiquidoTotal,
         id_livro_caixa: lc.id_livro_caixa,
       };
-    });
-  }
-}
-
-
---- FILE: server\src\repositories\pecasEstoque.repository.ts ---
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma.js";
-export class PecasEstoqueRepository {
-  async create(data: Prisma.PecasEstoqueCreateInput) {
-    return await prisma.pecasEstoque.create({
-      data,
-    });
-  }
-  async findAll() {
-    return await prisma.pecasEstoque.findMany({
-      include: {
-        itens_entrada: {
-          take: 1,
-          orderBy: { id_item_entrada: "desc" },
-          include: {
-            entrada: {
-              include: { fornecedor: true },
-            },
-          },
-        },
-      },
-      orderBy: { nome: "asc" },
-    });
-  }
-  async findById(id: number) {
-    return await prisma.pecasEstoque.findUnique({
-      where: { id_pecas_estoque: id },
-    });
-  }
-  async update(id: number, data: Prisma.PecasEstoqueUpdateInput) {
-    return await prisma.pecasEstoque.update({
-      where: { id_pecas_estoque: id },
-      data,
-    });
-  }
-  async delete(id: number) {
-    return await prisma.pecasEstoque.delete({
-      where: { id_pecas_estoque: id },
-    });
-  }
-  async search(query: string) {
-    return await prisma.pecasEstoque.findMany({
-      where: {
-        OR: [
-          { nome: { contains: query, mode: "insensitive" } },
-          { descricao: { contains: query, mode: "insensitive" } },
-        ],
-      },
-      take: 20,
-      include: {
-        itens_entrada: {
-          take: 1,
-          orderBy: { id_item_entrada: "desc" },
-          include: {
-            entrada: {
-              include: { fornecedor: true },
-            },
-          },
-        },
-      },
-    });
-  }
-  async createEntry(data: {
-    id_pessoa?: number;
-    id_fornecedor?: number;
-    nota_fiscal?: string;
-    data_compra?: Date;
-    obs?: string;
-    nf_numero?: string | null;
-    itens: {
-      id_pecas_estoque?: number;
-      new_part_data?: any; // Name, Description, etc.
-      quantidade: number;
-      valor_custo: number;
-      valor_venda: number;
-      margem_lucro?: number;
-      ref_cod?: string;
-      obs?: string;
-    }[];
-  }) {
-    const idPessoa = Number(data.id_pessoa || data.id_fornecedor);
-    if (!idPessoa || isNaN(idPessoa)) {
-      throw new Error("Fornecedor (id_pessoa ou id_fornecedor) é obrigatório.");
-    }
-    const nfNumeroNormalized = data.nf_numero ? data.nf_numero.trim() || null : null;
-    return await prisma.$transaction(async (tx) => {
-      // 1. Create Entry Header
-      const entrada = await tx.entradaEstoque.create({
-        data: {
-          id_pessoa: idPessoa,
-          nota_fiscal: data.nota_fiscal || null,
-          data_compra: data.data_compra || new Date(),
-          valor_total: data.itens.reduce(
-            (acc, i) => acc + Number(i.valor_custo) * Number(i.quantidade),
-            0,
-          ),
-          obs: data.obs || null,
-          nf_numero: nfNumeroNormalized,
-        },
-      });
-      // 2. Process Items
-      for (const item of data.itens) {
-        let partId = item.id_pecas_estoque;
-        // 2a. Create Part if new
-        if (!partId && item.new_part_data) {
-          const newPart = await tx.pecasEstoque.create({
-            data: {
-              nome: item.new_part_data.nome,
-              descricao:
-                item.new_part_data.descricao || item.new_part_data.nome,
-              unidade_medida: item.new_part_data.unidade_medida || "UN",
-              estoque_atual: 0, // Will act increment below
-              valor_custo: item.valor_custo,
-              valor_venda: item.valor_venda,
-              estoque_minimo: item.new_part_data.estoque_minimo || 0,
-              custo_unitario_padrao: item.valor_custo, // Init standard cost
-              fabricante: item.new_part_data.fabricante || null,
-            },
-          });
-          partId = newPart.id_pecas_estoque;
-        }
-        if (!partId)
-          throw new Error("Item sem ID de peça e sem dados para cadastro.");
-        // 2b. Create ItemEntrada
-        await tx.itemEntrada.create({
-          data: {
-            id_entrada: entrada.id_entrada,
-            id_pecas_estoque: partId,
-            quantidade: item.quantidade,
-            valor_custo: item.valor_custo,
-            valor_venda: item.valor_venda,
-            margem_lucro: item.margem_lucro || null,
-            ref_cod: item.ref_cod || null,
-            obs: item.obs || null,
-          },
-        });
-        // 2c. Update Stock & Price
-        await tx.pecasEstoque.update({
-          where: { id_pecas_estoque: partId },
-          data: {
-            estoque_atual: { increment: item.quantidade },
-            valor_venda: item.valor_venda, // Always update selling price as requested
-            dt_ultima_compra: new Date(),
-            // As per request: "sem atualizar o preço de custo das peças compradas anteriormente",
-            // but we MUST update standard cost for new parts.
-            // For existing parts, we might typically update Average Cost, but ignoring cost update here as strictly requested for existing.
-            // NOTE: If it was a NEW part, we already set the cost in creation.
-          },
-        });
-      }
-      // 3. Process Financials (Contas a Pagar + Livro Caixa)
-      // We check if 'financeiro' data was passed in the 'data' argument (need to update type definition first)
-      if ((data as any).financeiro) {
-        const fin = (data as any).financeiro;
-        const conta = await tx.contasPagar.create({
-          data: {
-            descricao: fin.descricao,
-            valor: fin.valor,
-            dt_vencimento: new Date(fin.dt_vencimento),
-            dt_pagamento:
-              fin.status === "PAGO" ? new Date(fin.dt_pagamento) : null,
-            status: fin.status,
-            categoria: "PEÇAS",
-            obs: `Ref. Entrada Estoque #${entrada.id_entrada}`,
-            nf_numero: nfNumeroNormalized,
-          },
-        });
-        // If PAID, create Livro Caixa movement
-        if (fin.status === "PAGO") {
-          await tx.livroCaixa.create({
-            data: {
-              descricao: `Pagamento Compra Peças - ${fin.descricao}`,
-              valor: fin.valor,
-              tipo_movimentacao: "SAIDA",
-              categoria: "FORNECEDOR",
-              origem: "AUTOMATICA",
-              dt_movimentacao: new Date(fin.dt_pagamento),
-              obs: `Vinculado a Conta Pagar #${conta.id_conta_pagar}`,
-            },
-          });
-        }
-      }
-      return entrada;
-    });
-  }
-  async findEntryById(id: number) {
-    return await prisma.entradaEstoque.findUnique({
-      where: { id_entrada: id },
-      include: {
-        fornecedor: true,
-        itens: {
-          include: {
-            peca: true,
-          },
-        },
-      },
-    });
-  }
-  async updateEntry(
-    id: number,
-    data: {
-      id_pessoa?: number;
-      nota_fiscal?: string | null;
-      data_compra?: Date;
-      obs?: string | null;
-      nf_numero?: string | null;
-      itens: {
-        id_item_entrada?: number;      // presente → item existente
-        id_pecas_estoque?: number;     // obrigatório para novos itens
-        new_part_data?: any;           // se nova peça a cadastrar
-        quantidade: number;
-        valor_custo: number;
-        valor_venda: number;
-        margem_lucro?: number;
-        ref_cod?: string;
-        obs?: string;
-        _delete?: boolean;             // true → remover este item
-      }[];
-    },
-  ) {
-    return await prisma.$transaction(async (tx) => {
-      // 1. Verificar que a entrada existe
-      const entrada = await tx.entradaEstoque.findUnique({
-        where: { id_entrada: id },
-        include: { itens: { include: { peca: true } } },
-      });
-      if (!entrada) throw new Error("Entrada de estoque não encontrada.");
-      // 2. Processar cada item do payload
-      for (const item of data.itens) {
-        // --- REMOÇÃO ---
-        if (item._delete && item.id_item_entrada) {
-          const itemExistente = entrada.itens.find(
-            (i) => i.id_item_entrada === item.id_item_entrada,
-          );
-          if (!itemExistente) continue;
-          const partId = itemExistente.id_pecas_estoque;
-          // Validação de segurança: verificar movimentação ativa em OS
-          const osAtivas = await tx.itensOs.count({
-            where: {
-              id_pecas_estoque: partId,
-              deleted_at: null,
-              ordem_de_servico: {
-                status: { notIn: ["FINALIZADA", "CANCELADA", "PAGA_CLIENTE"] },
-                deleted_at: null,
-              },
-            },
-          });
-          if (osAtivas > 0) {
-            const nomePeca = itemExistente.peca?.nome || `ID ${partId}`;
-            throw new Error(
-              `A peça "${nomePeca}" não pode ser removida pois já está vinculada a uma Ordem de Serviço ativa. Finalize ou cancele a OS antes de remover este item.`,
-            );
-          }
-          // Decrementar estoque e remover item
-          await tx.pecasEstoque.update({
-            where: { id_pecas_estoque: partId },
-            data: { estoque_atual: { decrement: itemExistente.quantidade } },
-          });
-          await tx.itemEntrada.delete({
-            where: { id_item_entrada: item.id_item_entrada },
-          });
-          continue;
-        }
-        // --- ATUALIZAÇÃO de item existente ---
-        if (item.id_item_entrada) {
-          await tx.itemEntrada.update({
-            where: { id_item_entrada: item.id_item_entrada },
-            data: {
-              quantidade: item.quantidade,
-              valor_custo: item.valor_custo,
-              valor_venda: item.valor_venda,
-              margem_lucro: item.margem_lucro ?? null,
-              ref_cod: item.ref_cod ?? null,
-              obs: item.obs ?? null,
-            },
-          });
-          continue;
-        }
-        // --- CRIAÇÃO de novo item ---
-        let partId = item.id_pecas_estoque;
-        if (!partId && item.new_part_data) {
-          const newPart = await tx.pecasEstoque.create({
-            data: {
-              nome: item.new_part_data.nome,
-              descricao: item.new_part_data.descricao || item.new_part_data.nome,
-              unidade_medida: item.new_part_data.unidade_medida || "UN",
-              estoque_atual: 0,
-              valor_custo: item.valor_custo,
-              valor_venda: item.valor_venda,
-              estoque_minimo: item.new_part_data.estoque_minimo || 0,
-              custo_unitario_padrao: item.valor_custo,
-              fabricante: item.new_part_data.fabricante || null,
-            },
-          });
-          partId = newPart.id_pecas_estoque;
-        }
-        if (!partId) throw new Error("Item sem ID de peça e sem dados para cadastro.");
-        await tx.itemEntrada.create({
-          data: {
-            id_entrada: id,
-            id_pecas_estoque: partId,
-            quantidade: item.quantidade,
-            valor_custo: item.valor_custo,
-            valor_venda: item.valor_venda,
-            margem_lucro: item.margem_lucro ?? null,
-            ref_cod: item.ref_cod ?? null,
-            obs: item.obs ?? null,
-          },
-        });
-        await tx.pecasEstoque.update({
-          where: { id_pecas_estoque: partId },
-          data: {
-            estoque_atual: { increment: item.quantidade },
-            valor_venda: item.valor_venda,
-            dt_ultima_compra: new Date(),
-          },
-        });
-      }
-      // 3. Recalcular valor_total da entrada (itens não deletados)
-      const itensAtualizados = await tx.itemEntrada.findMany({
-        where: { id_entrada: id },
-      });
-      const novoTotal = itensAtualizados.reduce(
-        (acc, i) => acc + Number(i.valor_custo) * Number(i.quantidade),
-        0,
-      );
-      // 4. Atualizar cabeçalho da entrada
-      return await tx.entradaEstoque.update({
-        where: { id_entrada: id },
-        data: {
-          ...(data.id_pessoa !== undefined && { id_pessoa: data.id_pessoa }),
-          ...(data.nota_fiscal !== undefined && { nota_fiscal: data.nota_fiscal }),
-          ...(data.data_compra !== undefined && { data_compra: data.data_compra }),
-          ...(data.obs !== undefined && { obs: data.obs }),
-          ...(data.nf_numero !== undefined && { nf_numero: data.nf_numero?.trim() || null }),
-          valor_total: novoTotal,
-        },
-        include: {
-          itens: { include: { peca: true } },
-        },
-      });
-    });
-  }
-  async getAvailability(id: number) {
-    const part = await prisma.pecasEstoque.findUnique({
-      where: { id_pecas_estoque: id },
-      select: {
-        estoque_atual: true,
-        nome: true,
-        valor_venda: true,
-        id_pecas_estoque: true,
-      },
-    });
-    if (!part) return null;
-    const reservedItems = await prisma.itensOs.aggregate({
-      where: {
-        id_pecas_estoque: id,
-        deleted_at: null,
-        ordem_de_servico: {
-          status: {
-            notIn: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"],
-          }, // Using active statuses
-          deleted_at: null,
-        },
-      },
-      _sum: { quantidade: true },
-    });
-    const reserved = reservedItems._sum.quantidade || 0;
-    return {
-      ...part,
-      reserved,
-    };
-  }
-  async deleteEntry(id: number) {
-    return await prisma.$transaction(async (tx) => {
-      // 1. Fetch the entry and its items
-      const entrada = await tx.entradaEstoque.findUnique({
-        where: { id_entrada: id },
-        include: {
-          itens: {
-            include: { peca: true },
-          },
-        },
-      });
-      if (!entrada) {
-        throw new Error("Entrada de estoque não encontrada.");
-      }
-      // 2. Validate safety and process decrements
-      for (const item of entrada.itens) {
-        const partId = item.id_pecas_estoque;
-        // Check 2a: Was this part used in an active OS after it was bought?
-        // Wait, any active OS using this part restricts deletion if the remaining stock would not cover it, or just strictly block it if it has ANY OS relation.
-        // As per requirement: "Se algum item dessa entrada já possui movimentação ou foi vinculado a uma OS, bloqueie a exclusão"
-        // Let's check for any OS item usage. Actually, checking if `estoque_atual - quantidade < 0` is the mathematical guarantee.
-        // We will ALSO check if there's any active OS that prevents us from taking it back.
-        const osAtivas = await tx.itensOs.count({
-          where: {
-            id_pecas_estoque: partId,
-            deleted_at: null,
-            ordem_de_servico: {
-              status: { notIn: ["CANCELADA"] },
-              deleted_at: null,
-            },
-          },
-        });
-        if (osAtivas > 0) {
-          const nomePeca = item.peca?.nome || `ID ${partId}`;
-          throw new Error(
-            `Não é possível excluir esta entrada. A peça "${nomePeca}" já foi vinculada a uma Ordem de Serviço.`
-          );
-        }
-        // Check 2b: Mathematical guarantee
-        if (Number(item.peca.estoque_atual) - item.quantidade < 0) {
-          const nomePeca = item.peca?.nome || `ID ${partId}`;
-          throw new Error(
-            `Não é possível excluir esta entrada. O estoque da peça "${nomePeca}" ficaria negativo.`
-          );
-        }
-        // Process Decrement
-        await tx.pecasEstoque.update({
-          where: { id_pecas_estoque: partId },
-          data: { estoque_atual: { decrement: item.quantidade } },
-        });
-      }
-      // 3. Cascade Delete: Items first, then the Entry
-      await tx.itemEntrada.deleteMany({
-        where: { id_entrada: id },
-      });
-      await tx.entradaEstoque.delete({
-        where: { id_entrada: id },
-      });
-      return { success: true };
     });
   }
 }
@@ -47209,11 +46839,29 @@ export class RelatoriosRepository {
   async getEvolucaoDespesasTemporal(
     startDate: Date,
     endDate: Date,
-    type: "categoria" | "subcategoria"
+    type: "categoria" | "subcategoria",
+    categoriaId?: number,
+    subcategoriaId?: number
   ) {
     const start = startOfDay(startDate);
     const end = endOfDay(endDate);
-    // Busca contas a pagar no período
+    // Monta filtro condicional de categoria para o Prisma
+    let categoriaWhere: any = {};
+    if (subcategoriaId !== undefined) {
+      // Filtro exato: apenas esta subcategoria
+      categoriaWhere = { id_categoria_financeira: subcategoriaId };
+    } else if (categoriaId !== undefined) {
+      // Filtro em árvore: categoria raiz OU qualquer filho direto
+      categoriaWhere = {
+        categoria_financeira: {
+          OR: [
+            { id_categoria_financeira: categoriaId },
+            { id_parent: categoriaId },
+          ],
+        },
+      };
+    }
+    // Busca contas a pagar no período com filtro de categoria
     const contas = await prisma.contasPagar.findMany({
       where: {
         OR: [
@@ -47227,22 +46875,26 @@ export class RelatoriosRepository {
           },
         ],
         deleted_at: null,
+        ...categoriaWhere,
       },
       include: { categoria_financeira: { include: { parent: true } } },
     });
-    // Exclui contas referentes a auto peças
-    const contasFiltradas = contas.filter((c) => {
-      const catName = fixEncoding(
-        c.categoria || c.categoria_financeira?.nome || "Sem Categoria"
-      );
-      const nameLower = catName.toLowerCase();
-      const isFornecedorOrAutoPecas =
-        nameLower.startsWith("auto pecas") ||
-        nameLower.startsWith("auto peças") ||
-        CATEGORIAS_FORNECEDOR.includes(catName);
-      return !isFornecedorOrAutoPecas;
-    });
-    // Gera buckets baseados em meses dentro do período solicitado
+    // Exclui contas referentes a auto peças (apenas quando sem filtro de categoria específico)
+    const contasFiltradas =
+      categoriaId !== undefined || subcategoriaId !== undefined
+        ? contas
+        : contas.filter((c) => {
+            const catName = fixEncoding(
+              c.categoria || c.categoria_financeira?.nome || "Sem Categoria"
+            );
+            const nameLower = catName.toLowerCase();
+            const isFornecedorOrAutoPecas =
+              nameLower.startsWith("auto pecas") ||
+              nameLower.startsWith("auto peças") ||
+              CATEGORIAS_FORNECEDOR.includes(catName);
+            return !isFornecedorOrAutoPecas;
+          });
+    // Gera buckets mensais dentro do período
     const buckets: { start: Date; end: Date; label: string }[] = [];
     let current = startOfMonth(start);
     const limit = endOfMonth(end);
@@ -50269,8 +49921,20 @@ export class RelatoriosService {
   /**
    * Evolução de Despesas Temporal baseada em Categoria/Subcategoria e filtro global de datas
    */
-  async getEvolucaoDespesasTemporal(startDate: Date, endDate: Date, type: "categoria" | "subcategoria") {
-    return await relatoriosRepository.getEvolucaoDespesasTemporal(startDate, endDate, type);
+  async getEvolucaoDespesasTemporal(
+    startDate: Date,
+    endDate: Date,
+    type: "categoria" | "subcategoria",
+    categoriaId?: number,
+    subcategoriaId?: number
+  ) {
+    return await relatoriosRepository.getEvolucaoDespesasTemporal(
+      startDate,
+      endDate,
+      type,
+      categoriaId,
+      subcategoriaId
+    );
   }
   /**
    * Performance da Equipe — KPI de MO + Vendas de Estoque
