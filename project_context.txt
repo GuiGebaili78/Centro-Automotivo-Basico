@@ -1,4 +1,4 @@
-PROJECT DUMP - 30/05/2026 17:26
+PROJECT DUMP - 31/05/2026 08:27
 =========================================
 
 --- FILE: client_logs.txt ---
@@ -1056,11 +1056,12 @@ const router = createBrowserRouter(
         {/* Alterar senha: protegida, porém fora do MainLayout para
             permitir que o usuário obrigado a trocar a senha acesse a tela */}
         <Route path="/alterar-senha" element={<ChangePasswordPage />} />
+        {/* Rota de Impressão: Protegida, mas fora do MainLayout para isolar de Sidebar/Header */}
+        <Route path="/print/os/:id" element={<OsPrintView />} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<DashboardPage />} />
           {/* Páginas Modernizadas */}
           <Route path="/cliente" element={<ClientePage />} />
-          <Route path="/print/os/:id" element={<OsPrintView />} />
           {/* Páginas Legadas (Ainda funcionam dentro do layout novo!) */}
           <Route path="/veiculo" element={<VeiculoPage />} />
           <Route path="/ordem-de-servico" element={<OrdemDeServicoPage />} />
@@ -1855,7 +1856,7 @@ import { ClienteDataForm } from "./ClienteDataForm";
 import { Button } from "../../ui";
 import { Save } from "lucide-react";
 import { ClienteService } from "../../../services/cliente.service";
-import { unmask } from "../../../utils/normalize";
+import { unmask, formatPhone } from "../../../utils/normalize";
 import { toast } from "react-toastify";
 interface ClienteFormProps {
   onSuccess: (newClient: any) => void;
@@ -1872,6 +1873,8 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
   const [ie, setIe] = useState("");
   const [telefone, setTelefone] = useState("");
   const [telefone2, setTelefone2] = useState("");
+  const handleSetTelefone = (val: string) => setTelefone(formatPhone(val));
+  const handleSetTelefone2 = (val: string) => setTelefone2(formatPhone(val));
   const [email, setEmail] = useState("");
   const [cep, setCep] = useState("");
   const [logradouro, setLogradouro] = useState("");
@@ -1957,9 +1960,9 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
         ie={ie}
         setIe={setIe}
         telefone={telefone}
-        setTelefone={setTelefone}
+        setTelefone={handleSetTelefone}
         telefone2={telefone2}
-        setTelefone2={setTelefone2}
+        setTelefone2={handleSetTelefone2}
         email={email}
         setEmail={setEmail}
         cep={cep}
@@ -1991,6 +1994,358 @@ export const ClienteForm = ({ onSuccess, onCancel }: ClienteFormProps) => {
 
 
 --- FILE: client\src\components\clientes\Forms\ClienteFormSection.tsx ---
+/**
+ * ClienteFormSection
+ *
+ * Responsabilidades:
+ *  - Gerenciar o estado interno de TODOS os campos do cliente.
+ *  - Expor `getData()` via useImperativeHandle para que a página pai
+ *    colete os dados SOMENTE no momento do submit (sem prop drilling de state).
+ *  - Usar React.memo + forwardRef, eliminando re-renderizações causadas
+ *    pelo estado de componentes irmãos (ex: VeiculoFormSection).
+ *
+ * Padrão adoptado: estado totalmente local + imperativeHandle (pull on submit)
+ */
+import {
+  memo,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+  useCallback,
+  useEffect,
+} from "react";
+import {
+  User,
+  Phone,
+  Mail,
+  Search,
+  MapPin,
+  Building2,
+  Hash,
+} from "lucide-react";
+import { Input } from "../../ui/Input";
+import { formatCpf, formatCnpj, formatCep, formatPhone, unmask, formatIE } from "../../../utils/normalize";
+// ─── Types ────────────────────────────────────────────────────────────────────
+export interface ClienteFormData {
+  tipoPessoa: "PF" | "PJ";
+  nome: string;
+  cpf: string;
+  razaoSocial: string;
+  nomeFantasia: string;
+  cnpj: string;
+  ie: string;
+  telefone: string;
+  telefone2: string;
+  email: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complLogradouro: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+}
+export interface ClienteFormSectionRef {
+  getData: () => ClienteFormData;
+}
+interface ClienteFormSectionProps {
+  /** Dados iniciais (edição). Em modo criação, pode ser omitido. */
+  initialData?: Partial<ClienteFormData>;
+  /** Em modo de edição, campos do nome/tipo ficam desabilitados. */
+  isEditMode?: boolean;
+  /** Ref para o input "nome" principal para autoFocus no modo criação. */
+  nameInputRef?: React.RefObject<HTMLInputElement | null>;
+}
+// ─── Component ────────────────────────────────────────────────────────────────
+export const ClienteFormSection = memo(
+  forwardRef<ClienteFormSectionRef, ClienteFormSectionProps>(
+    ({ initialData, isEditMode = false, nameInputRef }, ref) => {
+      // ── Local state (não sobe para o pai até o submit) ──
+      const [tipoPessoa, setTipoPessoa] = useState<"PF" | "PJ">(
+        initialData?.tipoPessoa ?? "PF",
+      );
+      const [nome, setNome] = useState(initialData?.nome ?? "");
+      const [cpf, setCpf] = useState(initialData?.cpf ?? "");
+      const [razaoSocial, setRazaoSocial] = useState(
+        initialData?.razaoSocial ?? "",
+      );
+      const [nomeFantasia, setNomeFantasia] = useState(
+        initialData?.nomeFantasia ?? "",
+      );
+      const [cnpj, setCnpj] = useState(initialData?.cnpj ?? "");
+      const [ie, setIe] = useState(initialData?.ie ?? "");
+      const [telefone, setTelefone] = useState(initialData?.telefone ?? "");
+      const [telefone2, setTelefone2] = useState(initialData?.telefone2 ?? "");
+      const [email, setEmail] = useState(initialData?.email ?? "");
+      const [cep, setCep] = useState(initialData?.cep ?? "");
+      const [logradouro, setLogradouro] = useState(
+        initialData?.logradouro ?? "",
+      );
+      const [numero, setNumero] = useState(initialData?.numero ?? "");
+      const [complLogradouro, setComplLogradouro] = useState(
+        initialData?.complLogradouro ?? "",
+      );
+      const [bairro, setBairro] = useState(initialData?.bairro ?? "");
+      const [cidade, setCidade] = useState(initialData?.cidade ?? "São Paulo");
+      const [estado, setEstado] = useState(initialData?.estado ?? "SP");
+      // Sincroniza quando os dados iniciais chegam (modo edição assíncrono)
+      useEffect(() => {
+        if (!initialData) return;
+        if (initialData.tipoPessoa) setTipoPessoa(initialData.tipoPessoa);
+        if (initialData.nome !== undefined) setNome(initialData.nome);
+        if (initialData.cpf !== undefined) setCpf(initialData.cpf);
+        if (initialData.razaoSocial !== undefined)
+          setRazaoSocial(initialData.razaoSocial);
+        if (initialData.nomeFantasia !== undefined)
+          setNomeFantasia(initialData.nomeFantasia);
+        if (initialData.cnpj !== undefined) setCnpj(initialData.cnpj);
+        if (initialData.ie !== undefined) setIe(initialData.ie);
+        if (initialData.telefone !== undefined)
+          setTelefone(initialData.telefone);
+        if (initialData.telefone2 !== undefined)
+          setTelefone2(initialData.telefone2);
+        if (initialData.email !== undefined) setEmail(initialData.email);
+        if (initialData.cep !== undefined) setCep(initialData.cep);
+        if (initialData.logradouro !== undefined)
+          setLogradouro(initialData.logradouro);
+        if (initialData.numero !== undefined) setNumero(initialData.numero);
+        if (initialData.complLogradouro !== undefined)
+          setComplLogradouro(initialData.complLogradouro);
+        if (initialData.bairro !== undefined) setBairro(initialData.bairro);
+        if (initialData.cidade !== undefined) setCidade(initialData.cidade);
+        if (initialData.estado !== undefined) setEstado(initialData.estado);
+        // Dependência intencional: só roda quando initialData mudar de referência
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [initialData]);
+      // ── Expõe getData() para a página pai ──
+      useImperativeHandle(
+        ref,
+        () => ({
+          getData: () => ({
+            tipoPessoa,
+            nome,
+            cpf: unmask(cpf),
+            razaoSocial,
+            nomeFantasia,
+            cnpj: unmask(cnpj),
+            ie,
+            telefone: unmask(telefone),
+            telefone2: unmask(telefone2),
+            email,
+            cep: unmask(cep),
+            logradouro,
+            numero,
+            complLogradouro,
+            bairro,
+            cidade,
+            estado,
+          }),
+        }),
+        [
+          tipoPessoa,
+          nome,
+          cpf,
+          razaoSocial,
+          nomeFantasia,
+          cnpj,
+          ie,
+          telefone,
+          telefone2,
+          email,
+          cep,
+          logradouro,
+          numero,
+          complLogradouro,
+          bairro,
+          cidade,
+          estado,
+        ],
+      );
+      // ── Busca de CEP ViaCEP ──
+      const handleCepBlur = useCallback(async () => {
+        const cepRaw = cep.replace(/\D/g, "");
+        if (cepRaw.length !== 8) return;
+        try {
+          const res = await fetch(`https://viacep.com.br/ws/${cepRaw}/json/`);
+          const data = await res.json();
+          if (!data.erro) {
+            setLogradouro(data.logradouro ?? "");
+            setBairro(data.bairro ?? "");
+            setCidade(data.localidade ?? "");
+            setEstado(data.uf ?? "");
+            // Foca no campo "Número" após autocomplete
+            document.getElementById("nr_logradouro")?.focus();
+          }
+        } catch {
+          // silently fail — user can fill manually
+        }
+      }, [cep]);
+      // ─── Render ───────────────────────────────────────────────────────────
+      return (
+        <div className="bg-neutral-25 p-6 rounded-2xl border border-neutral-200 shadow-sm space-y-6">
+          {/* Header */}
+          <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
+            <div className="bg-primary-100 p-2 rounded-lg text-primary-600">
+              <User size={20} />
+            </div>
+            <h2 className="font-bold text-lg text-neutral-800">
+              Dados do Cliente
+            </h2>
+          </div>
+          {/* Tipo Pessoa Toggle */}
+          <div className="flex bg-neutral-100 p-1 rounded-lg w-fit">
+            {(["PF", "PJ"] as const).map((tipo) => (
+              <button
+                key={tipo}
+                type="button"
+                disabled={isEditMode}
+                onClick={() => !isEditMode && setTipoPessoa(tipo)}
+                className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${
+                  tipoPessoa === tipo
+                    ? "bg-neutral-25 shadow text-primary-600"
+                    : "text-neutral-500"
+                } ${isEditMode ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {tipo === "PF" ? "Pessoa Física" : "Pessoa Jurídica"}
+              </button>
+            ))}
+          </div>
+          {/* Campos de identificação (PF / PJ) */}
+          <div className="grid grid-cols-1 gap-4">
+            {tipoPessoa === "PF" ? (
+              <>
+                <Input
+                  label="Nome Completo *"
+                  icon={User}
+                  ref={nameInputRef as React.Ref<HTMLInputElement>}
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Nome do cliente"
+                  required
+                />
+                <Input
+                  label="CPF"
+                  icon={Hash}
+                  value={cpf}
+                  onChange={(e) => setCpf(formatCpf(e.target.value))}
+                  placeholder="000.000.000-00"
+                  disabled={isEditMode}
+                />
+              </>
+            ) : (
+              <>
+                <Input
+                  label="Razão Social *"
+                  icon={Building2}
+                  ref={nameInputRef as React.Ref<HTMLInputElement>}
+                  value={razaoSocial}
+                  onChange={(e) => setRazaoSocial(e.target.value)}
+                  placeholder="Nome da Empresa"
+                  required
+                />
+                <Input
+                  label="Nome Fantasia"
+                  value={nomeFantasia}
+                  onChange={(e) => setNomeFantasia(e.target.value)}
+                  placeholder="Nome Comercial"
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="CNPJ"
+                    value={cnpj}
+                    onChange={(e) => setCnpj(formatCnpj(e.target.value))}
+                    placeholder="00.000.000/0000-00"
+                  />
+                  <Input
+                    label="IE"
+                    value={ie}
+                    onChange={(e) => setIe(formatIE(e.target.value))}
+                    placeholder="IE Isento ou Número (ex: 123.456.789)"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          {/* Contato */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-100">
+            <Input
+              label="Telefone Principal *"
+              icon={Phone}
+              value={telefone}
+              onChange={(e) => setTelefone(formatPhone(e.target.value))}
+              placeholder="(00) 00000-0000"
+              required
+            />
+            <Input
+              label="Telefone 2"
+              icon={Phone}
+              value={telefone2}
+              onChange={(e) => setTelefone2(formatPhone(e.target.value))}
+              placeholder="(00) 00000-0000"
+            />
+            <div className="sm:col-span-2">
+              <Input
+                label="Email"
+                icon={Mail}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="cliente@email.com"
+              />
+            </div>
+          </div>
+          {/* Endereço */}
+          <div className="space-y-4 pt-4 border-t border-neutral-100">
+            <div className="grid grid-cols-3 gap-4">
+              <Input
+                label="CEP"
+                icon={Search}
+                value={cep}
+                onChange={(e) => setCep(formatCep(e.target.value))}
+                onBlur={handleCepBlur}
+                placeholder="00000-000"
+              />
+              <div className="col-span-2">
+                <Input
+                  label="Logradouro"
+                  icon={MapPin}
+                  value={logradouro}
+                  onChange={(e) => setLogradouro(e.target.value)}
+                />
+              </div>
+              <Input
+                id="nr_logradouro"
+                label="Número"
+                value={numero}
+                onChange={(e) => setNumero(e.target.value)}
+              />
+              <div className="col-span-2">
+                <Input
+                  label="Complemento"
+                  value={complLogradouro}
+                  onChange={(e) => setComplLogradouro(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Bairro"
+                value={bairro}
+                onChange={(e) => setBairro(e.target.value)}
+              />
+              <Input
+                label="Cidade"
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    },
+  ),
+);
+ClienteFormSection.displayName = "ClienteFormSection";
 
 
 --- FILE: client\src\components\clientes\Forms\EquipamentoFormSection.tsx ---
@@ -3574,6 +3929,125 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
 };
 
 
+--- FILE: client\src\components\dashboard\GlobalFilter.tsx ---
+import { DateRangePicker } from "@tremor/react";
+import { ptBR } from "date-fns/locale";
+import { Calendar } from "lucide-react";
+import { Checkbox } from "../ui";
+interface DateRangePickerValue {
+  from?: Date;
+  to?: Date;
+  selectValue?: string;
+}
+interface GlobalFilterProps {
+  dateRange: DateRangePickerValue;
+  onDateRangeChange: (value: DateRangePickerValue) => void;
+  compareYearOverYear: boolean;
+  onCompareChange: (value: boolean) => void;
+}
+type PresetKey = "today" | "7days" | "month" | "3months" | "year";
+export function GlobalFilter({
+  dateRange,
+  onDateRangeChange,
+  compareYearOverYear,
+  onCompareChange,
+}: GlobalFilterProps) {
+  const presets: Record<
+    PresetKey,
+    { label: string; range: DateRangePickerValue }
+  > = {
+    today: {
+      label: "Hoje",
+      range: {
+        from: new Date(new Date().setHours(0, 0, 0, 0)),
+        to: new Date(new Date().setHours(23, 59, 59, 999)),
+      },
+    },
+    "7days": {
+      label: "Últimos 7 dias",
+      range: {
+        from: new Date(new Date().setDate(new Date().getDate() - 7)),
+        to: new Date(),
+      },
+    },
+    month: {
+      label: "Mês Atual",
+      range: {
+        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        to: new Date(),
+      },
+    },
+    "3months": {
+      label: "Últimos 3 meses",
+      range: {
+        from: new Date(new Date().setMonth(new Date().getMonth() - 3)),
+        to: new Date(),
+      },
+    },
+    year: {
+      label: "Ano Atual",
+      range: {
+        from: new Date(new Date().getFullYear(), 0, 1),
+        to: new Date(),
+      },
+    },
+  };
+  const handlePresetClick = (key: PresetKey) => {
+    onDateRangeChange(presets[key].range);
+  };
+  const isActivePreset = (key: PresetKey): boolean => {
+    if (!dateRange.from || !dateRange.to) return false;
+    const preset = presets[key].range;
+    return (
+      dateRange.from.toDateString() === preset.from?.toDateString() &&
+      dateRange.to.toDateString() === preset.to?.toDateString()
+    );
+  };
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Calendar className="w-5 h-5 text-primary-600" />
+        <h2 className="text-lg font-bold text-slate-900">Período de Análise</h2>
+      </div>
+      {/* Presets */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {(Object.keys(presets) as PresetKey[]).map((key) => (
+          <button
+            key={key}
+            onClick={() => handlePresetClick(key)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              isActivePreset(key)
+                ? "bg-primary-600 text-white shadow-md"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            {presets[key].label}
+          </button>
+        ))}
+      </div>
+      {/* Date Range Picker */}
+      <div className="mb-4">
+        <DateRangePicker
+          className="max-w-md"
+          value={dateRange}
+          onValueChange={onDateRangeChange}
+          locale={ptBR}
+          placeholder="Selecione o período personalizado"
+          color="blue"
+        />
+      </div>
+      {/* Year-over-Year Comparison */}
+      <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
+        <Checkbox
+          id="compare-yoy"
+          checked={compareYearOverYear}
+          onChange={(e) => onCompareChange(e.target.checked)}
+          label="Comparar com o ano passado"
+        />
+      </div>
+    </div>
+  );
+}
 
 
 --- FILE: client\src\components\dashboard\RecentOsWidget.tsx ---
@@ -7933,7 +8407,6 @@ export const ModalPagamentoUnificado: React.FC<
 };
 
 
---- FILE: client\src\components\financeiro\MovimentacoesTab.tsx ---
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { FinanceiroService } from "../../services/financeiro.service";
@@ -9424,8 +9897,6 @@ export const OperadorasTab = () => {
     </div>
   );
 };
-
-
 --- FILE: client\src\components\financeiro\PagamentoColaboradoresTab.tsx ---
 import { useState, useMemo, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
@@ -13995,29 +14466,36 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
   const handleEmployeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
     let cat = newLaborService.categoria;
+    let desc = newLaborService.descricao;
     if (id) {
       const emp = employees.find(
         (e) => String(e.id_funcionario) === String(id),
       );
       if (emp) {
-        const role = (emp.cargo || "").toUpperCase();
+        const role = emp.cargo || "";
+        const roleUpper = role.toUpperCase();
         const spec = (emp.especialidade || "").toUpperCase();
         if (
-          role.includes("ELETRIC") ||
+          roleUpper.includes("ELETRIC") ||
           spec.includes("ELETRIC") ||
-          role.includes("ELÉTRIC") ||
+          roleUpper.includes("ELÉTRIC") ||
           spec.includes("ELÉTRIC")
         ) {
           cat = "ELETRICA";
         } else {
           cat = "MECANICA";
         }
+        // Autopreencher a descrição/tipo de serviço com a função (cargo) do funcionário
+        desc = role;
       }
+    } else {
+      desc = "";
     }
     setNewLaborService({
       ...newLaborService,
       id_funcionario: id,
       categoria: cat,
+      descricao: desc,
     });
   };
   const handleAddLabor = async (e?: FormEvent) => {
@@ -14303,7 +14781,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             <tbody className="divide-y divide-neutral-50">
               {laborServices.map((svc) => (
                 <tr
-                  className="hover:bg-neutral-50 transition-colors group"
+                  className="bg-green-200 hover:[&>td]:!bg-green-200 print:bg-transparent transition-colors group"
                   key={svc.id_servico_mao_de_obra || svc.id_temporary}
                 >
                   <td className="pl-6 py-3 text-base text-gray-900">
@@ -15911,7 +16389,7 @@ export const OsDiagnosis = ({
           DEFEITO RELATADO (IMPRESSÃO PARA O CLIENTE)
         </label>
         <textarea
-          className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-base text-gray-900 h-32 outline-none focus:border-red-300 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm placeholder:text-gray-400"
+          className="w-full bg-green-200 border border-green-400 text-emerald-950 p-3 rounded-xl text-base h-32 outline-none resize-none transition-all focus:shadow-sm placeholder:text-gray-400 print:bg-transparent print:text-black placeholder-shown:bg-neutral-25 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900 placeholder-shown:focus:border-red-300 placeholder-shown:focus:bg-neutral-25"
           placeholder="Descreva o defeito..."
           value={defeitoRelatado || ""}
           onChange={(e) => onChangeDefeito(e.target.value)}
@@ -15926,7 +16404,7 @@ export const OsDiagnosis = ({
           DIAGNÓSTICO (APENAS INFORMAÇÕES INTERNAS DA OFICINA)
         </label>
         <textarea
-          className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-base text-gray-900 h-32 outline-none focus:border-neutral-200 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm placeholder:text-gray-400"
+          className="w-full bg-green-200 border border-green-400 text-emerald-950 p-3 rounded-xl text-base h-32 outline-none resize-none transition-all focus:shadow-sm placeholder:text-gray-400 print:bg-transparent print:text-black placeholder-shown:bg-neutral-25 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900 placeholder-shown:focus:border-neutral-200 placeholder-shown:focus:bg-neutral-25"
           placeholder="Insira detalhes adicionais..."
           value={diagnostico || ""}
           onChange={(e) => onChangeDiagnostico(e.target.value)}
@@ -16016,9 +16494,6 @@ export const OsHeader = ({
     </div>
   );
 };
-
-
---- FILE: client\src\components\os\OsHeaderCard.tsx ---
 import {
   ArrowLeft,
   Printer,
@@ -16246,11 +16721,12 @@ export const OsHeaderCard = ({
           <div className="flex items-center gap-2">
             <Input
               type="number"
-              value={os.km_entrada || 0}
+              placeholder="0"
+              value={os.km_entrada ?? ""}
               onChange={(e) =>
-                updateOSField("km_entrada", Number(e.target.value))
+                updateOSField("km_entrada", e.target.value === "" ? null : Number(e.target.value))
               }
-              className="!py-2 !px-3 !text-base !font-bold bg-neutral-50"
+              className="!py-2 !px-3 !text-base !font-bold bg-green-200 border-green-400 text-emerald-950 print:bg-transparent print:text-black placeholder-shown:bg-neutral-50 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900"
             />
             <span className="text-xs font-bold text-gray-400 uppercase">
               KM
@@ -16726,7 +17202,7 @@ export const OsItemsTable = ({
             .map((item) => (
               <tr
                 key={item.id_iten}
-                className="hover:bg-neutral-50 transition-colors group"
+                className="bg-green-200 hover:[&>td]:!bg-green-200 print:bg-transparent transition-colors group"
               >
                 <td className="pl-6 py-3">
                   <div className="text-base text-gray-900 flex flex-wrap items-center gap-2">
@@ -19497,6 +19973,13 @@ interface DocumentoModalProps {
   clienteEmail?: string;
   clienteTelefone?: string;
   clienteNome?: string;
+  veiculoMarca?: string;
+  veiculoModelo?: string;
+  veiculoCor?: string;
+  veiculoPlaca?: string;
+  equipamentoPeca?: string;
+  equipamentoFabricante?: string;
+  equipamentoNumeracao?: string;
 }
 export const DocumentoModal = ({
   isOpen,
@@ -19505,6 +19988,13 @@ export const DocumentoModal = ({
   status,
   clienteEmail,
   clienteNome,
+  veiculoMarca,
+  veiculoModelo,
+  veiculoCor,
+  veiculoPlaca,
+  equipamentoPeca,
+  equipamentoFabricante,
+  equipamentoNumeracao,
 }: DocumentoModalProps) => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(clienteEmail || "");
@@ -19528,9 +20018,27 @@ export const DocumentoModal = ({
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement("a");
         link.href = url;
-        const fileName = isOrcamento
-          ? `orcamento-${osId}.pdf`
-          : `os-${osId}.pdf`;
+        // Try reading content-disposition header
+        const contentDisposition = response.headers["content-disposition"] || response.headers["Content-Disposition"];
+        let fileName = "";
+        if (contentDisposition) {
+          const match = contentDisposition.match(/filename="?([^";]+)"?/);
+          if (match && match[1]) {
+            fileName = match[1];
+          }
+        }
+        // Fallback filename calculation
+        if (!fileName) {
+          let itemDesc = "";
+          if (veiculoMarca || veiculoModelo || veiculoPlaca) {
+            itemDesc = `${veiculoMarca || ""} ${veiculoModelo || ""} ${veiculoCor || ""} ${veiculoPlaca || ""}`.trim();
+          } else if (equipamentoPeca) {
+            itemDesc = `${equipamentoPeca} ${equipamentoFabricante || ""} ${equipamentoNumeracao || ""}`.trim();
+          }
+          const docType = isOrcamento ? "Orcamento" : "OS";
+          const rawFilename = `${docType}_${osId}${itemDesc ? ` - ${itemDesc}` : ""}${clienteNome ? ` - ${clienteNome}` : ""}`;
+          fileName = rawFilename.replace(/[/\\?%*:|"<>\s]+/g, " ").trim() + ".pdf";
+        }
         link.setAttribute("download", fileName);
         document.body.appendChild(link);
         link.click();
@@ -23390,6 +23898,7 @@ import {
 } from "../services/ConfiguracaoService";
 import { STATIC_BASE } from "../services/api";
 import { toast } from "react-toastify";
+import { formatCnpj, formatPhone, formatIE } from "../utils/normalize";
 import {
   Save,
   Upload,
@@ -23398,11 +23907,6 @@ import {
   Mail,
   FileText,
   MapPin,
-  Server,
-  Hash,
-  User,
-  Lock,
-  AlertCircle,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -23413,8 +23917,10 @@ export const ConfiguracaoPage = () => {
     nomeFantasia: "",
     razaoSocial: "",
     cnpj: "",
+    inscricaoEstadual: "",
     endereco: "",
     telefone: "",
+    telefone2: "",
     email: "",
     logoUrl: "",
     smtpHost: "",
@@ -23428,6 +23934,8 @@ export const ConfiguracaoPage = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isNewUpload, setIsNewUpload] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logoImpressaoPreview, setLogoImpressaoPreview] = useState<string | null>(null);
+  const printFileInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     loadConfig();
   }, []);
@@ -23440,12 +23948,34 @@ export const ConfiguracaoPage = () => {
           setLogoPreview(`${STATIC_BASE}${config.logoUrl}?t=${Date.now()}`);
           setIsNewUpload(false);
         }
+        if (config.logoImpressaoUrl) {
+          setLogoImpressaoPreview(`${STATIC_BASE}${config.logoImpressaoUrl}?t=${Date.now()}`);
+        }
       }
     } catch (error) {
       console.error("Erro ao carregar configurações:", error);
       toast.error("Erro ao carregar configurações.");
     } finally {
       setInitialLoading(false);
+    }
+  };
+  const handlePrintLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    try {
+      const updatedConfig = await ConfiguracaoService.uploadLogoImpressao(file);
+      setFormData(updatedConfig);
+      if (updatedConfig.logoImpressaoUrl) {
+        setLogoImpressaoPreview(`${STATIC_BASE}${updatedConfig.logoImpressaoUrl}?t=${Date.now()}`);
+      }
+      toast.success("Logo de impressão atualizada com sucesso!");
+      window.dispatchEvent(new Event("configuracao-updated"));
+    } catch (error) {
+      console.error("Erro ao subir logo de impressão:", error);
+      toast.error("Erro ao subir logo de impressão.");
+    } finally {
+      setLoading(false);
     }
   };
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -23514,27 +24044,6 @@ export const ConfiguracaoPage = () => {
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Validação SMTP: Se preencher um, obriga preencher todos (Host, Port, User, Pass)
-    const smtpFields = [
-      formData.smtpHost,
-      formData.smtpPort,
-      formData.smtpUser,
-      formData.smtpPass,
-    ];
-    const anySmtpFilled = smtpFields.some(
-      (field) =>
-        field !== undefined && String(field).trim() !== "" && field !== 0,
-    );
-    const allSmtpFilled = smtpFields.every(
-      (field) =>
-        field !== undefined && String(field).trim() !== "" && field !== 0,
-    );
-    if (anySmtpFilled && !allSmtpFilled) {
-      toast.error(
-        "Para configurar o e-mail, todos os campos SMTP (Servidor, Porta, Usuário e Senha) devem ser preenchidos.",
-      );
-      return;
-    }
     setLoading(true);
     try {
       const data = new FormData();
@@ -23544,6 +24053,7 @@ export const ConfiguracaoPage = () => {
       data.append("inscricaoEstadual", formData.inscricaoEstadual || "");
       data.append("endereco", formData.endereco || "");
       data.append("telefone", formData.telefone || "");
+      data.append("telefone2", formData.telefone2 || "");
       data.append("email", formData.email || "");
       data.append("smtpHost", formData.smtpHost || "");
       data.append("smtpPort", String(formData.smtpPort || ""));
@@ -23599,123 +24109,187 @@ export const ConfiguracaoPage = () => {
           <div className="lg:col-span-1">
             <Card
               title="Logotipo"
-              description="Imagem que sairá nas impressões"
+              description="Imagem que sairá nas impressões e sistema"
             >
-              <div className="flex flex-col items-center gap-4">
-                <div
-                  className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 overflow-hidden relative flex items-center justify-center"
-                  onClick={() => {
-                    if (!logoPreview) triggerFileInput();
-                  }}
-                >
-                  {logoPreview ? (
+              <div className="flex flex-col items-center gap-6">
+                {/* 1. LOGO PRINCIPAL */}
+                <div className="w-full space-y-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">
+                    Logotipo Principal (Geral)
+                  </span>
+                  <div className="flex flex-col items-center gap-3">
                     <div
-                      className="w-full h-full flex items-center justify-center cursor-move"
-                      style={
-                        isNewUpload
-                          ? {
-                              transform: `scale(${logoZoom / 100})`,
-                              transformOrigin: `${logoPosition.x}% ${logoPosition.y}%`,
-                            }
-                          : undefined
-                      }
-                      onMouseDown={(e) => {
-                        if (isNewUpload) {
-                          setIsDragging(true);
-                          e.preventDefault();
-                        }
+                      className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 overflow-hidden relative flex items-center justify-center cursor-pointer"
+                      onClick={() => {
+                        if (!logoPreview) triggerFileInput();
                       }}
-                      onMouseMove={(e) => {
-                        if (isDragging && isNewUpload) {
-                          const rect =
-                            e.currentTarget.parentElement!.getBoundingClientRect();
-                          const x =
-                            ((e.clientX - rect.left) / rect.width) * 100;
-                          const y =
-                            ((e.clientY - rect.top) / rect.height) * 100;
-                          setLogoPosition({
-                            x: Math.max(0, Math.min(100, x)),
-                            y: Math.max(0, Math.min(100, y)),
-                          });
-                        }
-                      }}
-                      onMouseUp={() => setIsDragging(false)}
-                      onMouseLeave={() => setIsDragging(false)}
                     >
-                      <img
-                        src={logoPreview}
-                        alt="Logo Preview"
-                        className="w-full h-full object-contain pointer-events-none"
-                        draggable={false}
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors">
-                      <div className="text-center p-4">
-                        <Upload className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-                        <span className="text-sm text-slate-500 font-medium">
-                          Clique para enviar
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {logoPreview && (
-                  <div className="w-full space-y-3">
-                    {isNewUpload && (
-                      <>
-                        <Input
-                          label={`Zoom: ${logoZoom}%`}
-                          type="range"
-                          min="50"
-                          max="200"
-                          value={logoZoom}
-                          onChange={(e) =>
-                            setLogoZoom(Number(e.target.value))
+                      {logoPreview ? (
+                        <div
+                          className="w-full h-full flex items-center justify-center cursor-move"
+                          style={
+                            isNewUpload
+                              ? {
+                                  transform: `scale(${logoZoom / 100})`,
+                                  transformOrigin: `${logoPosition.x}% ${logoPosition.y}%`,
+                                }
+                              : undefined
                           }
-                          className="!w-full !h-2 !bg-slate-200 !rounded-lg !appearance-none !cursor-pointer !accent-primary-600 !border-0 !p-0 !ring-0"
-                        />
-                        <p className="text-xs text-slate-500 text-center">
-                          💡 Arraste o logo para reposicionar
-                        </p>
-                      </>
+                          onMouseDown={(e) => {
+                            if (isNewUpload) {
+                              setIsDragging(true);
+                              e.preventDefault();
+                            }
+                          }}
+                          onMouseMove={(e) => {
+                            if (isDragging && isNewUpload) {
+                              const rect =
+                                e.currentTarget.parentElement!.getBoundingClientRect();
+                              const x =
+                                ((e.clientX - rect.left) / rect.width) * 100;
+                              const y =
+                                ((e.clientY - rect.top) / rect.height) * 100;
+                              setLogoPosition({
+                                x: Math.max(0, Math.min(100, x)),
+                                y: Math.max(0, Math.min(100, y)),
+                              });
+                            }
+                          }}
+                          onMouseUp={() => setIsDragging(false)}
+                          onMouseLeave={() => setIsDragging(false)}
+                        >
+                          <img
+                            src={logoPreview}
+                            alt="Logo Preview"
+                            className="w-full h-full object-contain pointer-events-none"
+                            draggable={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center hover:bg-slate-100 transition-colors">
+                          <div className="text-center p-4">
+                            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-1" />
+                            <span className="text-xs text-slate-500 font-medium">
+                              Clique para enviar
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {logoPreview && (
+                      <div className="w-full max-w-[256px] space-y-2">
+                        {isNewUpload && (
+                          <>
+                            <Input
+                              label={`Zoom: ${logoZoom}%`}
+                              type="range"
+                              min="50"
+                              max="200"
+                              value={logoZoom}
+                              onChange={(e) =>
+                                setLogoZoom(Number(e.target.value))
+                              }
+                              className="!w-full !h-2 !bg-slate-200 !rounded-lg !appearance-none !cursor-pointer !accent-primary-600 !border-0 !p-0 !ring-0"
+                            />
+                            <p className="text-[10px] text-slate-500 text-center">
+                              💡 Arraste o logo para reposicionar
+                            </p>
+                          </>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = "";
+                                fileInputRef.current.click();
+                              }
+                            }}
+                            className="text-primary-600 hover:bg-primary-50 border border-primary-200"
+                            icon={Plus}
+                          >
+                            {isNewUpload ? "Trocar" : "Alterar"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="danger"
+                            size="sm"
+                            onClick={() => {
+                              setLogoPreview(null);
+                              setIsNewUpload(false);
+                              setFormData({ ...formData, logoUrl: "" });
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = "";
+                              }
+                            }}
+                            className="border border-red-200"
+                            icon={Trash2}
+                          >
+                            Remover
+                          </Button>
+                        </div>
+                      </div>
                     )}
-                    <div className="grid grid-cols-2 gap-2">
+                  </div>
+                </div>
+                <hr className="w-full border-slate-200" />
+                {/* 2. LOGO DE IMPRESSÃO */}
+                <div className="w-full space-y-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">
+                    Logo de Impressão (Fundo Branco)
+                  </span>
+                  <div className="flex flex-col items-center gap-3">
+                    <div
+                      className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-white overflow-hidden relative flex items-center justify-center cursor-pointer shadow-inner"
+                      onClick={() => {
+                        printFileInputRef.current?.click();
+                      }}
+                    >
+                      {logoImpressaoPreview ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <img
+                            src={logoImpressaoPreview}
+                            alt="Logo Impressão Preview"
+                            className="w-full h-full object-contain pointer-events-none"
+                            draggable={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center hover:bg-slate-50 transition-colors">
+                          <div className="text-center p-4">
+                            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-1" />
+                            <span className="text-xs text-slate-500 font-medium">
+                              Clique para enviar logo impressa
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 text-center leading-normal max-w-[240px]">
+                      Utilizada em orçamentos e documentos impressos. Recomenda-se imagem com alto contraste para folhas A4.
+                    </p>
+                    <div className="w-full max-w-[256px]">
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                            fileInputRef.current.click();
+                          if (printFileInputRef.current) {
+                            printFileInputRef.current.value = "";
+                            printFileInputRef.current.click();
                           }
                         }}
-                        className="text-primary-600 hover:bg-primary-50 border border-primary-200"
+                        className="text-primary-600 hover:bg-primary-50 border border-primary-200 w-full"
                         icon={Plus}
                       >
-                        {isNewUpload ? "Trocar" : "Alterar"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="danger"
-                        size="sm"
-                        onClick={() => {
-                          setLogoPreview(null);
-                          setIsNewUpload(false);
-                          setFormData({ ...formData, logoUrl: "" });
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                          }
-                        }}
-                        className="border border-red-200"
-                        icon={Trash2}
-                      >
-                        Remover
+                        {logoImpressaoPreview ? "Alterar Imagem" : "Enviar Imagem"}
                       </Button>
                     </div>
                   </div>
-                )}
+                </div>
+                {/* Inputs do tipo File ocultos */}
                 <div className="hidden">
                   <Input
                     type="file"
@@ -23723,12 +24297,13 @@ export const ConfiguracaoPage = () => {
                     onChange={handleFileChange}
                     accept="image/*"
                   />
+                  <Input
+                    type="file"
+                    ref={printFileInputRef}
+                    onChange={handlePrintLogoUpload}
+                    accept="image/*"
+                  />
                 </div>
-                {!logoPreview && (
-                  <p className="text-xs text-slate-500 text-center">
-                    Recomendado: Imagem PNG ou JPG quadrada ou retangular.
-                  </p>
-                )}
               </div>
             </Card>
           </div>
@@ -23762,7 +24337,10 @@ export const ConfiguracaoPage = () => {
                     label="CNPJ"
                     name="cnpj"
                     value={formData.cnpj || ""}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const formatted = formatCnpj(e.target.value);
+                      setFormData((prev) => ({ ...prev, cnpj: formatted }));
+                    }}
                     placeholder="00.000.000/0001-00"
                     icon={FileText}
                   />
@@ -23772,8 +24350,11 @@ export const ConfiguracaoPage = () => {
                     label="Inscrição Estadual"
                     name="inscricaoEstadual"
                     value={formData.inscricaoEstadual || ""}
-                    onChange={handleChange}
-                    placeholder="IE Isento ou Número"
+                    onChange={(e) => {
+                      const formatted = formatIE(e.target.value);
+                      setFormData((prev) => ({ ...prev, inscricaoEstadual: formatted }));
+                    }}
+                    placeholder="IE Isento ou Número (ex: 123.456.789)"
                     icon={FileText}
                   />
                 </div>
@@ -23783,13 +24364,29 @@ export const ConfiguracaoPage = () => {
               title="Contato e Endereço"
               description="Canais de comunicação e localização"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-1">
                   <Input
-                    label="Telefone / WhatsApp"
+                    label="Telefone 1"
                     name="telefone"
                     value={formData.telefone || ""}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const formatted = formatPhone(e.target.value);
+                      setFormData((prev) => ({ ...prev, telefone: formatted }));
+                    }}
+                    placeholder="(00) 00000-0000"
+                    icon={Phone}
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <Input
+                    label="Telefone 2"
+                    name="telefone2"
+                    value={formData.telefone2 || ""}
+                    onChange={(e) => {
+                      const formatted = formatPhone(e.target.value);
+                      setFormData((prev) => ({ ...prev, telefone2: formatted }));
+                    }}
                     placeholder="(00) 00000-0000"
                     icon={Phone}
                   />
@@ -23805,7 +24402,7 @@ export const ConfiguracaoPage = () => {
                     icon={Mail}
                   />
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-3">
                   <Input
                     label="Endereço Completo"
                     name="endereco"
@@ -23817,6 +24414,8 @@ export const ConfiguracaoPage = () => {
                 </div>
               </div>
             </Card>
+            {/* Configurações de E-mail (SMTP) desativadas temporariamente a pedido da administração */}
+            {/* 
             <Card
               title="Configurações de E-mail (SMTP)"
               description="Configurações para envio automático de OS e orçamentos"
@@ -23880,6 +24479,7 @@ export const ConfiguracaoPage = () => {
                 </div>
               </div>
             </Card>
+            */}
             <div className="flex justify-end pt-4">
               <Button
                 type="submit"
@@ -26046,7 +26646,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 Defeito Relatado (Impressão para o Cliente)
               </label>
               <TextArea
-                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-base font-medium text-neutral-700 h-32 outline-none focus:border-red-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                className="w-full bg-green-200 border border-green-400 text-emerald-950 p-3 rounded-xl text-base font-medium h-32 outline-none resize-none transition-all focus:shadow-sm print:bg-transparent print:text-black placeholder-shown:bg-neutral-50 placeholder-shown:border-neutral-200 placeholder-shown:text-neutral-700 placeholder-shown:focus:border-red-300 placeholder-shown:focus:bg-white"
                 placeholder="Descreva o defeito..."
                 value={osData.defeito_relatado || ""}
                 onChange={(e) => {
@@ -26063,7 +26663,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 Diagnóstico (apenas informações internas da oficina)
               </label>
               <TextArea
-                className="w-full bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-base font-medium text-neutral-700 h-32 outline-none focus:border-blue-300 focus:bg-white resize-none transition-all focus:shadow-sm"
+                className="w-full bg-green-200 border border-green-400 text-emerald-950 p-3 rounded-xl text-base font-medium h-32 outline-none resize-none transition-all focus:shadow-sm print:bg-transparent print:text-black placeholder-shown:bg-neutral-50 placeholder-shown:border-neutral-200 placeholder-shown:text-neutral-700 placeholder-shown:focus:border-blue-300 placeholder-shown:focus:bg-white"
                 placeholder="Descreva o diagnóstico e a solução técnica..."
                 value={osData.diagnostico || ""}
                 onChange={(e) => {
@@ -26135,7 +26735,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
               .map((item) => (
                 <tr
                   key={item.id_iten}
-                  className="hover:bg-neutral-50/50 transition-colors group"
+                  className="bg-green-200 hover:[&>td]:!bg-green-200 print:bg-transparent transition-colors group"
                 >
                   <td className="p-4 relative">
                     <div className="flex justify-between items-start">
@@ -26301,7 +26901,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                   .map((item: any) => (
                     <tr
                       key={item.id_iten}
-                      className="hover:bg-amber-50/20 transition-colors"
+                      className="bg-green-200 hover:[&>td]:!bg-green-200 print:bg-transparent transition-colors"
                     >
                       <td className="p-4 font-bold text-neutral-700">
                         {item.descricao}
@@ -26799,6 +27399,13 @@ export const FechamentoFinanceiroPage = () => {
     clienteNome: string;
     clienteEmail: string;
     clienteTelefone: string;
+    veiculoMarca?: string;
+    veiculoModelo?: string;
+    veiculoCor?: string;
+    veiculoPlaca?: string;
+    equipamentoPeca?: string;
+    equipamentoFabricante?: string;
+    equipamentoNumeracao?: string;
   } | null>(null);
   // Load data on mount
   useEffect(() => {
@@ -26870,6 +27477,13 @@ export const FechamentoFinanceiroPage = () => {
       clienteNome: getClientName(os),
       clienteEmail: os.cliente?.email || "",
       clienteTelefone: os.cliente?.telefone_1 || "",
+      veiculoMarca: os.veiculo?.marca,
+      veiculoModelo: os.veiculo?.modelo,
+      veiculoCor: os.veiculo?.cor,
+      veiculoPlaca: os.veiculo?.placa,
+      equipamentoPeca: os.equipamento?.nome_peca,
+      equipamentoFabricante: os.equipamento?.fabricante,
+      equipamentoNumeracao: os.equipamento?.numeracao,
     });
   };
   const getClientName = (os: IOrdemDeServico | undefined) => {
@@ -27200,6 +27814,13 @@ export const FechamentoFinanceiroPage = () => {
           clienteNome={printData.clienteNome}
           clienteEmail={printData.clienteEmail}
           clienteTelefone={printData.clienteTelefone}
+          veiculoMarca={printData.veiculoMarca}
+          veiculoModelo={printData.veiculoModelo}
+          veiculoCor={printData.veiculoCor}
+          veiculoPlaca={printData.veiculoPlaca}
+          equipamentoPeca={printData.equipamentoPeca}
+          equipamentoFabricante={printData.equipamentoFabricante}
+          equipamentoNumeracao={printData.equipamentoNumeracao}
         />
       )}
     </PageLayout>
@@ -30028,9 +30649,10 @@ export const OrdemDeServicoPage = () => {
 --- FILE: client\src\pages\OsPrintView.tsx ---
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { api } from "../services/api"; // Or useOrdemServico hook if available globally without layout
+import { api, STATIC_BASE } from "../services/api"; // Or useOrdemServico hook if available globally without layout
 import { format } from "date-fns";
 import { formatCurrency } from "../utils/formatCurrency";
+import { formatPhone, formatIE } from "../utils/normalize";
 import {
   ConfiguracaoService,
   type Configuracao,
@@ -30055,9 +30677,33 @@ export const OsPrintView = () => {
   }, [id]);
   useEffect(() => {
     if (os && config && !loading) {
-      setTimeout(() => {
+      const originalTitle = document.title;
+      const clientNameRaw = os.cliente?.pessoa?.nome || os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.nome_fantasia || os.cliente?.pessoa_juridica?.razao_social || "Cliente";
+      let itemDesc = "";
+      if (os.veiculo) {
+        const marca = os.veiculo.marca || "";
+        const modelo = os.veiculo.modelo || "";
+        const cor = os.veiculo.cor || "";
+        const placa = os.veiculo.placa || "";
+        itemDesc = `${marca} ${modelo} ${cor} ${placa}`.trim();
+      } else if (os.equipamento) {
+        const peca = os.equipamento.nome_peca || "";
+        const fabricante = os.equipamento.fabricante || "";
+        const numeracao = os.equipamento.numeracao || "";
+        itemDesc = `${peca} ${fabricante} ${numeracao}`.trim();
+      }
+      const isOrcamentoPrint = ["AGENDAMENTO", "ORCAMENTO", "ABERTA"].includes(os.status);
+      const docType = isOrcamentoPrint ? "Orcamento" : "OS";
+      const rawFilename = `${docType}_${os.id_os} - ${itemDesc} - ${clientNameRaw}`;
+      const filename = rawFilename.replace(/[/\\?%*:|"<>\s]+/g, " ").trim();
+      document.title = filename;
+      const timer = setTimeout(() => {
         window.print();
       }, 500);
+      return () => {
+        document.title = originalTitle;
+        clearTimeout(timer);
+      };
     }
   }, [os, config, loading]);
   if (loading) return <div className="p-8 text-center">Carregando...</div>;
@@ -30075,34 +30721,67 @@ export const OsPrintView = () => {
       0,
     ) || 0;
   const totalGeral = totalPecas + totalServicos;
+  const logoBase = config?.logoImpressaoUrl ? config.logoImpressaoUrl : config?.logoUrl;
+  const activePayments = os.pagamentos_cliente?.filter((p: any) => !p.deleted_at) || [];
+  const totalPago = activePayments.reduce((acc: number, p: any) => acc + Number(p.valor), 0);
+  const saldoRestante = totalGeral - totalPago;
+  const isQuitada = totalPago >= totalGeral;
   return (
-    <div className="min-h-screen bg-white p-8 print:p-0 print:m-0 print:w-full print:absolute print:top-0 print:left-0">
+    <div className="min-h-screen bg-white p-8 print-container print:p-0 print:m-0 print:w-full print:absolute print:top-0 print:left-0 text-xs md:text-sm print:min-h-0 print:h-auto print:block">
+      <style>{`
+        @media print {
+          @page {
+            margin: 0;
+          }
+          body {
+            margin: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print-container {
+            margin: 1cm !important;
+            padding: 0 !important;
+            width: auto !important;
+            position: static !important;
+          }
+          /* Tighten spacing specifically to force exactly 1 via */
+          .mb-6 { margin-bottom: 0.5rem !important; }
+          .mb-4 { margin-bottom: 0.25rem !important; }
+          .mb-3 { margin-bottom: 0.25rem !important; }
+          .mt-6 { margin-top: 0.75rem !important; }
+          .p-3 { padding: 0.5rem !important; }
+          .p-2.5 { padding: 0.5rem !important; }
+          table { width: 100% !important; }
+          tr { page-break-inside: avoid !important; }
+          td, th { padding-top: 2px !important; padding-bottom: 2px !important; }
+        }
+      `}</style>
       {/* Print Controls - Hidden when printing */}
       <div className="mb-8 flex gap-4 print:hidden"></div>
       {/* Header with Config Data */}
       <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
         <div className="flex items-center gap-4">
-          {config?.logoUrl && (
+          {logoBase ? (
             <img
-              src={`${import.meta.env.VITE_API_URL}${config.logoUrl}`}
+              src={`${STATIC_BASE}${logoBase}`}
               alt="Logo"
-              className="h-20 w-auto object-contain"
+              className="max-h-20 w-auto object-contain"
             />
-          )}
-          <div>
-            <h1 className="text-xl font-black uppercase">
+          ) : null}
+          <div className="flex flex-col gap-0.5">
+            <h1 className="text-xl font-black uppercase leading-tight">
               {config?.nomeFantasia || "Centro Automotivo"}
             </h1>
-            <p className="text-sm font-bold">{config?.razaoSocial}</p>
-            <p className="text-xs">
-              CNPJ: {config?.cnpj || "-"}
+            <p className="text-sm font-bold leading-tight">{config?.razaoSocial}</p>
+            <p className="text-xs leading-normal">
+              CNPJ: {config?.cnpj ? config.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5") : "-"}
               {config?.inscricaoEstadual &&
-                ` • IE: ${config.inscricaoEstadual}`}
+                ` • IE: ${formatIE(config.inscricaoEstadual)}`}
             </p>
             <p className="text-xs">
               {config?.endereco || "Endereço não configurado"}
             </p>
-            <p className="text-xs">Tel: {config?.telefone || "-"}</p>
+            <p className="text-xs">Tel: {config?.telefone ? formatPhone(config.telefone) : "-"}</p>
           </div>
         </div>
         <div className="text-right">
@@ -30124,8 +30803,8 @@ export const OsPrintView = () => {
         </div>
       )}
       {/* Info Grid */}
-      <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
-        <div className="border border-neutral-300 p-4 rounded-lg print:border-black">
+      <div className="grid grid-cols-2 gap-4 mb-4 text-xs">
+        <div className="border border-neutral-300 p-3 rounded-lg print:border-black">
           <h3 className="font-bold uppercase border-b border-neutral-200 mb-2 pb-1 print:border-black">
             Cliente
           </h3>
@@ -30141,7 +30820,7 @@ export const OsPrintView = () => {
           </p>
           <p>
             <span className="font-bold">Telefone:</span>{" "}
-            {os.cliente?.pessoa?.telefone || os.cliente?.telefone_1 || "-"}
+            {os.cliente?.pessoa?.telefone || os.cliente?.telefone_1 ? formatPhone(os.cliente.pessoa?.telefone || os.cliente.telefone_1 || "") : "-"}
           </p>
           <p>
             <span className="font-bold">Endereço:</span>{" "}
@@ -30149,32 +30828,25 @@ export const OsPrintView = () => {
             {os.cliente?.cidade}/{os.cliente?.estado}
           </p>
         </div>
-        <div className="border border-neutral-300 p-4 rounded-lg print:border-black">
+        <div className="border border-neutral-300 p-3 rounded-lg print:border-black">
           <h3 className="font-bold uppercase border-b border-neutral-200 mb-2 pb-1 print:border-black">
             {os.veiculo ? "Veículo" : "Peça / Equipamento"}
           </h3>
-          {os.veiculo && (
-            <>
+          {os.veiculo ? (
+            <div className="flex flex-col gap-0.5">
               <p>
-                <span className="font-bold">Modelo:</span> {os.veiculo.modelo}
+                <span className="font-bold">Veículo:</span> {os.veiculo.marca} / {os.veiculo.modelo} / {os.veiculo.cor}
               </p>
               <p>
-                <span className="font-bold">Placa:</span> {os.veiculo.placa}
+                <span className="font-bold">Ano (Fab/Mod):</span> {os.veiculo.ano_fabricacao || "-"}/{os.veiculo.ano_modelo || "-"} | <span className="font-bold">Placa:</span> {os.veiculo.placa}
               </p>
               <p>
-                <span className="font-bold">Marca/Cor:</span> {os.veiculo.marca} • {os.veiculo.cor}
+                <span className="font-bold">KM:</span> {os.km_entrada || "-"} km | <span className="font-bold">Combustível:</span> {os.veiculo.combustivel || "-"}
               </p>
-              {os.km_entrada && (
-                <p>
-                  <span className="font-bold">KM:</span> {os.km_entrada} km
-                </p>
-              )}
-            </>
-          )}
-          {os.equipamento && (
-            <div className={os.veiculo ? "mt-4 pt-2 border-t border-dotted border-neutral-300 print:border-black" : ""}>
-               {os.veiculo && <p className="text-[10px] font-black uppercase mb-1">Peça Avulsa Vinculada</p>}
-               <p>
+            </div>
+          ) : os.equipamento ? (
+            <div className="flex flex-col gap-0.5">
+              <p>
                 <span className="font-bold">Peça:</span> {os.equipamento.nome_peca}
               </p>
               <p>
@@ -30184,35 +30856,34 @@ export const OsPrintView = () => {
                 <span className="font-bold">Nº Série:</span> {os.equipamento.numeracao || "-"}
               </p>
             </div>
-          )}
-          {!os.veiculo && !os.equipamento && (
+          ) : (
              <p className="italic text-neutral-400">Nenhum veículo ou peça vinculado.</p>
           )}
         </div>
       </div>
       {/* Defeito / Diagnostico */}
-      <div className="mb-6 text-sm">
-        <div className="mb-4">
+      <div className="mb-3 text-xs">
+        <div className="mb-2">
           <h3 className="font-bold uppercase bg-neutral-100 p-1 mb-1 print:bg-transparent print:border-b print:border-black">
             Defeito Relatado
           </h3>
-          <p className="p-2 border border-neutral-200 rounded print:border-black min-h-[40px]">
+          <p className="p-2 border border-neutral-200 rounded print:border-black min-h-[30px] py-1">
             {os.defeito_relatado || "-"}
           </p>
         </div>
       </div>
       {/* Items */}
-      <div className="mb-6">
-        <h3 className="font-bold uppercase bg-neutral-800 text-white p-2 mb-0 print:bg-transparent print:text-neutral-800 print:border-b-2 print:border-black">
+      <div className="mb-3">
+        <h3 className="font-bold uppercase bg-neutral-800 text-white p-1.5 mb-0 print:bg-transparent print:text-neutral-800 print:border-b-2 print:border-black">
           Peças e Produtos
         </h3>
-        <table className="w-full text-sm border-collapse">
+        <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="bg-neutral-100 print:bg-transparent border-b border-black">
-              <th className="text-left p-2">Descrição</th>
-              <th className="text-center p-2 w-[80px]">Qtd</th>
-              <th className="text-right p-2 w-[100px]">Unit.</th>
-              <th className="text-right p-2 w-[100px]">Total</th>
+              <th className="text-left py-1 px-2">Descrição</th>
+              <th className="text-center py-1 px-2 w-[80px]">Qtd</th>
+              <th className="text-right py-1 px-2 w-[100px]">Unit.</th>
+              <th className="text-right py-1 px-2 w-[100px]">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -30221,14 +30892,14 @@ export const OsPrintView = () => {
                 key={idx}
                 className="border-b border-neutral-200 print:border-neutral-400"
               >
-                <td className="p-2">
+                <td className="py-0.5 px-2">
                   {item.descricao || item.pecas_estoque?.nome}
                 </td>
-                <td className="text-center p-2">{item.quantidade}</td>
-                <td className="text-right p-2">
+                <td className="text-center py-0.5 px-2">{item.quantidade}</td>
+                <td className="text-right py-0.5 px-2">
                   {formatCurrency(Number(item.valor_venda))}
                 </td>
-                <td className="text-right p-2 font-bold">
+                <td className="text-right py-0.5 px-2 font-bold">
                   {formatCurrency(Number(item.valor_total))}
                 </td>
               </tr>
@@ -30247,16 +30918,16 @@ export const OsPrintView = () => {
         </table>
       </div>
       {/* Services */}
-      <div className="mb-6">
-        <h3 className="font-bold uppercase bg-neutral-800 text-white p-2 mb-0 print:bg-transparent print:text-neutral-800 print:border-b-2 print:border-black">
-          Mão de Obra
+      <div className="mb-3">
+        <h3 className="font-bold uppercase bg-neutral-800 text-white p-1.5 mb-0 print:bg-transparent print:text-neutral-800 print:border-b-2 print:border-black">
+          Serviços Executados (Mão de Obra)
         </h3>
-        <table className="w-full text-sm border-collapse">
+        <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="bg-neutral-100 print:bg-transparent border-b border-black">
-              <th className="text-left p-2">Descrição</th>
-              <th className="text-left p-2">Profissional</th>
-              <th className="text-right p-2 w-[100px]">Valor</th>
+              <th className="text-left py-1 px-2">Descrição</th>
+              <th className="text-left py-1 px-2">Profissional</th>
+              <th className="text-right py-1 px-2 w-[100px]">Valor</th>
             </tr>
           </thead>
           <tbody>
@@ -30265,11 +30936,13 @@ export const OsPrintView = () => {
                 key={idx}
                 className="border-b border-neutral-200 print:border-neutral-400"
               >
-                <td className="p-2">{svc.descricao || "Serviço"}</td>
-                <td className="p-2">
+                <td className="py-0.5 px-2">
+                  {svc.descricao || svc.funcionario?.cargo || svc.funcionario?.cargo_funcao || svc.funcionario?.especialidade || svc.funcionario?.tipo_servico || "Serviço Executado"}
+                </td>
+                <td className="py-0.5 px-2">
                   {svc.funcionario?.pessoa_fisica?.pessoa?.nome || "-"}
                 </td>
-                <td className="text-right p-2 font-bold">
+                <td className="text-right py-0.5 px-2 font-bold">
                   {formatCurrency(Number(svc.valor))}
                 </td>
               </tr>
@@ -30289,24 +30962,58 @@ export const OsPrintView = () => {
         </table>
       </div>
       {/* Totals */}
-      <div className="flex justify-end mb-12">
-        <div className="w-[300px]">
-          <div className="flex justify-between py-1 border-b border-neutral-200">
+      <div className="flex justify-end mb-6">
+        <div className="w-[300px] text-xs">
+          <div className="flex justify-between py-0.5 border-b border-neutral-200">
             <span>Total Peças:</span>
             <span>{formatCurrency(totalPecas)}</span>
           </div>
-          <div className="flex justify-between py-1 border-b border-neutral-200">
+          <div className="flex justify-between py-0.5 border-b border-neutral-200">
             <span>Total Serviços:</span>
             <span>{formatCurrency(totalServicos)}</span>
           </div>
-          <div className="flex justify-between py-2 border-t-2 border-black font-black text-xl mt-2">
+          <div className="flex justify-between py-1 border-t-2 border-black font-black text-base mt-1">
             <span>TOTAL GERAL:</span>
             <span>{formatCurrency(totalGeral)}</span>
           </div>
         </div>
       </div>
+      {/* Informações de Pagamento */}
+      <div className="border border-neutral-300 rounded-lg p-2.5 mb-4 print:border-black text-[11px] leading-relaxed">
+        <h4 className="font-bold uppercase border-b border-neutral-200 pb-0.5 mb-1.5 print:border-black text-xs">
+          Informações de Pagamento
+        </h4>
+        {activePayments.length === 0 ? (
+          <p className="italic text-neutral-400">Nenhum pagamento registrado.</p>
+        ) : (
+          <div className="space-y-0.5">
+            {activePayments.map((p: any, idx: number) => (
+              <div key={idx} className="flex justify-between text-neutral-700">
+                <span className="capitalize">
+                  {p.metodo_pagamento.toLowerCase()}
+                  {p.qtd_parcelas && p.qtd_parcelas > 1 ? ` (${p.qtd_parcelas}x)` : ""}
+                </span>
+                <span className="font-bold">{formatCurrency(Number(p.valor))}</span>
+                <span>{new Date(p.data_pagamento).toLocaleDateString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="border-t border-dotted border-neutral-300 pt-1.5 mt-1.5 flex justify-between items-center print:border-black font-bold">
+          <span>Total Pago: {formatCurrency(totalPago)}</span>
+          {isQuitada ? (
+            <span className="bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded uppercase tracking-wider text-[10px] print:border print:border-black print:bg-transparent print:text-black">
+              OS Quitada
+            </span>
+          ) : (
+            <span className="text-red-600 font-black uppercase text-[10px]">
+              Saldo Restante: {formatCurrency(saldoRestante)}
+            </span>
+          )}
+        </div>
+      </div>
       {/* Signatures */}
-      <div className="grid grid-cols-2 gap-16 mt-20 pt-8 print:break-inside-avoid">
+      <div className="grid grid-cols-2 gap-8 mt-6 pt-4 print:break-inside-avoid">
         <div className="text-center border-t border-black pt-2">
           <p className="font-bold">Assinatura do Cliente</p>
           <p className="text-xs text-neutral-500">
@@ -30314,11 +31021,14 @@ export const OsPrintView = () => {
           </p>
         </div>
         <div className="text-center border-t border-black pt-2">
-          <p className="font-bold">Responsável Técnico</p>
-          <p className="text-xs text-neutral-500">Centro Automotivo</p>
+          <p className="font-bold">{config?.nomeFantasia || "Responsável Técnico"}</p>
+          <p className="text-xs text-neutral-500">Responsável Técnico</p>
         </div>
       </div>
-      <div className="text-center text-sm text-neutral-400 mt-20 print:fixed print:bottom-0 print:left-0 print:w-full">
+      <div className="text-center font-bold text-sm uppercase mt-6 border-t border-dashed border-neutral-300 pt-4 print:border-black">
+        Agradecemos a preferência! Volte sempre!!
+      </div>
+      <div className="text-center text-[10px] text-neutral-400 mt-6 print:mt-4 print:text-neutral-500">
         Gerado em {format(new Date(), "dd/MM/yyyy HH:mm:ss")}
       </div>
     </div>
@@ -32171,176 +32881,6 @@ export const PessoaJuridicaPage = () => {
       )}
     </div>
   );
-};
-
-
---- FILE: client\src\pages\PessoaPage.tsx ---
-import { useState, useEffect } from 'react';
-import { api } from '../services/api';
-import type { IPessoa } from '../types/backend';
-import { PessoaForm } from '../components/pessoa/Forms/PessoaForm';
-import { Modal, Input, Select } from '../components/ui';
-import { Plus, Search, Trash2, Edit, User } from 'lucide-react';
-export const PessoaPage = () => {
-    const [pessoas, setPessoas] = useState<IPessoa[]>([]);
-    const [showModal, setShowModal] = useState(false);
-    const [searchId, setSearchId] = useState('');
-    const [editData, setEditData] = useState<IPessoa | null>(null);
-    useEffect(() => {
-        loadPessoas();
-    }, []);
-    const loadPessoas = async () => {
-        try {
-            const response = await api.get('/pessoa');
-            setPessoas(response.data);
-        } catch (error) {
-            alert('Erro ao carregar pessoas');
-        }
-    };
-    const handleSearch = async () => {
-        try {
-            const response = await api.get(`/pessoa/${searchId}`);
-            setEditData(response.data);
-        } catch (error) {
-            alert('Pessoa não encontrada');
-            setEditData(null);
-        }
-    };
-    const handleUpdate = async () => {
-        if (!editData) return;
-        try {
-            await api.put(`/pessoa/${editData.id_pessoa}`, editData);
-            alert('Pessoa atualizada!');
-            loadPessoas();
-        } catch (error) {
-            alert('Erro ao atualizar pessoa');
-        }
-    };
-    const handleDelete = async () => {
-        if (!searchId) return;
-        try {
-            await api.delete(`/pessoa/${searchId}`);
-            alert('Pessoa deletada!');
-            loadPessoas();
-            setEditData(null);
-            setSearchId('');
-        } catch (error) {
-            alert('Erro ao deletar pessoa');
-        }
-    };
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Gerenciar Pessoas</h1>
-                    <p className="text-slate-500">Cadastro base de pessoas (antes de PF/PJ).</p>
-                </div>
-                <button 
-                    onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
-                >
-                    <Plus size={20} />
-                    Nova Pessoa
-                </button>
-            </div>
-            {/* LIST */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50">
-                        <tr>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">ID</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Nome</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Gênero</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Data Nascimento</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Cadastro</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {pessoas.map((p) => (
-                            <tr key={p.id_pessoa} className="hover:bg-slate-50">
-                                <td className="p-4 text-gray-500 font-mono">#{p.id_pessoa}</td>
-                                <td className="p-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
-                                            <User size={18} />
-                                        </div>
-                                        <div className="font-medium text-slate-900">{p.nome}</div>
-                                    </div>
-                                </td>
-                                <td className="p-4 text-slate-600">{p.genero || '-'}</td>
-                                <td className="p-4 text-slate-600">
-                                    {p.dt_nascimento ? new Date(p.dt_nascimento).toLocaleDateString('pt-BR') : '-'}
-                                </td>
-                                <td className="p-4 text-xs text-slate-500">
-                                    {new Date(p.dt_cadastro).toLocaleDateString('pt-BR')}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            {/* MANAGE */}
-            <div className="bg-white p-4 rounded-xl border border-gray-200">
-                <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Manutenção de Pessoa (Por ID)</h2>
-                <div className="flex gap-4 mb-4 items-end">
-                    <div className="w-64">
-                        <Input 
-                            type="number" 
-                            value={searchId} 
-                            onChange={(e) => setSearchId(e.target.value)} 
-                            placeholder="Digite o ID da Pessoa..." 
-                        />
-                    </div>
-                    <button onClick={handleSearch} className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 font-medium h-11">
-                        <Search size={18} /> Localizar
-                    </button>
-                    {searchId && <button onClick={handleDelete} className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2.5 rounded-lg hover:bg-red-200 font-medium h-11">
-                        <Trash2 size={18} /> Excluir
-                    </button>}
-                </div>
-                {editData && (
-                    <div className="bg-slate-50 p-4 rounded border animate-in fade-in">
-                        <h3 className="font-bold mb-2">Editando: {editData.nome}</h3>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div className="col-span-2">
-                                <Input 
-                                    label="Nome"
-                                    value={editData.nome} 
-                                    onChange={(e) => setEditData({...editData, nome: e.target.value})} 
-                                />
-                            </div>
-                            <div>
-                                <Select 
-                                    label="Gênero"
-                                    value={editData.genero || ''} 
-                                    onChange={(e) => setEditData({...editData, genero: e.target.value})} 
-                                >
-                                    <option value="">Selecione...</option>
-                                    <option value="Masculino">Masculino</option>
-                                    <option value="Feminino">Feminino</option>
-                                    <option value="Outro">Outro</option>
-                                </Select>
-                            </div>
-                        </div>
-                        <button onClick={handleUpdate} className="flex items-center gap-2 bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold">
-                            <Edit size={18} /> Salvar Alterações
-                        </button>
-                    </div>
-                )}
-            </div>
-            {showModal && (
-                <Modal title="Nova Pessoa" onClose={() => setShowModal(false)}>
-                    <PessoaForm 
-                        onSuccess={() => {
-                            setShowModal(false);
-                            loadPessoas();
-                        }}
-                        onCancel={() => setShowModal(false)}
-                    />
-                </Modal>
-            )}
-        </div>
-    );
 };
 
 
@@ -34479,8 +35019,10 @@ export type Configuracao = {
   inscricaoEstadual?: string;
   endereco?: string;
   telefone?: string;
+  telefone2?: string;
   email?: string;
   logoUrl?: string; // URL from backend
+  logoImpressaoUrl?: string;
   smtpHost?: string;
   smtpPort?: number;
   smtpUser?: string;
@@ -34493,6 +35035,16 @@ export const ConfiguracaoService = {
   },
   save: async (formData: FormData): Promise<Configuracao> => {
     const response = await axios.post(`${API_BASE}/configuracao`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+  uploadLogoImpressao: async (file: File): Promise<Configuracao> => {
+    const formData = new FormData();
+    formData.append("logoImpressao", file);
+    const response = await axios.post(`${API_BASE}/configuracao/upload-logo-impressao`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -35289,6 +35841,9 @@ export interface IClientSearchResult {
     cnpj: string;
   };
 }
+
+
+--- FILE: client\src\types\colaborador.types.ts ---
 import type { IFuncionario } from "./backend";
 export type { IFuncionario };
 export interface IFuncionarioPayload {
@@ -35342,6 +35897,199 @@ export interface IPessoaFisicaCreatePayload {
   id_pessoa: number;
   cpf?: string | null;
 }
+
+
+--- FILE: client\src\types\dashboard.types.ts ---
+export interface IDashboardStats {
+  osAberta: number;
+  contasPagarPending: number;
+  contasPagarOverdue: number;
+  contasPagarHojeCount?: number;
+  contasPagarHojeValor?: number;
+  contasPagarAmanhaCount?: number;
+  contasPagarAmanhaValor?: number;
+  contasPagar7DiasCount?: number;
+  contasPagar7DiasValor?: number;
+  livroCaixaEntries: number;
+  livroCaixaExits: number;
+  autoPecasPendentes: number;
+  consolidacao: number;
+  alertaEstoque: number;
+}
+export interface IDashboardData {
+  stats: IDashboardStats;
+  recentOss: any[]; // Using any[] for now as IOs might be complex, but ideally IOs
+}
+export type FilterPeriod = "HOJE" | "SEMANA" | "MES" | "STATUS";
+
+
+--- FILE: client\src\types\estoque.types.ts ---
+import type { IPecasEstoque } from "./backend";
+export type { IPecasEstoque };
+export interface IEstoqueUpdatePayload {
+  nome: string;
+  fabricante: string;
+  descricao: string;
+  unidade_medida: string;
+  valor_custo: number;
+  valor_venda: number;
+  estoque_atual: number;
+  estoque_minimo: number;
+}
+export interface IItemEntrada {
+  tempId: number;
+  /** ID real do ItemEntrada no banco (presente apenas no modo edição) */
+  id_item_entrada?: number;
+  id_pecas_estoque?: number | null;
+  new_part_data?: {
+    nome: string;
+    descricao: string;
+    fabricante: string;
+    unidade_medida: string;
+    estoque_minimo: number;
+  } | null;
+  displayName: string;
+  quantidade: number;
+  valor_custo: number;
+  margem_lucro: number;
+  valor_venda: number;
+  ref_cod?: string;
+  obs?: string;
+  /** Marcado como true no modo edição quando o usuário quer remover o item */
+  _delete?: boolean;
+}
+export interface IEntradaEstoquePayload {
+  id_fornecedor: number;
+  nota_fiscal: string;
+  data_compra: Date;
+  obs: string;
+  itens: IItemEntrada[];
+  nf_numero?: string | null;
+}
+
+
+--- FILE: client\src\types\financeiro.types.ts ---
+export type FinanceiroTab =
+  | "AUTO_PECAS"
+  | "LIVRO_CAIXA"
+  | "CONTAS_PAGAR"
+  | "COLABORADORES";
+export type PaymentStatusFilter = "PENDING" | "PAID" | "ALL";
+export interface IFinanceiroStatusMsg {
+  type: "success" | "error" | null;
+  text: string;
+}
+export type CashBookEntryType = "IN" | "OUT";
+export interface ICashBookEntry {
+  id: string;
+  date: string;
+  description: string;
+  type: CashBookEntryType;
+  value: number;
+  details: string;
+  categoria: string; // derivado da natureza do lançamento em financeiroUtils.ts
+}
+export interface IPaymentFilters {
+  status: PaymentStatusFilter;
+  supplier: string;
+  plate: string;
+  startDate: string;
+  endDate: string;
+}
+export interface ICashBookFilters {
+  startDate: string;
+  endDate: string;
+  search: string;
+}
+// --- COLLABORATORS (Pagamento Colaborador) ---
+export interface IPendenciaColaborador {
+  type: "COMISSAO" | "VALE" | "PREMIO" | "SALARIO";
+  id: string | number;
+  date: string;
+  description?: string;
+  value: number;
+  // Specifics
+  ver_os?: number;
+  os?: any;
+  commissionValue?: number;
+  percentage?: number;
+  paymentId?: number;
+  paymentMethod?: string;
+}
+export interface IPagamentoColaborador {
+  id_pagamento_equipe: number;
+  id_funcionario: number;
+  dt_pagamento: string;
+  valor_total: number;
+  obs?: string;
+  forma_pagamento?: string;
+  tipo_lancamento: "COMISSAO" | "VALE" | "SALARIO" | "PREMIO";
+  servicos_pagos?: any[];
+  premio_valor?: number;
+  premio_descricao?: string;
+}
+// --- ACCOUNTS PAYABLE (Contas a Pagar) ---
+export interface IContaPagar {
+  id_conta_pagar: number;
+  descricao: string;
+  credor?: string;
+  categoria?: string;
+  id_categoria?: number;
+  valor: number;
+  dt_emissao?: string;
+  dt_vencimento: string;
+  dt_pagamento?: string | null;
+  num_documento?: string;
+  status: "PENDENTE" | "PAGO" | "ATRASADO";
+  url_anexo?: string;
+  obs?: string;
+  dt_cadastro?: string;
+  id_recorrencia?: number;
+  parcela_atual?: number;
+  total_parcelas?: number;
+  // Novos campos de Nota Fiscal (FASE 2)
+  nf_numero?: string | null;
+  nf_parcela?: number | null;
+  nf_total_parcelas?: number | null;
+  nf_boleto?: string | null;
+}
+
+
+--- FILE: client\src\types\fornecedor.types.ts ---
+import type { IFornecedor } from "./backend";
+export type { IFornecedor };
+export interface IFornecedorPayload {
+  tipo_pessoa: "FISICA" | "JURIDICA";
+  nome: string;
+  nome_fantasia?: string;
+  documento?: string; // CPF or CNPJ
+  inscricao_estadual?: string;
+  inscricao_municipal?: string;
+  // Contact
+  contato?: string;
+  telefone?: string;
+  whatsapp?: string;
+  email?: string;
+  // Address
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  // Finance
+  banco?: string;
+  agencia?: string;
+  conta?: string;
+  chave_pix?: string;
+  condicoes_pagamento?: string;
+  categoria_produto?: string;
+  // Extra
+  obs?: string;
+}
+
+
 --- FILE: client\src\types\os.types.ts ---
 import type { IOrdemDeServico, IItensOs, IPagamentoPeca } from "./backend";
 export const OsStatus = {
@@ -35619,7 +36367,11 @@ export const unmask = (value: string): string => {
  * Formata Inscrição Estadual (IE) adicionando pontos a cada 3 dígitos da direita para a esquerda
  */
 export const formatIE = (ie: string): string => {
-  const digits = ie.replace(/\D/g, "");
+  const val = ie.toUpperCase();
+  if (val.includes("ISENTO") || "ISENTO".startsWith(val) && val.length > 0) {
+    return val;
+  }
+  const digits = val.replace(/[^0-9]/g, "");
   return digits.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
 };
 
@@ -36763,8 +37515,10 @@ model Configuracao {
   inscricaoEstadual String?  @db.VarChar(20)
   endereco          String?  @db.VarChar(255)
   telefone          String?  @db.VarChar(20)
+  telefone2         String?  @db.VarChar(20)
   email             String?  @db.VarChar(100)
   logoUrl           String?  @db.VarChar(500) // URL/Path to the uploaded logo
+  logoImpressaoUrl  String?  @db.VarChar(500)
   smtpHost          String?  @db.VarChar(100)
   smtpPort          Int?
   smtpUser          String?  @db.VarChar(100)
@@ -37228,6 +37982,295 @@ main()
 
 
 --- FILE: server\prisma\seed_financial.ts ---
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
+async function main() {
+  console.log("🌱 Start seeding financial data... Cleaning up first.");
+  // Limpeza (Ordem Inversa de Dependência)
+  await prisma.fechamentoFinanceiro.deleteMany();
+  await prisma.pagamentoCliente.deleteMany();
+  await prisma.pagamentoEquipe.deleteMany();
+  await prisma.pagamentoPeca.deleteMany();
+  await prisma.recebivelCartao.deleteMany();
+  await prisma.itemEntrada.deleteMany(); // Depende de Pecas e Entrada
+  await prisma.entradaEstoque.deleteMany();
+  await prisma.contasPagar.deleteMany();
+  await prisma.livroCaixa.deleteMany();
+  await prisma.operadoraCartao.deleteMany();
+  await prisma.contaBancaria.deleteMany();
+  await prisma.servicoMaoDeObra.deleteMany();
+  await prisma.itensOs.deleteMany();
+  await prisma.ordemDeServico.deleteMany();
+  await prisma.veiculo.deleteMany();
+  await prisma.cliente.deleteMany();
+  await prisma.tipo.deleteMany(); // Limpa Tipos de cliente
+  await prisma.funcionario.deleteMany();
+  await prisma.pecasEstoque.deleteMany();
+  // Limpar Pessoas é delicado pois pode ter outros vinculos, mas vamos limpar os criados pelo seed
+  await prisma.pessoaFisica.deleteMany();
+  await prisma.pessoa.deleteMany();
+  // 1. Criar Pessoa Física para Funcionario Mecanico
+  const pMecanico = await prisma.pessoa.create({
+    data: {
+      nome: "Carlos Mecânico",
+      pessoa_fisica: {
+        create: {
+          cpf: "12345678900",
+        },
+      },
+    },
+    include: { pessoa_fisica: true },
+  });
+  const funcMecanico = await prisma.funcionario.create({
+    data: {
+      id_pessoa_fisica: pMecanico.pessoa_fisica!.id_pessoa_fisica,
+      cargo: "Mecânico",
+      especialidade: "Mecânica Geral",
+      comissao: 30, // 30%
+      ativo: "S",
+      dt_cadastro: new Date(),
+      dt_admissao: new Date(),
+    },
+  });
+  // 1. Criar Pessoa Física para Funcionario Elétrico
+  const pEletrico = await prisma.pessoa.create({
+    data: {
+      nome: "Eduardo Elétrica",
+      pessoa_fisica: {
+        create: {
+          cpf: "98765432100",
+        },
+      },
+    },
+    include: { pessoa_fisica: true },
+  });
+  const funcEletrico = await prisma.funcionario.create({
+    data: {
+      id_pessoa_fisica: pEletrico.pessoa_fisica!.id_pessoa_fisica,
+      cargo: "Eletricista",
+      especialidade: "Elétrica",
+      comissao: 40, // 40%
+      ativo: "S",
+      dt_cadastro: new Date(),
+      dt_admissao: new Date(),
+    },
+  });
+  // 2. Criar Peças no Estoque
+  const pecaOleo = await prisma.pecasEstoque.create({
+    data: {
+      nome: "Óleo 5W30 Sintético",
+      descricao: "Óleo Motor",
+      fabricante: "Lubrax",
+      valor_custo: 25.0,
+      valor_venda: 60.0,
+      estoque_atual: 100, // Requerido no schema
+    },
+  });
+  // 2b. Criar Tipo de Cliente (Se não existir)
+  let tipo = await prisma.tipo.findFirst({ where: { funcao: "Varejo" } });
+  if (!tipo) {
+    tipo = await prisma.tipo.create({ data: { funcao: "Varejo" } });
+  }
+  // 2c. Criar Cliente e Veiculo Generico para OS
+  const pCliente = await prisma.pessoa.create({
+    data: { nome: "Cliente Teste" },
+  });
+  const pfCliente = await prisma.pessoaFisica.create({
+    data: { id_pessoa: pCliente.id_pessoa, cpf: "11122233344" },
+  });
+  const cliente = await prisma.cliente.create({
+    data: {
+      telefone_1: "1199999999",
+      tipo_pessoa: tipo.id_tipo,
+      id_pessoa_fisica: pfCliente.id_pessoa_fisica,
+    },
+  });
+  const veiculo = await prisma.veiculo.create({
+    data: {
+      placa: "TST-" + Math.floor(Math.random() * 1000), // Random placa
+      marca: "Fiat",
+      modelo: "Uno",
+      ano_modelo: "2020",
+      cor: "Branco",
+      combustivel: "Flex",
+      id_cliente: cliente.id_cliente,
+    },
+  });
+  // 3. Fornecedor
+  const fornecedor = await prisma.pessoa.create({
+    data: {
+      nome: "Auto Peças Zé",
+      is_fornecedor: true,
+      pessoa_juridica: {
+        create: {
+          cnpj: "00000000000000",
+          razao_social: "Auto Peças Zé LTDA"
+        }
+      }
+    },
+  });
+  const meses = [
+    { ano: 2025, mes: 10, nome: "Nov" }, // Nov (JS Month 10)
+    { ano: 2025, mes: 11, nome: "Dez" },
+    { ano: 2026, mes: 0, nome: "Jan" }, // Jan 26
+  ];
+  for (const m of meses) {
+    const dtEvento = new Date(m.ano, m.mes, 15);
+    // A. OS Típica de Mecânica
+    const osMec = await prisma.ordemDeServico.create({
+      data: {
+        id_cliente: cliente.id_cliente,
+        id_veiculo: veiculo.id_veiculo,
+        status: "FINALIZADO",
+        dt_abertura: dtEvento, // Correto (não dt_entrada)
+        dt_entrega: dtEvento,
+        km_entrada: 50000,
+        defeito_relatado: "Revisão Geral", // Correto (não defeito)
+        valor_final: 340.0, // Correto (não valor_total)
+        parcelas: 1,
+      },
+    });
+    // Itens da OS
+    const itemOs = await prisma.itensOs.create({
+      data: {
+        id_os: osMec.id_os, // Correto (não id_ordem_servico)
+        id_pecas_estoque: pecaOleo.id_pecas_estoque,
+        descricao: "Óleo 5W30",
+        quantidade: 4,
+        valor_venda: 60.0,
+        valor_total: 240.0,
+      },
+    });
+    await prisma.servicoMaoDeObra.create({
+      data: {
+        id_os: osMec.id_os,
+        descricao: "Troca de Óleo e Filtros",
+        valor: 100.0,
+        id_funcionario: funcMecanico.id_funcionario,
+      },
+    });
+    // B. OS Típica de Elétrica
+    // Como id_veiculo é unico por placa no seed, usar mesmo veiculo ou criar outro se precisar
+    // Vamos usar o mesmo veiculo
+    const osEle = await prisma.ordemDeServico.create({
+      data: {
+        id_cliente: cliente.id_cliente,
+        id_veiculo: veiculo.id_veiculo,
+        status: "FINALIZADO",
+        dt_abertura: dtEvento,
+        dt_entrega: dtEvento,
+        km_entrada: 10000,
+        defeito_relatado: "Pane Elétrica",
+        valor_final: 700.0,
+        parcelas: 1,
+      },
+    });
+    // Peça Compra Direta
+    const itemPecaDireta = await prisma.itensOs.create({
+      data: {
+        id_os: osEle.id_os,
+        descricao: "Alternador Recondicionado",
+        quantidade: 1,
+        valor_venda: 400.0,
+        valor_total: 400.0,
+      },
+    });
+    // Simular Pagamento da Peça (Custo)
+    await prisma.pagamentoPeca.create({
+      data: {
+        id_item_os: itemPecaDireta.id_iten, // Note: id_iten based on schema
+        id_pessoa: fornecedor.id_pessoa,
+        custo_real: 250.0,
+        data_compra: dtEvento,
+      },
+    });
+    await prisma.servicoMaoDeObra.create({
+      data: {
+        id_os: osEle.id_os,
+        descricao: "Reparo de Alternador",
+        valor: 300.0,
+        id_funcionario: funcEletrico.id_funcionario,
+      },
+    });
+    // C. Despesas Fixas do Mês
+    await prisma.livroCaixa.create({
+      data: {
+        descricao: `Aluguel ${m.nome}/${m.ano}`,
+        valor: 1200.0,
+        tipo_movimentacao: "SAIDA",
+        categoria: "ALUGUEL",
+        dt_movimentacao: dtEvento,
+        origem: "MANUAL",
+      },
+    });
+    await prisma.livroCaixa.create({
+      data: {
+        descricao: `Energia ${m.nome}/${m.ano}`,
+        valor: 350.0,
+        tipo_movimentacao: "SAIDA",
+        categoria: "LUZ",
+        dt_movimentacao: dtEvento,
+        origem: "MANUAL",
+      },
+    });
+  }
+  // =================================================================================
+  // FUTURO
+  // =================================================================================
+  const futureDates = [
+    new Date(2026, 1, 10), // 10 Fev
+    new Date(2026, 2, 10), // 10 Mar
+    new Date(2026, 3, 10), // 10 Abr
+  ];
+  // Criar Operadora Mock para Recebivel
+  const conta = await prisma.contaBancaria.create({
+    data: { nome: "Caixa Geral" },
+  });
+  const operadora = await prisma.operadoraCartao.create({
+    data: {
+      nome: "Stone",
+      id_conta_destino: conta.id_conta,
+    },
+  });
+  for (const fd of futureDates) {
+    // 1. Contas a Pagar Recorrentes
+    await prisma.contasPagar.create({
+      data: {
+        descricao: "Aluguel Oficina",
+        valor: 1200.0,
+        dt_vencimento: fd,
+        status: "PENDENTE",
+        categoria: "ALUGUEL",
+        credor: "Imobiliária Beta",
+      },
+    });
+    // 2. Recebível de Cartão
+    await prisma.recebivelCartao.create({
+      data: {
+        id_operadora: operadora.id_operadora,
+        valor_liquido: 340.0, // simplificado
+        valor_bruto: 350.5,
+        taxa_aplicada: 10.5,
+        num_parcela: futureDates.indexOf(fd) + 1,
+        total_parcelas: 3,
+        data_prevista: fd,
+        status: "PENDENTE",
+      },
+    });
+  }
+  console.log("✅ Seeding completed! Financial data populated.");
+}
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+
+
+--- FILE: server\prisma\migrations\migration_lock.toml ---
 # Please do not edit this file manually
 # It should be added in your version-control system (i.e. Git)
 provider = "postgresql"
@@ -37927,8 +38970,10 @@ export const ConfiguracaoController = {
           inscricaoEstadual: "",
           endereco: "",
           telefone: "",
+          telefone2: "",
           email: "",
           logoUrl: null,
+          logoImpressaoUrl: null,
         },
       );
     } catch (error) {
@@ -37946,15 +38991,29 @@ export const ConfiguracaoController = {
         inscricaoEstadual: "",
         endereco: "",
         telefone: "",
+        telefone2: "",
         email: "",
         logoUrl: null,
+        logoImpressaoUrl: null,
       });
     }
   },
   upsert: async (req: Request, res: Response) => {
     try {
-      const { nomeFantasia, razaoSocial, cnpj, endereco, telefone, email } =
-        req.body;
+      const {
+        nomeFantasia,
+        razaoSocial,
+        cnpj,
+        inscricaoEstadual,
+        endereco,
+        telefone,
+        telefone2,
+        email,
+        smtpHost,
+        smtpPort,
+        smtpUser,
+        smtpPass,
+      } = req.body;
       let logoUrl = undefined;
       const request = req as AuthenticatedRequest;
       // Get current config to check for existing logo
@@ -37989,9 +39048,15 @@ export const ConfiguracaoController = {
         nomeFantasia,
         razaoSocial,
         cnpj,
+        inscricaoEstadual,
         endereco,
         telefone,
+        telefone2,
         email,
+        smtpHost,
+        smtpPort: smtpPort ? Number(smtpPort) : null,
+        smtpUser,
+        smtpPass,
       };
       if (logoUrl !== undefined) {
         data.logoUrl = logoUrl;
@@ -38001,6 +39066,40 @@ export const ConfiguracaoController = {
     } catch (error) {
       console.error("Error saving configuracao:", error);
       return res.status(500).json({ error: "Erro ao salvar configurações" });
+    }
+  },
+  uploadLogoImpressao: async (req: Request, res: Response) => {
+    try {
+      const request = req as AuthenticatedRequest;
+      if (!request.file) {
+        return res.status(400).json({ error: "Nenhum arquivo enviado." });
+      }
+      const logoImpressaoUrl = `/uploads/${request.file.filename}`;
+      // Get current config to check for existing logo impressao to delete
+      const currentConfig = await ConfiguracaoRepository.get();
+      if (currentConfig?.logoImpressaoUrl) {
+        const oldLogoPath = path.join(
+          process.cwd(),
+          "uploads",
+          path.basename(currentConfig.logoImpressaoUrl)
+        );
+        if (fs.existsSync(oldLogoPath)) {
+          fs.unlinkSync(oldLogoPath);
+        }
+      }
+      const data: any = {
+        logoImpressaoUrl,
+      };
+      if (!currentConfig) {
+        // Se por algum motivo for a primeira inserção da tabela inteira,
+        // precisamos de um nome fantasia padrão obrigatório para não violar a restrição de NOT NULL
+        data.nomeFantasia = "Oficina";
+      }
+      const config = await ConfiguracaoRepository.upsert(data);
+      return res.json(config);
+    } catch (error) {
+      console.error("Error uploading logo impressao:", error);
+      return res.status(500).json({ error: "Erro ao fazer upload da logo de impressão" });
     }
   },
 };
@@ -38362,10 +39461,10 @@ export class DocumentoController {
       if (isNaN(id)) {
         return res.status(400).json({ error: "ID inválido" });
       }
-      const pdfBuffer = await service.generatePdf(id);
+      const { buffer, filename } = await service.generatePdf(id);
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `inline; filename=os-${id}.pdf`);
-      res.send(pdfBuffer);
+      res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      res.send(buffer);
     } catch (error: any) {
       console.error("Erro ao gerar PDF:", error);
       res.status(500).json({
@@ -38384,8 +39483,8 @@ export class DocumentoController {
       if (!email) {
         return res.status(400).json({ error: "Email é obrigatório" });
       }
-      const pdfBuffer = await service.generatePdf(id);
-      await service.sendEmail(pdfBuffer, email);
+      const { buffer, filename } = await service.generatePdf(id);
+      await service.sendEmail(buffer, email, filename);
       res.json({ success: true, message: "Email enviado com sucesso" });
     } catch (error: any) {
       console.error("Erro ao enviar email:", error);
@@ -38405,8 +39504,8 @@ export class DocumentoController {
       if (!chatId) {
         return res.status(400).json({ error: "Chat ID é obrigatório" });
       }
-      const pdfBuffer = await service.generatePdf(id);
-      await service.sendTelegram(pdfBuffer, chatId);
+      const { buffer, filename } = await service.generatePdf(id);
+      await service.sendTelegram(buffer, chatId, filename);
       res.json({ success: true, message: "Telegram enviado com sucesso" });
     } catch (error: any) {
       console.error("Erro ao enviar telegram:", error);
@@ -39579,8 +40678,27 @@ export class OrdemDeServicoController {
         return res.status(404).json({ error: "OS not found" });
       }
       const pdfBuffer = await mensageria.gerarPdfOs(os);
+      // Filename construction
+      const clientNameRaw = os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.nome_fantasia || os.cliente?.pessoa_juridica?.razao_social || "Cliente";
+      let itemDesc = "Documento";
+      if (os.veiculo) {
+        const marca = os.veiculo.marca || "";
+        const modelo = os.veiculo.modelo || "";
+        const cor = os.veiculo.cor || "";
+        const placa = os.veiculo.placa || "";
+        itemDesc = `${marca} ${modelo} ${cor} ${placa}`.trim();
+      } else if (os.equipamento) {
+        const peca = os.equipamento.nome_peca || "";
+        const fabricante = os.equipamento.fabricante || "";
+        const numeracao = os.equipamento.numeracao || "";
+        itemDesc = `${peca} ${fabricante} ${numeracao}`.trim();
+      }
+      const isOrcamento = os.status !== "FINALIZADA" && os.status !== "PAGA_CLIENTE";
+      const docType = isOrcamento ? "Orcamento" : "OS";
+      const rawFilename = `${docType}_${os.id_os} - ${itemDesc} - ${clientNameRaw}`;
+      const filename = rawFilename.replace(/[/\\?%*:|"<>\s]+/g, " ").trim() + ".pdf";
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename=OS-${id}.pdf`);
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.send(pdfBuffer);
     } catch (error) {
       console.error("PDF Generation Error:", error);
@@ -40387,128 +41505,6 @@ export class PagamentoPecaController {
       res.status(204).send();
     } catch (error) {
       res.status(400).json({ error: "Failed to delete Pagamento Peca" });
-    }
-  }
-}
-
-
---- FILE: server\src\controllers\pecasEstoque.controller.ts ---
-import { Request, Response } from 'express';
-import { PecasEstoqueRepository } from '../repositories/pecasEstoque.repository.js';
-const repository = new PecasEstoqueRepository();
-export class PecasEstoqueController {
-  async create(req: Request, res: Response) {
-    try {
-      const peca = await repository.create(req.body);
-      res.status(201).json(peca);
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to create Peca', details: error });
-    }
-  }
-  async createEntry(req: Request, res: Response) {
-    try {
-        const payload = req.body;
-        if (payload && typeof payload.nf_numero === 'string') {
-          payload.nf_numero = payload.nf_numero.trim() || null;
-        }
-        const entry = await repository.createEntry(payload);
-        res.status(201).json(entry);
-    } catch (error: any) {
-        console.error(error);
-        res.status(400).json({ error: 'Failed to create entry', details: error.message || error });
-    }
-  }
-  async findEntryById(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const entry = await repository.findEntryById(id);
-      if (!entry) return res.status(404).json({ error: 'Entrada de estoque não encontrada.' });
-      res.json(entry);
-    } catch (error: any) {
-      console.error(error);
-      res.status(500).json({ error: 'Erro ao buscar entrada de estoque.', details: error.message });
-    }
-  }
-  async updateEntry(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const payload = req.body;
-      if (payload && typeof payload.nf_numero === 'string') {
-        payload.nf_numero = payload.nf_numero.trim() || null;
-      }
-      const updated = await repository.updateEntry(id, payload);
-      res.json(updated);
-    } catch (error: any) {
-      console.error(error);
-      res.status(400).json({ error: error.message || 'Erro ao atualizar entrada de estoque.' });
-    }
-  }
-  async deleteEntry(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      await repository.deleteEntry(id);
-      res.status(204).send();
-    } catch (error: any) {
-      console.error(error);
-      res.status(400).json({ error: error.message || 'Erro ao deletar entrada de estoque.' });
-    }
-  }
-  async getAvailability(req: Request, res: Response) {
-      try {
-          const id = Number(req.params.id);
-          const result = await repository.getAvailability(id);
-          if (!result) return res.status(404).json({error: 'Part not found'});
-          res.json(result);
-      } catch (error) {
-          res.status(500).json({ error: 'Failed to fetch availability' });
-      }
-  }
-  async findAll(req: Request, res: Response) {
-    try {
-      const pecas = await repository.findAll();
-      res.json(pecas);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch Pecas' });
-    }
-  }
-  async findById(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const peca = await repository.findById(id);
-      if (!peca) {
-        return res.status(404).json({ error: 'Peca not found' });
-      }
-      res.json(peca);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch Peca' });
-    }
-  }
-  async update(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const peca = await repository.update(id, req.body);
-      res.json(peca);
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to update Peca' });
-    }
-  }
-  async delete(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      await repository.delete(id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to delete Peca' });
-    }
-  }
-  async search(req: Request, res: Response) {
-    try {
-      const query = req.query.q as string;
-      if (!query) return res.json([]);
-      const pecas = await repository.search(query);
-      res.json(pecas);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to search Pecas' });
     }
   }
 }
@@ -43589,183 +44585,6 @@ export class FechamentoFinanceiroRepository {
 
 
 --- FILE: server\src\repositories\fornecedor.repository.ts ---
-import { prisma } from "../prisma.js";
-export class FornecedorRepository {
-  async create(data: any) {
-    if (data.documento) {
-      const existing = await prisma.fornecedor.findFirst({
-        where: { documento: data.documento, deleted_at: null }
-      });
-      if (existing) {
-        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-      }
-    }
-    if (data.inscricao_estadual) {
-      const existing = await prisma.fornecedor.findFirst({
-        where: { inscricao_estadual: data.inscricao_estadual, deleted_at: null }
-      });
-      if (existing) {
-        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-      }
-    }
-    const {
-      nome,
-      nome_fantasia,
-      documento,
-      inscricao_estadual,
-      inscricao_municipal,
-      tipo_pessoa,
-      cep,
-      logradouro,
-      numero,
-      complemento,
-      bairro,
-      cidade,
-      uf,
-      contato,
-      telefone,
-      whatsapp,
-      email,
-      banco,
-      agencia,
-      conta,
-      chave_pix,
-      categoria_produto,
-      condicoes_pagamento,
-      obs,
-    } = data;
-    return await prisma.fornecedor.create({
-      data: {
-        nome,
-        nome_fantasia: nome_fantasia || null,
-        documento: documento || null,
-        inscricao_estadual: inscricao_estadual || null,
-        inscricao_municipal: inscricao_municipal || null,
-        tipo_pessoa: tipo_pessoa || "JURIDICA",
-        cep: cep || null,
-        logradouro: logradouro || null,
-        numero: numero || null,
-        complemento: complemento || null,
-        bairro: bairro || null,
-        cidade: cidade || null,
-        uf: uf || null,
-        contato: contato || null,
-        telefone: telefone || null,
-        whatsapp: whatsapp || null,
-        email: email || null,
-        banco: banco || null,
-        agencia: agencia || null,
-        conta: conta || null,
-        chave_pix: chave_pix || null,
-        categoria_produto: categoria_produto || null,
-        condicoes_pagamento: condicoes_pagamento || null,
-        obs: obs || null,
-      },
-    });
-  }
-  async findAll() {
-    return await prisma.fornecedor.findMany({
-      where: { deleted_at: null },
-      orderBy: { nome: "asc" },
-    });
-  }
-  async findById(id: number) {
-    return await prisma.fornecedor.findUnique({
-      where: { id_fornecedor: id },
-    });
-  }
-  async update(id: number, data: any) {
-    if (data.documento) {
-      const existing = await prisma.fornecedor.findFirst({
-        where: {
-          documento: data.documento,
-          deleted_at: null,
-          id_fornecedor: { not: id }
-        }
-      });
-      if (existing) {
-        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-      }
-    }
-    if (data.inscricao_estadual) {
-      const existing = await prisma.fornecedor.findFirst({
-        where: {
-          inscricao_estadual: data.inscricao_estadual,
-          deleted_at: null,
-          id_fornecedor: { not: id }
-        }
-      });
-      if (existing) {
-        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-      }
-    }
-    const {
-      nome,
-      nome_fantasia,
-      documento,
-      inscricao_estadual,
-      inscricao_municipal,
-      tipo_pessoa,
-      cep,
-      logradouro,
-      numero,
-      complemento,
-      bairro,
-      cidade,
-      uf,
-      contato,
-      telefone,
-      whatsapp,
-      email,
-      banco,
-      agencia,
-      conta,
-      chave_pix,
-      categoria_produto,
-      condicoes_pagamento,
-      obs,
-    } = data;
-    return await prisma.fornecedor.update({
-      where: { id_fornecedor: id },
-      data: {
-        nome,
-        nome_fantasia: nome_fantasia || null,
-        documento: documento || null,
-        inscricao_estadual: inscricao_estadual || null,
-        inscricao_municipal: inscricao_municipal || null,
-        tipo_pessoa: tipo_pessoa || "JURIDICA",
-        cep: cep || null,
-        logradouro: logradouro || null,
-        numero: numero || null,
-        complemento: complemento || null,
-        bairro: bairro || null,
-        cidade: cidade || null,
-        uf: uf || null,
-        contato: contato || null,
-        telefone: telefone || null,
-        whatsapp: whatsapp || null,
-        email: email || null,
-        banco: banco || null,
-        agencia: agencia || null,
-        conta: conta || null,
-        chave_pix: chave_pix || null,
-        categoria_produto: categoria_produto || null,
-        condicoes_pagamento: condicoes_pagamento || null,
-        obs: obs || null,
-      },
-    });
-  }
-  async delete(id: number) {
-    // Soft delete
-    return await prisma.fornecedor.update({
-      where: { id_fornecedor: id },
-      data: { deleted_at: new Date() },
-    });
-  }
-}
-
-
---- FILE: server\src\repositories\funcionario.repository.ts ---
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 export class FuncionarioRepository {
@@ -43841,9 +44660,6 @@ export class FuncionarioRepository {
     });
   }
 }
-
-
---- FILE: server\src\repositories\itensOs.repository.ts ---
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { AuditLogRepository } from './auditLog.repository.js';
@@ -45230,35 +46046,6 @@ export class PecasEstoqueRepository {
 }
 
 
---- FILE: server\src\repositories\pessoa.repository.ts ---
-import { Prisma, PrismaClient } from '@prisma/client';
-import { prisma } from '../prisma.js';
-export class PessoaRepository {
-  async create(data: Prisma.PessoaCreateInput) {
-    return await prisma.pessoa.create({
-      data,
-    });
-  }
-  async findAll(where: Prisma.PessoaWhereInput = {}) {
-    return await prisma.pessoa.findMany({ where });
-  }
-  async findById(id: number) {
-    return await prisma.pessoa.findUnique({
-      where: { id_pessoa: id },
-    });
-  }
-  async update(id: number, data: Prisma.PessoaUpdateInput) {
-    return await prisma.pessoa.update({
-      where: { id_pessoa: id },
-      data,
-    });
-  }
-  async delete(id: number) {
-    return await prisma.pessoa.delete({
-      where: { id_pessoa: id },
-    });
-  }
-}
 
 
 --- FILE: server\src\repositories\pessoaFisica.repository.ts ---
@@ -46911,6 +47698,7 @@ import { upload } from "../config/multer.js";
 const router = Router();
 router.get("/", ConfiguracaoController.get);
 router.post("/", upload.single("logo"), ConfiguracaoController.upsert);
+router.post("/upload-logo-impressao", upload.single("logoImpressao"), ConfiguracaoController.uploadLogoImpressao);
 export default router;
 
 
@@ -48279,24 +49067,33 @@ const maskEmail = (email: string) => {
     user.length > 3 ? user.substring(0, 3) + "***" : user + "***";
   return `${maskedUser}@${domain}`;
 };
-const formatPhone = (phone: string) => {
-  // Keep original formatter for internal use if needed,
-  // but we will use maskPhone for the PDF output where requested.
-  // Or just replace this function?
-  // The requirement is "Implement data masking".
-  // I'll use `maskPhone` in the PDF generation logic.
+const formatPhone = (phone: string): string => {
   if (!phone) return "";
   const cleaned = phone.replace(/\D/g, "");
   if (cleaned.length === 11) {
-    return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 3)} ${cleaned.slice(3, 7)}-${cleaned.slice(7)}`;
   }
   if (cleaned.length === 10) {
-    return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
   }
   return phone;
 };
+const formatIE = (ie: string): string => {
+  if (!ie) return "";
+  const val = ie.toUpperCase();
+  if (val.includes("ISENTO") || "ISENTO".startsWith(val) && val.length > 0) {
+    return val;
+  }
+  const digits = val.replace(/[^0-9]/g, "");
+  return digits.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+};
+const formatCnpj = (cnpj: string): string => {
+  if (!cnpj) return "";
+  const digits = cnpj.replace(/\D/g, "");
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+};
 export class DocumentoService {
-  async generatePdf(osId: number): Promise<Buffer> {
+  async generatePdf(osId: number): Promise<{ buffer: Buffer; filename: string }> {
     try {
       console.log(`[PDF] Iniciando geração de PDF para OS Nº ${osId}`);
       const os = await prisma.ordemDeServico.findUnique({
@@ -48311,6 +49108,7 @@ export class DocumentoService {
           veiculo: true,
           equipamento: true,
           itens_os: true,
+          pagamentos_cliente: true,
           servicos_mao_de_obra: {
             where: { deleted_at: null },
             include: {
@@ -48322,6 +49120,25 @@ export class DocumentoService {
         },
       });
       if (!os) throw new Error("OS não encontrada");
+      // Filename construction
+      const clientNameRaw = os.cliente.pessoa_fisica?.pessoa.nome || os.cliente.pessoa_juridica?.nome_fantasia || os.cliente.pessoa_juridica?.razao_social || "Cliente";
+      let itemDesc = "Documento";
+      if (os.veiculo) {
+        const marca = os.veiculo.marca || "";
+        const modelo = os.veiculo.modelo || "";
+        const cor = os.veiculo.cor || "";
+        const placa = os.veiculo.placa || "";
+        itemDesc = `${marca} ${modelo} ${cor} ${placa}`.trim();
+      } else if (os.equipamento) {
+        const peca = os.equipamento.nome_peca || "";
+        const fabricante = os.equipamento.fabricante || "";
+        const numeracao = os.equipamento.numeracao || "";
+        itemDesc = `${peca} ${fabricante} ${numeracao}`.trim();
+      }
+      const isOrcamento = os.status !== "FINALIZADA" && os.status !== "PAGA_CLIENTE";
+      const docType = isOrcamento ? "Orcamento" : "OS";
+      const rawFilename = `${docType}_${os.id_os} - ${itemDesc} - ${clientNameRaw}`;
+      const filename = rawFilename.replace(/[/\\?%*:|"<>\s]+/g, " ").trim() + ".pdf";
       const config = await prisma.configuracao.findFirst();
       // Prepare Data
       const clienteNome =
@@ -48343,16 +49160,19 @@ export class DocumentoService {
         0,
       );
       const totalGeral = totalPecas + totalMaoDeObra;
-      const isOrcamento =
-        os.status !== "FINALIZADA" && os.status !== "PAGA_CLIENTE";
+      const activePayments = os.pagamentos_cliente?.filter((p: any) => !p.deleted_at) || [];
+      const totalPago = activePayments.reduce((acc, p) => acc + Number(p.valor), 0);
+      const saldoRestante = totalGeral - totalPago;
+      const isQuitada = totalPago >= totalGeral;
       // Logo Logic
       let logoImage = null;
-      if (config?.logoUrl) {
+      const logoBase = config?.logoImpressaoUrl ? config.logoImpressaoUrl : config?.logoUrl;
+      if (logoBase) {
         const uploadsDir = path.resolve(__dirname, "..", "..", "uploads");
-        const logoFilename = path.basename(config.logoUrl);
+        const logoFilename = path.basename(logoBase);
         const logoPath = path.join(uploadsDir, logoFilename);
         console.log("[PDF] Tentando carregar logo:", {
-          logoUrl: config.logoUrl,
+          logoBase,
           logoFilename,
           logoPath,
           exists: fs.existsSync(logoPath),
@@ -48396,9 +49216,16 @@ export class DocumentoService {
                     fontSize: 16,
                     bold: true,
                   },
-                  { text: config?.razaoSocial || "", fontSize: 10 },
                   {
-                    text: `${config?.endereco || ""} - ${config?.telefone || ""}`,
+                    text: config?.razaoSocial || "",
+                    fontSize: 10,
+                  },
+                  {
+                    text: `CNPJ: ${config?.cnpj ? formatCnpj(config.cnpj) : "-"} ${config?.inscricaoEstadual ? ` | IE: ${formatIE(config.inscricaoEstadual)}` : ""}`,
+                    fontSize: 9,
+                  },
+                  {
+                    text: `${config?.endereco || ""} - Tel: ${config?.telefone ? formatPhone(config.telefone) : "-"}`,
                     fontSize: 9,
                   },
                   { text: config?.email || "", fontSize: 9 },
@@ -48466,9 +49293,23 @@ export class DocumentoService {
                     fontSize: 9,
                     margin: [0, 5, 0, 2],
                   },
-                  { text: `Veículo: ${veiculoDesc}` },
-                  { text: `Cor: ${os.veiculo?.cor || "N/A"}` },
-                  { text: `KM: ${os.km_entrada}` },
+                  os.veiculo
+                    ? {
+                        stack: [
+                          { text: `Veículo: ${os.veiculo.marca || ""} ${os.veiculo.modelo || ""} - ${os.veiculo.cor || "N/A"}` },
+                          { text: `Ano (Fab/Mod): ${os.veiculo.ano_fabricacao || "-"}/${os.veiculo.ano_modelo || "-"} | Placa: ${os.veiculo.placa}` },
+                          { text: `KM: ${os.km_entrada || "-"} km | Combustível: ${os.veiculo.combustivel || "-"}` },
+                        ]
+                      }
+                    : os.equipamento
+                    ? {
+                        stack: [
+                          { text: `Peça: ${os.equipamento.nome_peca}` },
+                          { text: `Fabricante: ${os.equipamento.fabricante || "-"}` },
+                          { text: `Nº Série: ${os.equipamento.numeracao || "-"}` },
+                        ]
+                      }
+                    : { text: "Nenhum veículo ou peça vinculado." },
                 ],
               },
             ],
@@ -48476,7 +49317,7 @@ export class DocumentoService {
           },
           // SERVICES TABLE
           {
-            text: "SERVIÇOS (MÃO DE OBRA)",
+            text: "SERVIÇOS EXECUTADOS (MÃO DE OBRA)",
             bold: true,
             fontSize: 11,
             margin: [0, 10, 0, 5],
@@ -48492,7 +49333,7 @@ export class DocumentoService {
                   { text: "Valor", style: "tableHeader" },
                 ],
                 ...os.servicos_mao_de_obra.map((s) => [
-                  s.descricao || "Serviço",
+                  s.descricao || s.funcionario?.cargo || s.funcionario?.especialidade || "Serviço Executado",
                   s.funcionario?.pessoa_fisica?.pessoa.nome || "-",
                   {
                     text: `R$ ${Number(s.valor).toFixed(2)}`,
@@ -48579,6 +49420,53 @@ export class DocumentoService {
               },
             ],
           },
+          // LINE
+          {
+            canvas: [
+              { type: "line", x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 1 },
+            ],
+            margin: [0, 10, 0, 10],
+          },
+          // PAYMENTS BLOCK
+          {
+            text: "INFORMAÇÕES DE PAGAMENTO",
+            bold: true,
+            fontSize: 9,
+            margin: [0, 5, 0, 5],
+          },
+          {
+            table: {
+              widths: ["*", "auto", "auto"],
+              body: [
+                [
+                  { text: "Forma de Pagamento", style: "tableHeader" },
+                  { text: "Valor", style: "tableHeader" },
+                  { text: "Data", style: "tableHeader" },
+                ],
+                ...(activePayments.length > 0
+                  ? activePayments.map((p) => [
+                      p.metodo_pagamento + (p.qtd_parcelas && p.qtd_parcelas > 1 ? ` (${p.qtd_parcelas}x)` : ""),
+                      `R$ ${Number(p.valor).toFixed(2)}`,
+                      format(new Date(p.data_pagamento), "dd/MM/yyyy"),
+                    ])
+                  : [["Nenhum pagamento registrado.", "", ""]]),
+              ],
+            },
+            layout: "lightHorizontalLines",
+          },
+          {
+            columns: [
+              { text: `Total Pago: R$ ${totalPago.toFixed(2)}`, bold: true, fontSize: 9 },
+              {
+                text: isQuitada ? "OS QUITADA" : `Saldo Restante: R$ ${saldoRestante.toFixed(2)}`,
+                bold: true,
+                fontSize: 9,
+                alignment: "right",
+                color: isQuitada ? "green" : "red",
+              },
+            ],
+            margin: [0, 5, 0, 10],
+          },
           // FOOTER NOTES (Body notes, separate from page footer)
           { text: "Observações:", bold: true, margin: [0, 20, 0, 2] },
           {
@@ -48597,7 +49485,7 @@ export class DocumentoService {
                     alignment: "center",
                   },
                   {
-                    text: "Assinatura do Responsável",
+                    text: config?.nomeFantasia || "Responsável Técnico",
                     alignment: "center",
                     fontSize: 8,
                   },
@@ -48618,6 +49506,14 @@ export class DocumentoService {
               },
             ],
             margin: [0, 50, 0, 0],
+          },
+          // INSTITUTIONAL MESSAGE
+          {
+            text: "Agradecemos a preferência! Volte sempre!!",
+            alignment: "center",
+            bold: true,
+            fontSize: 10,
+            margin: [0, 20, 0, 0],
           },
         ],
         styles: {
@@ -48644,7 +49540,7 @@ export class DocumentoService {
         pdfDoc.on("data", (chunk: any) => chunks.push(chunk));
         pdfDoc.on("end", () => {
           console.log("[PDF] PDF gerado com sucesso");
-          resolve(Buffer.concat(chunks));
+          resolve({ buffer: Buffer.concat(chunks), filename });
         });
         pdfDoc.on("error", (err: any) => {
           console.error("[PDF] Erro no PDFKit:", err);
@@ -48661,7 +49557,7 @@ export class DocumentoService {
       throw error;
     }
   }
-  async sendEmail(pdfBuffer: Buffer, email: string): Promise<void> {
+  async sendEmail(pdfBuffer: Buffer, email: string, filename: string = "documento.pdf"): Promise<void> {
     console.log(`[DocumentoService] Enviando e-mail para ${email}...`);
     await notificationService.sendEmail(
       email,
@@ -48669,13 +49565,13 @@ export class DocumentoService {
       "<p>Segue em anexo o documento solicitado.</p>",
       [
         {
-          filename: "documento.pdf",
+          filename,
           content: pdfBuffer,
         },
       ],
     );
   }
-  async sendTelegram(pdfBuffer: Buffer, chatId: string): Promise<void> {
+  async sendTelegram(pdfBuffer: Buffer, chatId: string, filename: string = "documento.pdf"): Promise<void> {
     console.log(
       `[DocumentoService] Enviando Telegram para chat_id ${chatId}...`,
     );
@@ -48683,7 +49579,7 @@ export class DocumentoService {
       chatId,
       "Segue seu documento:",
       pdfBuffer,
-      "documento.pdf",
+      filename,
     );
   }
 }
@@ -48765,6 +49661,45 @@ import { NotificationService } from "./NotificationService.js";
 import { format } from "date-fns";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
+const formatPhone = (phone: string): string => {
+  if (!phone) return "";
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 11) {
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 3)} ${cleaned.slice(3, 7)}-${cleaned.slice(7)}`;
+  }
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
+  }
+  return phone;
+};
+const formatIE = (ie: string): string => {
+  if (!ie) return "";
+  const val = ie.toUpperCase();
+  if (val.includes("ISENTO") || "ISENTO".startsWith(val) && val.length > 0) {
+    return val;
+  }
+  const digits = val.replace(/[^0-9]/g, "");
+  return digits.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+};
+const formatCnpj = (cnpj: string): string => {
+  if (!cnpj) return "";
+  const digits = cnpj.replace(/\D/g, "");
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+};
+const formatDoc = (doc: string): string => {
+  if (!doc) return "";
+  const cleaned = doc.replace(/\D/g, "");
+  if (cleaned.length === 11) {
+    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  }
+  if (cleaned.length === 14) {
+    return cleaned.replace(
+      /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
+      "$1.$2.$3/$4-$5",
+    );
+  }
+  return doc;
+};
 export class MensageriaService {
   private notificationService: NotificationService;
   constructor() {
@@ -48796,9 +49731,14 @@ export class MensageriaService {
         0,
       ) || 0;
     const totalGeral = totalPecas + totalServicos;
-    const logoHtml = config?.logoUrl
-      ? `<img src="${process.env.API_URL || "http://localhost:3000"}${config.logoUrl}" style="max-height: 60px; margin-bottom: 10px;" />`
+    const logoBase = config?.logoImpressaoUrl ? config.logoImpressaoUrl : config?.logoUrl;
+    const logoHtml = logoBase
+      ? `<img src="${process.env.API_URL || "http://localhost:3000"}${logoBase}" style="max-height: 60px; object-fit: contain; margin-bottom: 10px;" />`
       : "";
+    const activePayments = os.pagamentos_cliente?.filter((p: any) => !p.deleted_at) || [];
+    const totalPago = activePayments.reduce((acc: number, p: any) => acc + Number(p.valor || 0), 0);
+    const saldoRestante = totalGeral - totalPago;
+    const isQuitada = totalPago >= totalGeral;
     return `
       <!DOCTYPE html>
       <html>
@@ -48835,10 +49775,10 @@ export class MensageriaService {
           <h1>${config?.nomeFantasia || "Centro Automotivo"}</h1>
           <div class="company-info">
              <strong>${config?.razaoSocial || ""}</strong><br/>
-             CNPJ: ${config?.cnpj || "-"} 
-             ${config?.inscricaoEstadual ? ` • IE: ${config.inscricaoEstadual}` : ""} <br/>
+             CNPJ: ${config?.cnpj ? formatCnpj(config.cnpj) : "-"} 
+             ${config?.inscricaoEstadual ? ` • IE: ${formatIE(config.inscricaoEstadual)}` : ""} <br/>
              ${config?.endereco || "Endereço não configurado"} <br/>
-             Tel: ${config?.telefone || "-"} • Email: ${config?.email || "-"}
+             Tel: ${config?.telefone ? formatPhone(config.telefone) : "-"} • Email: ${config?.email || "-"}
           </div>
         </div>
         <div style="text-align: right; margin-bottom: 20px;">
@@ -48856,15 +49796,23 @@ export class MensageriaService {
           <div style="flex: 1;">
             <div style="font-weight: bold; margin-bottom: 5px; font-size: 13px;">DADOS DO CLIENTE</div>
             Nome: <strong>${os.cliente?.pessoa?.nome || os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.pessoa?.nome || "Consumidor"}</strong><br>
-            CPF/CNPJ: ${os.cliente?.pessoa?.cpf || os.cliente?.pessoa?.cnpj || os.cliente?.pessoa_fisica?.pessoa?.cnpj || "-"}<br>
-            Telefone: ${os.cliente?.pessoa?.telefone || os.cliente?.telefone_1 || "-"}<br>
+            CPF/CNPJ: ${formatDoc(os.cliente?.pessoa?.cpf || os.cliente?.pessoa?.cnpj || os.cliente?.pessoa_fisica?.pessoa?.cnpj || "") || "-"}<br>
+            Telefone: ${os.cliente?.pessoa?.telefone || os.cliente?.telefone_1 ? formatPhone(os.cliente.pessoa?.telefone || os.cliente.telefone_1 || "") : "-"}<br>
             Endereço: ${os.cliente?.logradouro ? `${os.cliente.logradouro}, ${os.cliente.nr_logradouro} - ${os.cliente.cidade}/${os.cliente.estado}` : "-"}
           </div>
           <div style="flex: 1; text-align: right; padding-left: 20px;">
              <div style="font-weight: bold; margin-bottom: 5px; font-size: 13px;">DADOS DO VEÍCULO</div>
-             Veículo: <strong>${os.veiculo?.modelo || "-"}</strong><br>
-             Placa: <strong>${os.veiculo?.placa || "-"}</strong> • Km: ${os.km_entrada || "-"}<br>
-             Marca: ${os.veiculo?.marca || "-"} • Cor: ${os.veiculo?.cor || "-"}
+             ${
+               os.veiculo
+                 ? `Veículo: <strong>${os.veiculo.marca || "-"} / ${os.veiculo.modelo || "-"} / ${os.veiculo.cor || "N/A"}</strong><br>
+                    Ano (Fab/Mod): <strong>${os.veiculo.ano_fabricacao || "-"}/${os.veiculo.ano_modelo || "-"}</strong> | Placa: <strong>${os.veiculo.placa || "-"}</strong><br>
+                    KM: <strong>${os.km_entrada || "-"}</strong> | Combustível: <strong>${os.veiculo.combustivel || "-"}</strong>`
+                 : os.equipamento
+                 ? `Peça: <strong>${os.equipamento.nome_peca || "-"}</strong><br>
+                    Fabricante: <strong>${os.equipamento.fabricante || "-"}</strong><br>
+                    Nº Série: <strong>${os.equipamento.numeracao || "-"}</strong>`
+                 : `<span style="font-style: italic; color: #999;">Nenhum veículo ou peça vinculado.</span>`
+             }
           </div>
         </div>
         <div class="section">
@@ -48908,7 +49856,7 @@ export class MensageriaService {
           </table>
         </div>
         <div class="section">
-          <div class="section-title">SERVIÇOS (MÃO DE OBRA)</div>
+          <div class="section-title">SERVIÇOS EXECUTADOS (MÃO DE OBRA)</div>
           <table>
             <thead>
               <tr>
@@ -48924,7 +49872,7 @@ export class MensageriaService {
                       .map(
                         (svc: any) => `
                   <tr>
-                    <td>${svc.descricao || "Serviço"}</td>
+                    <td>${svc.descricao || svc.funcionario?.cargo || svc.funcionario?.especialidade || "Serviço Executado"}</td>
                     <td>${svc.funcionario?.pessoa_fisica?.pessoa?.nome || "-"}</td>
                     <td style="text-align: right;">R$ ${Number(svc.valor || 0).toFixed(2)}</td>
                   </tr>
@@ -48952,6 +49900,46 @@ export class MensageriaService {
              </tr>
           </table>
         </div>
+        <div class="section" style="margin-top: 20px;">
+          <div class="section-title">INFORMAÇÕES DE PAGAMENTO</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Forma de Pagamento</th>
+                <th style="width: 100px; text-align: right;">Valor</th>
+                <th style="width: 100px; text-align: center;">Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                activePayments.length
+                  ? activePayments
+                      .map(
+                        (p: any) => `
+                  <tr>
+                    <td style="text-transform: capitalize;">
+                      ${p.metodo_pagamento?.toLowerCase()}
+                      ${p.qtd_parcelas && p.qtd_parcelas > 1 ? ` (${p.qtd_parcelas}x)` : ""}
+                    </td>
+                    <td style="text-align: right; font-weight: bold;">R$ ${Number(p.valor || 0).toFixed(2)}</td>
+                    <td style="text-align: center;">${format(new Date(p.data_pagamento), "dd/MM/yyyy")}</td>
+                  </tr>
+                `,
+                      )
+                      .join("")
+                  : '<tr><td colspan="3" style="text-align: center; color: #999; font-style: italic;">Nenhum pagamento registrado.</td></tr>'
+              }
+            </tbody>
+          </table>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; font-weight: bold; font-size: 13px;">
+            <span>Total Pago: R$ ${totalPago.toFixed(2)}</span>
+            ${
+              isQuitada
+                ? `<span style="color: green; background: #e6f4ea; padding: 2px 8px; border-radius: 4px; font-size: 11px;">OS QUITADA</span>`
+                : `<span style="color: red; font-size: 12px;">Saldo Restante: R$ ${saldoRestante.toFixed(2)}</span>`
+            }
+          </div>
+        </div>
         ${
           isBudget
             ? `<div class="watermark">DOCUMENTO SEM VALOR FISCAL - SERVIÇO NÃO REALIZADO / APENAS ORÇAMENTO</div>`
@@ -48966,6 +49954,9 @@ export class MensageriaService {
                 <div style="font-weight: bold;">${config?.nomeFantasia || "Centro Automotivo"}</div>
                 <div style="font-size: 10px; color: #777;">Responsável Técnico</div>
             </div>
+        </div>
+        <div style="text-align: center; font-weight: bold; font-size: 14px; margin-top: 25px; margin-bottom: 10px; text-transform: uppercase;">
+          Agradecemos a preferência! Volte sempre!!
         </div>
         <div class="footer">
           Documento gerado em ${format(new Date(), "dd/MM/yyyy HH:mm:ss")} pelo Sistema

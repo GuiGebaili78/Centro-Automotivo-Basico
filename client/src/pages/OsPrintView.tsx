@@ -95,7 +95,7 @@ export const OsPrintView = () => {
   const isQuitada = totalPago >= totalGeral;
 
   return (
-    <div className="min-h-screen bg-white p-8 print-container print:p-0 print:m-0 print:w-full print:absolute print:top-0 print:left-0 text-xs md:text-sm">
+    <div className="min-h-screen bg-white p-8 print-container print:p-0 print:m-0 print:w-full print:absolute print:top-0 print:left-0 text-xs md:text-sm print:min-h-0 print:h-auto print:block">
       <style>{`
         @media print {
           @page {

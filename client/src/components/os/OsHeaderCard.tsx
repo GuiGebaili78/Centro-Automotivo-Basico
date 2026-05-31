@@ -238,11 +238,12 @@ export const OsHeaderCard = ({
           <div className="flex items-center gap-2">
             <Input
               type="number"
-              value={os.km_entrada || 0}
+              placeholder="0"
+              value={os.km_entrada ?? ""}
               onChange={(e) =>
-                updateOSField("km_entrada", Number(e.target.value))
+                updateOSField("km_entrada", e.target.value === "" ? null : Number(e.target.value))
               }
-              className="!py-2 !px-3 !text-base !font-bold bg-neutral-50"
+              className="!py-2 !px-3 !text-base !font-bold !bg-green-100 border-green-300 text-emerald-950 print:bg-transparent print:text-black placeholder-shown:!bg-neutral-50 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900"
             />
             <span className="text-xs font-bold text-gray-400 uppercase">
               KM

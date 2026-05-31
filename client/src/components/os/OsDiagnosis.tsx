@@ -27,7 +27,7 @@ export const OsDiagnosis = ({
           DEFEITO RELATADO (IMPRESSÃO PARA O CLIENTE)
         </label>
         <textarea
-          className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-base text-gray-900 h-32 outline-none focus:border-red-300 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm placeholder:text-gray-400"
+          className="w-full bg-green-100 border border-green-300 text-emerald-950 p-3 rounded-xl text-base h-32 outline-none resize-none transition-all focus:shadow-sm placeholder:text-gray-400 print:bg-transparent print:text-black placeholder-shown:bg-neutral-25 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900 placeholder-shown:focus:border-red-300 placeholder-shown:focus:bg-neutral-25"
           placeholder="Descreva o defeito..."
           value={defeitoRelatado || ""}
           onChange={(e) => onChangeDefeito(e.target.value)}
@@ -42,7 +42,7 @@ export const OsDiagnosis = ({
           DIAGNÓSTICO (APENAS INFORMAÇÕES INTERNAS DA OFICINA)
         </label>
         <textarea
-          className="w-full bg-neutral-25 p-3 rounded-xl border border-neutral-200 text-base text-gray-900 h-32 outline-none focus:border-neutral-200 focus:bg-neutral-25 resize-none transition-all focus:shadow-sm placeholder:text-gray-400"
+          className="w-full bg-green-100 border border-green-300 text-emerald-950 p-3 rounded-xl text-base h-32 outline-none resize-none transition-all focus:shadow-sm placeholder:text-gray-400 print:bg-transparent print:text-black placeholder-shown:bg-neutral-25 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900 placeholder-shown:focus:border-neutral-200 placeholder-shown:focus:bg-neutral-25"
           placeholder="Insira detalhes adicionais..."
           value={diagnostico || ""}
           onChange={(e) => onChangeDiagnostico(e.target.value)}

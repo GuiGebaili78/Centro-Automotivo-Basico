@@ -384,7 +384,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             Nenhum serviço de mão de obra lançado.
           </div>
         ) : (
-          <table className="tabela-limpa w-full text-left">
+          <table className="tabela-limpa w-full text-left border-separate border-spacing-y-2">
             <thead>
               <tr>
                 <th className="w-[30%] pl-6">Profissional</th>
@@ -397,10 +397,10 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
             <tbody className="divide-y divide-neutral-50">
               {laborServices.map((svc) => (
                 <tr
-                  className="bg-green-50/60 hover:bg-green-100/60 print:bg-transparent transition-colors group"
+                  className="group !bg-green-100 [&>td]:!bg-green-100 hover:[&>td]:!bg-green-100 [&>td]:border-t [&>td]:border-b [&>td]:!border-green-300 [&>td:first-child]:border-l [&>td:last-child]:border-r transition-none border-b-0 print:bg-transparent print:[&>td]:border-transparent"
                   key={svc.id_servico_mao_de_obra || svc.id_temporary}
                 >
-                  <td className="pl-6 py-3 text-base text-gray-900">
+                  <td className="pl-6 py-3 text-base text-gray-900 first:rounded-l-lg last:rounded-r-lg">
                     {svc.funcionario?.pessoa_fisica?.pessoa?.nome ||
                       employees.find(
                         (e) =>
@@ -409,7 +409,7 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                       )?.pessoa_fisica?.pessoa?.nome ||
                       "Mecânico"}
                   </td>
-                  <td className="py-3 text-center">
+                  <td className="py-3 text-center first:rounded-l-lg last:rounded-r-lg">
                     {svc.categoria === "ELETRICA" ? (
                       <span className="text-xs font-bold bg-yellow-100 text-yellow-700 px-2 py-1 rounded-md uppercase tracking-wide border border-yellow-200">
                         Elétrica
@@ -420,13 +420,13 @@ export const LaborManager: React.FC<LaborManagerProps> = ({
                       </span>
                     )}
                   </td>
-                  <td className="py-3 text-base text-gray-900">
+                  <td className="py-3 text-base text-gray-900 first:rounded-l-lg last:rounded-r-lg">
                     {svc.descricao || "-"}
                   </td>
-                  <td className="py-3 text-right text-base text-gray-900">
+                  <td className="py-3 text-right text-base text-gray-900 first:rounded-l-lg last:rounded-r-lg">
                     {formatCurrency(Number(svc.valor))}
                   </td>
-                  <td className="py-3 text-center">
+                  <td className="py-3 text-center first:rounded-l-lg last:rounded-r-lg">
                     {!readOnly && (
                       <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <ActionButton

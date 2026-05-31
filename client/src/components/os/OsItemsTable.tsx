@@ -17,7 +17,7 @@ export const OsItemsTable = ({
 }: OsItemsTableProps) => {
   return (
     <Card className="p-0 overflow-hidden">
-      <table className="tabela-limpa w-full">
+      <table className="tabela-limpa w-full border-separate border-spacing-y-2">
         <thead>
           <tr>
             <th className="w-[40%] text-left pl-6">Item</th>
@@ -34,9 +34,9 @@ export const OsItemsTable = ({
             .map((item) => (
               <tr
                 key={item.id_iten}
-                className="hover:bg-neutral-50 transition-colors group"
+                className="group !bg-green-100 [&>td]:!bg-green-100 hover:[&>td]:!bg-green-100 [&>td]:border-t [&>td]:border-b [&>td]:!border-green-300 [&>td:first-child]:border-l [&>td:last-child]:border-r transition-none border-b-0 print:bg-transparent print:[&>td]:border-transparent"
               >
-                <td className="pl-6 py-3">
+                <td className="pl-6 py-3 first:rounded-l-lg last:rounded-r-lg">
                   <div className="text-base text-gray-900 flex flex-wrap items-center gap-2">
                     {item.descricao}
                     {/* STATUS PAGO */}
@@ -57,21 +57,21 @@ export const OsItemsTable = ({
                     )}
                   </div>
                 </td>
-                <td className="py-3">
+                <td className="py-3 first:rounded-l-lg last:rounded-r-lg">
                   <div className="text-sm text-neutral-400 font-black font-mono px-2 py-0.5 rounded-md w-fit">
                     {item.codigo_referencia || "-"}
                   </div>
                 </td>
-                <td className="text-center text-base text-gray-900 py-3">
+                <td className="text-center text-base text-gray-900 py-3 first:rounded-l-lg last:rounded-r-lg">
                   {item.quantidade}
                 </td>
-                <td className="text-center text-base text-gray-600 py-3">
+                <td className="text-center text-base text-gray-600 py-3 first:rounded-l-lg last:rounded-r-lg">
                   {formatCurrency(Number(item.valor_venda))}
                 </td>
-                <td className="text-center text-base text-gray-900 py-3">
+                <td className="text-center text-base text-gray-900 py-3 first:rounded-l-lg last:rounded-r-lg">
                   {formatCurrency(Number(item.valor_total))}
                 </td>
-                <td className="text-right pr-4 py-3">
+                <td className="text-right pr-4 py-3 first:rounded-l-lg last:rounded-r-lg">
                   {!isLocked && (
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* Lock actions if paid */}
