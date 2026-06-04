@@ -418,6 +418,10 @@ export interface IRecebivelCartao {
 
   status: string; // 'PENDENTE', 'RECEBIDO'
 
+  // ── Snapshot Histórico (Congelamento de Taxa) ──
+  taxa_pct_snapshot?: number | null;
+  modalidade_snapshot?: string | null;
+
   operadora?: IOperadoraCartao;
   ordem_de_servico?: IOrdemDeServico;
 }

@@ -1297,6 +1297,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
         <Modal
           title="Novo Fornecedor"
           onClose={() => setShowFornecedorModal(false)}
+          className="max-w-4xl"
         >
           <FornecedorForm
             onSuccess={() => {

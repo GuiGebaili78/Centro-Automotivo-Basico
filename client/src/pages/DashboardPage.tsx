@@ -84,11 +84,15 @@ export function DashboardPage() {
 
   // ── Resultado selecionado no UnifiedSearch → abre fluxo de OS ──
   const handleSearchSelect = (result: SearchResult) => {
-    handleOpenOs(
-      result.id_cliente,
-      result.id_veiculo,
-      result.id_equipamento
-    );
+    if (result.id_os) {
+      navigate(`/ordem-de-servico/${result.id_os}`);
+    } else {
+      handleOpenOs(
+        result.id_cliente,
+        result.id_veiculo,
+        result.id_equipamento
+      );
+    }
   };
 
   // ── Recebe a seleção de status, cria a OS via API e navega para o detalhe ──

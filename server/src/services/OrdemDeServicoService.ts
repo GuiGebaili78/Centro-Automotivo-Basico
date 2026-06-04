@@ -56,7 +56,9 @@ export class OrdemDeServicoService {
   }
 
   async findAll(filters: any) {
-    return this.repository.findAll(filters?.search);
+    const statusArray = filters?.status ? filters.status.split(',') : undefined;
+    const take = filters?.take ? parseInt(filters.take, 10) : undefined;
+    return this.repository.findAll(filters?.search, statusArray, take);
   }
 
   async findById(id: number, includeInternal: boolean = false) {

@@ -215,6 +215,7 @@ export const PagamentoPecaPage = () => {
   const openEditModal = (payment: any) => {
     setEditPayment({
       ...payment,
+      id_fornecedor: payment.id_pessoa || payment.id_fornecedor || "",
       data_compra: new Date(payment.data_compra).toISOString().split("T")[0],
       data_pagamento_fornecedor: payment.data_pagamento_fornecedor
         ? new Date(payment.data_pagamento_fornecedor).toISOString().split("T")[0]
@@ -461,7 +462,7 @@ export const PagamentoPecaPage = () => {
                       </td>
                       <td className="p-5">
                         {(() => {
-                          const st = p.item_os?.ordem_de_servico?.status || "ABERTA";
+                          const st = p.item_os?.ordem_de_servico?.status || p.status_os || p.status || "ABERTA";
                           const styles: Record<string, string> = {
                             FINALIZADA: "bg-emerald-100 text-emerald-700 ring-emerald-200",
                             PAGA_CLIENTE: "bg-neutral-100 text-neutral-600 ring-neutral-200",
@@ -623,7 +624,7 @@ export const PagamentoPecaPage = () => {
               >
                 {fornecedores.map((f) => (
                   <option key={f.id_fornecedor} value={f.id_fornecedor}>
-                    {String(f.nome_fantasia || f.nome || "").toUpperCase()}
+                    {String(f.pessoa_juridica?.nome_fantasia || f.pessoa_juridica?.razao_social || f.nome_fantasia || f.nome || "").toUpperCase()}
                   </option>
                 ))}
               </Select>

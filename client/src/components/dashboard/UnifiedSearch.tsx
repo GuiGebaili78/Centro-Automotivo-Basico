@@ -17,7 +17,7 @@ import { Button } from "../ui";
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type SearchResultType = "veiculo" | "equipamento" | "cliente";
+export type SearchResultType = "veiculo" | "equipamento" | "cliente" | "os";
 
 export interface SearchResult {
   type: SearchResultType;
@@ -26,6 +26,7 @@ export interface SearchResult {
   id_cliente: number;
   id_veiculo?: number;
   id_equipamento?: number;
+  id_os?: number;
   /** Exibida no badge direito para veículos. */
   placa?: string;
 }
@@ -116,97 +117,29 @@ export const UnifiedSearch = ({
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const [clientsRes, equipsRes] = await Promise.all([
-          api.get("/cliente"),
-          api.get("/equipamento"),
-        ]);
-        const allClients = clientsRes.data;
-        const allEquipamentos = equipsRes.data;
+        const { data: allOs } = await api.get("/ordem-servico", {
+          params: { search: val, status: "ABERTA,ORCAMENTO", take: 10 }
+        });
         
-        const q = normalize(val);
         const matches: SearchResult[] = [];
 
-        // 1. Index and match clients & vehicles
-        allClients.forEach((c: any) => {
-          const name = normalize(clientDisplayName(c));
-          const phones = normalize(
-            [c.telefone_1, c.telefone_2].filter(Boolean).join(" ")
-          );
-          const matchesClient = name.includes(q) || phones.includes(q);
-
-          // ── Veículos ──
-          if (c.veiculos && c.veiculos.length > 0) {
-            c.veiculos.forEach((v: any) => {
-              const plate = normalize(v.placa || "");
-              const model = normalize(v.modelo || "");
-              const brand = normalize(v.marca || "");
-
-              if (
-                matchesClient ||
-                plate.includes(q) ||
-                model.includes(q) ||
-                brand.includes(q)
-              ) {
-                matches.push({
-                  type: "veiculo",
-                  display: `${clientDisplayName(c)} — ${v.modelo || "Modelo N/I"}`,
-                  subtext: [v.placa, v.cor, v.marca, v.ano_modelo]
-                    .filter(Boolean)
-                    .join(" • "),
-                  id_cliente: c.id_cliente,
-                  id_veiculo: v.id_veiculo,
-                  placa: v.placa,
-                });
-              }
-            });
-          }
-
-          // ── Cliente sem veículo — mas que bate no nome/tel ──
-          if (
-            matchesClient &&
-            (!c.veiculos || c.veiculos.length === 0)
-          ) {
-            matches.push({
-              type: "cliente",
-              display: clientDisplayName(c),
-              subtext: c.telefone_1 || "Sem contato cadastrado",
-              id_cliente: c.id_cliente,
-            });
-          }
+        allOs.forEach((os: any) => {
+          const clientName = clientDisplayName(os.cliente || {});
+          const itemDesc = os.veiculo ? `${os.veiculo.modelo} (${os.veiculo.placa})` : os.equipamento ? os.equipamento.nome_peca : "Sem Veículo/Peça";
+          
+          matches.push({
+            type: "os",
+            display: `OS #${os.id_os} — ${clientName}`,
+            subtext: `${itemDesc} • Status: ${os.status}`,
+            id_cliente: os.id_cliente,
+            id_veiculo: os.id_veiculo,
+            id_equipamento: os.id_equipamento,
+            id_os: os.id_os,
+            placa: os.veiculo?.placa,
+          });
         });
 
-        // 2. Index and match pieces avulsas (equipamentos) from /equipamento
-        if (allEquipamentos && allEquipamentos.length > 0) {
-          allEquipamentos.forEach((eq: any) => {
-            const nomePeca = normalize(eq.nome_peca || "");
-            const fabricante = normalize(eq.fabricante || "");
-            const numeracao = normalize(eq.numeracao || "");
-
-            // Fetch owner details
-            const owner = eq.cliente;
-            const ownerName = owner ? clientDisplayName(owner) : "Cliente";
-            const matchesOwner = normalize(ownerName).includes(q);
-
-            if (
-              matchesOwner ||
-              nomePeca.includes(q) ||
-              fabricante.includes(q) ||
-              numeracao.includes(q)
-            ) {
-              matches.push({
-                type: "equipamento",
-                display: `${ownerName} — ${eq.nome_peca}`,
-                subtext: [eq.fabricante, eq.numeracao]
-                  .filter(Boolean)
-                  .join(" • ") || "Peça avulsa",
-                id_cliente: eq.id_cliente,
-                id_equipamento: eq.id_equipamento,
-              });
-            }
-          });
-        }
-
-        setResults(matches.slice(0, 12));
+        setResults(matches);
       } catch (err) {
         console.error(err);
       } finally {
@@ -285,6 +218,12 @@ export const UnifiedSearch = ({
       bg: "bg-emerald-100",
       text: "text-emerald-600",
       badge: "Cliente",
+    },
+    os: {
+      icon: <Search size={17} />,
+      bg: "bg-purple-100",
+      text: "text-purple-600",
+      badge: "OS",
     },
   };
 

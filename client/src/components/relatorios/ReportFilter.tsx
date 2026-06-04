@@ -21,14 +21,10 @@ const GROUP_BY_LABELS: Record<GroupByOption, string> = {
 
 interface ReportFilterProps {
   onFilterChange: (startDate: string, endDate: string) => void;
-  groupBy: GroupByOption;
-  onGroupByChange: (g: GroupByOption) => void;
 }
 
 export const ReportFilter = ({
   onFilterChange,
-  groupBy,
-  onGroupByChange,
 }: ReportFilterProps) => {
   const [startDate, setStartDate] = useState(
     format(startOfMonth(new Date()), "yyyy-MM-dd"),
@@ -147,40 +143,6 @@ export const ReportFilter = ({
             Filtrar
           </Button>
         </div>
-      </div>
-
-      {/* Linha 2: Agrupamento do Ano Vigente */}
-      <div className="px-4 py-3 border-t border-neutral-100 bg-neutral-50/60 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <CalendarDays size={15} className="text-neutral-400" />
-          <span className="text-xs font-semibold text-neutral-500 uppercase tracking-widest">
-            Agrupamento
-          </span>
-          <span className="text-xs font-bold bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
-            {currentYear}
-          </span>
-        </div>
-
-        <div className="flex bg-white p-0.5 rounded-lg border border-neutral-200 gap-0.5">
-          {(Object.keys(GROUP_BY_LABELS) as GroupByOption[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onGroupByChange(key)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
-                groupBy === key
-                  ? "bg-primary-50 text-primary-700 ring-1 ring-primary-200 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-50"
-              }`}
-            >
-              {GROUP_BY_LABELS[key]}
-            </button>
-          ))}
-        </div>
-
-        <span className="text-xs text-neutral-400 hidden sm:inline">
-          → Afeta apenas o gráfico de Evolução Financeira
-        </span>
       </div>
     </div>
   );

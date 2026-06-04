@@ -58,10 +58,13 @@ export const ContasAPagarPage = () => {
   const [deleteAllRecurrences, setDeleteAllRecurrences] = useState(false);
 
   useEffect(() => {
-    loadContas();
     loadAccounts();
     loadFornecedores();
   }, []);
+
+  useEffect(() => {
+    loadContas();
+  }, [universalFilters.startDate, universalFilters.endDate]);
 
   const loadAccounts = async () => {
     try {
@@ -84,7 +87,10 @@ export const ContasAPagarPage = () => {
   const loadContas = async () => {
     try {
       setLoading(true);
-      const data = await FinanceiroService.getContasPagar();
+      const data = await FinanceiroService.getContasPagar({
+        startDate: universalFilters.startDate,
+        endDate: universalFilters.endDate
+      });
       setContas(data);
     } catch (error) {
       toast.error("Erro ao carregar contas.");
@@ -227,7 +233,7 @@ export const ContasAPagarPage = () => {
             enableOsId: false,
             enableCategoria: true,
             enableSubcategoria: true,
-            fornecedores: fornecedoresList.map(f => ({ id: f.nome, nome: f.nome })),
+            fornecedores: fornecedoresList.map(f => ({ id: f.nome, nome: f.nome_fantasia || f.razao_social || f.nome })),
             statusOptions: [
               { value: "ALL", label: "Todas" },
               { value: "PENDING", label: "Pendentes" },
@@ -343,13 +349,13 @@ export const ContasAPagarPage = () => {
                           {conta.nf_numero}
                         </div>
                         <div className="text-sm text-neutral-500 font-normal min-h-[1.5rem] mt-1">
-                          {conta.nf_parcela !== null && conta.nf_parcela !== undefined && conta.nf_total_parcelas ? (
-                            `Parcela ${conta.nf_parcela} de ${conta.nf_total_parcelas}`
-                          ) : conta.nf_boleto ? (
-                            `Boleto: ${conta.nf_boleto}`
-                          ) : (
-                            "\u00A0"
-                          )}
+                          {(() => {
+                            const temParcela = conta.nf_parcela !== null && conta.nf_parcela !== undefined && conta.nf_total_parcelas;
+                            const textoParcela = temParcela ? `Parcela ${conta.nf_parcela} de ${conta.nf_total_parcelas}` : "";
+                            const textoBoleto = conta.nf_boleto ? `Boleto: ${conta.nf_boleto}` : "";
+                            if (textoParcela && textoBoleto) return `${textoParcela} | ${textoBoleto}`;
+                            return textoParcela || textoBoleto || "\u00A0";
+                          })()}
                         </div>
                         <NfSyncBadge nf_numero={conta.nf_numero} />
                       </div>

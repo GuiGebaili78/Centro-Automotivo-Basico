@@ -150,11 +150,18 @@ export const NotasFiscaisPage = () => {
                       className="hover:bg-neutral-50 transition-colors group"
                     >
                       <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <FileText size={16} className="text-neutral-400" />
-                          <span className="text-base text-neutral-900 font-bold uppercase">
-                            {nf.nf_numero}
-                          </span>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <FileText size={16} className="text-neutral-400" />
+                            <span className="text-base text-neutral-900 font-bold uppercase">
+                              {nf.nf_numero}
+                            </span>
+                          </div>
+                          <div>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${nf.status === 'PAGO' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-800'}`}>
+                                {nf.status === 'PAGO' ? 'Itens: Pagos' : 'Itens: Pendentes'}
+                            </span>
+                          </div>
                         </div>
                       </td>
                       <td className="p-4">

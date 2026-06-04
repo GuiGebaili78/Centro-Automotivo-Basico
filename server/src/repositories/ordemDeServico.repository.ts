@@ -176,8 +176,12 @@ export class OrdemDeServicoRepository {
     });
   }
 
-  async findAll(searchTerm?: string) {
+  async findAll(searchTerm?: string, statusFilter?: string[], takeLimit?: number) {
     const where: Prisma.OrdemDeServicoWhereInput = { deleted_at: null };
+
+    if (statusFilter && statusFilter.length > 0) {
+        where.status = { in: statusFilter };
+    }
 
     const trimmedSearch = searchTerm?.trim();
 
@@ -219,6 +223,7 @@ export class OrdemDeServicoRepository {
 
     return await prisma.ordemDeServico.findMany({
       where,
+      take: takeLimit,
       include: {
         cliente: {
           include: {

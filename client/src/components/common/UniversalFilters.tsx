@@ -349,7 +349,7 @@ export const UniversalFilters = ({
             type="date"
             icon={Calendar}
             className={filters.activePeriod === "CUSTOM" && filters.startDate ? "bg-blue-50 border-blue-300 text-blue-800 font-semibold" : "text-neutral-600"}
-            value={filters.activePeriod === "CUSTOM" ? filters.startDate : ""}
+            value={filters.startDate || ""}
             onChange={(e) => handleDate("startDate", e.target.value)}
           />
         </div>
@@ -361,7 +361,7 @@ export const UniversalFilters = ({
             type="date"
             icon={Calendar}
             className={filters.activePeriod === "CUSTOM" && filters.endDate ? "bg-blue-50 border-blue-300 text-blue-800 font-semibold" : "text-neutral-600"}
-            value={filters.activePeriod === "CUSTOM" ? filters.endDate : ""}
+            value={filters.endDate || ""}
             onChange={(e) => handleDate("endDate", e.target.value)}
           />
         </div>

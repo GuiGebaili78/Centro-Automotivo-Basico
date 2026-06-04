@@ -17,7 +17,9 @@ import { Edit, Trash2 } from "lucide-react";
 export const EntradaEstoquePage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get("editId") ? Number(searchParams.get("editId")) : null;
+  const editId = searchParams.get("editId")
+    ? Number(searchParams.get("editId"))
+    : null;
   const isEditMode = !!editId;
 
   // Header State
@@ -74,7 +76,11 @@ export const EntradaEstoquePage = () => {
       // Preencher cabeçalho
       setSelectedSupplierId(String(entry.id_pessoa));
       setInvoice(entry.nota_fiscal || "");
-      setDate(entry.data_compra ? entry.data_compra.split("T")[0] : new Date().toISOString().split("T")[0]);
+      setDate(
+        entry.data_compra
+          ? entry.data_compra.split("T")[0]
+          : new Date().toISOString().split("T")[0],
+      );
       setObs(entry.obs || "");
       setNfNumero(entry.nf_numero || "");
 
@@ -95,7 +101,10 @@ export const EntradaEstoquePage = () => {
       }));
       setItems(loadedItems);
     } catch (e: any) {
-      toast.error("Erro ao carregar entrada para edição: " + (e.response?.data?.error || e.message));
+      toast.error(
+        "Erro ao carregar entrada para edição: " +
+          (e.response?.data?.error || e.message),
+      );
     } finally {
       setLoadingEdit(false);
     }
@@ -179,7 +188,7 @@ export const EntradaEstoquePage = () => {
     } catch (e: any) {
       console.error(e);
       toast.error(
-        "Erro ao excluir entrada: " + (e.response?.data?.error || e.message)
+        "Erro ao excluir entrada: " + (e.response?.data?.error || e.message),
       );
     } finally {
       setShowConfirmDelete(false);
@@ -201,7 +210,11 @@ export const EntradaEstoquePage = () => {
 
   return (
     <PageLayout
-      title={isEditMode ? `Editando Entrada #${editId}` : "Nova Compra / Entrada de Estoque"}
+      title={
+        isEditMode
+          ? `Editando Entrada #${editId}`
+          : "Nova Compra / Entrada de Estoque"
+      }
       subtitle={
         isEditMode
           ? "Adicione ou remova itens desta entrada. Itens em uso em Ordens de Serviço ativas não podem ser removidos."
@@ -226,8 +239,11 @@ export const EntradaEstoquePage = () => {
           <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
             <Edit size={18} className="text-amber-600 shrink-0" />
             <p className="text-sm text-amber-800 font-medium">
-              Você está <strong>editando</strong> uma entrada de estoque existente. Os itens marcados como{" "}
-              <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-xs font-bold uppercase">SERÁ REMOVIDO</span>{" "}
+              Você está <strong>editando</strong> uma entrada de estoque
+              existente. Os itens marcados como{" "}
+              <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-xs font-bold uppercase">
+                SERÁ REMOVIDO
+              </span>{" "}
               serão excluídos permanentemente ao salvar.
             </p>
           </div>
@@ -260,7 +276,7 @@ export const EntradaEstoquePage = () => {
           <Modal
             title="Novo Fornecedor"
             onClose={() => setShowNewSupplierModal(false)}
-            className="max-w-5xl"
+            className="max-w-4xl"
           >
             <FornecedorForm
               onSuccess={(newSupplier: any) => {

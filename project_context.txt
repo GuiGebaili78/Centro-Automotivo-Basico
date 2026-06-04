@@ -1,4 +1,4 @@
-PROJECT DUMP - 31/05/2026 14:19
+PROJECT DUMP - 01/06/2026 19:12
 =========================================
 
 --- FILE: client_logs.txt ---
@@ -567,7 +567,7 @@ export default defineConfig([
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;700&display=swap"
     rel="stylesheet">
-  <title>Centro Automotivo APP</title>
+  <title>Sinoscar Auto Elétrico</title>
 </head>
 <body>
   <div id="root"></div>
@@ -4561,6 +4561,7 @@ export const UnifiedSearch = ({
 };
 
 
+--- FILE: client\src\components\estoque\EdicaoPecaModal.tsx ---
 import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -11465,458 +11466,6 @@ export const PagamentoPecasTab = ({
 };
 
 
---- FILE: client\src\components\financeiro\RecebiveisTab.tsx ---
-import { useState, useEffect, useCallback } from "react";
-import { formatCurrency } from "../../utils/formatCurrency";
-import { FinanceiroService } from "../../services/financeiro.service";
-import {
-  Calendar,
-  CheckCircle,
-  Search,
-  Clock,
-  AlertCircle,
-} from "lucide-react";
-import type { IRecebivelCartao } from "../../types/backend";
-import { Button, Modal, Checkbox } from "../ui";
-import { toast } from "react-toastify";
-import { UniversalFilters } from "../common/UniversalFilters";
-import type { UniversalFiltersState } from "../common/UniversalFilters";
-import { useUniversalFilter } from "../../hooks/useUniversalFilter";
-export const RecebiveisTab = () => {
-  const [recebiveis, setRecebiveis] = useState<IRecebivelCartao[]>([]);
-  const [operadoras, setOperadoras] = useState<any[]>([]);
-  const [contasBancarias, setContasBancarias] = useState<any[]>([]);
-  // Universal Filters
-  const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
-    search: "", osId: "", status: "PENDING", operadora: "", fornecedor: "",
-    startDate: "", endDate: "", activePeriod: "ALL",
-  });
-  // Selection
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [showConciliateModal, setShowConciliateModal] = useState(false);
-  const [selectedContaBancaria, setSelectedContaBancaria] = useState<string>("");
-  useEffect(() => {
-    loadOperadoras();
-    loadContasBancarias();
-  }, []);
-  const loadContasBancarias = async () => {
-    try {
-      const data = await FinanceiroService.getContasBancarias();
-      setContasBancarias(data);
-    } catch (error) {
-      console.error("Erro ao carregar contas bancárias:", error);
-    }
-  };
-  const loadOperadoras = async () => {
-    try {
-      const data = await FinanceiroService.getOperadorasCartao();
-      setOperadoras(data);
-    } catch (error) {
-      console.error("Erro ao carregar operadoras:", error);
-    }
-  };
-  const loadData = useCallback(async (start?: string, end?: string) => {
-    try {
-      const data =
-        start || end
-          ? await FinanceiroService.getRecebiveisCartaoByDateRange(
-              start ?? "",
-              end ?? "",
-            )
-          : await FinanceiroService.getRecebiveisCartao();
-      setRecebiveis(data);
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro ao carregar recebíveis.");
-    }
-  }, []);
-  // Re-fetch when date range changes (backend filter)
-  useEffect(() => {
-    loadData(universalFilters.startDate, universalFilters.endDate);
-  }, [universalFilters.startDate, universalFilters.endDate, loadData]);
-  // Client-side filtering via hook (operadora, status, osId, busca geral)
-  const filteredData = useUniversalFilter(recebiveis, universalFilters, {
-    dateField: "data_prevista",
-    statusField: "status",
-    paidValue: "RECEBIDO",
-    pendingValue: "PENDENTE",
-    operadoraField: "id_operadora",
-    osIdField: "id_os",
-  });
-  const operadorasList = operadoras.map((op) => ({
-    id: String(op.id_operadora),
-    nome: op.nome,
-  }));
-  const toggleSelect = (id: number) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter((i) => i !== id));
-    } else {
-      setSelectedIds([...selectedIds, id]);
-    }
-  };
-  const toggleSelectAll = () => {
-    if (selectedIds.length === filteredData.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredData.map((r) => r.id_recebivel));
-    }
-  };
-  const executeConciliacao = async () => {
-    try {
-      const requiresContaBancaria = filteredData
-        .filter((r) => selectedIds.includes(r.id_recebivel))
-        .some((r) => r.id_operadora === null && (r as any).tipo_parcelamento?.toUpperCase() !== 'DINHEIRO');
-      if (requiresContaBancaria && selectedContaBancaria === "") {
-        toast.error("Selecione a Conta Bancária de destino para o PIX/Transferência.");
-        return;
-      }
-      const accountId = selectedContaBancaria === "" ? null : Number(selectedContaBancaria);
-      await FinanceiroService.confirmarRecebiveis(selectedIds, new Date().toISOString(), accountId);
-      toast.success("Recebimentos confirmados e conciliados!");
-      setSelectedIds([]);
-      loadData(universalFilters.startDate, universalFilters.endDate);
-      setShowConciliateModal(false);
-      setSelectedContaBancaria("");
-    } catch (error: any) {
-      console.error(error);
-      const msg =
-        error.response?.data?.details ||
-        error.response?.data?.error ||
-        "Erro ao conciliar recebíveis.";
-      toast.error(msg);
-    }
-  };
-  const handleConciliar = () => {
-    if (selectedIds.length === 0) return;
-    setShowConciliateModal(true);
-  };
-  const totalSelected = filteredData
-    .filter((r) => selectedIds.includes(r.id_recebivel))
-    .reduce((acc, r) => acc + Number(r.valor_liquido), 0);
-  const totalPrevisto = filteredData.reduce(
-    (acc, r) => acc + Number(r.valor_liquido),
-    0,
-  );
-  const requiresContaBancaria = filteredData
-    .filter((r) => selectedIds.includes(r.id_recebivel))
-    .some((r) => r.id_operadora === null && (r as any).tipo_parcelamento?.toUpperCase() !== 'DINHEIRO');
-  // Filter Logic — handled by useUniversalFilter above
-  return (
-    <div className="p-6 space-y-6">
-      {/* ... Header ... */}
-      {/* Universal Filters */}
-      <UniversalFilters
-        onFilterChange={setUniversalFilters}
-        config={{
-          enableFornecedor: false,
-          enableOperadora: true,
-          enableOsId: true,
-          operadoras: operadorasList,
-          statusOptions: [
-            { value: "ALL", label: "Todos" },
-            { value: "PENDING", label: "Pendentes" },
-            { value: "PAID", label: "Recebidos" },
-          ],
-        }}
-      />
-      {/* VALUE SUMMARY & ACTIONS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* PREVISÃO NO PERÍODO - DYNAMIC */}
-        {/* PREVISÃO NO PERÍODO */}
-        <div className="bg-surface p-6 rounded-xl border border-neutral-200 shadow-sm relative overflow-hidden group">
-          <div className="relative">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertCircle size={14} className="text-primary-400" />
-              <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
-                Previsão no Período (Filtrado)
-              </p>
-            </div>
-            <p className="text-3xl font-black text-blue-600 tracking-tighter">
-              {formatCurrency(totalPrevisto)}
-            </p>
-            <p className="text-xs text-neutral-400 mt-2 font-bold uppercase tracking-wider italic">
-              * Soma total dos itens visíveis abaixo
-            </p>
-          </div>
-        </div>
-        {/* ACTION BOX (IF SELECTED) */}
-        {selectedIds.length > 0 && (
-          <div className="lg:col-span-2 bg-surface p-6 rounded-xl border border-primary-100 shadow-xl shadow-primary-500/10 flex flex-col md:flex-row items-center justify-between gap-4 animate-in zoom-in-95 duration-300 ring-1 ring-primary-500">
-            <div className="flex items-center gap-4">
-              <div className="bg-primary-50 p-3 rounded-lg text-primary-600">
-                <CheckCircle size={28} />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-primary-500 uppercase tracking-widest">
-                  Confirmar Depósito
-                </p>
-                <p className="text-3xl font-black text-neutral-900 tracking-tighter">
-                  {formatCurrency(totalSelected)}
-                </p>
-                <p className="text-xs font-bold text-neutral-500 mt-1">
-                  {selectedIds.length} transações selecionadas
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={handleConciliar}
-              className="w-full md:w-auto shadow-lg"
-              variant="primary"
-              icon={Calendar}
-              size="lg"
-            >
-              Dar Baixa no Banco
-            </Button>
-          </div>
-        )}
-      </div>
-      {/* TABLE CONTAINER */}
-      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="tabela-limpa w-full">
-            <thead>
-              <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
-                <th className="p-4 w-14 text-center">
-                  <div className="flex justify-center">
-                    <Checkbox
-                      onChange={toggleSelectAll}
-                      checked={
-                        filteredData.length > 0 &&
-                        selectedIds.length === filteredData.length
-                      }
-                    />
-                  </div>
-                </th>
-                <th className="p-4 text-left">Previsão</th>
-                <th className="p-4 text-left">Nº / Aut.</th>
-                <th className="p-4 text-left">Operadora</th>
-                <th className="p-4 text-left">Veículo / Cliente</th>
-                <th className="p-4 text-left">Detalhes</th>
-                <th className="p-4 text-right">Bruto</th>
-                <th className="p-4 text-right">Taxa</th>
-                <th className="p-4 text-right font-medium text-gray-900">
-                  Líquido
-                </th>
-                <th className="p-4 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="p-20 text-center">
-                    <div className="flex flex-col items-center opacity-30">
-                      <Search size={48} className="mb-4" />
-                      <p className="text-lg font-bold text-neutral-500">
-                        Nenhum recebível encontrado
-                      </p>
-                      <p className="text-sm font-medium">
-                        Tente ajustar os filtros ou pesquisar outro termo.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredData.map((r) => (
-                  <tr
-                    key={r.id_recebivel}
-                    className={`group hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0 ${r.status === "RECEBIDO" ? "opacity-60 bg-neutral-50/50" : ""}`}
-                  >
-                    <td className="p-4 text-center">
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={selectedIds.includes(r.id_recebivel)}
-                          onChange={() => toggleSelect(r.id_recebivel)}
-                          disabled={r.status === "RECEBIDO"}
-                        />
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-col">
-                        <span className="text-base text-gray-900 font-medium whitespace-nowrap">
-                          {new Date(r.data_prevista).toLocaleDateString(
-                            "pt-BR",
-                          )}
-                        </span>
-                        <span className="text-xs text-gray-500">Estimado</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="text-sm text-gray-900 font-mono bg-neutral-100 px-3 py-1.5 rounded-lg border border-neutral-200 w-fit">
-                        {(r as any).codigo_autorizacao || (r as any).nsu || "-"}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${r.id_operadora === null ? 'bg-amber-100 text-amber-600' : 'bg-primary-100 text-primary-600'}`}>
-                          {r.id_operadora === null ? "$" : ((r as any).operadora?.nome?.substring(0, 1) || "O")}
-                        </div>
-                        <span className="text-base text-gray-900 font-medium">
-                          {r.id_operadora === null 
-                            ? ((r as any).tipo_parcelamento?.toUpperCase() === 'DINHEIRO' ? 'Dinheiro' : 'PIX / Transf.')
-                            : ((r as any).operadora?.nome || "Operadora")}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-col">
-                        <div className="flex flex-col">
-                          <span className="text-base font-medium uppercase text-gray-900">
-                            {(r as any).ordem_de_servico?.veiculo?.modelo ||
-                              "S/M"}{" "}
-                            •{" "}
-                            {(r as any).ordem_de_servico?.veiculo?.cor || "S/C"}
-                          </span>
-                          <span className="text-base uppercase text-primary-600">
-                            {(r as any).ordem_de_servico?.veiculo?.placa ||
-                              "S/P"}
-                          </span>
-                        </div>
-                        <span className="text-sm font-medium text-gray-600 mt-1">
-                          {(r as any).ordem_de_servico?.cliente?.pessoa_fisica
-                            ?.pessoa?.nome ||
-                            (r as any).ordem_de_servico?.cliente
-                              ?.pessoa_juridica?.razao_social ||
-                            "Cliente não identificado"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-col">
-                        <span
-                          className="text-sm font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md w-fit mb-1 cursor-help"
-                          title={`Data da Venda: ${new Date(r.data_venda).toLocaleDateString("pt-BR")}`}
-                        >
-                          OS | {r.id_os}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          Parcela {r.num_parcela} de {r.total_parcelas}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-right text-base text-gray-500">
-                      {formatCurrency(Number(r.valor_bruto))}
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg">
-                          - {Number(r.valor_bruto) > 0 ? (((Number(r.valor_bruto) - Number(r.valor_liquido)) / Number(r.valor_bruto)) * 100).toFixed(2).replace(".", ",") : Number(r.taxa_aplicada).toFixed(2).replace(".", ",")}%
-                        </span>
-                        <span className="text-xs text-neutral-500 font-medium">
-                          {formatCurrency(Number(r.valor_bruto) - Number(r.valor_liquido))}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <span className="text-base text-gray-900 font-medium">
-                        {formatCurrency(Number(r.valor_liquido))}
-                      </span>
-                    </td>
-                    <td className="p-4 text-center">
-                      {r.status === "RECEBIDO" ? (
-                        <div className="flex flex-col items-center">
-                          <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
-                            <CheckCircle size={12} /> Recebido
-                          </span>
-                          {(r.confirmado_em || r.data_recebimento) && (
-                            <span className="text-sm text-neutral-400 font-bold mt-1 text-center leading-tight">
-                              {new Date(r.confirmado_em || r.data_recebimento!).toLocaleDateString("pt-BR")}<br />
-                              <span className="text-xs font-medium opacity-75">
-                                {r.confirmado_em ? new Date(r.confirmado_em).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }) : "23:59"}
-                              </span>
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="bg-primary-50 text-primary-600 px-3 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider flex items-center gap-1.5 border border-primary-100">
-                          <Clock size={12} /> Aberto
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {/* CONCILIATION MODAL */}
-      {showConciliateModal && (
-        <Modal
-          title="Confirmar Conciliação"
-          onClose={() => setShowConciliateModal(false)}
-        >
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
-              <div className="bg-blue-100 p-2 rounded-full">
-                <CheckCircle className="text-blue-600" size={24} />
-              </div>
-              <div>
-                <h3 className="font-bold text-blue-900">
-                  Confirmar Recebimento
-                </h3>
-                <p className="text-sm text-blue-700 mt-1">
-                  Deseja marcar <b>{selectedIds.length}</b> transações como
-                  recebidas?
-                  <br />
-                  <span className="text-xs opacity-75">
-                    Isso atualizará o saldo das contas vinculadas ou do Caixa.
-                  </span>
-                </p>
-              </div>
-            </div>
-            {requiresContaBancaria && (
-              <div className="mt-4 border border-amber-200 bg-amber-50 rounded-xl p-4">
-                <label className="block text-sm font-bold text-amber-900 mb-2">
-                  Destino do PIX / Transferência
-                </label>
-                <p className="text-xs text-amber-700 mb-3">
-                  Pelo menos um dos recebimentos selecionados foi pago via PIX/Transferência. Por favor, indique para qual conta bancária esse valor foi destinado.
-                </p>
-                <select
-                  value={selectedContaBancaria}
-                  onChange={(e) => setSelectedContaBancaria(e.target.value)}
-                  className="w-full bg-white border border-amber-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500"
-                >
-                  <option value="" disabled>-- Selecione a Conta Bancária --</option>
-                  {contasBancarias.map((conta) => (
-                    <option key={conta.id_conta} value={conta.id_conta}>
-                      {conta.nome} - {conta.banco} ({formatCurrency(Number(conta.saldo_atual))})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="bg-neutral-50 p-3 rounded-lg border border-neutral-100">
-              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">
-                Total a Conciliar
-              </p>
-              <p className="text-2xl font-black text-neutral-800">
-                {formatCurrency(totalSelected)}
-              </p>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="ghost"
-                onClick={() => setShowConciliateModal(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="primary"
-                onClick={executeConciliacao}
-                icon={CheckCircle}
-              >
-                Confirmar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-};
-
-
 --- FILE: client\src\components\financeiro\Forms\FechamentoFinanceiroForm.tsx ---
 import { useState, useEffect, type FormEvent } from "react";
 import { formatCurrency } from "../../../utils/formatCurrency";
@@ -17291,8 +16840,6 @@ export const OsItemsTable = ({
     </Card>
   );
 };
-
-
 --- FILE: client\src\components\os\OsShareModal.tsx ---
 import { useState } from "react";
 import { Modal, Button } from "../ui";
@@ -18100,8 +17647,6 @@ export const TipoForm = ({ onSuccess, onCancel }: TipoFormProps) => {
     </form>
   );
 };
-
-
 --- FILE: client\src\components\os\Forms\UnifiedOsForm.tsx ---
 import React, { useState, useEffect } from "react";
 import {
@@ -19397,62 +18942,88 @@ export const Card = ({
 };
 
 
---- FILE: client\src\components\ui\Checkbox.tsx ---
-import React, { forwardRef } from "react";
-interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-}
-export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ label, error, className = "", ...props }, ref) => {
-    return (
-      <div className="flex flex-col gap-1 w-full">
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <div className="relative flex items-center justify-center">
-            <input
-              {...props}
-              ref={ref}
-              type="checkbox"
-              className={`
-                peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-200 
-                bg-white transition-all checked:border-primary-600 checked:bg-primary-600 
-                hover:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-100
-                ${error ? "border-red-500" : ""}
-                ${className}
-              `}
-            />
-            <svg
-              className="absolute h-3.5 w-3.5 text-white opacity-0 transition-opacity peer-checked:opacity-100 pointer-events-none"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-          {label && (
-            <span className="text-sm font-bold text-neutral-900 select-none group-hover:text-primary-700 transition-colors">
-              {label}
-            </span>
-          )}
-        </label>
-        {error && (
-          <span className="text-xs text-red-500 font-medium">{error}</span>
-        )}
-      </div>
-    );
-  },
-);
-Checkbox.displayName = "Checkbox";
-
-
 --- FILE: client\src\components\ui\ConfirmModal.tsx ---
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { AlertTriangle, Info } from "lucide-react";
+import { Button } from "./Button";
+interface ConfirmModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  description: React.ReactNode; // Changed from string to ReactNode
+  variant?: "danger" | "primary";
+  confirmText?: string;
+  cancelText?: string;
+}
+export const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  description,
+  variant = "danger",
+  confirmText,
+  cancelText = "Cancelar",
+}: ConfirmModalProps) => {
+  // Close on Escape key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleEsc);
+    }
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
+  if (!isOpen) return null;
+  const isDanger = variant === "danger";
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+      {/* Modal Content */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200 z-10">
+        {/* Icon & Header */}
+        <div className="flex items-start gap-4">
+          <div
+            className={`p-3 rounded-full ${isDanger ? "bg-red-50 text-red-600" : "bg-primary-50 text-primary-600"}`}
+          >
+            {isDanger ? <AlertTriangle size={24} /> : <Info size={24} />}
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-neutral-900 leading-6">
+              {title}
+            </h3>
+            <div className="mt-2 text-sm text-neutral-500 leading-relaxed">
+              {description}
+            </div>
+          </div>
+        </div>
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-3 mt-4">
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="hover:bg-neutral-50"
+          >
+            {cancelText}
+          </Button>
+          <Button variant={isDanger ? "danger" : "primary"} onClick={onConfirm}>
+            {confirmText || (isDanger ? "Excluir" : "Confirmar")}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+};
+
+
 --- FILE: client\src\components\ui\FilterButton.tsx ---
 import React from "react";
 import { Button } from "./Button";
@@ -19596,6 +19167,61 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   },
 );
 Input.displayName = "Input";
+
+
+--- FILE: client\src\components\ui\Modal.tsx ---
+import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
+import { ActionButton } from "./ActionButton";
+interface ModalProps {
+  title: React.ReactNode;
+  children: React.ReactNode;
+  onClose: () => void;
+  className?: string;
+  zIndex?: number;
+}
+export const Modal = ({
+  title,
+  children,
+  onClose,
+  className = "max-w-2xl",
+  zIndex = 50,
+}: ModalProps) => {
+  // Close on Escape key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [onClose]);
+  return createPortal(
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+      style={{ zIndex }}
+    >
+      <div
+        className={`bg-white rounded-xl shadow-2xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 ${className}`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-neutral-100">
+          <h2 className="text-xl font-bold text-neutral-900">{title}</h2>
+          <ActionButton
+            icon={X}
+            label="Fechar"
+            onClick={onClose}
+            variant="neutral"
+            className="-my-1"
+          />
+        </div>
+        {/* Content */}
+        <div className="p-6 overflow-y-auto custom-scrollbar">{children}</div>
+      </div>
+    </div>,
+    document.body,
+  );
+};
 
 
 --- FILE: client\src\components\ui\PageLayout.tsx ---
@@ -19762,32 +19388,6 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
   },
 );
 TextArea.displayName = "TextArea";
-
-
---- FILE: client\src\components\ui\Layouts\MainLayout.tsx ---
-import { Outlet } from "react-router-dom";
-import { Sidebar } from "../Navigation/Sidebar";
-import { Header } from "../Navigation/Header";
-import { ContasPreventivoModal } from "../Modals/ContasPreventivoModal";
-import { EncerramentoTurnoModal } from "../Modals/EncerramentoTurnoModal";
-export function MainLayout() {
-  return (
-    <div className="flex bg-slate-50 min-h-screen w-full">
-      <Sidebar />
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        <Header />
-        <main className="flex-1 p-8 print:m-0 print:w-full print:p-0 print:ml-0">
-          <div className="w-full">
-            <Outlet />
-          </div>
-        </main>
-      </div>
-      {/* Global Alerts Modals */}
-      <ContasPreventivoModal />
-      <EncerramentoTurnoModal />
-    </div>
-  );
-}
 
 
 --- FILE: client\src\components\ui\MessagesContainer\index.tsx ---
@@ -20220,138 +19820,6 @@ export const EncerramentoTurnoModal = () => {
         )}
       </div>
     </Modal>
-  );
-};
-
-
---- FILE: client\src\components\ui\Navigation\Header.tsx ---
-import { useState, useRef, useEffect } from "react";
-import { useAuth } from "../../../contexts/AuthContext";
-import { useAlerts } from "../../../contexts/AlertsContext";
-import { useNavigate, Link } from "react-router-dom";
-import { LogOut, Key, ChevronDown, Sunset, ShieldAlert } from "lucide-react";
-export const Header = () => {
-  const { user, logout } = useAuth();
-  const { showWarningIcon, pendingContasCount, setIsContasModalOpen, triggerClosingModal } = useAlerts();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-  const getInitials = (name: string) => {
-    if (!name) return "U";
-    return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
-  };
-  const formatRole = (role: string) => {
-    switch (role) {
-      case "ADMIN": return "Administrador";
-      case "ATENDENTE": return "Atendente";
-      case "MECANICO": return "Mecânico";
-      default: return role;
-    }
-  };
-  return (
-    <header className="bg-white border-b border-slate-200 text-slate-800 h-16 px-8 flex items-center justify-between sticky top-0 z-40 w-full shrink-0 shadow-sm select-none">
-      {/* Dynamic Welcome Message */}
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex flex-col">
-          <span className="text-sm font-medium text-slate-500 uppercase tracking-wider">Centro Automotivo</span>
-          <span className="text-base font-bold text-slate-900 leading-tight">
-            Olá, {user?.nome || "Operador"}!
-          </span>
-        </div>
-      </div>
-      {/* Right Side Actions */}
-      <div className="flex items-center gap-6">
-        {/* Discrete High-Priority Warning Icon for accounts payable */}
-        {showWarningIcon && (
-          <button
-            onClick={() => setIsContasModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-md transition-all animate-pulse select-none cursor-pointer"
-            title={`Existem ${pendingContasCount} contas a pagar pendentes vencendo hoje!`}
-          >
-            <ShieldAlert size={16} />
-            <span className="hidden md:inline">Contas Vencendo Hoje!</span>
-            <span className="bg-white text-red-700 rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none">
-              {pendingContasCount}
-            </span>
-          </button>
-        )}
-        {/* User Profile Dropdown Menu */}
-        <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 group focus:outline-none cursor-pointer"
-          >
-            {/* Avatar */}
-            <div className="w-9 h-9 rounded-xl bg-slate-900 text-white font-bold flex items-center justify-center border border-slate-700 text-xs shadow-sm hover:bg-slate-800 transition-colors uppercase">
-              {getInitials(user?.nome || "")}
-            </div>
-            <div className="hidden md:flex flex-col text-left">
-              <span className="text-sm font-bold text-slate-800 leading-tight group-hover:text-slate-950 transition-colors">
-                {user?.nome}
-              </span>
-              <span className="text-xs font-semibold text-slate-400">
-                {formatRole(user?.perfil || "")}
-              </span>
-            </div>
-            <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
-          </button>
-          {/* Dropdown Menu */}
-          {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
-              <div className="px-3 py-2 border-b border-slate-100 mb-1 md:hidden">
-                <p className="text-sm font-bold text-slate-800">{user?.nome}</p>
-                <p className="text-xs text-slate-400">{formatRole(user?.perfil || "")}</p>
-              </div>
-              {/* End of Shift Action */}
-              <button
-                onClick={() => {
-                  setDropdownOpen(false);
-                  triggerClosingModal();
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors text-left font-semibold cursor-pointer"
-              >
-                <Sunset size={16} className="text-amber-500" />
-                Encerramento de Turno
-              </button>
-              {/* Change Password Link */}
-              <Link
-                to="/alterar-senha"
-                onClick={() => setDropdownOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors font-semibold"
-              >
-                <Key size={16} className="text-slate-500" />
-                Alterar Senha
-              </Link>
-              {/* Logout Action */}
-              <button
-                onClick={() => {
-                  setDropdownOpen(false);
-                  handleLogout();
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors text-left font-semibold border-t border-slate-100 mt-1.5 pt-1.5 cursor-pointer"
-              >
-                <LogOut size={16} className="text-red-500" />
-                Sair
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </header>
   );
 };
 
@@ -21641,7 +21109,6 @@ export const useAuth = () => {
 };
 
 
---- FILE: client\src\hooks\useConfirm.ts ---
 import { useState } from "react";
 interface ConfirmState {
   isOpen: boolean;
@@ -23806,6 +23273,618 @@ export const FuncionarioPage = () => {
 };
 
 
+--- FILE: client\src\pages\ConfiguracaoPage.tsx ---
+import React, { useEffect, useState, useRef } from "react";
+import { PageLayout, Card, Input, Button } from "../components/ui";
+import {
+  ConfiguracaoService,
+  type Configuracao,
+} from "../services/ConfiguracaoService";
+import { STATIC_BASE } from "../services/api";
+import { toast } from "react-toastify";
+import { formatCnpj, formatPhone, formatIE } from "../utils/normalize";
+import {
+  Save,
+  Upload,
+  Building2,
+  Phone,
+  Mail,
+  FileText,
+  MapPin,
+  Plus,
+  Trash2,
+} from "lucide-react";
+export const ConfiguracaoPage = () => {
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [formData, setFormData] = useState<Configuracao>({
+    nomeFantasia: "",
+    razaoSocial: "",
+    cnpj: "",
+    inscricaoEstadual: "",
+    endereco: "",
+    telefone: "",
+    telefone2: "",
+    email: "",
+    logoUrl: "",
+    smtpHost: "",
+    smtpPort: 587,
+    smtpUser: "",
+    smtpPass: "",
+  });
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoZoom, setLogoZoom] = useState(100);
+  const [logoPosition, setLogoPosition] = useState({ x: 50, y: 50 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isNewUpload, setIsNewUpload] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logoImpressaoPreview, setLogoImpressaoPreview] = useState<string | null>(null);
+  const printFileInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    loadConfig();
+  }, []);
+  const loadConfig = async () => {
+    try {
+      const config = await ConfiguracaoService.get();
+      if (config) {
+        setFormData(config);
+        if (config.logoUrl) {
+          setLogoPreview(`${STATIC_BASE}${config.logoUrl}?t=${Date.now()}`);
+          setIsNewUpload(false);
+        }
+        if (config.logoImpressaoUrl) {
+          setLogoImpressaoPreview(`${STATIC_BASE}${config.logoImpressaoUrl}?t=${Date.now()}`);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao carregar configurações:", error);
+      toast.error("Erro ao carregar configurações.");
+    } finally {
+      setInitialLoading(false);
+    }
+  };
+  const handlePrintLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    try {
+      const updatedConfig = await ConfiguracaoService.uploadLogoImpressao(file);
+      setFormData(updatedConfig);
+      if (updatedConfig.logoImpressaoUrl) {
+        setLogoImpressaoPreview(`${STATIC_BASE}${updatedConfig.logoImpressaoUrl}?t=${Date.now()}`);
+      }
+      toast.success("Logo de impressão atualizada com sucesso!");
+      window.dispatchEvent(new Event("configuracao-updated"));
+    } catch (error) {
+      console.error("Erro ao subir logo de impressão:", error);
+      toast.error("Erro ao subir logo de impressão.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+        setIsNewUpload(true);
+        // Reset zoom and position when new image is loaded
+        setLogoZoom(100);
+        setLogoPosition({ x: 50, y: 50 });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  const generateProcessedLogo = (): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      if (!logoPreview) {
+        resolve(null);
+        return;
+      }
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        // Set canvas size to match sidebar dimensions (2:1 ratio)
+        const width = 512;
+        const height = 256;
+        canvas.width = width;
+        canvas.height = height;
+        // Calculate scaled dimensions
+        // FIX: Calculate scale to fit canvas first (like object-contain)
+        const scaleX = width / img.width;
+        const scaleY = height / img.height;
+        const baseScale = Math.min(scaleX, scaleY);
+        // Apply user zoom on top of base scale
+        const finalScale = baseScale * (logoZoom / 100);
+        const scaledWidth = img.width * finalScale;
+        const scaledHeight = img.height * finalScale;
+        // Calculate position offsets (center on the position point)
+        // Adjust logic to better match the transform-origin behavior if needed,
+        // but for now standard centering based on position works for the zoom fix.
+        // If position is 50,50 (default), this centers the image.
+        const offsetX = width / 2 - scaledWidth * (logoPosition.x / 100);
+        const offsetY = height / 2 - scaledHeight * (logoPosition.y / 100);
+        // Draw image with transformations
+        ctx.fillStyle = "transparent";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+        canvas.toBlob((blob) => {
+          resolve(blob);
+        }, "image/png");
+      };
+      img.src = logoPreview;
+    });
+  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const data = new FormData();
+      data.append("nomeFantasia", formData.nomeFantasia);
+      data.append("razaoSocial", formData.razaoSocial || "");
+      data.append("cnpj", formData.cnpj || "");
+      data.append("inscricaoEstadual", formData.inscricaoEstadual || "");
+      data.append("endereco", formData.endereco || "");
+      data.append("telefone", formData.telefone || "");
+      data.append("telefone2", formData.telefone2 || "");
+      data.append("email", formData.email || "");
+      data.append("smtpHost", formData.smtpHost || "");
+      data.append("smtpPort", String(formData.smtpPort || ""));
+      data.append("smtpUser", formData.smtpUser || "");
+      data.append("smtpPass", formData.smtpPass || "");
+      // Generate processed logo if there's a preview and it's a new upload
+      if (logoPreview && isNewUpload) {
+        const processedBlob = await generateProcessedLogo();
+        if (processedBlob) {
+          data.append("logo", processedBlob, "logo.png");
+        }
+      } else if (!logoPreview) {
+        data.append("logoUrl", "");
+      }
+      const updatedConfig = await ConfiguracaoService.save(data);
+      setFormData(updatedConfig);
+      // Update preview with new URL from server
+      if (updatedConfig.logoUrl) {
+        setLogoPreview(`${STATIC_BASE}${updatedConfig.logoUrl}?t=${Date.now()}`);
+        setIsNewUpload(false);
+        // Reset zoom and position after save
+        setLogoZoom(100);
+        setLogoPosition({ x: 50, y: 50 });
+      }
+      toast.success("Configurações salvas com sucesso!");
+      // Notifica outros componentes (como Sidebar) sobre a atualização
+      window.dispatchEvent(new Event("configuracao-updated"));
+    } catch (error) {
+      console.error("Erro ao salvar:", error);
+      toast.error("Erro ao salvar configurações.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+  if (initialLoading) {
+    return (
+      <PageLayout title="Configurações" subtitle="">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      </PageLayout>
+    );
+  }
+  return (
+    <PageLayout
+      title="Configurações da Oficina"
+      subtitle="Gerencie os dados da sua empresa para impressões e documentos"
+    >
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Coluna Esquerda: Logo */}
+          <div className="lg:col-span-1">
+            <Card
+              title="Logotipo"
+              description="Imagem que sairá nas impressões e sistema"
+            >
+              <div className="flex flex-col items-center gap-6">
+                {/* 1. LOGO PRINCIPAL */}
+                <div className="w-full space-y-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">
+                    Logotipo Principal (Geral)
+                  </span>
+                  <div className="flex flex-col items-center gap-3">
+                    <div
+                      className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 overflow-hidden relative flex items-center justify-center cursor-pointer"
+                      onClick={() => {
+                        if (!logoPreview) triggerFileInput();
+                      }}
+                    >
+                      {logoPreview ? (
+                        <div
+                          className="w-full h-full flex items-center justify-center cursor-move"
+                          style={
+                            isNewUpload
+                              ? {
+                                  transform: `scale(${logoZoom / 100})`,
+                                  transformOrigin: `${logoPosition.x}% ${logoPosition.y}%`,
+                                }
+                              : undefined
+                          }
+                          onMouseDown={(e) => {
+                            if (isNewUpload) {
+                              setIsDragging(true);
+                              e.preventDefault();
+                            }
+                          }}
+                          onMouseMove={(e) => {
+                            if (isDragging && isNewUpload) {
+                              const rect =
+                                e.currentTarget.parentElement!.getBoundingClientRect();
+                              const x =
+                                ((e.clientX - rect.left) / rect.width) * 100;
+                              const y =
+                                ((e.clientY - rect.top) / rect.height) * 100;
+                              setLogoPosition({
+                                x: Math.max(0, Math.min(100, x)),
+                                y: Math.max(0, Math.min(100, y)),
+                              });
+                            }
+                          }}
+                          onMouseUp={() => setIsDragging(false)}
+                          onMouseLeave={() => setIsDragging(false)}
+                        >
+                          <img
+                            src={logoPreview}
+                            alt="Logo Preview"
+                            className="w-full h-full object-contain pointer-events-none"
+                            draggable={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center hover:bg-slate-100 transition-colors">
+                          <div className="text-center p-4">
+                            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-1" />
+                            <span className="text-xs text-slate-500 font-medium">
+                              Clique para enviar
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {logoPreview && (
+                      <div className="w-full max-w-[256px] space-y-2">
+                        {isNewUpload && (
+                          <>
+                            <Input
+                              label={`Zoom: ${logoZoom}%`}
+                              type="range"
+                              min="50"
+                              max="200"
+                              value={logoZoom}
+                              onChange={(e) =>
+                                setLogoZoom(Number(e.target.value))
+                              }
+                              className="!w-full !h-2 !bg-slate-200 !rounded-lg !appearance-none !cursor-pointer !accent-primary-600 !border-0 !p-0 !ring-0"
+                            />
+                            <p className="text-[10px] text-slate-500 text-center">
+                              💡 Arraste o logo para reposicionar
+                            </p>
+                          </>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = "";
+                                fileInputRef.current.click();
+                              }
+                            }}
+                            className="text-primary-600 hover:bg-primary-50 border border-primary-200"
+                            icon={Plus}
+                          >
+                            {isNewUpload ? "Trocar" : "Alterar"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="danger"
+                            size="sm"
+                            onClick={() => {
+                              setLogoPreview(null);
+                              setIsNewUpload(false);
+                              setFormData({ ...formData, logoUrl: "" });
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = "";
+                              }
+                            }}
+                            className="border border-red-200"
+                            icon={Trash2}
+                          >
+                            Remover
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <hr className="w-full border-slate-200" />
+                {/* 2. LOGO DE IMPRESSÃO */}
+                <div className="w-full space-y-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">
+                    Logo de Impressão (Fundo Branco)
+                  </span>
+                  <div className="flex flex-col items-center gap-3">
+                    <div
+                      className="w-64 h-32 p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-white overflow-hidden relative flex items-center justify-center cursor-pointer shadow-inner"
+                      onClick={() => {
+                        printFileInputRef.current?.click();
+                      }}
+                    >
+                      {logoImpressaoPreview ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <img
+                            src={logoImpressaoPreview}
+                            alt="Logo Impressão Preview"
+                            className="w-full h-full object-contain pointer-events-none"
+                            draggable={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center hover:bg-slate-50 transition-colors">
+                          <div className="text-center p-4">
+                            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-1" />
+                            <span className="text-xs text-slate-500 font-medium">
+                              Clique para enviar logo impressa
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 text-center leading-normal max-w-[240px]">
+                      Utilizada em orçamentos e documentos impressos. Recomenda-se imagem com alto contraste para folhas A4.
+                    </p>
+                    <div className="w-full max-w-[256px]">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (printFileInputRef.current) {
+                            printFileInputRef.current.value = "";
+                            printFileInputRef.current.click();
+                          }
+                        }}
+                        className="text-primary-600 hover:bg-primary-50 border border-primary-200 w-full"
+                        icon={Plus}
+                      >
+                        {logoImpressaoPreview ? "Alterar Imagem" : "Enviar Imagem"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                {/* Inputs do tipo File ocultos */}
+                <div className="hidden">
+                  <Input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                  />
+                  <Input
+                    type="file"
+                    ref={printFileInputRef}
+                    onChange={handlePrintLogoUpload}
+                    accept="image/*"
+                  />
+                </div>
+              </div>
+            </Card>
+          </div>
+          {/* Coluna Direita: Dados */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card title="Dados da Empresa" description="Informações cadastrais">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <Input
+                    label="Nome Fantasia"
+                    name="nomeFantasia"
+                    value={formData.nomeFantasia}
+                    onChange={handleChange}
+                    placeholder="Ex: Centro Automotivo Silva"
+                    icon={Building2}
+                    required
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <Input
+                    label="Razão Social"
+                    name="razaoSocial"
+                    value={formData.razaoSocial || ""}
+                    onChange={handleChange}
+                    placeholder="Ex: Silva Mecânica LTDA"
+                    icon={FileText}
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <Input
+                    label="CNPJ"
+                    name="cnpj"
+                    value={formData.cnpj || ""}
+                    onChange={(e) => {
+                      const formatted = formatCnpj(e.target.value);
+                      setFormData((prev) => ({ ...prev, cnpj: formatted }));
+                    }}
+                    placeholder="00.000.000/0001-00"
+                    icon={FileText}
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <Input
+                    label="Inscrição Estadual"
+                    name="inscricaoEstadual"
+                    value={formData.inscricaoEstadual || ""}
+                    onChange={(e) => {
+                      const formatted = formatIE(e.target.value);
+                      setFormData((prev) => ({ ...prev, inscricaoEstadual: formatted }));
+                    }}
+                    placeholder="IE Isento ou Número (ex: 123.456.789)"
+                    icon={FileText}
+                  />
+                </div>
+              </div>
+            </Card>
+            <Card
+              title="Contato e Endereço"
+              description="Canais de comunicação e localização"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-1">
+                  <Input
+                    label="Telefone 1"
+                    name="telefone"
+                    value={formData.telefone || ""}
+                    onChange={(e) => {
+                      const formatted = formatPhone(e.target.value);
+                      setFormData((prev) => ({ ...prev, telefone: formatted }));
+                    }}
+                    placeholder="(00) 00000-0000"
+                    icon={Phone}
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <Input
+                    label="Telefone 2"
+                    name="telefone2"
+                    value={formData.telefone2 || ""}
+                    onChange={(e) => {
+                      const formatted = formatPhone(e.target.value);
+                      setFormData((prev) => ({ ...prev, telefone2: formatted }));
+                    }}
+                    placeholder="(00) 00000-0000"
+                    icon={Phone}
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <Input
+                    label="E-mail"
+                    name="email"
+                    type="email"
+                    value={formData.email || ""}
+                    onChange={handleChange}
+                    placeholder="contato@minhaoficina.com"
+                    icon={Mail}
+                  />
+                </div>
+                <div className="md:col-span-3">
+                  <Input
+                    label="Endereço Completo"
+                    name="endereco"
+                    value={formData.endereco || ""}
+                    onChange={handleChange}
+                    placeholder="Rua Exemplo, 123 - Bairro - Cidade/UF"
+                    icon={MapPin}
+                  />
+                </div>
+              </div>
+            </Card>
+            {/* Configurações de E-mail (SMTP) desativadas temporariamente a pedido da administração */}
+            {/* 
+            <Card
+              title="Configurações de E-mail (SMTP)"
+              description="Configurações para envio automático de OS e orçamentos"
+            >
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl flex items-center gap-3 bg-amber-50 text-amber-800 border border-amber-200">
+                  <AlertCircle size={20} className="shrink-0" />
+                  <div className="text-xs">
+                    <p className="font-bold uppercase tracking-wider mb-0.5">
+                      Atenção para usuários Gmail
+                    </p>
+                    <p>
+                      É OBRIGATÓRIO gerar uma "Senha de Aplicativo" nas
+                      configurações do Google. Sua senha comum não funcionará.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="md:col-span-3">
+                    <Input
+                      label="Servidor SMTP"
+                      name="smtpHost"
+                      value={formData.smtpHost || ""}
+                      onChange={handleChange}
+                      placeholder="Ex: smtp.gmail.com"
+                      icon={Server}
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <Input
+                      label="Porta"
+                      name="smtpPort"
+                      type="number"
+                      value={formData.smtpPort || ""}
+                      onChange={handleChange}
+                      placeholder="587"
+                      icon={Hash}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Input
+                      label="Usuário / E-mail do SMTP"
+                      name="smtpUser"
+                      value={formData.smtpUser || ""}
+                      onChange={handleChange}
+                      placeholder="Ex: oficina@gmail.com"
+                      icon={User}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Input
+                      label="Senha de Aplicativo / SMTP"
+                      name="smtpPass"
+                      type="password"
+                      value={formData.smtpPass || ""}
+                      onChange={handleChange}
+                      placeholder="••••••••••••••••"
+                      icon={Lock}
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+            */}
+            <div className="flex justify-end pt-4">
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                icon={Save}
+                isLoading={loading}
+              >
+                Salvar Configurações
+              </Button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </PageLayout>
+  );
+};
+
+
 --- FILE: client\src\pages\ContasAPagarPage.tsx ---
 import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
@@ -24529,8 +24608,10 @@ export const EntradaEstoquePage = () => {
   };
   const loadNfsPendentes = async () => {
     try {
-      const data = await FinanceiroService.getNfsPendentes();
-      setNfsPendentes(Array.isArray(data) ? data : []);
+      const response = await FinanceiroService.getNfsPendentes();
+      // Backend retorna { data: [], total: N } — extrair o array interno
+      const list = Array.isArray(response) ? response : (response?.data ?? []);
+      setNfsPendentes(list);
     } catch (e) {
       console.error("Erro ao carregar NFs pendentes:", e);
     }
@@ -27454,229 +27535,6 @@ export const FornecedorPage = () => {
 };
 
 
---- FILE: client\src\pages\ItensOsPage.tsx ---
-import { useState, useEffect } from "react";
-import { formatCurrency } from "../utils/formatCurrency";
-import { api } from "../services/api";
-import type { IItensOs } from "../types/backend";
-import { ItensOsForm } from "../components/os/Forms/ItensOsForm";
-import { Modal, Input } from "../components/ui";
-import { Plus, Search, Trash2, Edit, Package } from "lucide-react";
-export const ItensOsPage = () => {
-  const [itens, setItens] = useState<IItensOs[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [searchId, setSearchId] = useState("");
-  const [editData, setEditData] = useState<IItensOs | null>(null);
-  const [selectedOsId, setSelectedOsId] = useState<number | null>(null);
-  useEffect(() => {
-    loadItens();
-  }, []);
-  const loadItens = async () => {
-    try {
-      const response = await api.get("/itens-os");
-      setItens(response.data);
-    } catch (error) {
-      alert("Erro ao carregar itens");
-    }
-  };
-  const handleSearch = async () => {
-    try {
-      const response = await api.get(`/itens-os/${searchId}`);
-      setEditData(response.data);
-    } catch (error) {
-      alert("Item não encontrado");
-      setEditData(null);
-    }
-  };
-  const handleUpdate = async () => {
-    if (!editData) return;
-    try {
-      await api.put(`/itens-os/${editData.id_iten}`, editData);
-      alert("Item atualizado!");
-      loadItens();
-    } catch (error) {
-      alert("Erro ao atualizar item");
-    }
-  };
-  const handleDelete = async () => {
-    if (!searchId) return;
-    try {
-      await api.delete(`/itens-os/${searchId}`);
-      alert("Item deletado!");
-      loadItens();
-      setEditData(null);
-      setSearchId("");
-    } catch (error) {
-      alert("Erro ao deletar item");
-    }
-  };
-  const openCreateModal = () => {
-    const osId = prompt("Digite o ID da OS para adicionar item:");
-    if (osId) {
-      setSelectedOsId(Number(osId));
-      setShowModal(true);
-    }
-  };
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">
-            Itens de Ordem de Serviço
-          </h1>
-          <p className="text-slate-500">Peças e serviços aplicados nas OS.</p>
-        </div>
-        <button
-          onClick={openCreateModal}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
-        >
-          <Plus size={20} />
-          Novo Item
-        </button>
-      </div>
-      {/* LIST */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="p-4 text-xs font-bold text-gray-500 uppercase">
-                ID
-              </th>
-              <th className="p-4 text-xs font-bold text-gray-500 uppercase">
-                OS
-              </th>
-              <th className="p-4 text-xs font-bold text-gray-500 uppercase">
-                Descrição
-              </th>
-              <th className="p-4 text-xs font-bold text-gray-500 uppercase">
-                Qtd
-              </th>
-              <th className="p-4 text-xs font-bold text-gray-500 uppercase">
-                Valor Unit.
-              </th>
-              <th className="p-4 text-xs font-bold text-gray-500 uppercase">
-                Total
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {itens.map((item) => (
-              <tr key={item.id_iten} className="hover:bg-slate-50">
-                <td className="p-4 text-gray-500 font-mono">#{item.id_iten}</td>
-                <td className="p-4 text-slate-600">OS Nº {item.id_os}</td>
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-green-50 p-2 rounded-lg text-green-600">
-                      <Package size={18} />
-                    </div>
-                    <div>
-                      <div className="font-medium text-slate-900">
-                        {item.descricao}
-                      </div>
-                      {item.id_pecas_estoque && (
-                        <div className="text-xs text-slate-500">
-                          Peça ID: {item.id_pecas_estoque}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 text-slate-700 font-bold">
-                  {item.quantidade}
-                </td>
-                <td className="p-4 text-slate-700">
-                  {formatCurrency(Number(item.valor_venda))}
-                </td>
-                <td className="p-4 text-green-700 font-bold">
-                  {formatCurrency(Number(item.valor_total))}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {/* MANAGE */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200">
-        <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">
-          Manutenção de Item (Por ID)
-        </h2>
-        <div className="flex gap-4 mb-4 items-end">
-          <div className="w-64">
-            <Input
-              type="number"
-              value={searchId}
-              onChange={(e) => setSearchId(e.target.value)}
-              placeholder="Digite o ID do Item..."
-            />
-          </div>
-          <button
-            onClick={handleSearch}
-            className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 font-medium h-11"
-          >
-            <Search size={18} /> Localizar
-          </button>
-          {searchId && (
-            <button
-              onClick={handleDelete}
-              className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2.5 rounded-lg hover:bg-red-200 font-medium h-11"
-            >
-              <Trash2 size={18} /> Excluir
-            </button>
-          )}
-        </div>
-        {editData && (
-          <div className="bg-slate-50 p-4 rounded border animate-in fade-in">
-            <h3 className="font-bold mb-2">Editando: {editData.descricao}</h3>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="col-span-2">
-                <Input
-                  label="Descrição"
-                  value={editData.descricao}
-                  onChange={(e) =>
-                    setEditData({ ...editData, descricao: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Input
-                  label="Quantidade"
-                  type="number"
-                  value={editData.quantidade}
-                  onChange={(e) =>
-                    setEditData({
-                      ...editData,
-                      quantidade: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <button
-              onClick={handleUpdate}
-              className="flex items-center gap-2 bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold"
-            >
-              <Edit size={18} /> Salvar Alterações
-            </button>
-          </div>
-        )}
-      </div>
-      {showModal && selectedOsId && (
-        <Modal title="Novo Item na OS" onClose={() => setShowModal(false)}>
-          <ItensOsForm
-            osId={selectedOsId}
-            onSuccess={() => {
-              setShowModal(false);
-              loadItens();
-            }}
-            onCancel={() => setShowModal(false)}
-          />
-        </Modal>
-      )}
-    </div>
-  );
-};
-
-
 --- FILE: client\src\pages\Login.tsx ---
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -29151,6 +29009,276 @@ export const OperadoraCartaoPage = () => {
 
 
 --- FILE: client\src\pages\OrdemDeServicoDetalhePage.tsx ---
+import { useState, useRef, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+// Hooks
+import { useOrdemServico } from "../hooks/useOrdemServico";
+import { useConfirm } from "../hooks/useConfirm";
+// Components
+import { PageLayout } from "../components/ui/PageLayout";
+import { Card } from "../components/ui/Card";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { LaborManager } from "../components/os/LaborManager";
+import { OsShareModal } from "../components/os/OsShareModal";
+import { OsItemEditModal } from "../components/os/OsItemEditModal";
+import { PaymentOsModal } from "../components/os/PaymentOsModal";
+import { OsHeaderCard } from "../components/os/OsHeaderCard";
+// Subcomponents
+import { OsDiagnosis } from "../components/os/OsDiagnosis";
+import { OsItemsSection } from "../components/os/OsItemsSection";
+import { OsTotalsSection } from "../components/os/OsTotalsSection";
+// Icons
+import { Wrench } from "lucide-react";
+export const OrdemDeServicoDetalhePage = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  // --- SOURCE OF TRUTH (HOOK) ---
+  const {
+    os,
+    items,
+    employees,
+    loading,
+    isLocked,
+    totals,
+    totalPending,
+    updateOSField,
+    refetch,
+    finishOS,
+    openOsNow,
+    reopenOS,
+    addItem,
+    deleteItem,
+    addLabor,
+    updateLabor,
+    deleteLabor,
+    searchParts,
+    partSearchResults,
+    setPartSearchResults,
+    checkStockAvailability,
+    // UI State from hook
+    editItemModalOpen,
+    setEditItemModalOpen,
+    editingItemData,
+    setEditingItemData,
+    handleEditItem,
+    handleSaveItemEdit,
+    paymentModalOpen,
+    setPaymentModalOpen,
+    shareModalOpen,
+    setShareModalOpen,
+  } = useOrdemServico(id);
+  const { confirmState, requestConfirm, closeConfirm } = useConfirm();
+  const [showDateEdit, setShowDateEdit] = useState(false);
+  // Declarative UI state and Ref
+  const [isPulsing, setIsPulsing] = useState(false);
+  const totalsSectionRef = useRef<HTMLDivElement>(null);
+  const pulseTimerRef = useRef<any>(null);
+  // Clear timeout on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (pulseTimerRef.current) {
+        clearTimeout(pulseTimerRef.current);
+      }
+    };
+  }, []);
+  // --- HANDLERS ---
+  const handleBack = () => navigate("/");
+  const handleFinish = () => {
+    requestConfirm(
+      "Finalizar OS",
+      "Deseja Finalizar a OS? Isso irá gerar o financeiro e mudar o status.",
+      async () => {
+        const success = await finishOS({
+          valor_pecas: totals.parts,
+          valor_mao_de_obra: totals.labor,
+          valor_total_cliente: totals.general,
+          dt_entrega: os?.dt_entrega
+            ? new Date(os.dt_entrega).toISOString()
+            : new Date().toISOString(),
+        });
+        if (success) {
+          closeConfirm();
+          setTimeout(() => navigate("/"), 1000);
+        }
+      },
+    );
+  };
+  const handleReopen = () => {
+    if (os?.fechamento_financeiro) {
+      requestConfirm(
+        "Confirmar Reabertura",
+        "Esta OS possui fechamento financeiro. A reabertura irá remover o fechamento. Continuar?",
+        async () => {
+          await reopenOS(os.fechamento_financeiro?.id_fechamento_financeiro);
+          closeConfirm();
+        },
+      );
+    } else {
+      reopenOS();
+    }
+  };
+  const handleDeleteItem = (itemId: number) => {
+    requestConfirm(
+      "Excluir Item",
+      "Deseja excluir este item?",
+      async () => {
+        await deleteItem(itemId);
+        closeConfirm();
+      },
+      "danger",
+    );
+  };
+  if (!os) {
+    return (
+      <div className="p-8 text-center text-neutral-500">
+        Carregando detalhes da OS...
+      </div>
+    );
+  }
+  return (
+    <PageLayout
+      title=""
+      subtitle=""
+    >
+      {/* MODALS */}
+      <OsShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        osId={os.id_os}
+        clientEmail={os.cliente?.email || undefined}
+        clientPhone={os.cliente?.telefone_1}
+      />
+      <OsItemEditModal
+        isOpen={editItemModalOpen}
+        onClose={() => setEditItemModalOpen(false)}
+        itemData={editingItemData}
+        setItemData={setEditingItemData}
+        onSave={handleSaveItemEdit}
+      />
+      <PaymentOsModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        osId={os.id_os}
+        totalPending={totalPending}
+        pagamentos={os.pagamentos_cliente || []}
+        onSuccess={() => {
+          setPaymentModalOpen(false);
+          refetch();
+          // Toast verde de sucesso
+          toast.success(
+            <div className="flex flex-col gap-1">
+              <span className="font-bold text-emerald-900">Pagamento confirmado!</span>
+              <span className="text-sm text-emerald-800">Deseja finalizar a Ordem de Serviço agora?</span>
+            </div>,
+            {
+              autoClose: 6000,
+              closeOnClick: true,
+              draggable: true,
+              position: "top-right"
+            }
+          );
+          // Rolar suavemente até o botão através da Ref do container
+          setTimeout(() => {
+            if (totalsSectionRef.current) {
+              totalsSectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+            setIsPulsing(true);
+            if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+            pulseTimerRef.current = setTimeout(() => {
+              setIsPulsing(false);
+            }, 3000);
+          }, 300);
+        }}
+      />
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        description={confirmState.message}
+        variant={confirmState.variant as "danger" | "primary"}
+      />
+      {/* HEADER CARD: OS Info (Unified) */}
+      <OsHeaderCard 
+        os={os}
+        onBack={handleBack}
+        onPrint={() => setShareModalOpen(true)}
+        onOpenOsNow={openOsNow}
+        showDateEdit={showDateEdit}
+        setShowDateEdit={setShowDateEdit}
+        updateOSField={updateOSField}
+      />
+      {/* MID SECTION: Diagnosis Left, Labor Right (Responsive Grid) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch mb-6">
+        <div className="h-full lg:col-span-1">
+          <OsDiagnosis
+            defeitoRelatado={os.defeito_relatado}
+            diagnostico={os.diagnostico}
+            onChangeDefeito={(val) => updateOSField("defeito_relatado", val)}
+            onBlurDefeito={(val) => updateOSField("defeito_relatado", val)}
+            onChangeDiagnostico={(val) => updateOSField("diagnostico", val)}
+            onBlurDiagnostico={(val) => updateOSField("diagnostico", val)}
+          />
+        </div>
+        <Card className="p-6 h-full flex flex-col lg:col-span-2">
+          <h3 className="text-sm font-medium text-gray-600 uppercase tracking-widest flex items-center gap-3 pb-4 border-b border-neutral-100 mb-4">
+            <div className="p-1.5 bg-primary-100 rounded-lg text-primary-600">
+              <Wrench size={18} />
+            </div>
+            Serviços Executados (Mão de Obra)
+          </h3>
+          <div className="flex-1">
+            <LaborManager
+              mode="api"
+              osId={os.id_os}
+              initialData={os.servicos_mao_de_obra || []}
+              employees={employees}
+              onChange={refetch}
+              readOnly={isLocked}
+              onAddLabor={addLabor}
+              onUpdateLabor={updateLabor}
+              onDeleteLabor={deleteLabor}
+            />
+          </div>
+        </Card>
+      </div>
+      {/* PARTS */}
+      <Card className="p-6 mb-6">
+        <OsItemsSection
+          items={items}
+          isLocked={isLocked}
+          onAdd={addItem}
+          onEdit={handleEditItem}
+          onDelete={handleDeleteItem}
+          onSearch={searchParts}
+          searchResults={partSearchResults}
+          setSearchResults={setPartSearchResults}
+          checkAvailability={checkStockAvailability}
+        />
+      </Card>
+      {/* TOTALS & FINANCE */}
+      <div ref={totalsSectionRef}>
+        <Card className="p-6 overflow-hidden">
+          <OsTotalsSection
+            totalParts={totals.parts}
+            totalLabor={totals.labor}
+            totalGeneral={totals.general}
+            payments={os.pagamentos_cliente || []}
+            osStatus={os.status}
+            onManagePayments={() => setPaymentModalOpen(true)}
+            onFinish={handleFinish}
+            onReopen={handleReopen}
+            isPulsing={isPulsing}
+            disabled={loading} // Proteção contra duplos cliques (desabilitado enquanto atualiza)
+          />
+        </Card>
+      </div>
+    </PageLayout>
+  );
+};
+
+
 --- FILE: client\src\pages\OrdemDeServicoPage.tsx ---
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -30820,7 +30948,7 @@ export const PagamentoPecaPage = () => {
       setPayments(paymentsData || []);
       setFornecedores(suppliersData);
       setAccounts(accountsData.filter((a: any) => a.ativo));
-      setNfsPendentes(Array.isArray(nfsData) ? nfsData : []);
+      setNfsPendentes(Array.isArray(nfsData) ? nfsData : (nfsData?.data ?? []));
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados financeiros.");
@@ -30948,16 +31076,21 @@ export const PagamentoPecaPage = () => {
     });
     setShowEditModal(true);
   };
-  // --- Supplier list for UniversalFilters ---
-  const fornecedoresList = fornecedores.map((f) => ({
-    id: String(f.id_fornecedor),
-    nome: String(f.nome_fantasia || f.nome || "").toUpperCase(),
-  }));
-  // --- Elevate id_os to root for hook comparison ---
+  // --- Supplier list for UniversalFilters (memoized to avoid cascade re-renders) ---
+  const fornecedoresList = useMemo(
+    () =>
+      fornecedores.map((f) => ({
+        id: String(f.id_fornecedor),
+        nome: String(f.nome_fantasia || f.nome || "").toUpperCase(),
+      })),
+    [fornecedores]
+  );
+  // --- Elevate id_os and id_fornecedor to root for hook comparison ---
   const pagamentosMapeados = payments.map((p) => ({
     ...p,
     id_os: p.item_os?.id_os || p.item_os?.ordem_de_servico?.id_os,
-    id_fornecedor: p.fornecedor?.id_pessoa || p.id_pessoa || p.id_fornecedor,
+    // id_pessoa armazena o id_fornecedor da nova tabela Fornecedor
+    id_fornecedor: p.id_pessoa,
   }));
   // --- Filtered via hook ---
   const filteredPayments = useUniversalFilter(pagamentosMapeados, universalFilters, {
@@ -31012,7 +31145,7 @@ export const PagamentoPecaPage = () => {
             enableFornecedor: true,
             enableOperadora: false,
             enableOsId: true,
-            fornecedores: fornecedoresList.map(f => ({ id: String(f.id), nome: f.nome })),
+            fornecedores: fornecedoresList,
             statusOptions: [
               { value: "ALL", label: "Todas" },
               { value: "PENDING", label: "Pendentes" },
@@ -35059,7 +35192,6 @@ export interface IClientSearchResult {
 }
 
 
---- FILE: client\src\types\colaborador.types.ts ---
 import type { IFuncionario } from "./backend";
 export type { IFuncionario };
 export interface IFuncionarioPayload {
@@ -36153,55 +36285,6 @@ src/services/DocumentoService.ts(278,35): error TS18047: 'os.veiculo' is possibl
 src/test-email.ts(2,30): error TS2307: Cannot find module './services/email.service' or its corresponding type declarations.
 
 
---- FILE: server\tsc_output_utf8_2.txt ---
-prisma/seed_financial.ts(29,16): error TS2339: Property 'fornecedor' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
-prisma/seed_financial.ts(132,35): error TS2339: Property 'fornecedor' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
-prisma/seed_financial.ts(216,9): error TS2561: Object literal may only specify known properties, but 'id_fornecedor' does not exist in type 'Without<PagamentoPecaCreateInput, PagamentoPecaUncheckedCreateInput> & PagamentoPecaUncheckedCreateInput'. Did you mean to write 'fornecedor'?
-scripts/seed_categories.ts(10,7): error TS2322: Type '{ nome: string; }' is not assignable to type 'CategoriaFinanceiraWhereUniqueInput'.
-  Type '{ nome: string; }' is not assignable to type '{ id_categoria: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; nome_parentId: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; } & { ...; }'.
-    Type '{ nome: string; }' is missing the following properties from type '{ id_categoria: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; nome_parentId: number | CategoriaFinanceiraNomeParentIdCompoundUniqueInput; }': id_categoria, nome_parentId
-src/controllers/AuthController.ts(4,35): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../repositories/UsuarioRepository.js'?
-src/controllers/livroCaixa.controller.ts(33,9): error TS2375: Type '{ descricao: any; valor: any; tipo_movimentacao: any; categoria: any; id_categoria: number | undefined; obs: any; origem: any; id_conta_bancaria: number | null; }' is not assignable to type 'Exact<(Without<LivroCaixaCreateInput, LivroCaixaUncheckedCreateInput> & LivroCaixaUncheckedCreateInput) | (Without<...> & LivroCaixaCreateInput), (Without<...> & LivroCaixaUncheckedCreateInput) | (Without<...> & LivroCaixaCreateInput)>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-  Type '{ descricao: any; valor: any; tipo_movimentacao: any; categoria: any; id_categoria: number | undefined; obs: any; origem: any; id_conta_bancaria: number | null; }' is not assignable to type '(Without<LivroCaixaCreateInput, LivroCaixaUncheckedCreateInput> & LivroCaixaUncheckedCreateInput) | { ...; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-    Type '{ descricao: any; valor: any; tipo_movimentacao: any; categoria: any; id_categoria: number | undefined; obs: any; origem: any; id_conta_bancaria: number | null; }' is not assignable to type '{ conta?: never; categoria_financeira?: never; pagamento_equipe?: never; id_livro_caixa?: number; descricao: string; valor: Exact<string | number | Decimal | DecimalJsLike, string | ... 2 more ... | DecimalJsLike>; ... 10 more ...; pagamento_peca?: PagamentoPecaUncheckedCreateNestedManyWithoutLivro_caixaInput | { .....' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-      Types of property 'id_categoria' are incompatible.
-        Type 'number | undefined' is not assignable to type 'number | null'.
-          Type 'undefined' is not assignable to type 'number | null'.
-src/controllers/livroCaixa.controller.ts(83,7): error TS2375: Type '{ descricao: any; valor: any; tipo_movimentacao: any; categoria: any; id_categoria: number | undefined; obs: any; }' is not assignable to type 'Exact<(Without<LivroCaixaUpdateInput, LivroCaixaUncheckedUpdateInput> & LivroCaixaUncheckedUpdateInput) | (Without<...> & LivroCaixaUpdateInput), (Without<...> & LivroCaixaUncheckedUpdateInput) | (Without<...> & LivroCaixaUpdateInput)>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-  Type '{ descricao: any; valor: any; tipo_movimentacao: any; categoria: any; id_categoria: number | undefined; obs: any; }' is not assignable to type '{ id_categoria?: never; id_pagamento_equipe?: never; id_livro_caixa?: never; id_conta_bancaria?: never; descricao?: string | StringFieldUpdateOperationsInput | { ...; }; ... 11 more ...; categoria_financeira?: CategoriaFinanceiraUpdateOneWithoutMovimentacoesNestedInput | { ...; }; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-    Types of property 'id_categoria' are incompatible.
-      Type 'number | undefined' is not assignable to type 'never'.
-        Type 'undefined' is not assignable to type 'never'.
-src/controllers/RelatorioController.ts(248,9): error TS2322: Type '"id_fornecedor"[]' is not assignable to type 'Exact<EntradaEstoqueScalarFieldEnum | EntradaEstoqueScalarFieldEnum[], EntradaEstoqueScalarFieldEnum | EntradaEstoqueScalarFieldEnum[]>'.
-  Type '"id_fornecedor"[]' is not assignable to type 'EntradaEstoqueScalarFieldEnum[]'.
-    Type '"id_fornecedor"' is not assignable to type 'EntradaEstoqueScalarFieldEnum'.
-src/controllers/RelatorioController.ts(256,41): error TS2339: Property 'fornecedor' does not exist on type 'DynamicClientExtensionThis<TypeMap<InternalArgs & { result: {}; model: {}; query: {}; client: {}; }, PrismaClientOptions>, TypeMapCb, { result: {}; model: {}; query: {}; client: {}; }, {}>'.
-src/controllers/RelatorioController.ts(259,52): error TS2339: Property 'id_fornecedor' does not exist on type '{}'.
-src/controllers/RelatorioController.ts(267,14): error TS7006: Parameter 'f' implicitly has an 'any' type.
-src/controllers/RelatorioController.ts(267,48): error TS2339: Property 'id_fornecedor' does not exist on type '{}'.
-src/controllers/RelatorioController.ts(271,42): error TS2339: Property '_sum' does not exist on type '{}'.
-src/controllers/RelatorioController.ts(272,40): error TS2339: Property '_count' does not exist on type '{}'.
-src/middlewares/authMiddleware.ts(25,7): error TS2769: No overload matches this call.
-  The last overload gave the following error.
-    Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
-      Type 'undefined' is not assignable to type 'string'.
-src/repositories/pecasEstoque.repository.ts(90,11): error TS2561: Object literal may only specify known properties, but 'id_fornecedor' does not exist in type 'Exact<(Without<EntradaEstoqueCreateInput, EntradaEstoqueUncheckedCreateInput> & EntradaEstoqueUncheckedCreateInput) | (Without<...> & EntradaEstoqueCreateInput), (Without<...> & EntradaEstoqueUncheckedCreateInput) | (Without<...> & EntradaEstoqueCreateInput)>'. Did you mean to write 'fornecedor'?
-src/routes/auth.routes.ts(2,32): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../controllers/AuthController.js'?
-src/scripts/check_counts.ts(6,37): error TS2339: Property 'fornecedor' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
-src/scripts/check_counts.ts(9,35): error TS2339: Property 'operadora' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
-src/scripts/check_inconsistency.ts(9,7): error TS2322: Type 'null' is not assignable to type 'FechamentoFinanceiroListRelationFilter | undefined'.
-src/scripts/fix_financial_consistency.ts(11,7): error TS2322: Type 'null' is not assignable to type 'FechamentoFinanceiroListRelationFilter | undefined'.
-src/scripts/inspect_test_data.ts(55,32): error TS2532: Object is possibly 'undefined'.
-src/scripts/inspect_test_data.ts(55,66): error TS2532: Object is possibly 'undefined'.
-src/scripts/inspect_test_data.ts(64,7): error TS2322: Type 'null' is not assignable to type 'FechamentoFinanceiroListRelationFilter | undefined'.
-src/scripts/test_receivables_sync.ts(12,5): error TS2322: Type '{ tipo_pessoa: number; telefone_1: string; pessoa_fisica: { create: { pessoa: { create: { nome: string; }; }; }; }; }' is not assignable to type '(Without<ClienteCreateInput, ClienteUncheckedCreateInput> & ClienteUncheckedCreateInput) | (Without<...> & ClienteCreateInput)'.
-  Types of property 'pessoa_fisica' are incompatible.
-    Type '{ create: { pessoa: { create: { nome: string; }; }; }; }' is not assignable to type 'undefined'.
-src/scripts/test_receivables_sync.ts(45,7): error TS2353: Object literal may only specify known properties, and 'km_atual' does not exist in type 'Without<OrdemDeServicoCreateInput, OrdemDeServicoUncheckedCreateInput> & OrdemDeServicoUncheckedCreateInput'.
-src/services/DocumentoService.ts(133,30): error TS18047: 'os.veiculo' is possibly 'null'.
-src/services/DocumentoService.ts(133,53): error TS18047: 'os.veiculo' is possibly 'null'.
-src/services/DocumentoService.ts(278,35): error TS18047: 'os.veiculo' is possibly 'null'.
-src/test-email.ts(2,30): error TS2307: Cannot find module './services/email.service' or its corresponding type declarations.
 
 
 --- FILE: server\prisma\schema.prisma ---
@@ -41651,111 +41734,6 @@ export class RelatorioController {
 }
 
 
---- FILE: server\src\controllers\RelatorioFinanceiroController.ts ---
-import { Request, Response } from "express";
-import { prisma } from "../prisma.js";
-export class RelatorioFinanceiroController {
-  async getDashboard(req: Request, res: Response) {
-    try {
-      // 1. Definição de datas (Default: Últimos 30 dias se não vier na query)
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - 30);
-      // --- A. KPIS GERAIS ---
-      // Receita: Apenas LivroCaixa (Fonte Única da Verdade)
-      // Excluir transferências internas e conciliações para evitar duplicidade
-      const receitasCaixa = await prisma.livroCaixa.aggregate({
-        where: {
-          tipo_movimentacao: "ENTRADA",
-          dt_movimentacao: { gte: startDate, lte: endDate },
-          deleted_at: null,
-          // Excluir transferências internas/conciliações
-          NOT: {
-            categoria: {
-              in: ["CONCILIACAO_CARTAO", "TRANSFERENCIA", "AJUSTE_SALDO"],
-            },
-          },
-        },
-        _sum: { valor: true },
-      });
-      // Despesa: Soma de saídas do caixa (inclui peças pagas, luz, água)
-      const despesasCaixa = await prisma.livroCaixa.aggregate({
-        where: {
-          tipo_movimentacao: "SAIDA",
-          dt_movimentacao: { gte: startDate, lte: endDate },
-        },
-        _sum: { valor: true },
-      });
-      // Usar APENAS LivroCaixa como fonte de receita realizada
-      const receitaTotal = Number(receitasCaixa._sum.valor) || 0;
-      const despesaTotal = Number(despesasCaixa._sum.valor) || 0;
-      const lucroLiquido = receitaTotal - despesaTotal;
-      const margemLucro =
-        receitaTotal > 0 ? (lucroLiquido / receitaTotal) * 100 : 0;
-      // Ticket Médio
-      const totalOS = await prisma.ordemDeServico.count({
-        where: {
-          dt_entrega: { gte: startDate, lte: endDate },
-          status: "FINALIZADO",
-        },
-      });
-      const ticketMedio = totalOS > 0 ? receitaTotal / totalOS : 0;
-      // --- B. FLUXO DE CAIXA (GRÁFICO) ---
-      // Agrupamento real por dia no banco de dados para alta performance
-      const fluxo_caixa: any[] = await prisma.$queryRaw`
-        SELECT 
-          TO_CHAR(dt_movimentacao, 'DD/MM') as date,
-          SUM(CASE WHEN tipo_movimentacao = 'ENTRADA' THEN valor ELSE 0 END)::FLOAT as "Receitas",
-          SUM(CASE WHEN tipo_movimentacao = 'SAIDA' THEN valor ELSE 0 END)::FLOAT as "Despesas"
-        FROM "livro_caixa"
-        WHERE dt_movimentacao BETWEEN ${startDate} AND ${endDate}
-          AND deleted_at IS NULL
-          AND NOT (categoria IN ('CONCILIACAO_CARTAO', 'TRANSFERENCIA', 'AJUSTE_SALDO'))
-        GROUP BY DATE_TRUNC('day', dt_movimentacao), TO_CHAR(dt_movimentacao, 'DD/MM')
-        ORDER BY DATE_TRUNC('day', dt_movimentacao) ASC
-      `;
-      // --- C. CATEGORIAS DE DESPESA (DONUT) ---
-      const despesasPorCategoria = await prisma.livroCaixa.groupBy({
-        by: ["categoria"],
-        where: {
-          tipo_movimentacao: "SAIDA",
-          dt_movimentacao: { gte: startDate },
-        },
-        _sum: { valor: true },
-        orderBy: { _sum: { valor: "desc" } },
-        take: 5,
-      });
-      let categorias = despesasPorCategoria.map((d) => ({
-        name: d.categoria || "Geral",
-        value: Number(d._sum.valor),
-      }));
-      // Se não tiver dados, enviar mock para não deixar tela em branco
-      if (categorias.length === 0) {
-        categorias = [
-          { name: "Peças", value: 0 },
-          { name: "Pessoal", value: 0 },
-          { name: "Infraestrutura", value: 0 },
-        ];
-      }
-      return res.json({
-        kpis: {
-          receita: receitaTotal,
-          despesa: despesaTotal,
-          lucro: lucroLiquido,
-          margem: margemLucro,
-          ticket: ticketMedio,
-        },
-        fluxo_caixa,
-        categorias,
-      });
-    } catch (error) {
-      console.error("Erro no Relatório:", error);
-      return res
-        .status(500)
-        .json({ error: "Erro interno ao processar relatório." });
-    }
-  }
-}
 
 
 --- FILE: server\src\controllers\RelatoriosController.ts ---
@@ -43063,11 +43041,13 @@ export class ContasPagarRepository {
        return nf.isPendente || !setEstoque.has(nf.nf_numero);
     });
     const total = resultList.length;
-    const paginated = resultList.slice(skip || 0, (skip || 0) + (take || 10));
-    return {
-      data: paginated,
-      total
-    };
+    // Quando take não é informado, retorna todos sem paginar
+    const paginated = take
+      ? resultList.slice(skip || 0, (skip || 0) + take)
+      : resultList.slice(skip || 0);
+    // Remove campo interno de controle antes de enviar ao cliente
+    const data = paginated.map(({ isPendente: _drop, ...nf }) => nf);
+    return { data, total };
   }
   // ── Rota B: Status de Sincronização da NF ──
   async getNfSyncStatus(nfNumero: string) {
@@ -43960,182 +43940,6 @@ export class FechamentoFinanceiroRepository {
 
 
 --- FILE: server\src\repositories\fornecedor.repository.ts ---
-import { prisma } from "../prisma.js";
-export class FornecedorRepository {
-  async create(data: any) {
-    if (data.documento) {
-      const existing = await prisma.fornecedor.findFirst({
-        where: { documento: data.documento, deleted_at: null }
-      });
-      if (existing) {
-        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-      }
-    }
-    if (data.inscricao_estadual) {
-      const existing = await prisma.fornecedor.findFirst({
-        where: { inscricao_estadual: data.inscricao_estadual, deleted_at: null }
-      });
-      if (existing) {
-        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-      }
-    }
-    const {
-      nome,
-      nome_fantasia,
-      documento,
-      inscricao_estadual,
-      inscricao_municipal,
-      tipo_pessoa,
-      cep,
-      logradouro,
-      numero,
-      complemento,
-      bairro,
-      cidade,
-      uf,
-      contato,
-      telefone,
-      whatsapp,
-      email,
-      banco,
-      agencia,
-      conta,
-      chave_pix,
-      categoria_produto,
-      condicoes_pagamento,
-      obs,
-    } = data;
-    return await prisma.fornecedor.create({
-      data: {
-        nome,
-        nome_fantasia: nome_fantasia || null,
-        documento: documento || null,
-        inscricao_estadual: inscricao_estadual || null,
-        inscricao_municipal: inscricao_municipal || null,
-        tipo_pessoa: tipo_pessoa || "JURIDICA",
-        cep: cep || null,
-        logradouro: logradouro || null,
-        numero: numero || null,
-        complemento: complemento || null,
-        bairro: bairro || null,
-        cidade: cidade || null,
-        uf: uf || null,
-        contato: contato || null,
-        telefone: telefone || null,
-        whatsapp: whatsapp || null,
-        email: email || null,
-        banco: banco || null,
-        agencia: agencia || null,
-        conta: conta || null,
-        chave_pix: chave_pix || null,
-        categoria_produto: categoria_produto || null,
-        condicoes_pagamento: condicoes_pagamento || null,
-        obs: obs || null,
-      },
-    });
-  }
-  async findAll() {
-    return await prisma.fornecedor.findMany({
-      where: { deleted_at: null },
-      orderBy: { nome: "asc" },
-    });
-  }
-  async findById(id: number) {
-    return await prisma.fornecedor.findUnique({
-      where: { id_fornecedor: id },
-    });
-  }
-  async update(id: number, data: any) {
-    if (data.documento) {
-      const existing = await prisma.fornecedor.findFirst({
-        where: {
-          documento: data.documento,
-          deleted_at: null,
-          id_fornecedor: { not: id }
-        }
-      });
-      if (existing) {
-        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-      }
-    }
-    if (data.inscricao_estadual) {
-      const existing = await prisma.fornecedor.findFirst({
-        where: {
-          inscricao_estadual: data.inscricao_estadual,
-          deleted_at: null,
-          id_fornecedor: { not: id }
-        }
-      });
-      if (existing) {
-        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-      }
-    }
-    const {
-      nome,
-      nome_fantasia,
-      documento,
-      inscricao_estadual,
-      inscricao_municipal,
-      tipo_pessoa,
-      cep,
-      logradouro,
-      numero,
-      complemento,
-      bairro,
-      cidade,
-      uf,
-      contato,
-      telefone,
-      whatsapp,
-      email,
-      banco,
-      agencia,
-      conta,
-      chave_pix,
-      categoria_produto,
-      condicoes_pagamento,
-      obs,
-    } = data;
-    return await prisma.fornecedor.update({
-      where: { id_fornecedor: id },
-      data: {
-        nome,
-        nome_fantasia: nome_fantasia || null,
-        documento: documento || null,
-        inscricao_estadual: inscricao_estadual || null,
-        inscricao_municipal: inscricao_municipal || null,
-        tipo_pessoa: tipo_pessoa || "JURIDICA",
-        cep: cep || null,
-        logradouro: logradouro || null,
-        numero: numero || null,
-        complemento: complemento || null,
-        bairro: bairro || null,
-        cidade: cidade || null,
-        uf: uf || null,
-        contato: contato || null,
-        telefone: telefone || null,
-        whatsapp: whatsapp || null,
-        email: email || null,
-        banco: banco || null,
-        agencia: agencia || null,
-        conta: conta || null,
-        chave_pix: chave_pix || null,
-        categoria_produto: categoria_produto || null,
-        condicoes_pagamento: condicoes_pagamento || null,
-        obs: obs || null,
-      },
-    });
-  }
-  async delete(id: number) {
-    // Soft delete
-    return await prisma.fornecedor.update({
-      where: { id_fornecedor: id },
-      data: { deleted_at: new Date() },
-    });
-  }
-}
-
-
 --- FILE: server\src\repositories\funcionario.repository.ts ---
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
@@ -47554,19 +47358,6 @@ ordemDeServicoRoutes.delete("/:id", controller.delete);
 export { ordemDeServicoRoutes };
 
 
---- FILE: server\src\routes\pagamentoCliente.routes.ts ---
-import { Router } from 'express';
-import { PagamentoClienteController } from '../controllers/pagamentoCliente.controller.js';
-const pagamentoClienteRoutes = Router();
-const controller = new PagamentoClienteController();
-pagamentoClienteRoutes.post('/', controller.create);
-pagamentoClienteRoutes.get('/', controller.findAll);
-pagamentoClienteRoutes.get('/:id', controller.findById);
-pagamentoClienteRoutes.put('/:id', controller.update);
-pagamentoClienteRoutes.delete('/:id', controller.delete);
-export { pagamentoClienteRoutes };
-
-
 --- FILE: server\src\routes\pagamentoEquipe.routes.ts ---
 import { Router } from 'express';
 import * as PagamentoEquipeController from '../controllers/pagamentoEquipe.controller.js';
@@ -47924,39 +47715,151 @@ main()
 
 
 --- FILE: server\src\scripts\clean_and_migrate.ts ---
-
-
---- FILE: server\src\scripts\fix_financial_consistency.ts ---
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 async function main() {
-  console.log("🔍 Looking for inconsistent OSs...");
-  const inconsistentOs = await prisma.ordemDeServico.findMany({
+  console.log("🧹 Starting cleanup and migration...");
+  const fakerDescription = "Barulho estranho no motor e luz de óleo acesa.";
+  // Find OS IDs first to delete related records
+  const osToDelete = await prisma.ordemDeServico.findMany({
+    where: { defeito_relatado: fakerDescription },
+    select: { id_os: true },
+  });
+  const ids = osToDelete.map((os) => os.id_os);
+  console.log(`🎯 Found ${ids.length} faker OSs to delete.`);
+  if (ids.length > 0) {
+    // Delete related FechamentoFinanceiro
+    await prisma.fechamentoFinanceiro.deleteMany({
+      where: { id_os: { in: ids } },
+    });
+    console.log("🗑️ Deleted related FechamentoFinanceiro records.");
+    // Delete related ServicoMaoDeObra
+    await prisma.servicoMaoDeObra.deleteMany({
+      where: { id_os: { in: ids } },
+    });
+    console.log("🗑️ Deleted related ServicoMaoDeObra records.");
+    // Delete related ItensOs (if any)
+    await prisma.itensOs.deleteMany({
+      where: { id_os: { in: ids } },
+    });
+    console.log("🗑️ Deleted related ItensOs records.");
+    // Finally delete OSs
+    const deletedOs = await prisma.ordemDeServico.deleteMany({
+      where: { id_os: { in: ids } },
+    });
+    console.log(`🗑️ Deleted ${deletedOs.count} faker OSs.`);
+  }
+  // Migrate Statuses
+  const updatedStatus = await prisma.ordemDeServico.updateMany({
+    where: { status: "PRONTO PARA FINANCEIRO" },
+    data: { status: "FINANCEIRO" },
+  });
+  console.log(
+    `🔄 Migrated ${updatedStatus.count} OSs from 'PRONTO PARA FINANCEIRO' to 'FINANCEIRO'.`,
+  );
+  const updatedFinalized = await prisma.ordemDeServico.updateMany({
+    where: { status: "FINALIZADO" },
+    data: { status: "FINALIZADA" },
+  });
+  console.log(
+    `🔄 Migrated ${updatedFinalized.count} OSs from 'FINALIZADO' to 'FINALIZADA'.`,
+  );
+}
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
+
+
+--- FILE: server\src\scripts\clean_test_clients.ts ---
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
+async function main() {
+  console.log("🧹 Starting cleanup of 'Cliente Teste'...");
+  // 1. Find the specific "Cliente Teste"
+  const testClients = await prisma.cliente.findMany({
     where: {
-      status: "FINALIZADA",
-      fechamento_financeiro: { none: {} },
+      pessoa_fisica: {
+        pessoa: {
+          nome: {
+            contains: "Teste",
+            mode: "insensitive",
+          },
+        },
+      },
     },
     select: {
-      id_os: true,
-      valor_total_cliente: true,
-      dt_entrega: true,
-      updated_at: true,
+      id_cliente: true,
+      pessoa_fisica: {
+        select: {
+          id_pessoa_fisica: true,
+          id_pessoa: true,
+        },
+      },
     },
   });
-  console.log(`Found ${inconsistentOs.length} OSs to fix.`);
-  for (const os of inconsistentOs) {
-    const dataFechamento = os.dt_entrega || os.updated_at || new Date();
-    // Create missing financial closure record
-    await prisma.fechamentoFinanceiro.create({
-      data: {
-        id_os: os.id_os,
-        data_fechamento_financeiro: dataFechamento,
-        custo_total_pecas_real: 0, // Simplified assumption for fix
-        // Other fields will be default or calculated by triggers if present
-      },
+  console.log(`🎯 Found ${testClients.length} clients to remove.`);
+  for (const client of testClients) {
+    console.log(`Processing Client ID: ${client.id_cliente}`);
+    // Find OS IDs
+    const osList = await prisma.ordemDeServico.findMany({
+      where: { id_cliente: client.id_cliente },
+      select: { id_os: true },
     });
-    console.log(`✅ Fixed OS #${os.id_os} - Created FechamentoFinanceiro`);
+    const osIds = osList.map((os) => os.id_os);
+    console.log(`- Found ${osIds.length} related OSs.`);
+    if (osIds.length > 0) {
+      // Delete OS Relations
+      await prisma.fechamentoFinanceiro.deleteMany({
+        where: { id_os: { in: osIds } },
+      });
+      await prisma.servicoMaoDeObra.deleteMany({
+        where: { id_os: { in: osIds } },
+      });
+      // Delete PagamentoPeca (Linked to ItensOs)
+      // First find items to find payments
+      const itensOs = await prisma.itensOs.findMany({
+        where: { id_os: { in: osIds } },
+        select: { id_iten: true },
+      });
+      const itemIds = itensOs.map((i) => i.id_iten);
+      if (itemIds.length > 0) {
+        await prisma.pagamentoPeca.deleteMany({
+          where: { id_item_os: { in: itemIds } },
+        });
+      }
+      await prisma.itensOs.deleteMany({ where: { id_os: { in: osIds } } });
+      await prisma.pagamentoCliente.deleteMany({
+        where: { id_os: { in: osIds } },
+      });
+      await prisma.recebivelCartao.deleteMany({
+        where: { id_os: { in: osIds } },
+      });
+      // Delete OSs
+      await prisma.ordemDeServico.deleteMany({
+        where: { id_os: { in: osIds } },
+      });
+      console.log(`- Deleted OSs.`);
+    }
+    // Delete Vehicles
+    await prisma.veiculo.deleteMany({
+      where: { id_cliente: client.id_cliente },
+    });
+    console.log(`- Deleted Vehicles.`);
+    // Delete Client
+    await prisma.cliente.delete({ where: { id_cliente: client.id_cliente } });
+    console.log(`- Deleted Cliente record.`);
+    // Delete Person Hierarchy if exists
+    if (client.pessoa_fisica) {
+      await prisma.pessoaFisica.delete({
+        where: { id_pessoa_fisica: client.pessoa_fisica.id_pessoa_fisica },
+      });
+      await prisma.pessoa.delete({
+        where: { id_pessoa: client.pessoa_fisica.id_pessoa },
+      });
+      console.log(`- Deleted Pessoa/PessoaFisica records.`);
+    }
   }
+  console.log("✅ Cleanup complete.");
 }
 main()
   .catch(console.error)
@@ -49583,6 +49486,71 @@ export class NotificationService {
 
 
 --- FILE: server\src\services\OrdemDeServicoService.ts ---
+import { OrdemDeServicoRepository } from "../repositories/ordemDeServico.repository.js";
+import { OsStateMachine, OsStatus } from "../domain/os-state-machine.js";
+export class OrdemDeServicoService {
+  private repository: OrdemDeServicoRepository;
+  constructor() {
+    this.repository = new OrdemDeServicoRepository();
+  }
+  async create(data: any) {
+    // Verificando se é payload Unificado (com client, vehicle/equipamento, os)
+    if (data.client && (data.vehicle || data.equipamento) && data.os) {
+      if (data.os.status) OsStateMachine.validateInitialStatus(data.os.status);
+      return this.repository.createUnified(data);
+    }
+    // Payload Padrão (direto com IDs)
+    if (data.status) OsStateMachine.validateInitialStatus(data.status);
+    return this.repository.create(data);
+  }
+  async update(id: number, data: any) {
+    const currentOs = await this.repository.findById(id);
+    if (!currentOs) {
+      throw new Error("Ordem de Serviço não encontrada");
+    }
+    // Validação de Transição e Imutabilidade
+    // Se data.status estiver presente, valida a transição.
+    // Se não, valida apenas a regra de imutabilidade (não pode editar se FINALIZADA).
+    const nextStatus = data.status ? (data.status as OsStatus) : undefined;
+    OsStateMachine.validateTransition(currentOs.status as OsStatus, nextStatus);
+    // 3. Lógica de Estoque (Moved from Controller)
+    const oldStatus = currentOs.status as OsStatus;
+    if (nextStatus && nextStatus !== oldStatus) {
+      const closedStatuses = [OsStatus.FINANCEIRO, OsStatus.FINALIZADA];
+      const isClosing = closedStatuses.includes(nextStatus);
+      const wasClosed = closedStatuses.includes(oldStatus);
+      // Se movendo para status de fechamento (e não estava fechado) -> DEDUZIR
+      if (isClosing && !wasClosed) {
+        await this.repository.adjustStockForOS(id, "DEDUCT");
+      }
+      // Se voltando para aberto (e estava fechado) -> DEVOLVER
+      else if (!isClosing && wasClosed) {
+        await this.repository.adjustStockForOS(id, "RETURN");
+      }
+    }
+    // Delega para o repositório
+    return this.repository.update(id, data);
+  }
+  async findAll(filters: any) {
+    return this.repository.findAll(filters?.search);
+  }
+  async findById(id: number, includeInternal: boolean = false) {
+    return this.repository.findById(id, includeInternal);
+  }
+  async findByVehicleId(vehicleId: number) {
+    return this.repository.findByVehicleId(vehicleId);
+  }
+  async delete(id: number) {
+    const currentOs = await this.repository.findById(id);
+    if (currentOs && currentOs.status === OsStatus.FINALIZADA) {
+      throw new Error("Não é possível excluir uma OS Finalizada.");
+    }
+    return this.repository.delete(id);
+  }
+}
+
+
+--- FILE: server\src\services\RelatoriosService.ts ---
 import { prisma } from "../prisma.js";
 import {
   startOfDay,

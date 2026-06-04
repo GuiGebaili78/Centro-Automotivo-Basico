@@ -52,6 +52,13 @@ import { Select } from "../components/ui";
 // ─── Tipos locais ──────────────────────────────────────────────────────────────
 type GroupByOption = "month" | "quarter" | "semester" | "year";
 
+const GROUP_BY_LABELS: Record<GroupByOption, string> = {
+  month: "Mensal",
+  quarter: "Trimestral",
+  semester: "Semestral",
+  year: "Anual",
+};
+
 // ─── Componente principal ──────────────────────────────────────────────────────
 export const RelatoriosPage = () => {
   // Estado global (filtro do topo)
@@ -208,8 +215,6 @@ export const RelatoriosPage = () => {
         <div className="sticky top-[72px] z-30 bg-slate-50/95 backdrop-blur-md pb-4 pt-2 border-b border-neutral-200 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 mb-6 transition-all duration-300">
           <ReportFilter
             onFilterChange={fetchReports}
-            groupBy={evolGroupBy}
-            onGroupByChange={setEvolGroupBy}
           />
         </div>
 
@@ -416,9 +421,22 @@ export const RelatoriosPage = () => {
                     </div>
                   </div>
 
-                  <span className="text-xs text-neutral-400 bg-neutral-50 px-2 py-1 rounded-md border border-neutral-100">
-                    Ano {new Date().getFullYear()} • Agrupamento no filtro acima
-                  </span>
+                  <div className="flex bg-neutral-100 p-0.5 rounded-lg border border-neutral-200">
+                    {(Object.keys(GROUP_BY_LABELS) as GroupByOption[]).map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setEvolGroupBy(key)}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                          evolGroupBy === key
+                            ? "bg-white text-neutral-800 shadow-sm"
+                            : "text-neutral-500 hover:text-neutral-800"
+                        }`}
+                      >
+                        {GROUP_BY_LABELS[key]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="h-[300px] w-full">

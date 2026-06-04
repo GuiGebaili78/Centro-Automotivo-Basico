@@ -128,10 +128,21 @@ export class ContasPagarRepository {
     });
   }
 
-  // ... findAll / findById ...
-  async findAll() {
+  async findAll(startDate?: string, endDate?: string) {
+    const where: any = { deleted_at: null };
+    
+    if (startDate || endDate) {
+      where.dt_vencimento = {};
+      if (startDate) {
+        where.dt_vencimento.gte = new Date(`${startDate}T00:00:00.000Z`);
+      }
+      if (endDate) {
+        where.dt_vencimento.lte = new Date(`${endDate}T23:59:59.999Z`);
+      }
+    }
+
     return prisma.contasPagar.findMany({
-      where: { deleted_at: null },
+      where,
       orderBy: { dt_vencimento: "asc" },
       include: { 
         categoria_financeira: {
@@ -291,6 +302,41 @@ export class ContasPagarRepository {
             },
             data: { deleted_at: new Date() },
           });
+        }
+
+        // ── Cascata NF: reverter status_pagamento das peças ──
+        if (current?.nf_numero) {
+          // Se agora há pelo menos 1 conta pendente para essa NF,
+          // todas as peças vinculadas (auto-pagas) devem voltar para "Não pago"
+          const aindaPendente = await tx.contasPagar.count({
+            where: {
+              nf_numero: current.nf_numero,
+              status: { not: "PAGO" },
+              deleted_at: null,
+            },
+          });
+
+          if (aindaPendente > 0) {
+            const revertidos = await tx.pagamentoPeca.updateMany({
+              where: {
+                nf_numero: current.nf_numero,
+                pago_ao_fornecedor: true,
+                deleted_at: null,
+                // Só reverte peças que foram pagas automaticamente (sem livro_caixa individual)
+                id_livro_caixa: null,
+              },
+              data: {
+                pago_ao_fornecedor: false,
+                data_pagamento_fornecedor: null,
+              },
+            });
+
+            if (revertidos.count > 0) {
+              console.log(
+                `[ContasPagarRepo] Cascata NF "${current.nf_numero}": ${revertidos.count} peça(s) revertida(s) para "Não pago"`,
+              );
+            }
+          }
         }
       }
 

@@ -5,209 +5,13 @@ import { prisma } from "../prisma.js";
 const repository = new PagamentoClienteRepository();
 
 export class PagamentoClienteController {
+  /**
+   * POST /pagamento-cliente
+   * Controller limpo: parse de request + delegação ao Repository.
+   */
   async create(req: Request, res: Response) {
     try {
-      const { id_operadora, pix_destino, subtipo_credito, ...data } = req.body;
-
-      const result = await prisma.$transaction(async (tx) => {
-        // 0. IDEMPOTENCY CHECK (Prevent Double Click Submission)
-        const duplicateCheck = await tx.pagamentoCliente.findFirst({
-          where: {
-            id_os: Number(data.id_os),
-            valor: Number(data.valor),
-            metodo_pagamento: data.metodo_pagamento,
-            // Check for exact match on fields to prevent double-click duplicates
-            // Since we don't have created_at, we rely on the client sending the same payload (including timestamp)
-            data_pagamento: data.data_pagamento,
-          },
-        });
-
-        if (duplicateCheck) {
-          console.warn(
-            `⚠️ [PagamentoCliente] Duplicate submission detected for OS #${data.id_os}. Returning existing.`,
-          );
-          return duplicateCheck;
-        }
-
-        // 1. Create PagamentoCliente
-        const pagamento = await tx.pagamentoCliente.create({
-          data: {
-            ...data,
-            id_operadora: id_operadora ? Number(id_operadora) : null,
-          },
-          include: {
-            ordem_de_servico: {
-              include: {
-                cliente: {
-                  include: {
-                    pessoa_fisica: { include: { pessoa: true } },
-                    pessoa_juridica: true,
-                  },
-                },
-                veiculo: true,
-              },
-            },
-          },
-        });
-
-        const os = pagamento.ordem_de_servico;
-        const nomeCliente =
-          os.cliente.pessoa_fisica?.pessoa.nome ||
-          os.cliente.pessoa_juridica?.nome_fantasia ||
-          "Cliente";
-        const placa = os.veiculo?.placa || "S/Placa";
-        const descricaoPadrao = `OS Nº ${data.id_os} - ${nomeCliente} | ${placa} | ${pagamento.metodo_pagamento}`;
-
-        // Get Category "Serviços" (no longer immediately used for LivroCaixa, but maybe useful later or we can skip it here)
-        // We will skip creating LivroCaixa here. The reconciliation step will do it.
-
-        // 2. Create Receivables for ALL methods
-        if (
-          id_operadora &&
-          (
-            data.metodo_pagamento === "CREDITO" ||
-            data.metodo_pagamento === "DEBITO" ||
-            (data.metodo_pagamento === "PIX" && pix_destino === "MAQUINA")
-          )
-        ) {
-          const operadora = await tx.operadoraCartao.findUnique({
-            where: { id_operadora: Number(id_operadora) },
-            include: { taxas_operadora: true },
-          });
-          if (!operadora) throw new Error("Operadora não encontrada");
-
-          const parcelas = data.qtd_parcelas || 1;
-          const valorTotal = Number(data.valor);
-
-          // Determine modalidade da taxa:
-          let modalidade: string;
-          if (data.metodo_pagamento === "PIX") {
-            modalidade = "PIX";
-          } else if (data.metodo_pagamento === "DEBITO") {
-            modalidade = "DEBITO";
-          } else if (data.metodo_pagamento === "CREDITO") {
-            modalidade = subtipo_credito === "AVISTA" ? "CREDITO_AVISTA" : "CREDITO";
-          } else {
-            modalidade = data.metodo_pagamento;
-          }
-
-          // Resolve Tax Rates
-          let taxaBase = 0;
-          let taxaJuros = 0;
-          let prazo = 0;
-          let taxaBaseClientePct: number | null = null; // Taxa quando CLIENTE assume os juros
-
-          // Try Granular Table first (single source of truth)
-          const taxEntry = operadora.taxas_operadora.find(
-            (t) =>
-              t.modalidade === modalidade &&
-              t.parcela === (modalidade === "CREDITO" ? parcelas : 1),
-          );
-
-          if (taxEntry) {
-            taxaBase = Number(taxEntry.taxa_base_pct);
-            taxaJuros = Number(taxEntry.taxa_juros_pct);
-            taxaBaseClientePct = taxEntry.taxa_base_cliente_pct != null
-              ? Number(taxEntry.taxa_base_cliente_pct)
-              : null;
-            prazo =
-              modalidade === "DEBITO" || modalidade === "PIX"
-                ? operadora.prazo_debito
-                : parcelas === 1
-                  ? operadora.prazo_credito_vista
-                  : operadora.prazo_credito_parc;
-          } else {
-            // Fallback Legacy Defaults (preservado para compatibilidade com dados antigos)
-            if (modalidade === "DEBITO" || modalidade === "PIX") {
-              taxaBase = Number(operadora.taxa_debito);
-              prazo = operadora.prazo_debito;
-            } else if (modalidade === "CREDITO_AVISTA" || parcelas === 1) {
-              taxaBase = Number(operadora.taxa_credito_vista);
-              prazo = operadora.prazo_credito_vista;
-            } else {
-              taxaBase = Number(operadora.taxa_credito_parc);
-              taxaJuros =
-                Number(operadora.taxa_credito_parc) -
-                Number(operadora.taxa_credito_vista);
-              prazo = operadora.prazo_credito_parc;
-            }
-          }
-
-          // Import CalculadoraPagamentoService dynamically or statically
-          const { CalculadoraPagamentoService } = await import("../services/CalculadoraPagamentoService.js");
-
-          const calcResult = CalculadoraPagamentoService.calcular(
-              valorTotal,
-              taxaBase,
-              taxaJuros,
-              data.tipo_parcelamento || 'LOJA',
-              taxaBaseClientePct  // Taxa máquina específica para quando o cliente assume os juros
-          );
-
-
-          const valorPorParcela = calcResult.valorPagoPeloCliente / parcelas;
-          const valorLiquidoPorParcela = calcResult.valorLiquidoLojista / parcelas;
-          const taxaPorParcela = calcResult.descontoLojistaTotal / parcelas;
-
-          // Data base para vencimento
-          const dataPrevistaBase = new Date();
-          if (operadora.antecipacao_auto) {
-            dataPrevistaBase.setDate(dataPrevistaBase.getDate() + 1);
-          } else {
-            dataPrevistaBase.setDate(dataPrevistaBase.getDate() + prazo);
-          }
-
-          for (let i = 1; i <= parcelas; i++) {
-            const dataPrevistaParcela = new Date(dataPrevistaBase);
-            if (
-              !operadora.antecipacao_auto &&
-              modalidade === "CREDITO" &&
-              parcelas > 1
-            ) {
-              // Add 30 days per installment index
-              dataPrevistaParcela.setMonth(
-                dataPrevistaParcela.getMonth() + (i - 1),
-              );
-            }
-
-            await tx.recebivelCartao.create({
-              data: {
-                id_os: data.id_os,
-                id_operadora: Number(id_operadora),
-                num_parcela: i,
-                total_parcelas: parcelas,
-                valor_bruto: valorPorParcela,
-                valor_liquido: valorLiquidoPorParcela,
-                taxa_aplicada: taxaPorParcela,
-                tipo_parcelamento: data.tipo_parcelamento || "LOJA",
-                data_venda: new Date(),
-                data_prevista: dataPrevistaParcela,
-                status: "PENDENTE",
-              },
-            });
-          }
-        } else {
-          // Flow for Dinheiro, PIX Banco, Transf, or any other method without an operator
-          await tx.recebivelCartao.create({
-            data: {
-              id_os: data.id_os,
-              id_operadora: null, // Null to indicate no operator
-              num_parcela: 1,
-              total_parcelas: 1,
-              valor_bruto: Number(data.valor),
-              valor_liquido: Number(data.valor), // No fees
-              taxa_aplicada: 0,
-              tipo_parcelamento: data.metodo_pagamento, // Save the actual method (e.g. 'Dinheiro', 'PIX') here
-              data_venda: new Date(),
-              data_prevista: new Date(), // Due immediately
-              status: "PENDENTE",
-            },
-          });
-        }
-
-        return pagamento;
-      });
-
+      const result = await repository.createWithRecebiveis(req.body);
       res.status(201).json(result);
     } catch (error) {
       console.error(error);
@@ -259,22 +63,21 @@ export class PagamentoClienteController {
           data: {
             ...data,
             id_operadora: data.id_operadora ? Number(data.id_operadora) : null,
-            id_conta_bancaria: data.id_conta_bancaria
-              ? Number(data.id_conta_bancaria)
-              : null,
+            id_conta_bancaria:
+              data.id_conta_bancaria && Number(data.id_conta_bancaria) > 0
+                ? Number(data.id_conta_bancaria)
+                : null,
           } as any,
         });
 
         // 3. Sync Linked LivroCaixa
         if (original.id_livro_caixa) {
-          // If amount changed or method changed (description)
           const valorDiff = Number(data.valor) - Number(original.valor);
 
           await tx.livroCaixa.update({
             where: { id_livro_caixa: original.id_livro_caixa },
             data: {
               valor: Number(data.valor),
-              // Update validation/description logic if needed
             },
           });
 
@@ -291,8 +94,6 @@ export class PagamentoClienteController {
               });
             }
           } else {
-            // Complex case: Method changed or Account changed.
-            // Simplified: If method changed from PIX to something else, revert balance.
             if (
               original.metodo_pagamento === "PIX" &&
               original.id_conta_bancaria
@@ -302,7 +103,6 @@ export class PagamentoClienteController {
                 data: { saldo_atual: { decrement: Number(original.valor) } },
               });
             }
-            // If new is PIX, add balance
             if (data.metodo_pagamento === "PIX" && data.id_conta_bancaria) {
               await tx.contaBancaria.update({
                 where: { id_conta: Number(data.id_conta_bancaria) },
@@ -312,49 +112,16 @@ export class PagamentoClienteController {
           }
         }
 
-        // 4. Sync Receivables (Card)
-        // If it was Card and now isn't, delete observables?
-        // If it was not Card and now is, create?
-        // Or if amount changed.
-        // Simplified approach: atomic regeneration if needed.
-
-        const wasCard =
-          original.metodo_pagamento === "CREDITO" ||
-          original.metodo_pagamento === "DEBITO";
-        const isCard =
-          data.metodo_pagamento === "CREDITO" ||
-          data.metodo_pagamento === "DEBITO";
-
-        // Always clean up old pending receivables for this specific payment before creating new ones if needed.
-        // Since we now generate receivables for ALL methods, we should delete the old ones regardless of wasCard.
+        // 4. Sync Receivables — clean up old pending receivables
         await tx.recebivelCartao.deleteMany({
           where: {
             id_os: original.id_os,
-            id_operadora: original.id_operadora, // handles null too
+            id_operadora: original.id_operadora,
             status: "PENDENTE",
             total_parcelas: original.qtd_parcelas || 1,
           },
         });
-          // Since we don't have direct link in Schema (it links to OS), this is imperfect.
-          // Ideally schema update: RecebivelCartao -> PagamentoCliente relation.
-          // As I cannot change Schema easily without migration/restart risk, I will skip complex regeneration for this specific MVP step
-          // unless the user explicitly complains about "Editing Card Payment doesn't update Receivables".
-          // The user said "sincronizar qualquer informação alterada".
-          // So I MUST try.
-          // Filter by created_at close to payment creation?
-          // Or just allow the duplicates risk?
-          // Recommendation: Block editing of Card Payments that generated Receivables for now to be safe, OR wipe all for OS and regen?
-          // "Wipe all for OS" is dangerous if there are multiple payments.
 
-          // Allow Update of Amount/Method but warn/log that Receivables might need manual check if no direct link?
-          // Better: If I can't guarantee 100% sync on Receivables without Schema change,
-          // I should prioritize the new flow (Create) working perfectly.
-          // Editing is edge case.
-          // BUT, if I don't handle it, data rots.
-          // Strategy: Verify if I can identity the observables.
-          // They have exact same amounts/dates?
-
-        // Return updated
         return pagamento;
       });
       res.json(result);
@@ -401,16 +168,12 @@ export class PagamentoClienteController {
 
           // 3. Delete Receivables (Sync with Payment Deletion)
           const qtdParcelas = original.qtd_parcelas || 1;
-          const valorParcela = Number(original.valor) / qtdParcelas;
 
-          // Attempt to find and delete matching pending receivables
-          // Logic: Match OS, Operator (or null), and approximate Installment count
           await tx.recebivelCartao.deleteMany({
             where: {
               id_os: original.id_os,
               id_operadora: original.id_operadora,
               status: "PENDENTE",
-              // Match via total_parcelas helps
               total_parcelas: qtdParcelas,
             },
           });

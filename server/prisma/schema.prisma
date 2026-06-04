@@ -571,6 +571,10 @@ model RecebivelCartao {
   confirmado_em     DateTime?       @db.Timestamp(6)
   confirmado_por    String?         @db.VarChar(100)
 
+  // ── Snapshot Histórico (Congelamento de Taxa) ──
+  taxa_pct_snapshot   Decimal?      @db.Decimal(5, 2) // Taxa % total no instante da venda
+  modalidade_snapshot String?       @db.VarChar(20)    // 'DEBITO', 'CREDITO', 'CREDITO_AVISTA', 'PIX'
+
   operadora         OperadoraCartao? @relation(fields: [id_operadora], references: [id_operadora])
   ordem_de_servico  OrdemDeServico?  @relation(fields: [id_os], references: [id_os])
 

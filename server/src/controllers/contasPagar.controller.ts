@@ -14,7 +14,8 @@ export const createConta = async (req: Request, res: Response) => {
 
 export const getContas = async (req: Request, res: Response) => {
   try {
-    const contas = await repository.findAll();
+    const { startDate, endDate } = req.query;
+    const contas = await repository.findAll(startDate as string, endDate as string);
     res.json(contas);
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar contas" });
