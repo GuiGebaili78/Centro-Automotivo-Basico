@@ -1,0 +1,1 @@
+-- AlterTable`r`nALTER TABLE "configuracao" ADD COLUMN "telefone2" VARCHAR(20);
