@@ -578,23 +578,10 @@ export const FechamentoFinanceiroDetalhePage = () => {
       isOpen: true,
       title: "Reabrir OS",
       message:
-        "Tem certeza que deseja reabrir esta OS? Isso irá ESTORNAR todos os lançamentos financeiros (Caixa, Recebíveis) e remover o fechamento. O status voltará para ABERTA.",
+        "Tem certeza que deseja reabrir esta OS? Se existirem recebimentos já lançados no Caixa, o sistema bloqueará a ação. O Fechamento Financeiro será revertido e o status voltará para ABERTA.",
       onConfirm: async () => {
         try {
-          // 1. Se houver Fechamento Financeiro, reverter primeiro
-          if (osData.fechamento_financeiro?.id_fechamento_financeiro) {
-            await api.post("/fechamento-financeiro/reverter", {
-              idFechamento:
-                osData.fechamento_financeiro.id_fechamento_financeiro,
-            });
-            toast.success("Consolidação Financeira revertida!");
-          }
-
-          // 2. Atualizar Status para ABERTA
-          await api.put(`/ordem-de-servico/${osData.id_os}`, {
-            status: "ABERTA",
-          });
-
+          await api.post(`/ordem-de-servico/${osData.id_os}/reabrir`);
           toast.success("OS Reaberta com sucesso! Você será redirecionado.");
           setTimeout(() => navigate(`/ordem-de-servico/${osData.id_os}`), 1000);
         } catch (error: any) {
@@ -603,7 +590,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             error.response?.data?.details ||
             error.response?.data?.error ||
             "Erro ao reabrir OS.";
-          toast.error(`Não foi possível reabrir: ${msg}`);
+          toast.error(`Falha: ${msg}`, { autoClose: 7000 });
         }
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       },

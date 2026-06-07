@@ -37,7 +37,7 @@ export class RecebivelCartaoRepository {
       // Buscar PIX Pendentes (Pagamentos de OS finalizada sem LivroCaixa)
       prisma.pagamentoCliente.findMany({
         where: {
-          metodo_pagamento: "PIX",
+          metodo_pagamento: { in: ["PIX", "DINHEIRO"] },
           deleted_at: null,
           id_livro_caixa: null,
           ordem_de_servico: {
@@ -69,9 +69,9 @@ export class RecebivelCartaoRepository {
       id_os: p.id_os,
       id_operadora: 999999, // ID Fictício
       valor_bruto: p.valor,
-      valor_liquido: p.valor, // PIX não tem taxa no sistema atual
+      valor_liquido: p.valor,
       taxa_aplicada: 0,
-      tipo_parcelamento: "PIX",
+      tipo_parcelamento: p.metodo_pagamento || "PIX",
       num_parcela: 1,
       total_parcelas: 1,
       data_venda: p.data_pagamento,
@@ -86,7 +86,7 @@ export class RecebivelCartaoRepository {
       // Relacionamentos Simulados
       operadora: {
         id_operadora: 999999,
-        nome: "PIX", // Exibir como PIX na coluna Operadora
+        nome: p.metodo_pagamento || "PIX", // Exibir como PIX ou DINHEIRO na coluna Operadora
         taxa: 0,
         dias_recebimento: 0,
         ativo: true,
@@ -330,6 +330,10 @@ export class RecebivelCartaoRepository {
         throw new Error("Recebível não está confirmado");
       }
 
+      if (!recebivel.operadora) {
+        throw new Error("Operadora associada ao recebível não encontrada");
+      }
+
       // 2. Reverter saldo da conta bancária
       await tx.contaBancaria.update({
         where: { id_conta: recebivel.operadora.id_conta_destino },
@@ -400,7 +404,7 @@ export class RecebivelCartaoRepository {
         });
         const pix = await prisma.pagamentoCliente.aggregate({
           where: {
-            metodo_pagamento: "PIX",
+            metodo_pagamento: { in: ["PIX", "DINHEIRO"] },
             deleted_at: null,
             id_livro_caixa: null,
             ordem_de_servico: { fechamento_financeiro: { some: {} } },
@@ -427,7 +431,7 @@ export class RecebivelCartaoRepository {
         // PIX é sempre D+0 praticamente, então entra aqui se pendente
         const pix = await prisma.pagamentoCliente.aggregate({
           where: {
-            metodo_pagamento: "PIX",
+            metodo_pagamento: { in: ["PIX", "DINHEIRO"] },
             deleted_at: null,
             id_livro_caixa: null,
             ordem_de_servico: { fechamento_financeiro: { some: {} } },

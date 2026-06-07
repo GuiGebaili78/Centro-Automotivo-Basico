@@ -122,13 +122,16 @@ export const getNfsPendentes = async (req: Request, res: Response) => {
 export const getNfSyncStatus = async (req: Request, res: Response) => {
   try {
     const { nf_numero } = req.params;
+    const id_fornecedor = req.query.id_fornecedor ? Number(req.query.id_fornecedor) : undefined;
+    
     if (!nf_numero) {
       return res.status(400).json({ error: "Número da NF é obrigatório" });
     }
-    const status = await repository.getNfSyncStatus(nf_numero);
+    const status = await repository.getNfSyncStatus(nf_numero, id_fornecedor);
     res.json(status);
   } catch (error) {
-    res.status(500).json({ error: "Erro ao buscar status de sincronização da NF" });
+    console.error("Erro ao buscar status de sincronização da NF:", error);
+    res.status(500).json({ error: "Erro ao buscar status de sincronização" });
   }
 };
 

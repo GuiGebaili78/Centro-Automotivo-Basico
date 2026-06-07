@@ -12,6 +12,7 @@ ordemDeServicoRoutes.get("/:id", controller.findById);
 ordemDeServicoRoutes.get("/:id/pdf", controller.getPdf);
 ordemDeServicoRoutes.post("/:id/enviar", controller.send);
 ordemDeServicoRoutes.post("/:id/enviar-email", controller.enviarEmail);
+ordemDeServicoRoutes.post("/:id/reabrir", controller.reabrir);
 ordemDeServicoRoutes.put("/:id", controller.update);
 ordemDeServicoRoutes.delete("/:id", controller.delete);
 

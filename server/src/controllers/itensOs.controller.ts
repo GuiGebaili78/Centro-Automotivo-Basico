@@ -34,7 +34,7 @@ export class ItensOsController {
           if (supplierId) {
               await pagamentoRepository.create({
                   item_os: { connect: { id_iten: item.id_iten } },
-                  fornecedor: { connect: { id_pessoa: supplierId } },
+                  fornecedor: { connect: { id_fornecedor: supplierId } },
                   custo_real: custo_real ? Number(custo_real) : 0,
                   data_compra: new Date(),
                   pago_ao_fornecedor: false
@@ -105,7 +105,7 @@ export class ItensOsController {
           if (existingPayments && existingPayments.length > 0) {
               if (id_fornecedor) {
                   const updateData: any = {
-                      fornecedor: { connect: { id_pessoa: Number(id_fornecedor) } }
+                      fornecedor: { connect: { id_fornecedor: Number(id_fornecedor) } }
                   };
                   if (custo_real) {
                       updateData.custo_real = Number(custo_real);
@@ -120,7 +120,7 @@ export class ItensOsController {
               // Create new if strictly provided
               await pagamentoRepository.create({
                   item_os: { connect: { id_iten: id } },
-                  fornecedor: { connect: { id_pessoa: Number(id_fornecedor) } },
+                  fornecedor: { connect: { id_fornecedor: Number(id_fornecedor) } },
                   custo_real: custo_real ? Number(custo_real) : 0,
                   data_compra: new Date(),
                   pago_ao_fornecedor: false

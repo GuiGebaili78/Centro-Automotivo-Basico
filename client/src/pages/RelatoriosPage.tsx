@@ -90,6 +90,9 @@ export const RelatoriosPage = () => {
   const [timelineCategoriaId, setTimelineCategoriaId] = useState<number | undefined>(undefined);
   const [timelineSubcategoriaId, setTimelineSubcategoriaId] = useState<number | undefined>(undefined);
 
+  // Filtro de Colaborador (tabela de equipe)
+  const [colaboradorFiltroId, setColaboradorFiltroId] = useState<number | "">("");
+
   // Cores para gráficos
   const COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6", "#6366F1"];
 
@@ -195,14 +198,18 @@ export const RelatoriosPage = () => {
     setTimelineSubcategoriaId(undefined);
   };
 
-  // ── Dados do Pie Chart ────────────────────────────────────────────────────────
   const dataPizza = resumo
     ? [
-        { name: "Mão de Obra", value: resumo.liquida.maoDeObra || 0 },
-        { name: "Estoque", value: resumo.liquida.estoque || 0 },
-        { name: "Auto Peças", value: resumo.liquida.autoPecas || 0 },
+        { name: "Mão de Obra", value: resumo.liquida.maoDeObra || 0, fill: "#3B82F6" },
+        { name: "Estoque", value: resumo.liquida.estoque || 0, fill: "#F59E0B" },
+        { name: "Auto Peças", value: resumo.liquida.autoPecas || 0, fill: "#10B981" },
       ].filter((d) => d.value > 0)
     : [];
+
+  // ── Filtro local de Colaborador (Performance da Equipe) ────────────────────────
+  const equipeFiltrada = colaboradorFiltroId
+    ? equipe.filter((func) => func.id === Number(colaboradorFiltroId))
+    : equipe;
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -243,23 +250,17 @@ export const RelatoriosPage = () => {
                       <TrendingUp size={20} className="text-emerald-500" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs border-t border-neutral-50 pt-3">
+                  <div className="grid grid-cols-2 gap-2 text-xs border-t border-neutral-50 pt-3">
                     <div className="text-center">
-                      <span className="block text-neutral-400 mb-0.5">M.O.</span>
-                      <span className="font-semibold text-neutral-600 truncate">
-                        {formatCurrency(resumo.bruta.maoDeObra)}
+                      <span className="block text-neutral-400 mb-0.5">Serviços</span>
+                      <span className="font-semibold text-neutral-600 truncate block">
+                        {formatCurrency(resumo.bruta.receitaServicos ?? resumo.bruta.maoDeObra)}
                       </span>
                     </div>
                     <div className="text-center border-l border-neutral-100">
-                      <span className="block text-neutral-400 mb-0.5">Auto Peças</span>
-                      <span className="font-semibold text-neutral-600 truncate">
-                        {formatCurrency(resumo.bruta.autoPecas)}
-                      </span>
-                    </div>
-                    <div className="text-center border-l border-neutral-100">
-                      <span className="block text-neutral-400 mb-0.5">Estoque</span>
-                      <span className="font-semibold text-neutral-600 truncate">
-                        {formatCurrency(resumo.bruta.estoque)}
+                      <span className="block text-neutral-400 mb-0.5">Peças</span>
+                      <span className="font-semibold text-neutral-600 truncate block">
+                        {formatCurrency(resumo.bruta.receitaPecas ?? (resumo.bruta.autoPecas + resumo.bruta.estoque))}
                       </span>
                     </div>
                   </div>
@@ -439,7 +440,7 @@ export const RelatoriosPage = () => {
                   </div>
                 </div>
 
-                <div className="h-[300px] w-full">
+                <div className="h-[300px] min-h-[300px] w-full">
                   {evolLoading ? (
                     <div className="h-full flex items-center justify-center text-neutral-400 text-sm">
                       <div className="animate-spin w-6 h-6 border-2 border-primary-400 border-t-transparent rounded-full mr-2" />
@@ -534,7 +535,7 @@ export const RelatoriosPage = () => {
                   <ListFilter size={20} className="text-neutral-500" />
                   Origem do Lucro
                 </h3>
-                <div className="h-[300px] w-full flex items-center justify-center">
+                <div className="h-[300px] min-h-[300px] w-full flex items-center justify-center">
                   {dataPizza.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -547,10 +548,10 @@ export const RelatoriosPage = () => {
                           paddingAngle={5}
                           dataKey="value"
                         >
-                          {dataPizza.map((_entry, index) => (
+                          {dataPizza.map((entry, index) => (
                             <Cell
                               key={`cell-${index}`}
-                              fill={COLORS[index % COLORS.length]}
+                              fill={entry.fill}
                             />
                           ))}
                         </Pie>
@@ -571,9 +572,24 @@ export const RelatoriosPage = () => {
 
             {/* ── Row 3: Performance da Equipe ── */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-100">
-              <h3 className="text-lg font-bold text-neutral-800 mb-6">
-                Performance Financeira da Equipe
-              </h3>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <h3 className="text-lg font-bold text-neutral-800">
+                  Performance Financeira da Equipe
+                </h3>
+                <div className="w-56">
+                  <Select
+                    value={colaboradorFiltroId}
+                    onChange={(e) => setColaboradorFiltroId(e.target.value ? Number(e.target.value) : "")}
+                  >
+                    <option value="">Todos os Colaboradores</option>
+                    {equipe.map((func) => (
+                      <option key={func.id} value={func.id}>
+                        {func.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-neutral-50 text-neutral-500 uppercase font-semibold">
@@ -586,7 +602,7 @@ export const RelatoriosPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    {equipe.map((func) => (
+                    {equipeFiltrada.map((func) => (
                       <tr
                         key={func.id}
                         className="hover:bg-neutral-50 transition-colors"
@@ -608,7 +624,7 @@ export const RelatoriosPage = () => {
                         </td>
                       </tr>
                     ))}
-                    {equipe.length === 0 && (
+                    {equipeFiltrada.length === 0 && (
                       <tr>
                         <td
                           colSpan={5}
@@ -739,10 +755,7 @@ export const RelatoriosPage = () => {
               </div>
 
               {/* Gráfico */}
-              <div
-                className="w-full flex-shrink-0"
-                style={{ width: "100%", height: 400 }}
-              >
+              <div className="h-[400px] min-h-[400px] w-full flex-shrink-0">
                 {timelineLoading ? (
                   <div className="h-full flex items-center justify-center text-neutral-400 text-sm">
                     <div className="animate-spin w-6 h-6 border-2 border-red-400 border-t-transparent rounded-full mr-2" />

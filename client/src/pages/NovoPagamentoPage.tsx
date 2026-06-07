@@ -167,22 +167,40 @@ export const NovoPagamentoPage = () => {
   }, [funcPendentes, filterStart, filterEnd]);
 
   // --- TOTALS (Mode PAGAMENTO) ---
-  const getCommissionValue = (itemVal: number) => {
+  const getCommissionValue = (itemVal: number, item?: any) => {
     const func = funcionarios.find(
       (f) => String(f.id_funcionario) === String(selectedFuncionarioId),
     );
     const pct = func?.comissao || 0;
-    return (itemVal * pct) / 100;
+    const laborComm = (itemVal * pct) / 100;
+    const partsComm = item ? Number(item.valor_comissao_pecas || 0) : 0;
+    return laborComm + partsComm;
   };
 
   const totalComissoes = useMemo(() => {
     return funcPendentes
       .filter((i) => selectedItems.includes(i.id_servico_mao_de_obra))
       .reduce((acc, curr) => {
-        const comissao = getCommissionValue(Number(curr.valor));
+        const comissao = getCommissionValue(Number(curr.valor), curr);
         return acc + comissao;
       }, 0);
   }, [funcPendentes, selectedItems, funcionarios, selectedFuncionarioId]);
+
+  const totalComissoesMO = useMemo(() => {
+    const func = funcionarios.find(
+      (f) => String(f.id_funcionario) === String(selectedFuncionarioId),
+    );
+    const pct = func?.comissao || 0;
+    return funcPendentes
+      .filter((i) => selectedItems.includes(i.id_servico_mao_de_obra))
+      .reduce((acc, curr) => acc + (Number(curr.valor) * pct) / 100, 0);
+  }, [funcPendentes, selectedItems, funcionarios, selectedFuncionarioId]);
+
+  const totalComissoesPecas = useMemo(() => {
+    return funcPendentes
+      .filter((i) => selectedItems.includes(i.id_servico_mao_de_obra))
+      .reduce((acc, curr) => acc + Number(curr.valor_comissao_pecas || 0), 0);
+  }, [funcPendentes, selectedItems]);
 
   const totalDescontos = useMemo(() => {
     return valesPendentes
@@ -336,13 +354,17 @@ export const NovoPagamentoPage = () => {
                   <h3 className="font-bold text-neutral-700 flex items-center gap-2">
                     <Calculator size={18} className="text-primary-500" />{" "}
                     Comissões
-                    <span className="text-xs font-normal text-neutral-500 bg-neutral-200 px-2 py-0.5 rounded-full">
-                      {funcionarios.find(
-                        (f) =>
-                          String(f.id_funcionario) ===
-                          String(selectedFuncionarioId),
-                      )?.comissao || 0}
-                      %
+                    <span className="text-xs font-normal text-neutral-500 bg-neutral-200 px-2 py-0.5 rounded-full" title="Comissão de Mão de Obra">
+                      M.O: {(() => {
+                        const func = funcionarios.find(f => String(f.id_funcionario) === String(selectedFuncionarioId));
+                        return func?.comissao || 0;
+                      })()}%
+                    </span>
+                    <span className="text-xs font-normal text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100" title="Comissão de Peças">
+                      Peças: {(() => {
+                        const func = funcionarios.find(f => String(f.id_funcionario) === String(selectedFuncionarioId));
+                        return Number(func?.comissao_pecas || 0);
+                      })()}%
                     </span>
                   </h3>
                   <div className="flex items-center gap-3">
@@ -402,6 +424,7 @@ export const NovoPagamentoPage = () => {
                       const os = item.ordem_de_servico;
                       const valorComissao = getCommissionValue(
                         Number(item.valor),
+                        item
                       );
 
                       return (
@@ -463,12 +486,21 @@ export const NovoPagamentoPage = () => {
                                 )}
                               </div>
                               <div className="text-right">
-                                <span className="font-black text-emerald-600 text-lg">
-                                  {formatCurrency(valorComissao)}
-                                </span>
-                                <div className="text-sm text-neutral-400 font-bold uppercase tracking-wide">
-                                  Valor Serviço:{" "}
-                                  {formatCurrency(Number(item.valor))}
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="text-sm text-neutral-500 font-medium whitespace-nowrap">
+                                    Valor Serviço: <span className="text-neutral-700">{formatCurrency(Number(item.valor))}</span> ➔ Sua Comissão M.O: <span className="font-bold text-blue-600">{formatCurrency(getCommissionValue(Number(item.valor), undefined))}</span>
+                                  </div>
+                                  {Number(item.valor_comissao_pecas || 0) > 0 && (
+                                    <div className="text-sm text-neutral-500 font-medium whitespace-nowrap">
+                                      Lucro Peças: <span className="text-neutral-700">{formatCurrency(Number(item.lucro_pecas_snapshot || 0))}</span> ➔ Sua Comissão Peças: <span className="font-bold text-amber-600">{formatCurrency(Number(item.valor_comissao_pecas))}</span>
+                                    </div>
+                                  )}
+                                  <div className="mt-1 pt-1 border-t border-neutral-100 flex items-center gap-2 justify-end w-full">
+                                    <span className="text-xs uppercase font-bold text-neutral-400">Total OS:</span>
+                                    <span className="font-black text-emerald-600 text-lg">
+                                      {formatCurrency(valorComissao)}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -717,11 +749,19 @@ export const NovoPagamentoPage = () => {
                       </span>
                     </div>
                     <div className="flex justify-between text-xs text-neutral-500">
-                      <span>(+) Comissões</span>
+                      <span>(+) Comissão M.O.</span>
                       <span className="text-emerald-600 font-bold">
-                        {formatCurrency(totalComissoes)}
+                        {formatCurrency(totalComissoesMO)}
                       </span>
                     </div>
+                    {totalComissoesPecas > 0 && (
+                      <div className="flex justify-between text-xs text-neutral-500">
+                        <span>(+) Comissão Peças</span>
+                        <span className="text-amber-600 font-bold">
+                          {formatCurrency(totalComissoesPecas)}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-xs text-neutral-500">
                       <span>(+) Prêmios</span>
                       <span className="text-emerald-600 font-bold">

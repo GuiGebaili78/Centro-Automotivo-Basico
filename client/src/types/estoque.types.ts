@@ -32,6 +32,8 @@ export interface IItemEntrada {
   margem_lucro: number;
   valor_venda: number;
   ref_cod?: string;
+  condicao?: string;
+  aplicacao?: string;
   obs?: string;
   /** Marcado como true no modo edição quando o usuário quer remover o item */
   _delete?: boolean;

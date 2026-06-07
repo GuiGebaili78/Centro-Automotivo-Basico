@@ -96,6 +96,8 @@ export const EntradaEstoquePage = () => {
         margem_lucro: i.margem_lucro ? Number(i.margem_lucro) : 0,
         valor_venda: Number(i.valor_venda),
         ref_cod: i.ref_cod || "",
+        condicao: i.condicao || "",
+        aplicacao: i.aplicacao || "",
         obs: i.obs || "",
         _delete: false,
       }));
@@ -143,6 +145,8 @@ export const EntradaEstoquePage = () => {
             valor_venda: i.valor_venda,
             margem_lucro: i.margem_lucro,
             ref_cod: i.ref_cod,
+            condicao: i.condicao,
+            aplicacao: i.aplicacao,
             obs: i.obs,
             _delete: (i as any)._delete || false,
           })),

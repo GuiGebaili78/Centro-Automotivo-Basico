@@ -209,6 +209,17 @@ export class OrdemDeServicoRepository {
             { servicos_mao_de_obra: { some: { descricao: { contains: trimmedSearch, mode: 'insensitive' } } } }
         ];
 
+        // Se for número puro ou formato de OS (ex: "OS #12", "os 12")
+        const isPureNumber = /^\d+$/.test(trimmedSearch);
+        const isOsFormat = /^(?:os)?\s*#?\s*(\d+)$/i.test(trimmedSearch);
+        if (isPureNumber || isOsFormat) {
+            const digitsOnly = trimmedSearch.replace(/\D/g, '');
+            const parsedId = digitsOnly ? parseInt(digitsOnly, 10) : NaN;
+            if (!isNaN(parsedId)) {
+                where.OR.push({ id_os: { equals: parsedId } });
+            }
+        }
+
         const numValue = Number(trimmedSearch.replace(',', '.'));
         if (!isNaN(numValue)) {
             where.OR.push(
@@ -223,7 +234,7 @@ export class OrdemDeServicoRepository {
 
     return await prisma.ordemDeServico.findMany({
       where,
-      take: takeLimit,
+      ...(takeLimit !== undefined ? { take: takeLimit } : {}),
       include: {
         cliente: {
           include: {
@@ -446,34 +457,22 @@ export class OrdemDeServicoRepository {
       }
   }
 
-  async findRecent(take: number = 30) {
+  async findRecent(take: number = 150) {
+    // Monitor operacional: retorna apenas OS ativas (ABERTA, AGENDAMENTO, ORCAMENTO).
+    // FINANCEIRO e FINALIZADA são excluídas por decisão de UX.
+    // O include de servicos_mao_de_obra foi removido por performance (3 níveis de JOIN).
     return await prisma.ordemDeServico.findMany({
       take,
       where: {
         deleted_at: null,
         status: {
-          in: ['AGENDAMENTO', 'ORCAMENTO', 'ABERTA', 'FINANCEIRO', 'FINALIZADA']
+          in: ['ABERTA', 'AGENDAMENTO', 'ORCAMENTO']
         }
       },
-      orderBy: { updated_at: 'desc' },
+      orderBy: { dt_abertura: 'desc' },
       include: {
         veiculo: true,
         equipamento: true,
-        servicos_mao_de_obra: {
-          where: { deleted_at: null },
-          include: {
-            funcionario: {
-              include: {
-                pessoa_fisica: {
-                  include: {
-                    // @ts-ignore
-                    pessoa: true
-                  }
-                }
-              }
-            }
-          }
-        },
         cliente: {
           include: {
             pessoa_fisica: { include: {
@@ -485,6 +484,37 @@ pessoa: true } }
           }
         }
       }
+    });
+  }
+
+  async reabrirOS(id: number) {
+    return await prisma.$transaction(async (tx) => {
+      const os = await tx.ordemDeServico.findUnique({
+        where: { id_os: id }
+      });
+
+      if (!os) throw new Error("OS não encontrada");
+
+      // 1. Reverter/Deletar Fechamento Financeiro
+      await tx.fechamentoFinanceiro.deleteMany({
+        where: { id_os: id }
+      });
+
+      // 2. Voltar status para ABERTA
+      const updated = await tx.ordemDeServico.update({
+        where: { id_os: id },
+        data: { status: 'ABERTA' }
+      });
+
+      await auditRepo.create({
+        tabela: 'ordem_de_servico',
+        registro_id: id,
+        acao: 'UPDATE',
+        valor_antigo: os,
+        valor_novo: updated
+      });
+
+      return updated;
     });
   }
 }

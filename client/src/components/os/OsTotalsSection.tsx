@@ -115,11 +115,13 @@ export const OsTotalsSection = ({
             {["ABERTA", "EM_ANDAMENTO"].includes(osStatus) ? (
               <Button
                 onClick={onFinish}
-                variant="success"
+                variant="none"
+                size="none"
                 disabled={disabled}
-                className={`w-full lg:w-auto px-8 py-5 h-auto text-lg font-bold uppercase tracking-widest shadow-xl bg-emerald-500 border-none hover:bg-emerald-400 text-white flex-1 lg:flex-none justify-center transition-all ${
-                  isPulsing ? "animate-pulse-highlight" : ""
-                }`}
+                className={`w-full lg:w-auto px-8 py-5 text-lg font-bold uppercase tracking-widest rounded-xl text-white shadow-xl border-none transition-all flex-1 lg:flex-none justify-center items-center inline-flex
+                  ${isPaid ? "bg-green-600 hover:bg-green-500" : "bg-amber-500 hover:bg-amber-400"}
+                  ${isPulsing ? "animate-pulse-highlight" : ""}
+                `}
               >
                 <CheckCircle className="mr-3" size={24} strokeWidth={2} />{" "}
                 FINALIZAR OS

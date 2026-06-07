@@ -20,12 +20,14 @@ interface FornecedorFormProps {
   initialData?: IFornecedor | null;
   onSuccess: (data?: IFornecedor) => void;
   onCancel: () => void;
+  isModal?: boolean;
 }
 
 export const FornecedorForm = ({
   initialData,
   onSuccess,
   onCancel,
+  isModal = false,
 }: FornecedorFormProps) => {
   const [loading, setLoading] = useState(false);
 
@@ -162,24 +164,26 @@ export const FornecedorForm = ({
   };
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          <ArrowLeft size={20} />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-800">
-            {initialData ? "Editar Fornecedor" : "Novo Fornecedor"}
-          </h1>
-          <p className="text-neutral-500 text-sm">
-            Preencha os dados completos do parceiro.
-          </p>
+    <div className={isModal ? "w-full py-2 space-y-4" : "w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500"}>
+      {/* Header – oculto no modo modal */}
+      {!isModal && (
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            <ArrowLeft size={20} />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-neutral-800">
+              {initialData ? "Editar Fornecedor" : "Novo Fornecedor"}
+            </h1>
+            <p className="text-neutral-500 text-sm">
+              Preencha os dados completos do parceiro.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6 text-neutral-900">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+        <div className={isModal ? "grid grid-cols-1 md:grid-cols-2 gap-4 items-start" : "grid grid-cols-1 xl:grid-cols-3 gap-8 items-start"}>
           {/* LEFT COLUMN: Identification & Contact */}
           <div className="space-y-8 xl:col-span-2">
             {/* SECTION 1: IDENTIFICAÇÃO */}

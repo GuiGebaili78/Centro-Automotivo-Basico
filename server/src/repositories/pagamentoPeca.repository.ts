@@ -29,14 +29,9 @@ export class PagamentoPecaRepository {
           nf_numero: true,
           fornecedor: {
             select: {
-              id_pessoa: true,
+              id_fornecedor: true,
               nome: true,
-              pessoa_juridica: {
-                select: {
-                  nome_fantasia: true,
-                  razao_social: true,
-                },
-              },
+              nome_fantasia: true,
             },
           },
           item_os: {
@@ -49,6 +44,7 @@ export class PagamentoPecaRepository {
               ordem_de_servico: {
                 select: {
                   id_os: true,
+                  status: true,
                   veiculo: {
                     select: {
                       placa: true,
@@ -77,30 +73,17 @@ export class PagamentoPecaRepository {
       }),
       prisma.pagamentoPeca.count({ where: { deleted_at: null } }),
     ]);
-    // CORREÇÃO DO BUG DO FORNECEDOR (Mapeamento Manual)
-    // O id_pessoa salvo no PagamentoPeca é, na verdade, o id_fornecedor da nova tabela de Fornecedores.
-    const fornecedoresIds = [...new Set(data.map((p) => p.id_pessoa).filter(Boolean))];
-    if (fornecedoresIds.length > 0) {
-      const fornecedores = await prisma.fornecedor.findMany({
-        where: { id_fornecedor: { in: fornecedoresIds as number[] } }
-      });
-
-      const mapFornecedores = new Map(fornecedores.map((f) => [f.id_fornecedor, f]));
-
-      data.forEach((p: any) => {
-        if (p.id_pessoa && mapFornecedores.has(p.id_pessoa)) {
-          const realFornecedor = mapFornecedores.get(p.id_pessoa)!;
-          p.fornecedor = {
-            id_pessoa: realFornecedor.id_fornecedor,
-            nome: realFornecedor.nome,
-            pessoa_juridica: {
-              nome_fantasia: realFornecedor.nome_fantasia,
-              razao_social: realFornecedor.nome, // fallback para manter compatibilidade com frontend
-            }
-          };
-        }
-      });
-    }
+    // Formatação de compatibilidade para o frontend antigo
+    data.forEach((p: any) => {
+      if (p.fornecedor) {
+        // O front lia id_pessoa e pessoa_juridica.nome_fantasia
+        p.fornecedor.id_pessoa = p.fornecedor.id_fornecedor;
+        p.fornecedor.pessoa_juridica = {
+          nome_fantasia: p.fornecedor.nome_fantasia,
+          razao_social: p.fornecedor.nome
+        };
+      }
+    });
 
     return {
       data,
@@ -168,7 +151,7 @@ export class PagamentoPecaRepository {
       // FORMATAR DESCRIÇÃO
       // "Pg. Peças - OS Nº {id} - {fornecedor_fantasia} | {nome_peca}"
       const idOs = pagamento.item_os?.ordem_de_servico?.id_os || "Avulsa";
-      const fornecedor = pagamento.fornecedor?.nome || pagamento.fornecedor?.nome_fantasia || "Fornecedor N/I";
+      const fornecedor = pagamento.fornecedor?.nome || "Fornecedor N/I";
       const nomePeca = pagamento.item_os?.descricao || "Peça N/I";
       const descricao = `Pg. Peças - OS Nº ${idOs} - ${fornecedor} | ${nomePeca}`;
 
@@ -344,7 +327,7 @@ export class PagamentoPecaRepository {
       const fornecedoresUnicos = [
         ...new Set(
           pagamentos.map(
-            (p) => p.fornecedor?.nome || p.fornecedor?.nome_fantasia || "Fornecedor N/I",
+            (p) => p.fornecedor?.nome || "Fornecedor N/I",
           ),
         ),
       ];

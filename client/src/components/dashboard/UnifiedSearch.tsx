@@ -117,7 +117,7 @@ export const UnifiedSearch = ({
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const { data: allOs } = await api.get("/ordem-servico", {
+        const { data: allOs } = await api.get("/ordem-de-servico", {
           params: { search: val, status: "ABERTA,ORCAMENTO", take: 10 }
         });
         

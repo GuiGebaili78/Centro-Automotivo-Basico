@@ -291,7 +291,7 @@ export class RelatorioController {
       const operadoras = await prisma.operadoraCartao.findMany({
         where: {
           id_operadora: {
-            in: recebiveisPorOperadora.map((r) => r.id_operadora),
+            in: recebiveisPorOperadora.map((r) => r.id_operadora).filter((id): id is number => id !== null),
           },
         },
       });

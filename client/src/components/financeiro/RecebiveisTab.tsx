@@ -155,7 +155,41 @@ export const RecebiveisTab = () => {
     .filter((r) => selectedIds.includes(r.id_recebivel))
     .some((r) => r.id_operadora === null && (r as any).tipo_parcelamento?.toUpperCase() !== 'DINHEIRO');
 
-  // Filter Logic — handled by useUniversalFilter above
+  const getModalityBadge = (r: IRecebivelCartao) => {
+    const modality = (r as any).modalidade_snapshot 
+      ? (r as any).modalidade_snapshot.toUpperCase()
+      : (r.id_operadora === null || r.id_operadora === 999999
+          ? (r.tipo_parcelamento?.toUpperCase() === 'DINHEIRO' ? 'DINHEIRO' : 'PIX')
+          : 'CARTAO');
+
+    let colorClasses = "bg-neutral-100 text-neutral-800 border-neutral-200";
+    let label = modality;
+
+    if (modality === "PIX") {
+      colorClasses = "bg-teal-50 text-teal-700 border-teal-200";
+      label = "PIX";
+    } else if (modality === "DINHEIRO") {
+      colorClasses = "bg-emerald-50 text-emerald-700 border-emerald-200";
+      label = "Dinheiro";
+    } else if (modality === "CREDITO") {
+      colorClasses = "bg-indigo-50 text-indigo-700 border-indigo-200";
+      label = "Crédito";
+    } else if (modality === "DEBITO") {
+      colorClasses = "bg-sky-50 text-sky-700 border-sky-200";
+      label = "Débito";
+    } else if (modality === "CARTAO") {
+      colorClasses = "bg-blue-50 text-blue-700 border-blue-200";
+      label = "Cartão";
+    } else {
+      label = modality || "Avulso";
+    }
+
+    return (
+      <span className={`px-2 py-0.5 text-xs font-semibold rounded-md border ${colorClasses}`}>
+        {label}
+      </span>
+    );
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -249,6 +283,7 @@ export const RecebiveisTab = () => {
                 </th>
                 <th className="p-4 text-left">Previsão</th>
                 <th className="p-4 text-left">Nº / Aut.</th>
+                <th className="p-4 text-left">Modalidade</th>
                 <th className="p-4 text-left">Operadora</th>
                 <th className="p-4 text-left">Veículo / Cliente</th>
                 <th className="p-4 text-left">Detalhes</th>
@@ -304,6 +339,9 @@ export const RecebiveisTab = () => {
                       <div className="text-sm text-gray-900 font-mono bg-neutral-100 px-3 py-1.5 rounded-lg border border-neutral-200 w-fit">
                         {(r as any).codigo_autorizacao || (r as any).nsu || "-"}
                       </div>
+                    </td>
+                    <td className="p-4">
+                      {getModalityBadge(r)}
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">

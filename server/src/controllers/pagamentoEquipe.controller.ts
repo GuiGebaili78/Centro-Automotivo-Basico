@@ -19,22 +19,16 @@ export const getPendentesByFuncionario = async (
         },
       },
       include: {
+        funcionario: true,
         ordem_de_servico: {
-          select: {
-            id_os: true,
-            dt_abertura: true,
-            dt_entrega: true,
-            // dt_finalizacao: true, // Assuming this field might not verify in schema yet based on previous turns, but filter uses it. Check schema.
-            // Actually schema has NO dt_finalizacao, only dt_entrega (which is finalization date usually).
-            // Let's check Schema one last time? No, I recall dt_entrega is the one.
-            // Wait, previous turn code used dt_finalizacao.
-            // Schema lines 200: dt_entrega DateTime?
-            // Schema lines 201: km_entrada
-            // No dt_finalizacao in recent view. So I should stick to dt_entrega.
-            // But I will add defect and diagnosis.
-            status: true,
-            defeito_relatado: true,
-            diagnostico: true,
+          include: {
+            itens_os: {
+              where: { deleted_at: null },
+              include: {
+                pecas_estoque: true,
+                pagamentos_peca: true,
+              },
+            },
             veiculo: true,
             cliente: {
               include: {
@@ -50,7 +44,48 @@ export const getPendentesByFuncionario = async (
       },
     });
 
-    res.json(servicos);
+    const calculatedOsIds = new Set<number>();
+
+    const mappedServicos = servicos.map((s) => {
+      let valor_comissao_pecas = 0;
+      let lucro_pecas_snapshot = 0;
+      const osId = s.id_os;
+      const pctPecas = Number(s.funcionario?.comissao_pecas || 0);
+
+      // Calcular o lucro total de peças na OS
+      const itens = s.ordem_de_servico?.itens_os || [];
+      const lucroPecasTotal = itens.reduce((acc, item) => {
+        if (item.is_interno) return acc; // ignorar uso interno
+
+        const valorVenda = Number(item.valor_venda || 0) * (item.quantidade || 1);
+        let lucroPeca = valorVenda;
+
+        if (item.pecas_estoque) {
+          const custo = Number(item.pecas_estoque.valor_custo || 0) * (item.quantidade || 1);
+          lucroPeca = valorVenda - custo;
+        } else if (item.pagamentos_peca?.[0]) {
+          const custoReal = Number(item.pagamentos_peca[0].custo_real || 0);
+          lucroPeca = valorVenda - custoReal;
+        }
+
+        return acc + Math.max(0, lucroPeca);
+      }, 0);
+
+      lucro_pecas_snapshot = lucroPecasTotal;
+
+      if (pctPecas > 0 && !calculatedOsIds.has(osId)) {
+        calculatedOsIds.add(osId);
+        valor_comissao_pecas = (lucroPecasTotal * pctPecas) / 100;
+      }
+
+      return {
+        ...s,
+        valor_comissao_pecas,
+        lucro_pecas_snapshot,
+      };
+    });
+
+    res.json(mappedServicos);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao buscar comissões pendentes" });
@@ -208,6 +243,13 @@ export const getHistorico = async (req: Request, res: Response) => {
                     pessoa_juridica: { include: { pessoa: true } },
                   },
                 },
+                itens_os: {
+                  where: { deleted_at: null },
+                  include: {
+                    pecas_estoque: true,
+                    pagamentos_peca: { where: { deleted_at: null } },
+                  },
+                },
               },
             },
           },
@@ -215,8 +257,57 @@ export const getHistorico = async (req: Request, res: Response) => {
       },
       orderBy: { dt_pagamento: "desc" },
     });
-    res.json(pagamentos);
+    
+    const pagamentosMapped = pagamentos.map((pag) => {
+      const func = pag.funcionario;
+      const pctPecas = Number(func?.comissao_pecas || 0);
+
+      const servicosMapped = pag.servicos_pagos.map((s) => {
+        let valor_comissao_pecas = 0;
+        let lucro_pecas_snapshot = 0;
+        
+        const itens = s.ordem_de_servico?.itens_os || [];
+        const lucroPecasTotal = itens.reduce((acc, item) => {
+          if (item.is_interno) return acc;
+          const valorVenda = Number(item.valor_venda || 0) * (item.quantidade || 1);
+          let lucroPeca = valorVenda;
+
+          if (item.pecas_estoque) {
+            const custo = Number(item.pecas_estoque.valor_custo || 0) * (item.quantidade || 1);
+            lucroPeca = valorVenda - custo;
+          } else if (item.pagamentos_peca?.[0]) {
+            const custoReal = Number(item.pagamentos_peca[0].custo_real || 0);
+            lucroPeca = valorVenda - custoReal;
+          }
+
+          return acc + Math.max(0, lucroPeca);
+        }, 0);
+
+        lucro_pecas_snapshot = lucroPecasTotal;
+
+        if (pctPecas > 0) {
+          // No histórico, assumimos que todos os serviços que tenham a mesma OS vão mostrar a comissão, ou ratear. 
+          // Para simplificar, assim como no pendente, a OS pode aparecer mais de uma vez se tiver mais de um serviço?
+          // Sim, mas a UI não reclama.
+          valor_comissao_pecas = (lucroPecasTotal * pctPecas) / 100;
+        }
+
+        return {
+          ...s,
+          valor_comissao_pecas,
+          lucro_pecas_snapshot,
+        };
+      });
+
+      return {
+        ...pag,
+        servicos_pagos: servicosMapped,
+      };
+    });
+
+    res.json(pagamentosMapped);
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar histórico" });
   }
 };
+

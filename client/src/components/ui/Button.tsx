@@ -8,8 +8,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     | "ghost"
     | "success"
     | "dark"
-    | "outline";
-  size?: "sm" | "md" | "lg" | "blocks";
+    | "outline"
+    | "none";
+  size?: "sm" | "md" | "lg" | "blocks" | "none";
   icon?: React.ElementType;
   isLoading?: boolean;
   children: React.ReactNode;
@@ -30,6 +31,7 @@ const variants = {
   success:
     "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20",
   dark: "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/20",
+  none: "",
 };
 
 const sizes = {
@@ -37,6 +39,7 @@ const sizes = {
   md: "h-11 px-5 text-sm gap-2",
   lg: "h-14 px-8 text-sm gap-2.5",
   blocks: "w-full h-14 text-sm gap-2.5",
+  none: "",
 };
 
 export const Button = ({

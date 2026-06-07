@@ -3,6 +3,13 @@ import { ConfiguracaoRepository } from "../repositories/configuracao.repository.
 import fs from "fs";
 import path from "path";
 
+// Garantia secundária de que o diretório uploads existe (complementa multer.ts)
+const uploadsDir = path.resolve(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log(`[Configuracao] Created uploads directory: ${uploadsDir}`);
+}
+
 interface AuthenticatedRequest extends Request {
   file?: Express.Multer.File;
 }
@@ -103,7 +110,7 @@ export const ConfiguracaoController = {
       }
 
       const data: any = {
-        nomeFantasia,
+        nomeFantasia: nomeFantasia || "Oficina", // NOT NULL guard
         razaoSocial,
         cnpj,
         inscricaoEstadual,
@@ -124,8 +131,9 @@ export const ConfiguracaoController = {
       const config = await ConfiguracaoRepository.upsert(data);
       return res.json(config);
     } catch (error) {
-      console.error("Error saving configuracao:", error);
-      return res.status(500).json({ error: "Erro ao salvar configurações" });
+      console.error("[CRÍTICO] Falha ao salvar configuração:", error);
+      const details = error instanceof Error ? error.message : String(error);
+      return res.status(500).json({ error: "Erro ao salvar configurações", details });
     }
   },
 
@@ -165,8 +173,9 @@ export const ConfiguracaoController = {
       const config = await ConfiguracaoRepository.upsert(data);
       return res.json(config);
     } catch (error) {
-      console.error("Error uploading logo impressao:", error);
-      return res.status(500).json({ error: "Erro ao fazer upload da logo de impressão" });
+      console.error("[CRÍTICO] Falha ao salvar configuração (logo impressão):", error);
+      const details = error instanceof Error ? error.message : String(error);
+      return res.status(500).json({ error: "Erro ao fazer upload da logo de impressão", details });
     }
   },
 };

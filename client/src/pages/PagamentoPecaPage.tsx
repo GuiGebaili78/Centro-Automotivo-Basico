@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
+import { getStatusStyle } from "../utils/osUtils";
 import { api } from "../services/api";
+
 import { FinanceiroService } from "../services/financeiro.service";
 import { FornecedorService } from "../services/fornecedor.service";
 import {
@@ -460,25 +462,13 @@ export const PagamentoPecaPage = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="p-5">
+                      <td className="p-5 text-center">
                         {(() => {
                           const st = p.item_os?.ordem_de_servico?.status || p.status_os || p.status || "ABERTA";
-                          const styles: Record<string, string> = {
-                            FINALIZADA: "bg-emerald-100 text-emerald-700 ring-emerald-200",
-                            PAGA_CLIENTE: "bg-neutral-100 text-neutral-600 ring-neutral-200",
-                            "PRONTO PARA FINANCEIRO": "bg-amber-100 text-amber-700 ring-amber-200",
-                            ABERTA: "bg-blue-100 text-blue-700 ring-blue-200",
-                            EM_ANDAMENTO: "bg-cyan-100 text-cyan-700 ring-cyan-200",
-                            CANCELADA: "bg-red-100 text-red-700 ring-red-200",
-                          };
-                          const style = styles[st] || "bg-gray-50 text-gray-500 ring-gray-200";
+                          const displayLabel = st === "PRONTO PARA FINANCEIRO" ? "FINANCEIRO" : st.replace(/_/g, " ");
                           return (
-                            <span
-                              className={`px-3 py-1 rounded-md text-sm font-black uppercase ring-1 whitespace-nowrap ${style}`}
-                            >
-                              {st === "PRONTO PARA FINANCEIRO"
-                                ? "FINANCEIRO"
-                                : st.replace(/_/g, " ")}
+                            <span className={`px-3 py-1 rounded-md text-sm font-black uppercase whitespace-nowrap ${getStatusStyle(st)}`}>
+                              {displayLabel}
                             </span>
                           );
                         })()}
@@ -607,24 +597,32 @@ export const PagamentoPecaPage = () => {
                 className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 text-amber-900 font-medium"
               >
                 <option value="">Sem Sincronização (Livre)</option>
-                {nfsPendentes.map((nf) => (
-                  <option key={nf.nf_numero} value={nf.nf_numero}>
-                    {nf.nf_numero} ({nf.credor || "Sem Credor"})
-                  </option>
-                ))}
+                {nfsPendentes.map((nf) => {
+                  const isExcedente = nf.matchPercent > 100 && nf.nf_numero !== editPayment.nf_numero;
+                  return (
+                    <option 
+                      key={`${nf.nf_numero}_${nf.id_fornecedor || 'null'}`} 
+                      value={nf.nf_numero}
+                      disabled={isExcedente}
+                    >
+                      {nf.nf_numero} ({nf.credor || "Sem Credor"}) {isExcedente ? "(Excedeu o Valor)" : ""}
+                    </option>
+                  );
+                })}
               </Select>
             </div>
             <div>
               <Select
                 label="Fornecedor"
-                value={editPayment.id_fornecedor}
+                value={String(editPayment.id_fornecedor || "")}
                 onChange={(e) =>
                   setEditPayment({ ...editPayment, id_fornecedor: e.target.value })
                 }
               >
+                <option value="">Selecione...</option>
                 {fornecedores.map((f) => (
-                  <option key={f.id_fornecedor} value={f.id_fornecedor}>
-                    {String(f.pessoa_juridica?.nome_fantasia || f.pessoa_juridica?.razao_social || f.nome_fantasia || f.nome || "").toUpperCase()}
+                  <option key={f.id_fornecedor} value={String(f.id_fornecedor)}>
+                    {String(f.nome_fantasia || f.nome || "").toUpperCase()}
                   </option>
                 ))}
               </Select>

@@ -143,13 +143,18 @@ export const PagamentoColaboradoresTab = ({
   };
 
   // --- HELPERS ---
-  const getComissaoInfo = (funcId: any, valorTotal: number) => {
+  const getComissaoInfo = (funcId: any, valorTotal: number, item?: any) => {
     const func = funcionarios.find(
       (f) => String(f.id_funcionario) === String(funcId),
     );
     const porcentagem = func?.comissao || 0;
     const valorComissao = (valorTotal * porcentagem) / 100;
-    return { porcentagem, valorComissao };
+    const comissaoPecas = item ? Number(item.valor_comissao_pecas || 0) : 0;
+    return { 
+      porcentagem, 
+      valorComissao: valorComissao + comissaoPecas,
+      comissaoPecas
+    };
   };
 
   const applyQuickFilter = (_type: string) => {}; // replaced by UniversalFilters
@@ -167,9 +172,9 @@ export const PagamentoColaboradoresTab = ({
             date: h.dt_pagamento,
             os: s.ordem_de_servico,
             value: s.valor,
-            commissionValue: getComissaoInfo(selectedFuncId, Number(s.valor))
+            commissionValue: getComissaoInfo(selectedFuncId, Number(s.valor), s)
               .valorComissao,
-            percentage: getComissaoInfo(selectedFuncId, Number(s.valor))
+            percentage: getComissaoInfo(selectedFuncId, Number(s.valor), s)
               .porcentagem,
             paymentId: h.id_pagamento_equipe,
             paymentMethod: h.forma_pagamento,

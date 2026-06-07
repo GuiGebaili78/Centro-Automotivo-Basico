@@ -3,6 +3,7 @@ import { ActionButton } from "../ui/ActionButton";
 import { Edit, Trash2, AlertCircle } from "lucide-react";
 
 import type { IPecasEstoque } from "../../types/estoque.types";
+import { NfSyncBadge } from "../financeiro/NfSyncBadge";
 
 interface EstoqueTableProps {
   pecas: IPecasEstoque[];
@@ -74,12 +75,20 @@ export const EstoqueTable = ({
                     {dataCompra}
                   </span>
                   {lastEntry?.nf_numero && (
-                    <span
-                      className="mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm"
-                      title={`Esta compra está vinculada à NF ${lastEntry.nf_numero}`}
-                    >
-                      NF: {lastEntry.nf_numero}
-                    </span>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <span
+                        className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-neutral-100 text-neutral-700 border border-neutral-200 shadow-sm text-center w-fit"
+                        title={`Sincronização com a NF ${lastEntry.nf_numero}`}
+                      >
+                        NF: {lastEntry.nf_numero}
+                      </span>
+                      <div className="scale-90 origin-left">
+                        <NfSyncBadge 
+                          nf_numero={lastEntry.nf_numero} 
+                          id_fornecedor={lastEntry.id_pessoa || lastEntry.fornecedor?.id_fornecedor} 
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
               </td>

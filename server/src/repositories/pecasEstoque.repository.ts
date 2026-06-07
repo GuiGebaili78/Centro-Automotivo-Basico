@@ -82,6 +82,8 @@ export class PecasEstoqueRepository {
       valor_venda: number;
       margem_lucro?: number;
       ref_cod?: string;
+      condicao?: string;
+      aplicacao?: string;
       obs?: string;
     }[];
   }) {
@@ -143,6 +145,8 @@ export class PecasEstoqueRepository {
             valor_venda: item.valor_venda,
             margem_lucro: item.margem_lucro || null,
             ref_cod: item.ref_cod || null,
+            condicao: item.condicao || null,
+            aplicacao: item.aplicacao || null,
             obs: item.obs || null,
           },
         });
@@ -232,6 +236,8 @@ export class PecasEstoqueRepository {
         valor_venda: number;
         margem_lucro?: number;
         ref_cod?: string;
+        condicao?: string;
+        aplicacao?: string;
         obs?: string;
         _delete?: boolean;             // true → remover este item
       }[];
@@ -295,6 +301,8 @@ export class PecasEstoqueRepository {
               valor_venda: item.valor_venda,
               margem_lucro: item.margem_lucro ?? null,
               ref_cod: item.ref_cod ?? null,
+              condicao: item.condicao ?? null,
+              aplicacao: item.aplicacao ?? null,
               obs: item.obs ?? null,
             },
           });
@@ -330,6 +338,8 @@ export class PecasEstoqueRepository {
             valor_venda: item.valor_venda,
             margem_lucro: item.margem_lucro ?? null,
             ref_cod: item.ref_cod ?? null,
+            condicao: item.condicao ?? null,
+            aplicacao: item.aplicacao ?? null,
             obs: item.obs ?? null,
           },
         });

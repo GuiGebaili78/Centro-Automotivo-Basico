@@ -1,6 +1,23 @@
 import { prisma } from "../prisma.js";
 import crypto from "crypto";
 
+const normalizeDate = (dateInfo: any): Date | null => {
+  if (!dateInfo) return null;
+  if (typeof dateInfo === "string") {
+    const trimmed = dateInfo.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return new Date(`${trimmed}T12:00:00.000Z`);
+    }
+    if (trimmed.includes("T")) {
+      const [datePart] = trimmed.split("T");
+      return new Date(`${datePart}T12:00:00.000Z`);
+    }
+  }
+  const dt = new Date(dateInfo);
+  dt.setUTCHours(12, 0, 0, 0);
+  return dt;
+};
+
 export class ContasPagarRepository {
   async create(data: any) {
     console.log("[ContasPagarRepo] Creating:", data);
@@ -8,18 +25,12 @@ export class ContasPagarRepository {
     const { repetir_parcelas, applyToAllRecurrences, ...mainData } = data;
     const repetitions = Number(repetir_parcelas || 0);
 
-    // Helper para normalizar datas para Meio-Dia UTC
-    const normalizeDate = (dateInfo: any) => {
-      if (!dateInfo) return null;
-      const dt = new Date(dateInfo);
-      dt.setUTCHours(12, 0, 0, 0);
-      return dt;
-    };
-
     if (mainData.dt_vencimento)
       mainData.dt_vencimento = normalizeDate(mainData.dt_vencimento);
     if (mainData.dt_pagamento)
       mainData.dt_pagamento = normalizeDate(mainData.dt_pagamento);
+    if (mainData.dt_emissao)
+      mainData.dt_emissao = normalizeDate(mainData.dt_emissao);
 
     return prisma.$transaction(async (tx) => {
       // Gerar UUID para grupo de recorrência se houver repetições
@@ -48,7 +59,8 @@ export class ContasPagarRepository {
       if (created.status === "PAGO") {
         console.log("[ContasPagarRepo] Auto-launching Livro Caixa for Create");
 
-        const movimentoDate = new Date();
+        // Usa a data de pagamento informada pelo usuário; fallback para now()
+        const movimentoDate = created.dt_pagamento ? new Date(created.dt_pagamento) : new Date();
 
         await tx.livroCaixa.create({
           data: {
@@ -162,17 +174,10 @@ export class ContasPagarRepository {
   async update(id: number, data: any) {
     console.log(`[ContasPagarRepo] Updating ID ${id} with:`, data);
 
-    // Redefinindo o helper aqui ou usando lógica direta para manter o arquivo limpo se não extraí pra fora da classe
-    const normalizeDate = (dateInfo: any) => {
-      if (!dateInfo) return null;
-      const dt = new Date(dateInfo);
-      dt.setUTCHours(12, 0, 0, 0);
-      return dt;
-    };
-
     if (data.dt_vencimento)
       data.dt_vencimento = normalizeDate(data.dt_vencimento);
     if (data.dt_pagamento) data.dt_pagamento = normalizeDate(data.dt_pagamento);
+    if (data.dt_emissao) data.dt_emissao = normalizeDate(data.dt_emissao);
 
     const {
       id_conta_bancaria: idContaRaw,
@@ -212,10 +217,9 @@ export class ContasPagarRepository {
 
         const id_conta_bancaria = idContaRaw ? Number(idContaRaw) : null;
 
-        // LivroCaixa entries should always reflect the exact system time of the operation.
-        // This ensures that the dt_movimentacao accurately represents when the cash movement
-        // was recorded in the system, resolving issues with incorrect timestamps like 9:00 AM.
-        const movimentoDate = new Date();
+        // Usa a data de pagamento informada pelo usuário para dt_movimentacao.
+        // Fallback para new Date() caso o campo esteja vazio.
+        const movimentoDate = updated.dt_pagamento ? new Date(updated.dt_pagamento) : new Date();
 
         await tx.livroCaixa.create({
           data: {
@@ -423,14 +427,6 @@ export class ContasPagarRepository {
     // Buscar todas as contas do grupo
     const seriesContas = await this.findByGrupoRecorrencia(recInfo.id_grupo);
 
-    // Normalização de datas (mesma lógica do update individual)
-    const normalizeDate = (dateInfo: any) => {
-      if (!dateInfo) return null;
-      const dt = new Date(dateInfo);
-      dt.setUTCHours(12, 0, 0, 0);
-      return dt;
-    };
-
     if (data.dt_vencimento)
       data.dt_vencimento = normalizeDate(data.dt_vencimento);
     if (data.dt_pagamento) data.dt_pagamento = normalizeDate(data.dt_pagamento);
@@ -572,60 +568,47 @@ export class ContasPagarRepository {
       },
       select: {
         nf_numero: true,
+        id_fornecedor: true,
         credor: true,
         valor: true,
         status: true,
       }
     });
 
-    const nfMap = new Map<string, { nf_numero: string, credor: string, valor: number, isPendente: boolean }>();
+    const nfMap = new Map<string, { nf_numero: string, id_fornecedor: number | null, credor: string, valor: number, isPendente: boolean, matchPercent?: number }>();
     
     for (const c of contas) {
       if (!c.nf_numero) continue;
-      if (!nfMap.has(c.nf_numero)) {
-         nfMap.set(c.nf_numero, {
+      const key = `${c.nf_numero}_${c.id_fornecedor || 'null'}`;
+      if (!nfMap.has(key)) {
+         nfMap.set(key, {
             nf_numero: c.nf_numero,
+            id_fornecedor: c.id_fornecedor,
             credor: c.credor || "",
             valor: Number(c.valor),
             isPendente: c.status !== "PAGO"
          });
       } else {
-         const existing = nfMap.get(c.nf_numero)!;
+         const existing = nfMap.get(key)!;
          existing.valor += Number(c.valor);
          if (c.status !== "PAGO") existing.isPendente = true;
       }
     }
 
-    const allNfs = Array.from(nfMap.keys());
+    const allItems = Array.from(nfMap.values());
 
-    const nfsInEstoque = await prisma.entradaEstoque.findMany({
-      where: {
-        OR: [
-          { nf_numero: { in: allNfs } },
-          { nota_fiscal: { in: allNfs } }
-        ]
-      },
-      select: { nf_numero: true, nota_fiscal: true }
-    });
-
-    const nfsInPecas = await prisma.pagamentoPeca.findMany({
-      where: { nf_numero: { in: allNfs } },
-      distinct: ["nf_numero"],
-      select: { nf_numero: true }
-    });
-    
-    const setEstoque = new Set<string>();
-    for (const e of nfsInEstoque) {
-      if (e.nf_numero) setEstoque.add(e.nf_numero);
-      if (e.nota_fiscal) setEstoque.add(e.nota_fiscal);
+    const resultList = [];
+    for (const nf of allItems) {
+      // Usar a mesma lógica de sync para buscar o matchPercent
+      const sync = await this.getNfSyncStatus(nf.nf_numero, nf.id_fornecedor ?? undefined);
+      nf.matchPercent = sync.matchPercent;
+      
+      // Oculta se já foi tudo pago E já foi totalmente sincronizado (match >= 100)
+      if (!nf.isPendente && sync.matchPercent >= 100) {
+        continue;
+      }
+      resultList.push(nf);
     }
-    for (const p of nfsInPecas) {
-      if (p.nf_numero) setEstoque.add(p.nf_numero);
-    }
-
-    const resultList = Array.from(nfMap.values()).filter(nf => {
-       return nf.isPendente || !setEstoque.has(nf.nf_numero);
-    });
 
     const total = resultList.length;
     // Quando take não é informado, retorna todos sem paginar
@@ -640,19 +623,34 @@ export class ContasPagarRepository {
   }
 
   // ── Rota B: Status de Sincronização da NF ──
-  async getNfSyncStatus(nfNumero: string) {
+  async getNfSyncStatus(nfNumero: string, idFornecedor?: number) {
+    const whereBase: any = { nf_numero: nfNumero };
+    if (idFornecedor) {
+      whereBase.id_fornecedor = Number(idFornecedor);
+    }
+
     const contas = await prisma.contasPagar.findMany({
-      where: { nf_numero: nfNumero, deleted_at: null }
+      where: { ...whereBase, deleted_at: null }
     });
     const somaContas = contas.reduce((acc, c) => acc + Number(c.valor), 0);
 
+    // Na entradaEstoque a FK de fornecedor é id_pessoa
+    const whereEstoque: any = { nf_numero: nfNumero };
+    if (idFornecedor) {
+      whereEstoque.id_pessoa = Number(idFornecedor);
+    }
     const estoque = await prisma.entradaEstoque.findMany({
-      where: { nf_numero: nfNumero }
+      where: whereEstoque
     });
     const somaEstoque = estoque.reduce((acc, e) => acc + Number(e.valor_total), 0);
 
+    // Na pagamentoPeca a FK de fornecedor é id_pessoa
+    const wherePecas: any = { nf_numero: nfNumero, deleted_at: null };
+    if (idFornecedor) {
+      wherePecas.id_pessoa = Number(idFornecedor);
+    }
     const pecas = await prisma.pagamentoPeca.findMany({
-      where: { nf_numero: nfNumero, deleted_at: null }
+      where: wherePecas
     });
     const somaPecas = pecas.reduce((acc, p) => acc + Number(p.custo_real), 0);
 
@@ -664,8 +662,7 @@ export class ContasPagarRepository {
     if (somaContas > 0) {
       percent = Number(((somaRealizada / somaContas) * 100).toFixed(2));
       if (percent > 100) {
-        percent = 100;
-        flag = "VALOR_DIVERGENTE";
+        flag = "EXCEDENTE"; // Removemos o percent = 100 pra enviar a porcentagem real
       }
     } else if (somaRealizada > 0) {
       percent = 0;
@@ -674,6 +671,7 @@ export class ContasPagarRepository {
 
     return {
       nf_numero: nfNumero,
+      id_fornecedor: idFornecedor,
       totalContasPagar: Number(somaContas.toFixed(2)),
       totalEstoque: Number(somaEstoque.toFixed(2)),
       totalPagamentoPeca: Number(somaPecas.toFixed(2)),

@@ -35,6 +35,8 @@ export const EntradaItensForm = ({
   const [rowMargin, setRowMargin] = useState("");
   const [rowSale, setRowSale] = useState("");
   const [rowRef, setRowRef] = useState("");
+  const [rowCondicao, setRowCondicao] = useState("");
+  const [rowAplicacao, setRowAplicacao] = useState("");
   const [rowObs, setRowObs] = useState("");
   const [rowMinStock, setRowMinStock] = useState("");
 
@@ -136,6 +138,8 @@ export const EntradaItensForm = ({
       margem_lucro: Number(rowMargin),
       valor_venda: Number(rowSale),
       ref_cod: rowRef,
+      condicao: rowCondicao,
+      aplicacao: rowAplicacao,
       obs: rowObs,
     };
 
@@ -147,6 +151,8 @@ export const EntradaItensForm = ({
     setRowMargin("");
     setRowSale("");
     setRowRef("");
+    setRowCondicao("");
+    setRowAplicacao("");
     setRowObs("");
     setRowMinStock("");
     setSelectedStockPart(null);
@@ -180,6 +186,17 @@ export const EntradaItensForm = ({
     );
   };
 
+  const handleDuplicateItem = (item: IItemEntrada) => {
+    const duplicate: IItemEntrada = {
+      ...item,
+      tempId: Date.now(),
+      id_item_entrada: undefined, // remove id para ser nova inserção
+      _delete: false,
+    };
+    setItems([...items, duplicate]);
+    toast.success("Item duplicado na lista!");
+  };
+
   const handleEditItem = (item: IItemEntrada) => {
     if (item.new_part_data) {
       setIsNewPart(true);
@@ -206,6 +223,8 @@ export const EntradaItensForm = ({
     setRowMargin(String(item.margem_lucro));
     setRowSale(String(item.valor_venda));
     setRowRef(item.ref_cod || "");
+    setRowCondicao(item.condicao || "");
+    setRowAplicacao(item.aplicacao || "");
     setRowObs(item.obs || "");
     setRowMinStock(String(item.new_part_data?.estoque_minimo || 0));
 
@@ -235,6 +254,25 @@ export const EntradaItensForm = ({
               onChange={(e) => {
                 handleSearchPart(e.target.value);
                 if (selectedStockPart) setSelectedStockPart(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Tab" || e.key === "Enter") {
+                  if (partSearch.trim().length > 0 && !selectedStockPart) {
+                    setIsNewPart(true);
+                    setNewPartName(partSearch);
+                    setPartResults([]);
+                    if (e.key === "Enter") e.preventDefault();
+                  }
+                }
+              }}
+              onBlur={() => {
+                setTimeout(() => {
+                  if (partSearch.trim().length > 0 && !selectedStockPart && !isNewPart) {
+                    setIsNewPart(true);
+                    setNewPartName(partSearch);
+                    setPartResults([]);
+                  }
+                }, 200);
               }}
             />
               {partResults.length > 0 && !selectedStockPart && (
@@ -286,31 +324,31 @@ export const EntradaItensForm = ({
                 )}
           </div>
 
-          {/* If New Part: Extra Fields */}
-          {isNewPart && (
-            <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2">
-              <div>
-                <Input
-                  label="Fabricante"
-                  placeholder="Marca"
-                  value={newPartFab}
-                  onChange={(e) => setNewPartFab(e.target.value)}
-                />
-              </div>
-              <Select
-                label="Unidade"
-                className="!h-[46px] !p-3 bg-white"
-                value={newPartUnit}
-                onChange={(e) => setNewPartUnit(e.target.value)}
-              >
-                <option value="UN">Unidade (UN)</option>
-                <option value="L">Litro (L)</option>
-                <option value="KG">Quilo (KG)</option>
-                <option value="KIT">Kit</option>
-                <option value="PAR">Par</option>
-              </Select>
+          {/* New Part: Extra Fields Always Visible but Disabled if not new */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Input
+                label="Fabricante"
+                placeholder="Marca"
+                value={newPartFab}
+                onChange={(e) => setNewPartFab(e.target.value)}
+                disabled={!isNewPart}
+              />
             </div>
-          )}
+            <Select
+              label="Unidade"
+              className="!h-[46px] !p-3 bg-white"
+              value={newPartUnit}
+              onChange={(e) => setNewPartUnit(e.target.value)}
+              disabled={!isNewPart}
+            >
+              <option value="UN">Unidade (UN)</option>
+              <option value="L">Litro (L)</option>
+              <option value="KG">Quilo (KG)</option>
+              <option value="KIT">Kit</option>
+              <option value="PAR">Par</option>
+            </Select>
+          </div>
         </div>
 
         {/* Values Row */}
@@ -356,9 +394,25 @@ export const EntradaItensForm = ({
           </div>
           <div className="md:col-span-2">
             <Input
-              label="Ref/Cod (Opc)"
+              label="Referência (Opc)"
               value={rowRef}
               onChange={(e) => setRowRef(e.target.value)}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Input
+              label="Condição (Opc)"
+              placeholder="Novo, Usado..."
+              value={rowCondicao}
+              onChange={(e) => setRowCondicao(e.target.value)}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Input
+              label="Aplicação (Opc)"
+              placeholder="Ex: Gol G5 1.0"
+              value={rowAplicacao}
+              onChange={(e) => setRowAplicacao(e.target.value)}
             />
           </div>
           <div className="md:col-span-2">
@@ -370,7 +424,16 @@ export const EntradaItensForm = ({
               onChange={(e) => setRowMinStock(e.target.value)}
             />
           </div>
-          <div className="md:col-span-2 flex items-end">
+          <div className="md:col-span-2 flex flex-col justify-end">
+            <div className="flex justify-between items-end mb-1 px-1">
+              <span className="text-xs text-neutral-500 font-medium">Total:</span>
+              <span className="font-bold text-sm text-primary-700">
+                {Intl.NumberFormat("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                }).format(Number(rowQtd || 0) * Number(rowCost || 0))}
+              </span>
+            </div>
             <Button
               onClick={handleAddItem}
               className="w-full"
@@ -395,19 +458,17 @@ export const EntradaItensForm = ({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="tabela-limpa w-full">
+          <table className="table-fixed w-full tabela-limpa">
             <thead>
-              <thead>
-                <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
-                  <th className="w-[30%] p-4 text-left">Produto</th>
-                  <th className="w-[8%] p-4 text-center">Qtd</th>
-                  <th className="w-[10%] p-4 text-right">Custo</th>
-                  <th className="w-[8%] p-4 text-right">Margem</th>
-                  <th className="w-[8%] p-4 text-right">Venda</th>
-                  <th className="w-[8%] p-4 text-right">Subtotal</th>
-                  <th className="w-[12%] p-4 text-center">Ações</th>
-                </tr>
-              </thead>
+              <tr className="bg-neutral-50 text-sm font-medium text-gray-600">
+                <th className="w-1/4 p-4 text-left">Produto</th>
+                <th className="w-1/12 p-4 text-center">Qtd</th>
+                <th className="w-[12%] p-4 text-right">Custo</th>
+                <th className="w-[10%] p-4 text-right">Margem</th>
+                <th className="w-[12%] p-4 text-right">Venda</th>
+                <th className="w-[12%] p-4 text-right">Subtotal</th>
+                <th className="w-1/6 p-4 text-center">Ações</th>
+              </tr>
             </thead>
             <tbody>
               {items.map((i) => {
@@ -423,14 +484,18 @@ export const EntradaItensForm = ({
                         : "hover:bg-neutral-50"
                     }`}
                   >
-                    <td className="p-4">
+                    <td className="w-1/4 p-4 break-words">
                       <div className="flex flex-col">
                         <span
                           className={`text-base text-gray-900 font-medium ${isDeleted ? "line-through text-red-500" : ""}`}
                         >
                           {i.displayName}
                         </span>
-                        <span className="text-xs text-gray-500">{i.ref_cod}</span>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+                          {i.ref_cod && <span>Ref: {i.ref_cod}</span>}
+                          {i.condicao && <span>Cond: {i.condicao}</span>}
+                          {i.aplicacao && <span>Apli: {i.aplicacao}</span>}
+                        </div>
                         <div className="flex items-center gap-1.5 flex-wrap mt-1">
                           {i.new_part_data && (
                             <span className="text-sm bg-blue-100 text-blue-700 w-fit px-1 rounded uppercase font-bold">
@@ -450,22 +515,22 @@ export const EntradaItensForm = ({
                         </div>
                       </div>
                     </td>
-                    <td className={`p-4 text-center text-base text-gray-900 font-medium ${isDeleted ? "line-through text-red-400" : ""}`}>
+                    <td className={`w-1/12 p-4 text-center text-base text-gray-900 font-medium ${isDeleted ? "line-through text-red-400" : ""}`}>
                       {i.quantidade}
                     </td>
-                    <td className={`p-4 text-right text-base text-gray-900 font-medium ${isDeleted ? "line-through text-red-400" : ""}`}>
+                    <td className={`w-[12%] p-4 text-right text-base text-gray-900 font-medium ${isDeleted ? "line-through text-red-400" : ""}`}>
                       {formatCurrency(i.valor_custo)}
                     </td>
-                    <td className={`p-4 text-right text-base text-primary-600 font-medium ${isDeleted ? "opacity-50" : ""}`}>
+                    <td className={`w-[10%] p-4 text-right text-base text-primary-600 font-medium ${isDeleted ? "opacity-50" : ""}`}>
                       {i.margem_lucro?.toFixed(1)}%
                     </td>
-                    <td className={`p-4 text-right text-base text-gray-900 font-bold ${isDeleted ? "line-through text-red-400" : ""}`}>
+                    <td className={`w-[12%] p-4 text-right text-base text-gray-900 font-bold ${isDeleted ? "line-through text-red-400" : ""}`}>
                       {formatCurrency(i.valor_venda)}
                     </td>
-                    <td className={`p-4 text-right text-base text-gray-500 font-medium ${isDeleted ? "line-through text-red-400" : ""}`}>
+                    <td className={`w-[12%] p-4 text-right text-base text-gray-500 font-medium ${isDeleted ? "line-through text-red-400" : ""}`}>
                       {formatCurrency(i.quantidade * i.valor_custo)}
                     </td>
-                    <td>
+                    <td className="w-1/6">
                       <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         {isDeleted ? (
                           // Botão para desfazer exclusão
@@ -485,6 +550,12 @@ export const EntradaItensForm = ({
                                 onClick={() => handleEditItem(i)}
                               />
                             )}
+                            <ActionButton
+                              icon={Plus} // Ou ícone de cópia melhor, ex: Copy
+                              label="Duplicar"
+                              variant="neutral"
+                              onClick={() => handleDuplicateItem(i)}
+                            />
                             <ActionButton
                               icon={Trash2}
                               label="Remover"

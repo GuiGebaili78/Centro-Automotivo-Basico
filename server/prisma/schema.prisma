@@ -20,8 +20,6 @@ model Pessoa {
   dt_cadastro     DateTime        @default(now()) @db.Timestamp(6)
   pessoa_fisica   PessoaFisica?
   pessoa_juridica PessoaJuridica?
-  entradas_estoque EntradaEstoque[]
-  pagamentos_peca PagamentoPeca[]
 
   @@map("pessoa")
 }
@@ -120,6 +118,10 @@ model Fornecedor {
   dt_cadastro         DateTime  @default(now())
   updated_at          DateTime  @updatedAt
   deleted_at          DateTime?
+
+  contas_pagar        ContasPagar[]
+  entradas_estoque    EntradaEstoque[]
+  pagamentos_peca     PagamentoPeca[]
 
   @@map("fornecedor")
 }
@@ -302,7 +304,7 @@ model PagamentoPeca {
   deleted_at                DateTime?   @db.Timestamp(6)
   id_livro_caixa            Int?
   nf_numero                 String?     @db.VarChar(50)
-  fornecedor                Pessoa      @relation(fields: [id_pessoa], references: [id_pessoa])
+  fornecedor                Fornecedor  @relation(fields: [id_pessoa], references: [id_fornecedor])
   item_os                   ItensOs     @relation(fields: [id_item_os], references: [id_iten])
   livro_caixa               LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
 
@@ -405,6 +407,9 @@ model ContasPagar {
   id_categoria         Int?
   categoria_financeira CategoriaFinanceira? @relation(fields: [id_categoria], references: [id_categoria])
 
+  id_fornecedor        Int?
+  fornecedor_rel       Fornecedor?          @relation(fields: [id_fornecedor], references: [id_fornecedor])
+
   @@map("contas_pagar")
 }
 
@@ -478,7 +483,7 @@ model EntradaEstoque {
   obs           String?       @db.VarChar(500)
   created_at    DateTime      @default(now()) @db.Timestamp(6)
   nf_numero     String?       @db.VarChar(50)
-  fornecedor    Pessoa        @relation(fields: [id_pessoa], references: [id_pessoa])
+  fornecedor    Fornecedor    @relation(fields: [id_pessoa], references: [id_fornecedor])
   itens         ItemEntrada[]
 
   @@map("entrada_estoque")
@@ -493,6 +498,8 @@ model ItemEntrada {
   margem_lucro     Decimal?       @db.Decimal(10, 2)
   valor_venda      Decimal        @db.Decimal(10, 2)
   ref_cod          String?        @db.VarChar(50)
+  condicao         String?        @db.VarChar(50)
+  aplicacao        String?        @db.VarChar(255)
   obs              String?        @db.VarChar(255)
   entrada          EntradaEstoque @relation(fields: [id_entrada], references: [id_entrada])
   peca             PecasEstoque   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])

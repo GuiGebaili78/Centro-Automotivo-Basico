@@ -273,13 +273,18 @@ export class FinanceiroService {
     return response.data;
   }
 
-  static async getNfSyncStatus(nf_numero: string): Promise<{
+  static async getNfSyncStatus(nf_numero: string, id_fornecedor?: number): Promise<{
     totalContasPagar: number;
     totalEstoque: number;
     totalPagamentoPeca: number;
     matchPercent: number;
+    status?: string;
   }> {
-    const response = await api.get(`/contas-pagar/nf-sync-status/${encodeURIComponent(nf_numero)}`);
+    let url = `/contas-pagar/nf-sync-status/${encodeURIComponent(nf_numero)}`;
+    if (id_fornecedor) {
+      url += `?id_fornecedor=${id_fornecedor}`;
+    }
+    const response = await api.get(url);
     return response.data;
   }
 

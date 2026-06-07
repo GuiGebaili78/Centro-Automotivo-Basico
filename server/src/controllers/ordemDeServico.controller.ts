@@ -98,6 +98,20 @@ export class OrdemDeServicoController {
     }
   }
 
+  async reabrir(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const os = await service.reabrirOS(id);
+      res.json({ success: true, message: "OS reaberta com sucesso", os });
+    } catch (error) {
+      console.error("Reopen OS Error:", error);
+      res.status(400).json({
+        error: "Failed to reopen OS",
+        details: error instanceof Error ? error.message : error,
+      });
+    }
+  }
+
   async getPdf(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);

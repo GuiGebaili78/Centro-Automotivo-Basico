@@ -18,6 +18,8 @@ export interface ResumoFinanceiro {
     total: number;
     pecasTerceiros?: number;
     pecasEstoque?: number;
+    receitaPecas?: number;
+    receitaServicos?: number;
   };
   despesas: {
     maoDeObra: number;
@@ -99,4 +101,6 @@ export interface EvolucaoMensal {
   lucroMaoDeObra?: number;
   lucroEstoque?: number;
   lucroAutoPecas?: number;
+  despesaOficina?: number;
+  despesaAutoPecas?: number;
 }

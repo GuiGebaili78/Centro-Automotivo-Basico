@@ -78,9 +78,10 @@ export class FechamentoFinanceiroController {
 
       res.status(201).json(fechamento);
     } catch (error: any) {
-      res.status(400).json({
+      console.error("[CRÍTICO] Erro ao consolidar OS:", error);
+      res.status(500).json({
         error: "Failed to consolidate OS",
-        details: error.message,
+        details: error.message || error,
       });
     }
   }

@@ -18,16 +18,16 @@ export const OsTable = ({
 }: OsTableProps) => {
   return (
     <div className="overflow-x-auto">
-      <table className="tabela-limpa w-full">
+      <table className="tabela-limpa w-full table-fixed">
         <thead>
           <tr>
-            <th className="w-[15%]">OS / Data</th>
+            <th className="w-[12%]">OS / Data</th>
             <th className="w-[20%]">Veículo / Peça</th>
-            <th className="w-[25%]">Diagnóstico / Obs</th>
-            <th className="w-[15%]">Técnico</th>
-            <th className="w-[15%]">Cliente</th>
-            <th className="w-[10%] text-center">Status</th>
-            <th className="w-[10%] text-center">Ações</th>
+            <th className="w-[24%]">Diagnóstico / Obs</th>
+            <th className="w-[12%]">Técnico</th>
+            <th className="w-[14%]">Cliente</th>
+            <th className="w-[9%] text-center">Status</th>
+            <th className="w-[9%] text-center">Ações</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-50">
@@ -66,23 +66,23 @@ export const OsTable = ({
                   </div>
                 </td>
                 <td className="p-4">
-                  <div className="flex flex-col">
+                  <div className="flex flex-col break-words whitespace-normal">
                     {os.veiculo ? (
                       <>
-                        <span className="text-neutral-600 text-base font-medium uppercase">
+                        <span className="text-neutral-600 text-base font-medium uppercase break-words">
                           {os.veiculo.marca} {os.veiculo.modelo} •{" "}
                           {os.veiculo.cor}
                         </span>
-                        <span className="text-base text-primary-600 uppercase mt-0.5">
+                        <span className="text-base text-primary-600 uppercase mt-0.5 break-all">
                           {os.veiculo.placa} - {os.veiculo.ano_fabricacao && os.veiculo.ano_modelo ? `${os.veiculo.ano_fabricacao}/${os.veiculo.ano_modelo}` : os.veiculo.ano_fabricacao || os.veiculo.ano_modelo || "---"}
                         </span>
                       </>
                     ) : os.equipamento ? (
                       <>
-                        <span className="text-neutral-600 text-base font-medium uppercase">
+                        <span className="text-neutral-600 text-base font-medium uppercase break-words">
                           {os.equipamento.nome_peca}
                         </span>
-                        <span className="text-sm text-neutral-400 mt-1 italic">
+                        <span className="text-sm text-neutral-400 mt-1 italic break-words">
                           {os.equipamento.fabricante &&
                             `Marca: ${os.equipamento.fabricante}`}
                           {os.equipamento.numeracao &&
@@ -97,8 +97,8 @@ export const OsTable = ({
                   </div>
                 </td>
                 <td className="p-4">
-                  <div className="flex flex-col">
-                    <p className="text-sm text-neutral-600 line-clamp-2 uppercase leading-relaxed">
+                  <div className="flex flex-col break-words whitespace-normal">
+                    <p className="text-sm text-neutral-600 line-clamp-2 uppercase leading-relaxed break-words">
                       {os.diagnostico || os.defeito_relatado || (
                         <span className="text-neutral-300 italic">---</span>
                       )}
@@ -139,8 +139,8 @@ export const OsTable = ({
                   </div>
                 </td>
                 <td className="p-4">
-                  <div className="flex flex-col">
-                    <span className="text-base font-medium text-neutral-600 uppercase line-clamp-2 leading-relaxed">
+                  <div className="flex flex-col break-words whitespace-normal">
+                    <span className="text-base font-medium text-neutral-600 uppercase line-clamp-2 leading-relaxed break-words">
                       {os.cliente?.pessoa_fisica?.pessoa?.nome ||
                         os.cliente?.pessoa_juridica?.razao_social ||
                         "Desconhecido"}

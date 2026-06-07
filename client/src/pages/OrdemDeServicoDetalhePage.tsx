@@ -170,6 +170,7 @@ export const OrdemDeServicoDetalhePage = () => {
         pagamentos={os.pagamentos_cliente || []}
         onSuccess={() => {
           setPaymentModalOpen(false);
+          const scrollY = window.scrollY; // Salvar posição antes do refetch
           refetch();
           
           // Toast verde de sucesso
@@ -188,6 +189,10 @@ export const OrdemDeServicoDetalhePage = () => {
 
           // Rolar suavemente até o botão através da Ref do container
           setTimeout(() => {
+            // Restaurar posição caso o re-render tenha rolado para o topo
+            if (window.scrollY < scrollY) {
+              window.scrollTo(0, scrollY);
+            }
             if (totalsSectionRef.current) {
               totalsSectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
             }

@@ -12,9 +12,10 @@ const STALE_TIME = 30000; // Tempo de cache de 30 segundos
  * Garante que se múltiplas parcelas com a mesma NF renderizarem simultaneamente,
  * apenas uma única chamada HTTP é disparada e compartilhada por todas as instâncias.
  */
-const fetchNfSyncStatus = (nfNumero: string): Promise<{ matchPercent: number }> => {
+const fetchNfSyncStatus = (nfNumero: string, idFornecedor?: number): Promise<{ matchPercent: number }> => {
+  const cacheKey = `${nfNumero}_${idFornecedor || 'null'}`;
   const now = Date.now();
-  const cached = resolvedCache.get(nfNumero);
+  const cached = resolvedCache.get(cacheKey);
 
   // Retorna do cache se estiver válido
   if (cached && now - cached.timestamp < STALE_TIME) {
@@ -22,29 +23,30 @@ const fetchNfSyncStatus = (nfNumero: string): Promise<{ matchPercent: number }> 
   }
 
   // Se já houver uma requisição em andamento para esta NF, reaproveita a mesma promessa
-  let promise = pendingRequests.get(nfNumero);
+  let promise = pendingRequests.get(cacheKey);
   if (!promise) {
-    promise = FinanceiroService.getNfSyncStatus(nfNumero)
+    promise = FinanceiroService.getNfSyncStatus(nfNumero, idFornecedor)
       .then((data) => {
         const result = { matchPercent: Number(data.matchPercent || 0) };
-        resolvedCache.set(nfNumero, { ...result, timestamp: Date.now() });
-        pendingRequests.delete(nfNumero);
+        resolvedCache.set(cacheKey, { ...result, timestamp: Date.now() });
+        pendingRequests.delete(cacheKey);
         return result;
       })
       .catch((err) => {
-        pendingRequests.delete(nfNumero);
+        pendingRequests.delete(cacheKey);
         throw err;
       });
-    pendingRequests.set(nfNumero, promise);
+    pendingRequests.set(cacheKey, promise);
   }
   return promise;
 };
 
 interface NfSyncBadgeProps {
   nf_numero: string;
+  id_fornecedor?: number;
 }
 
-export const NfSyncBadge: React.FC<NfSyncBadgeProps> = ({ nf_numero }) => {
+export const NfSyncBadge: React.FC<NfSyncBadgeProps> = ({ nf_numero, id_fornecedor }) => {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [percent, setPercent] = useState<number | null>(null);
   const elementRef = useRef<HTMLDivElement | null>(null);
@@ -63,10 +65,10 @@ export const NfSyncBadge: React.FC<NfSyncBadgeProps> = ({ nf_numero }) => {
     setStatus("loading");
     try {
       if (force) {
-        resolvedCache.delete(nf_numero);
-        pendingRequests.delete(nf_numero);
+        resolvedCache.delete(`${nf_numero}_${id_fornecedor || 'null'}`);
+        pendingRequests.delete(`${nf_numero}_${id_fornecedor || 'null'}`);
       }
-      const data = await fetchNfSyncStatus(nf_numero);
+      const data = await fetchNfSyncStatus(nf_numero, id_fornecedor);
       if (isMounted.current) {
         setPercent(data.matchPercent);
         setStatus("success");
@@ -137,7 +139,11 @@ export const NfSyncBadge: React.FC<NfSyncBadgeProps> = ({ nf_numero }) => {
       {status === "success" && percent !== null && (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
-            {percent >= 100 ? (
+            {percent > 100 ? (
+              <span className="inline-flex items-center gap-1 text-white bg-red-600 border border-red-700 px-2.5 py-0.5 rounded-full font-bold shadow-sm">
+                <AlertCircle size={10} className="text-white" /> Ultrapassou o valor da NF ({Math.round(percent)}%)
+              </span>
+            ) : percent === 100 ? (
               <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold shadow-sm">
                 <CheckCircle2 size={10} className="text-emerald-500" /> 💲 Valor: {Math.round(percent)}%
               </span>

@@ -76,4 +76,19 @@ export class OrdemDeServicoService {
     }
     return this.repository.delete(id);
   }
+
+  async reabrirOS(id: number) {
+    const currentOs = await this.repository.findById(id);
+    if (!currentOs) {
+      throw new Error("Ordem de Serviço não encontrada");
+    }
+
+    // Regra de Estoque: Se a OS estava fechada e vai reabrir, os itens "voltam"
+    const closedStatuses = [OsStatus.FINANCEIRO, OsStatus.FINALIZADA];
+    if (closedStatuses.includes(currentOs.status as OsStatus)) {
+      await this.repository.adjustStockForOS(id, "RETURN");
+    }
+
+    return this.repository.reabrirOS(id);
+  }
 }

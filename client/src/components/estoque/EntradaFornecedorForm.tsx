@@ -48,12 +48,12 @@ export const EntradaFornecedorForm = ({
             </Button>
           </div>
           <Select
-            value={selectedSupplierId}
+            value={selectedSupplierId || ""}
             onChange={(e) => setSelectedSupplierId(e.target.value)}
           >
             <option value="">Selecione...</option>
             {suppliers.map((s) => (
-              <option key={s.id_fornecedor} value={s.id_fornecedor}>
+              <option key={s.id_fornecedor} value={String(s.id_fornecedor)}>
                 {s.nome_fantasia || s.nome}
               </option>
             ))}
@@ -96,11 +96,18 @@ export const EntradaFornecedorForm = ({
             className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 text-amber-900 font-medium"
           >
             <option value="">Sem Sincronização (Livre)</option>
-            {nfsPendentes.map((nf) => (
-              <option key={nf.nf_numero} value={nf.nf_numero}>
-                {nf.nf_numero} ({nf.credor || "Sem Credor"})
-              </option>
-            ))}
+            {nfsPendentes.map((nf) => {
+              const isExcedente = nf.matchPercent > 100 && nf.nf_numero !== nfNumero;
+              return (
+                <option 
+                  key={`${nf.nf_numero}_${nf.id_fornecedor || 'null'}`} 
+                  value={nf.nf_numero}
+                  disabled={isExcedente}
+                >
+                  {nf.nf_numero} ({nf.credor || "Sem Credor"}) {isExcedente ? "(Excedeu o Valor)" : ""}
+                </option>
+              );
+            })}
           </Select>
         </div>
       </div>

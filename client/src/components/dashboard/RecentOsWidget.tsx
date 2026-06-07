@@ -23,10 +23,16 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
       now.getDate(),
     );
 
-    let filtered = recentOss;
+    // Defesa em profundidade: garante que o Monitor só exibe OS operacionais,
+    // mesmo que o backend retorne status inesperados por algum motivo.
+    const operationalOnly = recentOss.filter(
+      (os) => ['ABERTA', 'AGENDAMENTO', 'ORCAMENTO'].includes(os.status)
+    );
+
+    let filtered = operationalOnly;
 
     if (filterPeriod !== "STATUS") {
-      filtered = recentOss.filter((os) => {
+      filtered = operationalOnly.filter((os) => {
         const dateRef = os.updated_at
           ? new Date(os.updated_at)
           : new Date(os.dt_abertura);
@@ -51,10 +57,8 @@ export const RecentOsWidget = ({ recentOss }: RecentOsWidgetProps) => {
       if (filterPeriod === "STATUS") {
         const priority: Record<string, number> = {
           [OsStatus.ABERTA]: 1,
-          EM_ANDAMENTO: 1, // Legacy check
-          [OsStatus.FINANCEIRO]: 2,
-          "PRONTO PARA FINANCEIRO": 2, // Legacy check
-          [OsStatus.FINALIZADA]: 3,
+          [OsStatus.ORCAMENTO]: 2,
+          [OsStatus.AGENDAMENTO]: 3,
         };
         const pA = priority[a.status] || 99;
         const pB = priority[b.status] || 99;

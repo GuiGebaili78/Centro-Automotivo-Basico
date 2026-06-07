@@ -185,15 +185,26 @@ export class RelatoriosRepository {
       0
     );
 
+    const pagamentosPecasPagas = await prisma.pagamentoPeca.findMany({
+      where: {
+        pago_ao_fornecedor: true,
+        data_pagamento_fornecedor: { gte: start, lte: end },
+        deleted_at: null,
+      }
+    });
+    const despesasAutoPecas = pagamentosPecasPagas.reduce((acc, p) => acc + Number(p.custo_real || 0), 0);
+
     const despesasContas = await prisma.contasPagar.findMany({
       where: {
         status: "PAGO",
         dt_pagamento: { gte: start, lte: end },
+        deleted_at: null,
       },
       include: { categoria_financeira: true },
     });
 
-    let despesasAutoPecas = 0;
+    const totalContasPagar = despesasContas.reduce((acc, c) => acc + Number(c.valor || 0), 0);
+
     let despesasOficinaContas = 0;
     const despesasMap = new Map<string, number>();
 
@@ -205,20 +216,18 @@ export class RelatoriosRepository {
       despesasMap.set(catName, (despesasMap.get(catName) || 0) + val);
 
       const nameLower = catName.toLowerCase();
-      if (
+      const isFornecedor = 
         nameLower.startsWith("auto pecas") ||
         nameLower.startsWith("auto peças") ||
-        CATEGORIAS_FORNECEDOR.includes(catName)
-      ) {
-        despesasAutoPecas += val;
-      } else {
+        CATEGORIAS_FORNECEDOR.includes(catName);
+
+      if (!isFornecedor) {
         despesasOficinaContas += val;
       }
     });
 
     const despesasOficina = despesasOficinaContas + despesasMaoDeObra;
-    const totalContasPagar = despesasAutoPecas + despesasOficinaContas;
-    const totalDespesas = totalContasPagar + despesasMaoDeObra;
+    const totalDespesas = despesasAutoPecas + despesasOficina;
 
     // ─── 5. RESULTADOS (Lucro Líquido / Margens) ───
     const lucroMaoDeObra = receitaMaoDeObra - despesasMaoDeObra;
@@ -240,6 +249,8 @@ export class RelatoriosRepository {
         maoDeObra: receitaMaoDeObra,
         autoPecas: receitaAutoPecas,
         estoque: receitaEstoque,
+        receitaPecas: receitaAutoPecas + receitaEstoque,
+        receitaServicos: receitaMaoDeObra,
         total: receitaTotal,
       },
       despesas: {
@@ -316,7 +327,7 @@ export class RelatoriosRepository {
       include: { categoria_financeira: true },
     });
 
-    // 4. Busca pagamentos de peças externos no período
+    // 4. Busca pagamentos de peças externos no período (competência)
     const pagamentosPecas = await prisma.pagamentoPeca.findMany({
       where: {
         deleted_at: null,
@@ -330,6 +341,15 @@ export class RelatoriosRepository {
       include: {
         item_os: true,
       },
+    });
+
+    // 4b. Busca pagamentos de peças (caixa)
+    const pagamentosPecasCaixa = await prisma.pagamentoPeca.findMany({
+      where: {
+        pago_ao_fornecedor: true,
+        data_pagamento_fornecedor: { gte: start, lte: end },
+        deleted_at: null,
+      }
     });
 
     // 5. Gera buckets baseados no groupBy
@@ -475,7 +495,6 @@ export class RelatoriosRepository {
         0
       );
 
-      let despesasAutoPecasContas = 0;
       let despesasOficinaContas = 0;
 
       contasInBucket.forEach((c) => {
@@ -484,18 +503,22 @@ export class RelatoriosRepository {
           c.categoria || c.categoria_financeira?.nome || "Sem Categoria"
         );
         const nameLower = catName.toLowerCase();
-        if (
+        const isFornecedor = 
           nameLower.startsWith("auto pecas") ||
           nameLower.startsWith("auto peças") ||
-          CATEGORIAS_FORNECEDOR.includes(catName)
-        ) {
-          despesasAutoPecasContas += val;
-        } else {
+          CATEGORIAS_FORNECEDOR.includes(catName);
+
+        if (!isFornecedor) {
           despesasOficinaContas += val;
         }
       });
 
-      const totalDespesas = despesasMaoDeObra + despesasAutoPecasContas + despesasOficinaContas;
+      const despesaAutoPecas = pagamentosPecasCaixa.filter(
+        (p) => p.data_pagamento_fornecedor && p.data_pagamento_fornecedor >= bStart && p.data_pagamento_fornecedor <= bEnd
+      ).reduce((acc, p) => acc + Number(p.custo_real || 0), 0);
+
+      const despesasOficina = despesasMaoDeObra + despesasOficinaContas;
+      const totalDespesas = despesaAutoPecas + despesasOficina;
 
       // Lucro segmentado
       const lucroMaoDeObra = receitaMaoDeObra - despesasMaoDeObra;
@@ -512,6 +535,8 @@ export class RelatoriosRepository {
         label: bucket.label.charAt(0).toUpperCase() + bucket.label.slice(1),
         receita: receitaTotal,
         despesa: totalDespesas,
+        despesaOficina: despesasOficina,
+        despesaAutoPecas: despesaAutoPecas,
         lucro: lucroLiquidoTotal,
         lucroMaoDeObra,
         lucroEstoque,

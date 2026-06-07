@@ -1,0 +1,1 @@
+NUNCA remover componentes visuais (Cards/Badges) a menos que explicitamente solicitado. Nunca bloquear lógicas de negócio no backend sem consultar o usuário. Sempre garantir que os inputs controlados no React tenham fallback (value={estado || ''}).

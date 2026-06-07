@@ -12,6 +12,7 @@ import { useAlerts } from "../../contexts/AlertsContext";
 import { CategorySelector } from "./CategorySelector";
 import { FornecedorForm } from "../fornecedores/Forms/FornecedorForm";
 import { toast } from "react-toastify";
+import { FornecedorService } from "../../services/fornecedor.service";
 import { Upload, Plus } from "lucide-react";
 import type { IContasPagar, IRecurrenceInfo } from "../../types/backend";
 import type { IFornecedor } from "../../types/backend";
@@ -64,6 +65,11 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
   );
   const [applyToAllRecurrences, setApplyToAllRecurrences] = useState(false);
   const [showFornecedorModal, setShowFornecedorModal] = useState(false);
+  const [fornecedores, setFornecedores] = useState<IFornecedor[]>([]);
+
+  const [tipoCredor, setTipoCredor] = useState<"FORNECEDOR" | "CREDOR_AVULSO">(
+    "FORNECEDOR",
+  );
 
   const [formData, setFormData] = useState({
     descricao: "",
@@ -80,6 +86,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
     obs: "",
     repetir_parcelas: 0,
     nf_numero: "",
+    id_fornecedor: undefined as number | undefined,
   });
 
   const [qtdBoletos, setQtdBoletos] = useState<number>(1);
@@ -95,6 +102,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       loadCategories();
+      loadFornecedores();
       if (editingId) {
         loadContaToEdit(editingId);
       } else {
@@ -102,6 +110,15 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
       }
     }
   }, [isOpen, editingId]);
+
+  const loadFornecedores = async () => {
+    try {
+      const data = await FornecedorService.getAll();
+      setFornecedores(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // ─── Sync: quando dt_vencimento muda, atualiza boletos[0].vencimento ───
   useEffect(() => {
@@ -122,7 +139,8 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
     setBoletos((prev) => {
       const newList = [...prev];
       if (qtdBoletos > prev.length) {
-        const baseVencStr = prev[0]?.vencimento || formData.dt_vencimento || todaySyncedStr;
+        const baseVencStr =
+          prev[0]?.vencimento || formData.dt_vencimento || todaySyncedStr;
 
         // Let's divide value by qtd if possible, or just leave blank
         const baseValor = Number(formData.valor) / qtdBoletos;
@@ -131,7 +149,9 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
         for (let i = prev.length; i < qtdBoletos; i++) {
           // Calcula próxima data adicionando 30*i dias à data base, usando UTC para evitar shift
           const baseParts = baseVencStr.split("-").map(Number);
-          const nextDate = new Date(Date.UTC(baseParts[0], baseParts[1] - 1, baseParts[2]));
+          const nextDate = new Date(
+            Date.UTC(baseParts[0], baseParts[1] - 1, baseParts[2]),
+          );
           nextDate.setUTCDate(nextDate.getUTCDate() + 30 * i);
           const nextStr = `${nextDate.getUTCFullYear()}-${String(nextDate.getUTCMonth() + 1).padStart(2, "0")}-${String(nextDate.getUTCDate()).padStart(2, "0")}`;
           newList.push({
@@ -178,6 +198,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
         setRecurrenceInfo(null);
       }
 
+      setTipoCredor(conta.id_fornecedor ? "FORNECEDOR" : "CREDOR_AVULSO");
       setFormData({
         descricao: conta.descricao,
         credor: conta.credor || "",
@@ -193,6 +214,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
         obs: conta.obs || "",
         repetir_parcelas: 0,
         nf_numero: conta.nf_numero || "",
+        id_fornecedor: conta.id_fornecedor || undefined,
       });
 
       setQtdBoletos(1);
@@ -215,6 +237,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
 
   const resetForm = () => {
     const todayStr = formatDateToYYYYMMDD(getSyncedDate());
+    setTipoCredor("FORNECEDOR");
     setFormData({
       descricao: "",
       credor: "",
@@ -230,6 +253,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
       obs: "",
       repetir_parcelas: 0,
       nf_numero: "",
+      id_fornecedor: undefined,
     });
     setQtdBoletos(1);
     setBoletos([
@@ -245,16 +269,20 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
   };
 
   /**
-   * Converte uma string YYYY-MM-DD para ISO sem shift de timezone.
-   * Ex: "2026-06-15" → "2026-06-15T12:00:00.000Z"
-   * O meio-dia UTC garante que qualquer fuso até ±12h não altera a data.
+   * Mantemos as datas em YYYY-MM-DD para evitar shift de timezone no backend
    */
-  const dateStrToISO = (dateStr: string): string => {
-    return `${dateStr}T12:00:00.000Z`;
+  const formatDateForPayload = (dateStr: string): string => {
+    return dateStr;
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (tipoCredor === "FORNECEDOR" && !formData.id_fornecedor) {
+      toast.error("Selecione um fornecedor ou mude para Credor Avulso");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -263,7 +291,9 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
       // Handle simple edit or single creation
       if (editingId || (!editingId && qtdBoletos === 1)) {
         const b = boletos[0];
-        const vencStr = b?.vencimento || formData.dt_vencimento;
+        const vencStr = editingId
+          ? formData.dt_vencimento
+          : b?.vencimento || formData.dt_vencimento;
         const payload: any = {
           ...formData,
           descricao: formData.descricao.toUpperCase(),
@@ -273,17 +303,21 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
           dt_pagamento:
             formData.status === "PAGO"
               ? formData.dt_pagamento
-                ? dateStrToISO(formData.dt_pagamento)
-                : getSyncedDate().toISOString()
+                ? formatDateForPayload(formData.dt_pagamento)
+                : getSyncedDate().toISOString().split("T")[0]
               : null,
-          dt_vencimento: dateStrToISO(vencStr),
+          dt_vencimento: formatDateForPayload(vencStr),
           dt_emissao: formData.dt_emissao
-            ? dateStrToISO(formData.dt_emissao)
+            ? formatDateForPayload(formData.dt_emissao)
             : null,
           nf_numero: formData.nf_numero ? formData.nf_numero.trim() : null,
           nf_boleto: b?.identificador ? b.identificador.trim() : null,
           nf_parcela: isMultiBoleto ? 1 : null,
           nf_total_parcelas: isMultiBoleto ? qtdBoletos : null,
+          id_fornecedor:
+            tipoCredor === "FORNECEDOR" && formData.id_fornecedor
+              ? Number(formData.id_fornecedor)
+              : null,
         };
 
         if (editingId) {
@@ -312,17 +346,21 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             dt_pagamento:
               formData.status === "PAGO"
                 ? formData.dt_pagamento
-                  ? dateStrToISO(formData.dt_pagamento)
-                  : getSyncedDate().toISOString()
+                  ? formatDateForPayload(formData.dt_pagamento)
+                  : getSyncedDate().toISOString().split("T")[0]
                 : null,
-            dt_vencimento: dateStrToISO(b.vencimento),
+            dt_vencimento: formatDateForPayload(b.vencimento),
             dt_emissao: formData.dt_emissao
-              ? dateStrToISO(formData.dt_emissao)
+              ? formatDateForPayload(formData.dt_emissao)
               : null,
             nf_numero: formData.nf_numero ? formData.nf_numero.trim() : null,
             nf_boleto: b.identificador ? b.identificador.trim() : null,
             nf_parcela: i + 1,
             nf_total_parcelas: boletos.length,
+            id_fornecedor:
+              tipoCredor === "FORNECEDOR" && formData.id_fornecedor
+                ? Number(formData.id_fornecedor)
+                : null,
           };
           await FinanceiroService.createContaPagar(payload);
         }
@@ -344,8 +382,14 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
     setShowFornecedorModal(false);
     if (data) {
       const nome = (data.nome_fantasia || data.nome || "").toUpperCase();
-      if (nome) {
-        setFormData((prev) => ({ ...prev, credor: nome }));
+      if (nome && data.id_fornecedor) {
+        setFornecedores((prev) => [...prev, data]);
+        setTipoCredor("FORNECEDOR");
+        setFormData((prev) => ({
+          ...prev,
+          credor: nome,
+          id_fornecedor: data.id_fornecedor,
+        }));
         toast.success(`Fornecedor "${nome}" cadastrado e selecionado!`);
       }
     }
@@ -377,7 +421,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
           <Input
             label="Vencimento (1ª Parcela)"
             type="date"
-            value={formData.dt_vencimento}
+            value={formData.dt_vencimento || ""}
             onChange={(e) =>
               setFormData({ ...formData, dt_vencimento: e.target.value })
             }
@@ -398,7 +442,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             <Input
               label="Data de Emissão"
               type="date"
-              value={formData.dt_emissao}
+              value={formData.dt_emissao || ""}
               onChange={(e) =>
                 setFormData({ ...formData, dt_emissao: e.target.value })
               }
@@ -418,26 +462,97 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
               placeholder="Ex: COMPRA MATERIAL LIMPEZA"
             />
           </div>
-          <div className="relative">
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <AutocompleteInput
-                  label="Credor"
-                  value={formData.credor}
-                  onChange={(val) => setFormData({ ...formData, credor: val })}
-                  fetchSuggestions={(q) => FinanceiroService.buscarCredor(q)}
-                  placeholder="Ex: FORNECEDOR X"
-                />
-              </div>
+          <div className="relative border border-neutral-100 rounded-xl p-4 bg-white shadow-sm flex flex-col justify-between">
+            <div className="flex bg-neutral-100 p-1 rounded-lg mb-4">
               <button
                 type="button"
-                onClick={() => setShowFornecedorModal(true)}
-                className="flex items-center gap-1.5 px-3 py-2.5 mb-[1px] bg-primary-50 text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-all text-xs font-bold uppercase tracking-wide whitespace-nowrap shadow-sm"
-                title="Cadastrar novo fornecedor"
+                onClick={() => {
+                  setTipoCredor("FORNECEDOR");
+                  setFormData((prev) => ({ ...prev, credor: "" }));
+                }}
+                className={`flex-1 text-xs font-bold py-2 rounded-md transition-all ${
+                  tipoCredor === "FORNECEDOR"
+                    ? "bg-white text-primary-700 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
+                }`}
               >
-                <Plus size={14} />
-                Novo
+                Fornecedor Cadastrado
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTipoCredor("CREDOR_AVULSO");
+                  setFormData((prev) => ({
+                    ...prev,
+                    id_fornecedor: undefined,
+                  }));
+                }}
+                className={`flex-1 text-xs font-bold py-2 rounded-md transition-all ${
+                  tipoCredor === "CREDOR_AVULSO"
+                    ? "bg-white text-primary-700 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
+                }`}
+              >
+                Credor Avulso
+              </button>
+            </div>
+
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                {tipoCredor === "FORNECEDOR" ? (
+                  <Select
+                    label="Fornecedor"
+                    value={
+                      formData.id_fornecedor
+                        ? String(formData.id_fornecedor)
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const id = Number(e.target.value);
+                      const f = fornecedores.find(
+                        (x) => x.id_fornecedor === id,
+                      );
+                      setFormData({
+                        ...formData,
+                        id_fornecedor: id,
+                        credor: f
+                          ? (f.nome_fantasia || f.nome).toUpperCase()
+                          : "",
+                      });
+                    }}
+                    required
+                  >
+                    <option value="">Selecione um fornecedor...</option>
+                    {fornecedores.map((f) => (
+                      <option key={f.id_fornecedor} value={f.id_fornecedor}>
+                        {(f.nome_fantasia || f.nome).toUpperCase()}
+                      </option>
+                    ))}
+                  </Select>
+                ) : (
+                  <AutocompleteInput
+                    label="Credor Avulso"
+                    value={formData.credor}
+                    onChange={(val) =>
+                      setFormData({ ...formData, credor: val })
+                    }
+                    fetchSuggestions={(q) => FinanceiroService.buscarCredor(q)}
+                    placeholder="Ex: FORNECEDOR X"
+                    required
+                  />
+                )}
+              </div>
+              {tipoCredor === "FORNECEDOR" && (
+                <button
+                  type="button"
+                  onClick={() => setShowFornecedorModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-2.5 mb-[1px] bg-primary-50 text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-all text-xs font-bold uppercase tracking-wide whitespace-nowrap shadow-sm"
+                  title="Cadastrar novo fornecedor"
+                >
+                  <Plus size={14} />
+                  Novo
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -493,7 +608,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             <Input
               label="Data de Emissão"
               type="date"
-              value={formData.dt_emissao}
+              value={formData.dt_emissao || ""}
               onChange={(e) =>
                 setFormData({ ...formData, dt_emissao: e.target.value })
               }
@@ -502,9 +617,18 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
           <Select
             label="Status"
             value={formData.status}
-            onChange={(e) =>
-              setFormData({ ...formData, status: e.target.value })
-            }
+            onChange={(e) => {
+              const newStatus = e.target.value;
+              setFormData((prev) => ({
+                ...prev,
+                status: newStatus,
+                // Auto-preenche dt_pagamento com hoje se mudar para PAGO e estiver vazio
+                dt_pagamento:
+                  newStatus === "PAGO" && !prev.dt_pagamento
+                    ? todaySyncedStr
+                    : prev.dt_pagamento,
+              }));
+            }}
           >
             <option value="PENDENTE">Pendente</option>
             <option value="PAGO">Pago</option>
@@ -513,7 +637,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             <Input
               label="Data de Pagamento"
               type="date"
-              value={formData.dt_pagamento}
+              value={formData.dt_pagamento || ""}
               onChange={(e) =>
                 setFormData({ ...formData, dt_pagamento: e.target.value })
               }
@@ -597,7 +721,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
                   <Input
                     label="Vencimento"
                     type="date"
-                    value={b.vencimento}
+                    value={b.vencimento || ""}
                     onChange={(e) => {
                       const newArr = [...boletos];
                       newArr[idx].vencimento = e.target.value;
@@ -660,6 +784,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
           zIndex={60}
         >
           <FornecedorForm
+            isModal={true}
             onSuccess={handleFornecedorSuccess}
             onCancel={() => setShowFornecedorModal(false)}
           />
