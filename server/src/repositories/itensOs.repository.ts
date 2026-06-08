@@ -19,6 +19,19 @@ export class ItensOsRepository {
         valor_novo: created
     });
 
+    // Criar PagamentoPeca sem fornecedor vinculado
+    // Se for peça de estoque interno, o frontend já não permite edição de fornecedor,
+    // mas deixamos criado para manter o padrão de relacionamento.
+    await prisma.pagamentoPeca.create({
+      data: {
+        id_item_os: created.id_iten,
+        id_pessoa: null,
+        custo_real: 0,
+        data_compra: new Date(),
+        pago_ao_fornecedor: false,
+      }
+    });
+
     // Recalculate OS totals
     await osRepo.recalculateTotals(created.id_os);
     

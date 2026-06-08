@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { getStatusStyle } from "../../../utils/osUtils";
 import { useNavigate } from "react-router-dom";
@@ -62,6 +62,7 @@ export const FechamentoFinanceiroForm = ({
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [fetchingOs, setFetchingOs] = useState(false);
+  const savingItemsRef = useRef(new Set<number>());
   const [statusMsg, setStatusMsg] = useState<{
     type: "success" | "error" | null;
     text: string;
@@ -199,7 +200,12 @@ export const FechamentoFinanceiroForm = ({
     if (!item || !partialState.id_fornecedor || !partialState.custo_real)
       return;
 
+    if (savingItemsRef.current.has(id_iten)) {
+      return; // Already saving this item
+    }
+
     try {
+      savingItemsRef.current.add(id_iten);
       const payload = {
         id_item_os: id_iten,
         id_fornecedor: Number(partialState.id_fornecedor),
@@ -226,6 +232,8 @@ export const FechamentoFinanceiroForm = ({
       }
     } catch (error) {
       console.error("Erro no auto-save do item", error);
+    } finally {
+      savingItemsRef.current.delete(id_iten);
     }
   };
 

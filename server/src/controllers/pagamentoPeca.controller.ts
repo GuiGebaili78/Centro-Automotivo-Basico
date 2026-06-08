@@ -10,7 +10,7 @@ export class PagamentoPecaController {
       
       const parsedIdPessoa = id_pessoa !== undefined && id_pessoa !== null && id_pessoa !== "" ? id_pessoa : id_fornecedor;
       const hasValidFornecedor = parsedIdPessoa !== undefined && parsedIdPessoa !== null && parsedIdPessoa !== "" && !isNaN(Number(parsedIdPessoa)) && Number(parsedIdPessoa) > 0;
-      const fornecedorId = hasValidFornecedor ? Number(parsedIdPessoa) : undefined;
+      const fornecedorId = hasValidFornecedor ? Number(parsedIdPessoa) : null;
 
       const payload = {
         id_item_os: Number(id_item_os),

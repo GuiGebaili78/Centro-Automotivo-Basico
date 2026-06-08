@@ -295,7 +295,7 @@ model ItensOs {
 model PagamentoPeca {
   id_pagamento_peca         Int         @id @default(autoincrement())
   id_item_os                Int
-  id_pessoa                 Int
+  id_pessoa                 Int?
   custo_real                Decimal     @db.Decimal(10, 2)
   valor_desconto_rateado    Decimal?    @db.Decimal(10, 2)
   data_compra               DateTime    @db.Timestamp(6)
@@ -304,7 +304,7 @@ model PagamentoPeca {
   deleted_at                DateTime?   @db.Timestamp(6)
   id_livro_caixa            Int?
   nf_numero                 String?     @db.VarChar(50)
-  fornecedor                Fornecedor  @relation(fields: [id_pessoa], references: [id_fornecedor])
+  fornecedor                Fornecedor? @relation(fields: [id_pessoa], references: [id_fornecedor])
   item_os                   ItensOs     @relation(fields: [id_item_os], references: [id_iten])
   livro_caixa               LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
 

@@ -1,4 +1,4 @@
-PROJECT DUMP - 07/06/2026 08:27
+PROJECT DUMP - 08/06/2026 19:22
 =========================================
 
 --- FILE: dbbk.sh ---
@@ -375,495 +375,6 @@ Write-Host "Contexto otimizado gerado com sucesso! Arquivo: $outputFile" -Foregr
 }
 
 
---- FILE: PROJECT_RULES.md ---
-# Documentação Mestra do Projeto & Regras de Negócio (Guardrails)
-> [!IMPORTANT]
-> Este documento serve como **Fonte da Verdade** para o desenvolvimento do projeto. Qualquer alteração futura deve respeitar estritamente as regras de negócio, a arquitetura e as diretrizes de design definidas aqui para evitar quebras de funcionalidade ou regressões visuais.
----
-## 1. Arquitetura e Tecnologias
-O projeto utiliza uma arquitetura monolítica modular separada em `client` e `server` dentro do mesmo repositório, orquestrada via Docker.
-- **Frontend**: React (Vite), TailwindCSS, Lucide Icons.
-- **Backend**: Node.js (Express), Prisma ORM.
-- **Banco de Dados**: PostgreSQL (Container `centroautomotivo_db`).
-- **Infraestrutura**: Docker Compose (`api`, `client`, `db`).
-### Convenções de Código
-- **Backend**: Padrão **Repository Pattern**. A lógica de negócio pesada (ex: consolidação) DEVE residir nos repositórios (`src/repositories`), não nos controllers.
-- **Frontend**: Componentização forte. Páginas em `src/pages`, componentes reutilizáveis em `src/components/ui`.
----
-## 2. Regras de Negócio Críticas (NÃO QUEBRAR)
-### 2.1. Módulo Financeiro & Consolidação de OS
-Esta é a parte mais crítica e sensível do sistema.
-#### Regra de Ouro da Consolidação (`consolidarOS`)
-Ao finalizar uma OS financeiramente, o sistema processa os pagamentos de formas distintas dependendo do método:
-1.  **PIX e DINHEIRO**:
-    *   **Ação Imediata**: Deve atualizar o saldo da `ContaBancaria` selecionada (`saldo_atual + valor`).
-    *   **Livro Caixa**: Deve criar um registro de `ENTRADA` no `LivroCaixa` vinculado à conta.
-    *   **Extrato**: O valor deve aparecer imediatamente na tela de Extrato Bancário.
-    *   **Regra de Validação**: É OBRIGATÓRIO informar uma conta bancária para estes métodos.
-2.  **CARTÃO (Crédito/Débito)**:
-    *   **NÃO Atualiza Saldo Imediatamente**: O saldo da conta bancária **NÃO** deve ser alterado na consolidação.
-    *   **Criação de Recebíveis**: Deve gerar registros na tabela `RecebivelCartao` (parcelas calculadas conforme taxas da operadora).
-    *   **Livro Caixa (Controle)**: Cria um registro no `LivroCaixa` com `id_conta_bancaria: null` apenas para registrar o faturamento bruto (não afeta extrato bancário).
-    *   **Conciliação Manual**: O saldo bancário só é atualizado quando o usuário clica em "Confirmar/Dar Baixa" na aba de **Recebíveis**.
-#### Regra do "Caixa Geral"
-*   **Proibido**: Não existe uma conta "Caixa Geral" genérica. Todas as movimentações devem ser rastreáveis para contas reais (Nubank, Cofre Físico, etc.).
-### 2.2. Ordens de Serviço (OS)
-*   **Fluxo de Status**: `ABERTA` -> `PRONTO PARA FINANCEIRO` -> `FINALIZADA`.
-*   **Edição**: Itens e Mão de Obra só podem ser editados enquanto a OS não estiver `FINALIZADA`.
-*   **Pagamentos Mistos**: O sistema deve suportar múltiplos pagamentos (ex: parte em PIX, parte em Cartão) na mesma OS, aplicando as regras de consolidação acima para cada fração.
----
-## 3. Diretrizes de Design (UI/UX)
-O layout segue um estilo "Premium/Moderno". Regressões para estilos "padrão" ou "básicos" são inaceitáveis.
-### 3.1. Paleta de Cores
-*   **Ações Primárias**: Tons de **Azul** (`bg-blue-600`, `text-blue-600`).
-*   **Sucesso/Dinheiro**: Tons de **Verde/Emerald** (`text-green-600`, `bg-green-50`).
-*   **Alerta/Dívida**: Tons de **Vermelho** (`text-red-600`, `bg-red-50`).
-*   **Neutros**: Evitar preto puro (`#000`). Usar `neutral-900` para textos escuros e `neutral-500` para secundários.
-*   **Proibido**: Botões cinzas ou pretos para ações principais de "Salvar" ou "Confirmar". Usar sempre cores semânticas ou vibrantes.
-### 3.2. Formas e Sombras
-*   **Bordas**: Sempre arredondadas. Usar `rounded-xl` ou `rounded-2xl` para cards e containeres. `rounded-lg` para inputs e botões menores.
-*   **Sombras**: Usar sombras suaves (`shadow-sm`, `shadow-md`) aliadas a bordas sutis (`border-neutral-100`) para criar profundidade.
-*   **Superfícies**: Priorizar fundo branco (`bg-white`) sobre fundo cinza claro (`bg-neutral-50`) para destacar conteúdo.
-### 3.3. Componentes Específicos
-*   **Tabelas**: Cabeçalhos sempre em uppercase, fonte pequena e bold (`text-xs font-black uppercase text-neutral-400`). Linhas com hover suave.
-*   **Modais**: Fundo com `backdrop-blur-sm`. Animações de entrada (`animate-in zoom-in-95`).
-*   **Inputs**: Sem bordas padrão escuras. Usar `bg-neutral-50` com focus ring colorido.
----
-## 4. Banco de Dados (Schema Notes)
-*   **Tabelas Chave**:
-    *   `livro_caixa`: Centraliza todas as movimentações. Campo `id_conta_bancaria` define se aparece no extrato.
-    *   `recebivel_cartao`: Controla o fluxo futuro de entradas de cartão.
-    *   `pagamento_cliente`: Registra a intenção de pagamento na OS. Deve ter vínculo (`id_livro_caixa`) após consolidação.
-> [!WARNING]
-> Nunca assuma que `id_conta_bancaria` em `pagamento_cliente` existe para cartões. Para cartões, o vínculo é via `id_operadora`.
----
-## 5. Procedimentos de Deploy e Teste
-1.  **Build**: Sempre validar se não há erros de tipagem (`tsc -b`) antes de subir, pois a Vercel/Build step irá falhar (como ocorreu com `implicit any`).
-2.  **Docker**: Servidor roda em `npm run dev`. Não é necessário rebuildar containers para mudanças de código JS/TS, apenas para mudanças em `package.json` ou `Dockerfile`.
-3.  **Testes Manuais Obrigatórios**:
-    *   Criar OS -> Adicionar Peça e Mão de Obra -> Adicionar Pagamento Misto (PIX + Cartão) -> Finalizar.
-    *   Verificar se o PIX caiu no Extrato.
-    *   Verificar se o Cartão caiu em Recebíveis (e NÃO no Extrato).
-
-
---- FILE: README.md ---
-# Centro-Automotivo-Basico
-
-
---- FILE: .antigravity\rules.md ---
-Você é um desenvolvedor fullstack sênior, especialista em ReactJS, NextJS, TypeScript, TailwindCSS 3, Shadcn e Radix. Suas respostas devem ser diretas, profissionais e focadas em eficiência.  
-1. Fluxo de Trabalho e Economia de Tokens
-Planejamento Conciso: Antes de codificar, apresente um plano de implementação resumido e direto ao ponto. Aguarde minha aprovação para iniciar a codificação.  
-Foco na Tarefa (Escopo): Concentre-se apenas nos arquivos e componentes mencionados na tarefa atual. Não modifique ou adicione código a arquivos já existentes e fora do escopo a menos que seja explicitamente solicitado.  
-Geração de Código: Ao receber a aprovação, gere o código completo, funcional, dinâmico e sem placeholders, mocks ou dados fixos. Não gere documentação adicional, pseudo-código ou planos extensos, a menos que seja explicitamente pedido. Em caso de bugs ou necessidade de ajustes, aponte a causa e a solução de forma objetiva. Itere na solução até eu confirmar que a funcionalidade está correta. 
-2. Padrões de Código
-DRY (Don't Repeat Yourself): O código deve ser reutilizável e modular.  Use nomes claros e descritivos para componentes, variáveis e funções. Use o prefixo handle para funções de eventos (ex: handleClick). Utilize exclusivamente TailwindCSS 3 na estilização. UI/UX: Priorize o uso de Shadcn e Radix para componentes complexos, estilizando-os com Tailwind.  
-Boas Práticas:
-Sempre use const e let. Use TypeScript com tipagem explícita sempre que possível. Implemente acessibilidade (ex: tabindex, aria-label). Priorize early returns para maior legibilidade. Faça os tratamentos de erros pertinentes ao código.
-3. Gerenciamento de Cores
-Todas as cores e fontes devem ser definidas e gerenciadas exclusivamente no arquivo tailwind.config.js. Isso garante um controle centralizado e a geração automática de todas as classes de utilidade do Tailwind.   
-Resumo das Regras Principais
-Planejar de forma concisa → Aprovar → Executar.  
-Respeitar o escopo da tarefa, sem alterar código já aprovado.  
-Código deve ser legível, completo, funcional e acessível.  
-Estilização via Tailwind 3 com cores centralizadas no tailwind.config.js.  
-Tudo passa pelo Docker, não é pra fazer nada direto sem passar pelo docker.
-Preciso que vc tenha essas informações para que a cada alteração não modifique códigos ou funcionalidades que já estão funcionando bem.
-Responder tudo e portugues Brasil, pt-br. Não entendo nada de ingles
-O projeto é um app para gestão de oficinas automotivas, o diferencial é que ele é fácil de usar, é objetivo e fácil de navegar. Para oficinas pequenas que não precisam de um software complexo e caro. Oficinas que não vendem peças, apenas serviços de manutenção e pequenas peças como lampadas, oleo, bateria etc.. apenas para agilizar o serviço.
-
-
---- FILE: client\.dockerignore ---
-node_modules
-npm-debug.log
-dist
-build
-.git
-.gitignore
-README.md
-
-
---- FILE: client\Dockerfile ---
-# =========================================================================
-# Multi-stage build:
-#   - "dev"   → Vite dev server (HMR), usado pelo docker-compose.dev.yml
-#   - "build" → roda "vite build" e gera /app/client/dist
-#   - "prod"  → nginx servindo os estáticos em :8080 (default em prod)
-# =========================================================================
-# ---------- DEV ----------
-FROM node:20-alpine AS dev
-WORKDIR /app/client
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 5173 8080
-CMD ["npm", "run", "dev", "--", "--host"]
-# ---------- BUILD ----------
-FROM node:20-alpine AS build
-WORKDIR /app/client
-COPY package*.json ./
-RUN npm install
-COPY . .
-# Vite inlineia VITE_* no bundle em build-time. Recebe via build arg.
-ARG VITE_API_URL
-ENV VITE_API_URL=${VITE_API_URL}
-# Usa "vite build" direto (sem tsc) pra não quebrar deploy por type error.
-RUN npx vite build
-# ---------- PROD ----------
-FROM nginx:1.27-alpine AS prod
-COPY --from=build /app/client/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 8080
-
-
---- FILE: client\eslint.config.js ---
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from 'typescript-eslint'
-import { defineConfig, globalIgnores } from 'eslint/config'
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      js.configs.recommended,
-      tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
-    ],
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-    },
-  },
-])
-
-
---- FILE: client\index.html ---
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/favicon.png">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;700&display=swap"
-    rel="stylesheet">
-  <title>Sinoscar Auto Elétrico</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
-</html>
-
-
---- FILE: client\nginx.conf ---
-server {
-  listen 8080;
-  server_name _;
-  root /usr/share/nginx/html;
-  index index.html;
-  # Long cache para assets versionados pelo Vite (hashes no nome)
-  location /assets/ {
-    expires 1y;
-    add_header Cache-Control "public, immutable";
-    try_files $uri =404;
-  }
-  # SPA fallback: rotas client-side caem no index.html
-  location / {
-    try_files $uri $uri/ /index.html;
-  }
-}
-
-
---- FILE: client\package.json ---
-{
-  "name": "client",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@headlessui/react": "2.2.9",
-    "@heroicons/react": "2.2.0",
-    "@tremor/react": "^3.18.7",
-    "axios": "^1.13.2",
-    "date-fns": "^4.1.0",
-    "lucide-react": "^0.561.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "react-router-dom": "^7.10.1",
-    "react-toastify": "^11.0.5",
-    "recharts": "^3.7.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/node": "^24.10.1",
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^5.1.1",
-    "autoprefixer": "10.4.18",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "postcss": "8.4.35",
-    "tailwindcss": "3.4.17",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
-  }
-}
-
-
---- FILE: client\postcss.config.js ---
-export default {
-    plugins: {
-        tailwindcss: {},
-        autoprefixer: {},
-    },
-}
-
-
---- FILE: client\README.md ---
-# React + TypeScript + Vite
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-Currently, two official plugins are available:
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-## React Compiler
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-## Expanding the ESLint configuration
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-
---- FILE: client\tailwind.config.js ---
-/** @type {import('tailwindcss').Config} */
-import colors from "tailwindcss/colors";
-export default {
-    content: [
-        "./index.html",
-        "./src/**/*.{js,ts,jsx,tsx}",
-        "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
-    ],
-    theme: {
-        transparent: "transparent",
-        current: "current",
-        extend: {
-            fontFamily: {
-                // Força o sistema inteiro a usar Roboto como padrão
-                sans: ['Roboto', 'sans-serif'],
-            },
-            colors: {
-                primary: {
-                    DEFAULT: '#0E2773',
-                    50: '#eff6ff',
-                    100: '#dbeafe',
-                    200: '#bfdbfe',
-                    500: '#3b82f6',
-                    600: '#0E2773', // Azul Principal
-                    700: '#1d4ed8',
-                    800: '#1e40af', // Azul Sidebar/Escuro
-                    900: '#1e3a8a',
-                },
-                secondary: {
-                    DEFAULT: '#f97316',
-                    50: '#fff7ed',
-                    100: '#ffedd5',
-                    500: '#f97316', // Laranja Principal
-                    600: '#ea580c',
-                    700: '#c2410c',
-                },
-                success: {
-                    DEFAULT: '#22c55e',
-                    50: '#f0fdf4',
-                    100: '#dcfce7',
-                    500: '#22c55e', // Verde Principal (Lucros, Sucesso)
-                    600: '#16a34a',
-                    700: '#15803d',
-                },
-                error: {
-                    DEFAULT: '#ef4444',
-                    50: '#fef2f2',
-                    100: '#fee2e2',
-                    500: '#ef4444', // Vermelho Principal (Erros, Dívidas)
-                    600: '#dc2626',
-                    700: '#b91c1c',
-                },
-                highlight: {
-                    DEFAULT: '#a855f7',
-                    50: '#faf5ff',
-                    100: '#f3e8ff',
-                    500: '#a855f7', // Roxo Principal (Destaques, Ações Especiais)
-                    600: '#9333ea',
-                    700: '#7e22ce',
-                },
-                neutral: {
-                    25: '#FCFCFD',
-                    50: '#F9FAFB',
-                    100: '#F3F4F6',
-                    200: '#E5E7EB',
-                    300: '#D1D5DB',
-                    400: '#9CA3AF',
-                    500: '#6B7280',
-                    600: '#4B5563',
-                    700: '#374151',
-                    800: '#1F2937',
-                    900: '#111827',
-                    950: '#030712',
-                },
-                // Tremor colors...
-                tremor: {
-                    brand: {
-                        faint: "#dbeafe",
-                        muted: "#bfdbfe",
-                        subtle: "#60a5fa",
-                        DEFAULT: "#2563eb",
-                        emphasis: "#1d4ed8",
-                        inverted: "#ffffff",
-                    },
-                    background: {
-                        muted: "#f8fafc", // Ajustado para a paleta slate
-                        subtle: "#f1f5f9",
-                        DEFAULT: "#ffffff",
-                        emphasis: "#334155",
-                    },
-                    border: {
-                        DEFAULT: "#e2e8f0",
-                    },
-                    ring: {
-                        DEFAULT: "#e2e8f0",
-                    },
-                    content: {
-                        subtle: "#94a3b8",
-                        DEFAULT: "#64748b",
-                        emphasis: "#334155",
-                        strong: "#0f172a",
-                        inverted: "#ffffff",
-                    },
-                },
-            },
-            boxShadow: {
-                'premium': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-            },
-            borderRadius: {
-                'tremor-small': '0.375rem',
-                'tremor-default': '0.5rem',
-                'tremor-full': '9999px',
-            },
-            fontSize: {
-                'tremor-label': ['0.75rem', { lineHeight: '1rem' }],
-                'tremor-default': ['0.875rem', { lineHeight: '1.25rem' }],
-                'tremor-title': ['1.125rem', { lineHeight: '1.75rem' }],
-                'tremor-metric': ['1.875rem', { lineHeight: '2.25rem' }],
-            },
-        },
-    },
-    safelist: [
-        {
-            pattern: /^(bg|text|border|ring|stroke|fill)-(tremor|primary|secondary|success|highlight)/,
-            variants: ['hover', 'ui-selected'],
-        },
-    ],
-    plugins: [],
-};
-
-
---- FILE: client\tsc.txt ---
-src/components/os/Forms/UnifiedOsForm.tsx(155,27): error TS2339: Property 'obs' does not exist on type '{ id_cliente: string; nome: string; telefone: string; cep: string; logradouro: string; numero: string; bairro: string; cidade: string; estado: string; isNew: boolean; }'.
-src/components/os/OsTable.tsx(1,1): error TS6133: 'useState' is declared but its value is never read.
-src/components/os/OsTable.tsx(5,1): error TS6133: 'ActionButton' is declared but its value is never read.
-src/components/os/OsTable.tsx(7,1): error TS6133: 'OsService' is declared but its value is never read.
-
-
---- FILE: client\tsconfig.app.json ---
-{
-  "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "ES2022",
-    "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "types": ["vite/client"],
-    "skipLibCheck": true,
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "jsx": "react-jsx",
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
-  },
-  "include": ["src"]
-}
 
 
 --- FILE: client\tsconfig.json ---
@@ -5128,6 +4639,25 @@ export const EntradaItensForm = ({
                 handleSearchPart(e.target.value);
                 if (selectedStockPart) setSelectedStockPart(null);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Tab" || e.key === "Enter") {
+                  if (partSearch.trim().length > 0 && !selectedStockPart) {
+                    setIsNewPart(true);
+                    setNewPartName(partSearch);
+                    setPartResults([]);
+                    if (e.key === "Enter") e.preventDefault();
+                  }
+                }
+              }}
+              onBlur={() => {
+                setTimeout(() => {
+                  if (partSearch.trim().length > 0 && !selectedStockPart && !isNewPart) {
+                    setIsNewPart(true);
+                    setNewPartName(partSearch);
+                    setPartResults([]);
+                  }
+                }, 200);
+              }}
             />
               {partResults.length > 0 && !selectedStockPart && (
                 <div className="absolute w-full mt-2 bg-white border border-neutral-100 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50">
@@ -6543,7 +6073,9 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
   const [applyToAllRecurrences, setApplyToAllRecurrences] = useState(false);
   const [showFornecedorModal, setShowFornecedorModal] = useState(false);
   const [fornecedores, setFornecedores] = useState<IFornecedor[]>([]);
-  const [tipoCredor, setTipoCredor] = useState<"FORNECEDOR" | "CREDOR_AVULSO">("FORNECEDOR");
+  const [tipoCredor, setTipoCredor] = useState<"FORNECEDOR" | "CREDOR_AVULSO">(
+    "FORNECEDOR",
+  );
   const [formData, setFormData] = useState({
     descricao: "",
     credor: "",
@@ -6606,14 +6138,17 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
     setBoletos((prev) => {
       const newList = [...prev];
       if (qtdBoletos > prev.length) {
-        const baseVencStr = prev[0]?.vencimento || formData.dt_vencimento || todaySyncedStr;
+        const baseVencStr =
+          prev[0]?.vencimento || formData.dt_vencimento || todaySyncedStr;
         // Let's divide value by qtd if possible, or just leave blank
         const baseValor = Number(formData.valor) / qtdBoletos;
         const formattedValor = baseValor ? baseValor.toFixed(2) : "";
         for (let i = prev.length; i < qtdBoletos; i++) {
           // Calcula próxima data adicionando 30*i dias à data base, usando UTC para evitar shift
           const baseParts = baseVencStr.split("-").map(Number);
-          const nextDate = new Date(Date.UTC(baseParts[0], baseParts[1] - 1, baseParts[2]));
+          const nextDate = new Date(
+            Date.UTC(baseParts[0], baseParts[1] - 1, baseParts[2]),
+          );
           nextDate.setUTCDate(nextDate.getUTCDate() + 30 * i);
           const nextStr = `${nextDate.getUTCFullYear()}-${String(nextDate.getUTCMonth() + 1).padStart(2, "0")}-${String(nextDate.getUTCDate()).padStart(2, "0")}`;
           newList.push({
@@ -6740,7 +6275,9 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
       // Handle simple edit or single creation
       if (editingId || (!editingId && qtdBoletos === 1)) {
         const b = boletos[0];
-        const vencStr = editingId ? formData.dt_vencimento : (b?.vencimento || formData.dt_vencimento);
+        const vencStr = editingId
+          ? formData.dt_vencimento
+          : b?.vencimento || formData.dt_vencimento;
         const payload: any = {
           ...formData,
           descricao: formData.descricao.toUpperCase(),
@@ -6761,7 +6298,10 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
           nf_boleto: b?.identificador ? b.identificador.trim() : null,
           nf_parcela: isMultiBoleto ? 1 : null,
           nf_total_parcelas: isMultiBoleto ? qtdBoletos : null,
-          id_fornecedor: tipoCredor === "FORNECEDOR" && formData.id_fornecedor ? Number(formData.id_fornecedor) : null,
+          id_fornecedor:
+            tipoCredor === "FORNECEDOR" && formData.id_fornecedor
+              ? Number(formData.id_fornecedor)
+              : null,
         };
         if (editingId) {
           await FinanceiroService.updateContaPagar(editingId, payload);
@@ -6800,7 +6340,10 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             nf_boleto: b.identificador ? b.identificador.trim() : null,
             nf_parcela: i + 1,
             nf_total_parcelas: boletos.length,
-            id_fornecedor: tipoCredor === "FORNECEDOR" && formData.id_fornecedor ? Number(formData.id_fornecedor) : null,
+            id_fornecedor:
+              tipoCredor === "FORNECEDOR" && formData.id_fornecedor
+                ? Number(formData.id_fornecedor)
+                : null,
           };
           await FinanceiroService.createContaPagar(payload);
         }
@@ -6826,7 +6369,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
         setFormData((prev) => ({
           ...prev,
           credor: nome,
-          id_fornecedor: data.id_fornecedor
+          id_fornecedor: data.id_fornecedor,
         }));
         toast.success(`Fornecedor "${nome}" cadastrado e selecionado!`);
       }
@@ -6897,56 +6440,67 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
               placeholder="Ex: COMPRA MATERIAL LIMPEZA"
             />
           </div>
-          <div className="relative border border-neutral-200 rounded-xl p-3 bg-white">
-            <div className="flex gap-4 mb-3 border-b border-neutral-100 pb-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 cursor-pointer">
-                <input
-                  type="radio"
-                  name="tipoCredor"
-                  value="FORNECEDOR"
-                  checked={tipoCredor === "FORNECEDOR"}
-                  onChange={() => {
-                    setTipoCredor("FORNECEDOR");
-                    setFormData((prev) => ({ ...prev, credor: "" }));
-                  }}
-                  className="text-primary-600 focus:ring-primary-500 w-4 h-4"
-                />
+          <div className="relative border border-neutral-100 rounded-xl p-4 bg-white shadow-sm flex flex-col justify-between">
+            <div className="flex bg-neutral-100 p-1 rounded-lg mb-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setTipoCredor("FORNECEDOR");
+                  setFormData((prev) => ({ ...prev, credor: "" }));
+                }}
+                className={`flex-1 text-xs font-bold py-2 rounded-md transition-all ${
+                  tipoCredor === "FORNECEDOR"
+                    ? "bg-white text-primary-700 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
+                }`}
+              >
                 Fornecedor Cadastrado
-              </label>
-              <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 cursor-pointer">
-                <input
-                  type="radio"
-                  name="tipoCredor"
-                  value="CREDOR_AVULSO"
-                  checked={tipoCredor === "CREDOR_AVULSO"}
-                  onChange={() => {
-                    setTipoCredor("CREDOR_AVULSO");
-                    setFormData((prev) => ({ ...prev, id_fornecedor: undefined }));
-                  }}
-                  className="text-primary-600 focus:ring-primary-500 w-4 h-4"
-                />
-                Credor Avulso / Manual
-              </label>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTipoCredor("CREDOR_AVULSO");
+                  setFormData((prev) => ({
+                    ...prev,
+                    id_fornecedor: undefined,
+                  }));
+                }}
+                className={`flex-1 text-xs font-bold py-2 rounded-md transition-all ${
+                  tipoCredor === "CREDOR_AVULSO"
+                    ? "bg-white text-primary-700 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200"
+                }`}
+              >
+                Credor Avulso
+              </button>
             </div>
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 {tipoCredor === "FORNECEDOR" ? (
                   <Select
                     label="Fornecedor"
-                    value={formData.id_fornecedor ? String(formData.id_fornecedor) : ""}
+                    value={
+                      formData.id_fornecedor
+                        ? String(formData.id_fornecedor)
+                        : ""
+                    }
                     onChange={(e) => {
                       const id = Number(e.target.value);
-                      const f = fornecedores.find(x => x.id_fornecedor === id);
+                      const f = fornecedores.find(
+                        (x) => x.id_fornecedor === id,
+                      );
                       setFormData({
                         ...formData,
                         id_fornecedor: id,
-                        credor: f ? (f.nome_fantasia || f.nome).toUpperCase() : ""
+                        credor: f
+                          ? (f.nome_fantasia || f.nome).toUpperCase()
+                          : "",
                       });
                     }}
                     required
                   >
                     <option value="">Selecione um fornecedor...</option>
-                    {fornecedores.map(f => (
+                    {fornecedores.map((f) => (
                       <option key={f.id_fornecedor} value={f.id_fornecedor}>
                         {(f.nome_fantasia || f.nome).toUpperCase()}
                       </option>
@@ -6956,7 +6510,9 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
                   <AutocompleteInput
                     label="Credor Avulso"
                     value={formData.credor}
-                    onChange={(val) => setFormData({ ...formData, credor: val })}
+                    onChange={(val) =>
+                      setFormData({ ...formData, credor: val })
+                    }
                     fetchSuggestions={(q) => FinanceiroService.buscarCredor(q)}
                     placeholder="Ex: FORNECEDOR X"
                     required
@@ -14191,6 +13747,509 @@ export const FornecedoresTable = ({
 };
 
 
+--- FILE: client\src\components\fornecedores\Forms\FornecedorForm.tsx ---
+import { useState, useEffect, type FormEvent } from "react";
+import { FornecedorService } from "../../../services/fornecedor.service";
+import {
+  Phone,
+  FileText,
+  MapPin,
+  DollarSign,
+  Building2,
+  Save,
+  CheckCircle,
+  Search,
+  ArrowLeft,
+} from "lucide-react";
+import type { IFornecedor } from "../../../types/backend";
+import { Button, Input } from "../../ui";
+import { toast } from "react-toastify";
+import { formatCnpj, formatCpf, formatCep, formatPhone, unmask, formatIE } from "../../../utils/normalize";
+interface FornecedorFormProps {
+  initialData?: IFornecedor | null;
+  onSuccess: (data?: IFornecedor) => void;
+  onCancel: () => void;
+  isModal?: boolean;
+}
+export const FornecedorForm = ({
+  initialData,
+  onSuccess,
+  onCancel,
+  isModal = false,
+}: FornecedorFormProps) => {
+  const [loading, setLoading] = useState(false);
+  // Form State
+  const [formData, setFormData] = useState({
+    // Identificação
+    tipo_pessoa: "JURIDICA",
+    nome: "", // Razão Social / Nome Completo
+    nome_fantasia: "",
+    documento: "", // CNPJ / CPF
+    inscricao_estadual: "",
+    inscricao_municipal: "",
+    // Contato
+    contato: "", // Nome Vendedor
+    telefone: "",
+    whatsapp: "",
+    email: "",
+    // Endereço
+    cep: "",
+    logradouro: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    uf: "",
+    // Financeiro
+    banco: "",
+    agencia: "",
+    conta: "",
+    chave_pix: "",
+    condicoes_pagamento: "",
+    categoria_produto: "",
+    // Extra
+    obs: "",
+  });
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        tipo_pessoa: initialData.tipo_pessoa || "JURIDICA",
+        nome: initialData.nome || "",
+        nome_fantasia: initialData.nome_fantasia || "",
+        documento: initialData.documento || "",
+        inscricao_estadual: initialData.inscricao_estadual || "",
+        inscricao_municipal: initialData.inscricao_municipal || "",
+        contato: initialData.contato || "",
+        telefone: initialData.telefone || "",
+        whatsapp: initialData.whatsapp || "",
+        email: initialData.email || "",
+        cep: initialData.cep || "",
+        logradouro: initialData.logradouro || "",
+        numero: initialData.numero || "",
+        complemento: initialData.complemento || "",
+        bairro: initialData.bairro || "",
+        cidade: initialData.cidade || "",
+        uf: initialData.uf || "",
+        banco: initialData.banco || "",
+        agencia: initialData.agencia || "",
+        conta: initialData.conta || "",
+        chave_pix: initialData.chave_pix || "",
+        condicoes_pagamento: initialData.condicoes_pagamento || "",
+        categoria_produto: initialData.categoria_produto || "",
+        obs: initialData.obs || "",
+      });
+    }
+  }, [initialData]);
+  const handleChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+  const handleCepBlur = async () => {
+    const cepRaw = formData.cep.replace(/\D/g, "");
+    if (cepRaw.length === 8) {
+      try {
+        const response = await fetch(
+          `https://viacep.com.br/ws/${cepRaw}/json/`,
+        );
+        const data = await response.json();
+        if (!data.erro) {
+          setFormData((prev) => ({
+            ...prev,
+            logradouro: data.logradouro,
+            bairro: data.bairro,
+            cidade: data.localidade,
+            uf: data.uf,
+          }));
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CEP", error);
+      }
+    }
+  };
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      let res;
+      const isUpdate = !!initialData?.id_fornecedor;
+      // Payload plano — espelha diretamente a tabela `fornecedor` do banco
+      const payload: any = {
+        ...formData,
+        documento: unmask(formData.documento) || null,
+        inscricao_estadual: unmask(formData.inscricao_estadual) || null,
+        inscricao_municipal: unmask(formData.inscricao_municipal) || null,
+        cep: unmask(formData.cep) || null,
+        telefone: unmask(formData.telefone) || null,
+        whatsapp: unmask(formData.whatsapp) || null,
+      };
+      if (isUpdate) {
+        res = await FornecedorService.update(initialData.id_fornecedor, payload);
+      } else {
+        res = await FornecedorService.create(payload);
+      }
+      onSuccess(res);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao salvar fornecedor. Verifique os dados enviados.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div className={isModal ? "w-full py-2 space-y-4" : "w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 space-y-6 animate-in fade-in duration-500"}>
+      {/* Header – oculto no modo modal */}
+      {!isModal && (
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            <ArrowLeft size={20} />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-neutral-800">
+              {initialData ? "Editar Fornecedor" : "Novo Fornecedor"}
+            </h1>
+            <p className="text-neutral-500 text-sm">
+              Preencha os dados completos do parceiro.
+            </p>
+          </div>
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-6 text-neutral-900">
+        <div className={isModal ? "grid grid-cols-1 md:grid-cols-2 gap-4 items-start" : "grid grid-cols-1 xl:grid-cols-3 gap-8 items-start"}>
+          {/* LEFT COLUMN: Identification & Contact */}
+          <div className="space-y-8 xl:col-span-2">
+            {/* SECTION 1: IDENTIFICAÇÃO */}
+            <div className="bg-neutral-25 p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+              <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
+                <div className="bg-orange-50 p-2 rounded-lg text-orange-600">
+                  <Building2 size={20} />
+                </div>
+                <h2 className="font-bold text-lg text-neutral-800">
+                  Identificação
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">
+                    Tipo de Pessoa
+                  </label>
+                  <div className="flex gap-4">
+                    <label
+                      className={`flex-1 cursor-pointer border px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-bold text-sm transition-all ${formData.tipo_pessoa === "JURIDICA" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-neutral-200 text-neutral-500 hover:border-neutral-300"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="tipo_pessoa"
+                        value="JURIDICA"
+                        checked={formData.tipo_pessoa === "JURIDICA"}
+                        onChange={(e) =>
+                          handleChange("tipo_pessoa", e.target.value)
+                        }
+                        className="hidden"
+                      />
+                      Jurídica (CNPJ)
+                    </label>
+                    <label
+                      className={`flex-1 cursor-pointer border px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-bold text-sm transition-all ${formData.tipo_pessoa === "FISICA" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-neutral-200 text-neutral-500 hover:border-neutral-300"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="tipo_pessoa"
+                        value="FISICA"
+                        checked={formData.tipo_pessoa === "FISICA"}
+                        onChange={(e) =>
+                          handleChange("tipo_pessoa", e.target.value)
+                        }
+                        className="hidden"
+                      />
+                      Física (CPF)
+                    </label>
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <Input
+                    label="Razão Social / Nome Completo *"
+                    value={formData.nome}
+                    onChange={(e) => handleChange("nome", e.target.value)}
+                    placeholder="Nome oficial no documento"
+                    required
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="Nome Fantasia"
+                    value={formData.nome_fantasia}
+                    onChange={(e) =>
+                      handleChange("nome_fantasia", e.target.value)
+                    }
+                    placeholder="Como a empresa é conhecida"
+                  />
+                </div>
+                <div>
+                  <Input
+                    label={formData.tipo_pessoa === "JURIDICA" ? "CNPJ" : "CPF"}
+                    value={formData.documento}
+                    onChange={(e) =>
+                      handleChange(
+                        "documento",
+                        formData.tipo_pessoa === "JURIDICA"
+                          ? formatCnpj(e.target.value)
+                          : formatCpf(e.target.value),
+                      )
+                    }
+                    placeholder="Apenas números"
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="Inscrição Estadual"
+                    value={formData.inscricao_estadual}
+                    onChange={(e) =>
+                      handleChange("inscricao_estadual", formatIE(e.target.value))
+                    }
+                    placeholder="IE (Comércio)"
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="Inscrição Municipal"
+                    value={formData.inscricao_municipal}
+                    onChange={(e) =>
+                      handleChange("inscricao_municipal", e.target.value)
+                    }
+                    placeholder="IM (Serviços)"
+                  />
+                </div>
+              </div>
+            </div>
+            {/* SECTION 2: ENDEREÇO (LOGÍSTICA) */}
+            <div className="bg-neutral-25 p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+              <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
+                <div className="bg-primary-50 p-2 rounded-lg text-primary-600">
+                  <MapPin size={20} />
+                </div>
+                <h2 className="font-bold text-lg text-neutral-800">
+                  Endereço e Logística
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+                <div className="md:col-span-2">
+                  <Input
+                    label="CEP"
+                    value={formData.cep}
+                    onChange={(e) => handleChange("cep", formatCep(e.target.value))}
+                    onBlur={handleCepBlur}
+                    placeholder="00000-000"
+                    icon={Search}
+                  />
+                </div>
+                <div className="md:col-span-4">
+                  <Input
+                    label="Logradouro"
+                    value={formData.logradouro}
+                    onChange={(e) => handleChange("logradouro", e.target.value)}
+                    placeholder="Rua, Avenida, etc."
+                    className="uppercase"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Input
+                    label="Número"
+                    value={formData.numero}
+                    onChange={(e) => handleChange("numero", e.target.value)}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Input
+                    label="Complemento"
+                    value={formData.complemento}
+                    onChange={(e) =>
+                      handleChange("complemento", e.target.value)
+                    }
+                    placeholder="Sala, Bloco..."
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Input
+                    label="Bairro"
+                    value={formData.bairro}
+                    onChange={(e) => handleChange("bairro", e.target.value)}
+                    className="uppercase"
+                  />
+                </div>
+                <div className="md:col-span-4">
+                  <Input
+                    label="Cidade"
+                    value={formData.cidade}
+                    onChange={(e) => handleChange("cidade", e.target.value)}
+                    className="uppercase"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Input
+                    label="UF"
+                    value={formData.uf}
+                    onChange={(e) => handleChange("uf", e.target.value)}
+                    className="uppercase"
+                    maxLength={2}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* RIGHT COLUMN: Contact & Finance */}
+          <div className="space-y-8">
+            {/* SECTION 3: CONTATO */}
+            <div className="bg-neutral-25 p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6 h-full">
+              <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
+                <div className="bg-green-50 p-2 rounded-lg text-green-600">
+                  <Phone size={20} />
+                </div>
+                <h2 className="font-bold text-lg text-neutral-800">
+                  Dados de Contato
+                </h2>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <Input
+                    label="Vendedor / Contato"
+                    value={formData.contato}
+                    onChange={(e) => handleChange("contato", e.target.value)}
+                    placeholder="Com quem falar"
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="Telefone Fixo"
+                    value={formData.telefone}
+                    onChange={(e) => handleChange("telefone", formatPhone(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="WhatsApp / Celular"
+                    value={formData.whatsapp}
+                    onChange={(e) => handleChange("whatsapp", formatPhone(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="E-mail (NFE/Boletos)"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                    placeholder="financeiro@empresa.com"
+                  />
+                </div>
+              </div>
+            </div>
+            {/* SECTION 4: FINANCEIRO */}
+            <div className="bg-neutral-25 p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+              <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
+                <div className="bg-purple-50 p-2 rounded-lg text-purple-600">
+                  <DollarSign size={20} />
+                </div>
+                <h2 className="font-bold text-lg text-neutral-800">
+                  Financeiro
+                </h2>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">
+                    Dados Bancários / PIX
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <Input
+                      value={formData.banco}
+                      onChange={(e) => handleChange("banco", e.target.value)}
+                      placeholder="Banco"
+                    />
+                    <Input
+                      value={formData.agencia}
+                      onChange={(e) => handleChange("agencia", e.target.value)}
+                      placeholder="Agência"
+                    />
+                    <div className="col-span-2">
+                      <Input
+                        value={formData.conta}
+                        onChange={(e) => handleChange("conta", e.target.value)}
+                        placeholder="Conta Corrente"
+                      />
+                    </div>
+                  </div>
+                  <Input
+                    value={formData.chave_pix}
+                    onChange={(e) => handleChange("chave_pix", e.target.value)}
+                    placeholder="Chave PIX"
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="Condição de Pagamento"
+                    value={formData.condicoes_pagamento}
+                    onChange={(e) =>
+                      handleChange("condicoes_pagamento", e.target.value)
+                    }
+                    placeholder="Ex: 28 dias, 30/60..."
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="Categoria de Produto"
+                    value={formData.categoria_produto}
+                    onChange={(e) =>
+                      handleChange("categoria_produto", e.target.value)
+                    }
+                    placeholder="Ex: Peças Motor, Pneus..."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* FULL WIDTH: OBS */}
+          <div className="xl:col-span-3 bg-white p-6 sm:p-8 rounded-3xl border border-neutral-100 shadow-sm space-y-6">
+            <div className="flex items-center gap-2 border-b border-neutral-100 pb-4">
+              <div className="bg-neutral-100 p-2 rounded-lg text-neutral-600">
+                <FileText size={20} />
+              </div>
+              <h2 className="font-bold text-lg text-neutral-800">
+                Observações Gerais
+              </h2>
+            </div>
+            <textarea
+              value={formData.obs}
+              onChange={(e) => handleChange("obs", e.target.value)}
+              className="w-full bg-neutral-50 border border-neutral-200 p-4 rounded-xl focus:ring-4 focus:ring-neutral-500/10 focus:border-neutral-500 outline-none font-medium text-neutral-800 transition-all min-h-[120px] resize-none"
+              placeholder="Informações adicionais importantes..."
+            />
+          </div>
+        </div>
+        {/* Footer Actions */}
+        <div className="flex flex-col-reverse md:flex-row justify-end gap-4 pt-6 border-t border-neutral-200">
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            onClick={onCancel}
+            className="px-8 text-neutral-500 hover:text-neutral-700 font-bold"
+          >
+            CANCELAR
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            isLoading={loading}
+            icon={initialData ? Save : CheckCircle}
+            className="px-12"
+          >
+            {initialData ? "SALVAR ALTERAÇÕES" : "SALVAR FORNECEDOR"}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+
 --- FILE: client\src\components\os\LaborManager.tsx ---
 import React, { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
@@ -19367,9 +19426,6 @@ export const FilterRadio: React.FC<FilterRadioProps> = ({
     </button>
   );
 };
-
-
---- FILE: client\src\components\ui\index.ts ---
 export * from "./Button";
 export * from "./Input";
 export * from "./Select";
@@ -19387,6 +19443,7 @@ export * from "./Badge";
 export * from "./AutocompleteInput";
 
 
+--- FILE: client\src\components\ui\Input.tsx ---
 import React, { forwardRef, useId } from "react";
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -22234,6 +22291,7 @@ export function useUniversalFilter<T extends object>(
 }
 
 
+--- FILE: client\src\hooks\os\useOrdemServico.ts ---
 import { useState, useEffect, useCallback } from "react";
 import { OsService } from "../../services/os.service";
 import type { IOrdemDeServico } from "../../types/backend";
@@ -29239,16 +29297,21 @@ export const NovoPagamentoPage = () => {
                                 )}
                               </div>
                               <div className="text-right">
-                                <span className="font-black text-emerald-600 text-lg">
-                                  {formatCurrency(valorComissao)}
-                                </span>
-                                <div className="text-sm text-neutral-400 font-bold uppercase tracking-wide">
-                                  Valor Serviço: {formatCurrency(Number(item.valor))}
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="text-sm text-neutral-500 font-medium whitespace-nowrap">
+                                    Valor Serviço: <span className="text-neutral-700">{formatCurrency(Number(item.valor))}</span> ➔ Sua Comissão M.O: <span className="font-bold text-blue-600">{formatCurrency(getCommissionValue(Number(item.valor), undefined))}</span>
+                                  </div>
                                   {Number(item.valor_comissao_pecas || 0) > 0 && (
-                                    <span className="block text-xs text-neutral-500 font-normal normal-case">
-                                      + {formatCurrency(Number(item.valor_comissao_pecas))} de peças
-                                    </span>
+                                    <div className="text-sm text-neutral-500 font-medium whitespace-nowrap">
+                                      Lucro Peças: <span className="text-neutral-700">{formatCurrency(Number(item.lucro_pecas_snapshot || 0))}</span> ➔ Sua Comissão Peças: <span className="font-bold text-amber-600">{formatCurrency(Number(item.valor_comissao_pecas))}</span>
+                                    </div>
                                   )}
+                                  <div className="mt-1 pt-1 border-t border-neutral-100 flex items-center gap-2 justify-end w-full">
+                                    <span className="text-xs uppercase font-bold text-neutral-400">Total OS:</span>
+                                    <span className="font-black text-emerald-600 text-lg">
+                                      {formatCurrency(valorComissao)}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -31051,6 +31114,7 @@ export const PagamentoEquipePage = () => {
             date: h.dt_pagamento,
             os: s.ordem_de_servico,
             value: s.valor, // Base labor value
+            lucroPecas: Number(s.lucro_pecas_snapshot || 0),
             commissionValue: comissaoInfo.valorComissao,
             percentage: comissaoInfo.porcentagem,
             comissaoPecas: comissaoInfo.comissaoPecas,
@@ -31621,15 +31685,28 @@ export const PagamentoEquipePage = () => {
                                 )}
                               </td>
                               <td className="p-4 align-top pt-5 text-left">
-                                <div className="text-base font-normal text-neutral-900">
-                                  {formatCurrency(item.type === "COMISSAO" ? item.commissionValue : item.value)}
-                                </div>
-                                {item.type === "COMISSAO" && (
-                                  <div className="text-base font-normal text-neutral-600">
-                                    ({item.percentage}%)
+                                {item.type === "COMISSAO" ? (
+                                  <div className="flex flex-col items-start gap-1">
+                                    <div className="text-sm text-neutral-500 font-medium whitespace-nowrap">
+                                      Valor Serviço: <span className="text-neutral-700">{formatCurrency(Number(item.value))}</span> ➔ Sua Comissão M.O: <span className="font-bold text-blue-600">{formatCurrency(Number(item.commissionValue) - Number(item.comissaoPecas))}</span>
+                                    </div>
+                                    {Number(item.comissaoPecas || 0) > 0 && (
+                                      <div className="text-sm text-neutral-500 font-medium whitespace-nowrap">
+                                        Lucro Peças: <span className="text-neutral-700">{formatCurrency(Number(item.lucroPecas || 0))}</span> ➔ Sua Comissão Peças: <span className="font-bold text-amber-600">{formatCurrency(Number(item.comissaoPecas))}</span>
+                                      </div>
+                                    )}
+                                    <div className="mt-1 pt-1 border-t border-neutral-100 flex items-center gap-2 w-full max-w-[280px]">
+                                      <span className="text-xs uppercase font-bold text-neutral-400">Total OS:</span>
+                                      <span className="font-black text-emerald-600 text-lg">
+                                        {formatCurrency(Number(item.commissionValue))}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-base font-normal text-neutral-900">
+                                    {formatCurrency(item.value)}
                                   </div>
                                 )}
-                                <div className="text-sm font-normal text-neutral-500 min-h-[1.25rem]">&nbsp;</div>
                               </td>
                             </tr>
                           ))
@@ -32831,6 +32908,191 @@ export const PessoaJuridicaPage = () => {
 };
 
 
+--- FILE: client\src\pages\PessoaPage.tsx ---
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
+import type { IPessoa } from '../types/backend';
+import { PessoaForm } from '../components/pessoa/Forms/PessoaForm';
+import { Modal, Input, Select } from '../components/ui';
+import { Plus, Search, Trash2, Edit, User } from 'lucide-react';
+export const PessoaPage = () => {
+    const [pessoas, setPessoas] = useState<IPessoa[]>([]);
+    const [showModal, setShowModal] = useState(false);
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IPessoa | null>(null);
+    useEffect(() => {
+        loadPessoas();
+    }, []);
+    const loadPessoas = async () => {
+        try {
+            const response = await api.get('/pessoa');
+            setPessoas(response.data);
+        } catch (error) {
+            alert('Erro ao carregar pessoas');
+        }
+    };
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/pessoa/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Pessoa não encontrada');
+            setEditData(null);
+        }
+    };
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/pessoa/${editData.id_pessoa}`, editData);
+            alert('Pessoa atualizada!');
+            loadPessoas();
+        } catch (error) {
+            alert('Erro ao atualizar pessoa');
+        }
+    };
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/pessoa/${searchId}`);
+            alert('Pessoa deletada!');
+            loadPessoas();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar pessoa');
+        }
+    };
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Gerenciar Pessoas</h1>
+                    <p className="text-slate-500">Cadastro base de pessoas (antes de PF/PJ).</p>
+                </div>
+                <button 
+                    onClick={() => setShowModal(true)}
+                    className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
+                >
+                    <Plus size={20} />
+                    Nova Pessoa
+                </button>
+            </div>
+            {/* LIST */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50">
+                        <tr>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">ID</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Nome</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Gênero</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Data Nascimento</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Cadastro</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {pessoas.map((p) => (
+                            <tr key={p.id_pessoa} className="hover:bg-slate-50">
+                                <td className="p-4 text-gray-500 font-mono">#{p.id_pessoa}</td>
+                                <td className="p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
+                                            <User size={18} />
+                                        </div>
+                                        <div className="font-medium text-slate-900">{p.nome}</div>
+                                    </div>
+                                </td>
+                                <td className="p-4 text-slate-600">{p.genero || '-'}</td>
+                                <td className="p-4 text-slate-600">
+                                    {p.dt_nascimento ? new Date(p.dt_nascimento).toLocaleDateString('pt-BR') : '-'}
+                                </td>
+                                <td className="p-4 text-xs text-slate-500">
+                                    {new Date(p.dt_cadastro).toLocaleDateString('pt-BR')}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {/* MANAGE */}
+            <div className="bg-white p-4 rounded-xl border border-gray-200">
+                <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Manutenção de Pessoa (Por ID)</h2>
+                <div className="flex gap-4 mb-4 items-end">
+                    <div className="w-64">
+                        <Input 
+                            type="number" 
+                            value={searchId} 
+                            onChange={(e) => setSearchId(e.target.value)} 
+                            placeholder="Digite o ID da Pessoa..." 
+                        />
+                    </div>
+                    <button onClick={handleSearch} className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 font-medium h-11">
+                        <Search size={18} /> Localizar
+                    </button>
+                    {searchId && <button onClick={handleDelete} className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2.5 rounded-lg hover:bg-red-200 font-medium h-11">
+                        <Trash2 size={18} /> Excluir
+                    </button>}
+                </div>
+                {editData && (
+                    <div className="bg-slate-50 p-4 rounded border animate-in fade-in">
+                        <h3 className="font-bold mb-2">Editando: {editData.nome}</h3>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="col-span-2">
+                                <Input 
+                                    label="Nome"
+                                    value={editData.nome} 
+                                    onChange={(e) => setEditData({...editData, nome: e.target.value})} 
+                                />
+                            </div>
+                            <div>
+                                <Select 
+                                    label="Gênero"
+                                    value={editData.genero || ''} 
+                                    onChange={(e) => setEditData({...editData, genero: e.target.value})} 
+                                >
+                                    <option value="">Selecione...</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Feminino">Feminino</option>
+                                    <option value="Outro">Outro</option>
+                                </Select>
+                            </div>
+                        </div>
+                        <button onClick={handleUpdate} className="flex items-center gap-2 bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold">
+                            <Edit size={18} /> Salvar Alterações
+                        </button>
+                    </div>
+                )}
+            </div>
+            {showModal && (
+                <Modal title="Nova Pessoa" onClose={() => setShowModal(false)}>
+                    <PessoaForm 
+                        onSuccess={() => {
+                            setShowModal(false);
+                            loadPessoas();
+                        }}
+                        onCancel={() => setShowModal(false)}
+                    />
+                </Modal>
+            )}
+        </div>
+    );
+};
+
+
+--- FILE: client\src\pages\RecebiveisPage.tsx ---
+import { PageLayout } from "../components/ui";
+import { RecebiveisTab } from "../components/financeiro/RecebiveisTab";
+export const RecebiveisPage = () => {
+  return (
+    <PageLayout
+      title="Recebíveis"
+      subtitle="Controle e conciliação de recebimentos de cartão."
+    >
+      <RecebiveisTab />
+    </PageLayout>
+  );
+};
+
+
 --- FILE: client\src\pages\RelatoriosFinanceirosPage.tsx ---
 import { useEffect, useState } from "react";
 import {
@@ -33089,6 +33351,8 @@ export const RelatoriosPage = () => {
   // Filtros de categoria da Timeline
   const [timelineCategoriaId, setTimelineCategoriaId] = useState<number | undefined>(undefined);
   const [timelineSubcategoriaId, setTimelineSubcategoriaId] = useState<number | undefined>(undefined);
+  // Filtro de Colaborador (tabela de equipe)
+  const [colaboradorFiltroId, setColaboradorFiltroId] = useState<number | "">("");
   // Cores para gráficos
   const COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6", "#6366F1"];
   // ── Fetch de categorias financeiras ──────────────────────────────────────────
@@ -33185,14 +33449,17 @@ export const RelatoriosPage = () => {
     setTimelineCategoriaId(undefined);
     setTimelineSubcategoriaId(undefined);
   };
-  // ── Dados do Pie Chart ────────────────────────────────────────────────────────
   const dataPizza = resumo
     ? [
-        { name: "Mão de Obra", value: resumo.liquida.maoDeObra || 0 },
-        { name: "Estoque", value: resumo.liquida.estoque || 0 },
-        { name: "Auto Peças", value: resumo.liquida.autoPecas || 0 },
+        { name: "Mão de Obra", value: resumo.liquida.maoDeObra || 0, fill: "#3B82F6" },
+        { name: "Estoque", value: resumo.liquida.estoque || 0, fill: "#F59E0B" },
+        { name: "Auto Peças", value: resumo.liquida.autoPecas || 0, fill: "#10B981" },
       ].filter((d) => d.value > 0)
     : [];
+  // ── Filtro local de Colaborador (Performance da Equipe) ────────────────────────
+  const equipeFiltrada = colaboradorFiltroId
+    ? equipe.filter((func) => func.id === Number(colaboradorFiltroId))
+    : equipe;
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <PageLayout
@@ -33414,7 +33681,7 @@ export const RelatoriosPage = () => {
                     ))}
                   </div>
                 </div>
-                <div className="h-[300px] w-full">
+                <div className="h-[300px] min-h-[300px] w-full">
                   {evolLoading ? (
                     <div className="h-full flex items-center justify-center text-neutral-400 text-sm">
                       <div className="animate-spin w-6 h-6 border-2 border-primary-400 border-t-transparent rounded-full mr-2" />
@@ -33507,7 +33774,7 @@ export const RelatoriosPage = () => {
                   <ListFilter size={20} className="text-neutral-500" />
                   Origem do Lucro
                 </h3>
-                <div className="h-[300px] w-full flex items-center justify-center">
+                <div className="h-[300px] min-h-[300px] w-full flex items-center justify-center">
                   {dataPizza.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -33520,10 +33787,10 @@ export const RelatoriosPage = () => {
                           paddingAngle={5}
                           dataKey="value"
                         >
-                          {dataPizza.map((_entry, index) => (
+                          {dataPizza.map((entry, index) => (
                             <Cell
                               key={`cell-${index}`}
-                              fill={COLORS[index % COLORS.length]}
+                              fill={entry.fill}
                             />
                           ))}
                         </Pie>
@@ -33543,9 +33810,24 @@ export const RelatoriosPage = () => {
             </div>
             {/* ── Row 3: Performance da Equipe ── */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-100">
-              <h3 className="text-lg font-bold text-neutral-800 mb-6">
-                Performance Financeira da Equipe
-              </h3>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <h3 className="text-lg font-bold text-neutral-800">
+                  Performance Financeira da Equipe
+                </h3>
+                <div className="w-56">
+                  <Select
+                    value={colaboradorFiltroId}
+                    onChange={(e) => setColaboradorFiltroId(e.target.value ? Number(e.target.value) : "")}
+                  >
+                    <option value="">Todos os Colaboradores</option>
+                    {equipe.map((func) => (
+                      <option key={func.id} value={func.id}>
+                        {func.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-neutral-50 text-neutral-500 uppercase font-semibold">
@@ -33558,7 +33840,7 @@ export const RelatoriosPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    {equipe.map((func) => (
+                    {equipeFiltrada.map((func) => (
                       <tr
                         key={func.id}
                         className="hover:bg-neutral-50 transition-colors"
@@ -33580,7 +33862,7 @@ export const RelatoriosPage = () => {
                         </td>
                       </tr>
                     ))}
-                    {equipe.length === 0 && (
+                    {equipeFiltrada.length === 0 && (
                       <tr>
                         <td
                           colSpan={5}
@@ -33703,10 +33985,7 @@ export const RelatoriosPage = () => {
                 )}
               </div>
               {/* Gráfico */}
-              <div
-                className="w-full flex-shrink-0"
-                style={{ width: "100%", height: 400 }}
-              >
+              <div className="h-[400px] min-h-[400px] w-full flex-shrink-0">
                 {timelineLoading ? (
                   <div className="h-full flex items-center justify-center text-neutral-400 text-sm">
                     <div className="animate-spin w-6 h-6 border-2 border-red-400 border-t-transparent rounded-full mr-2" />
@@ -36148,6 +36427,39 @@ export interface EvolucaoMensal {
 }
 
 
+--- FILE: client\src\utils\financeiroUtils.ts ---
+import type { IPagamentoPeca, IPagamentoCliente } from "../types/backend";
+import type { ICashBookEntry } from "../types/financeiro.types";
+export const calculateCashBookEntries = (
+  payments: IPagamentoPeca[],
+  inflows: IPagamentoCliente[],
+): ICashBookEntry[] => {
+  // Map Outflows (Payments to Suppliers)
+  const outflows: ICashBookEntry[] = payments
+    .filter((p) => p.pago_ao_fornecedor && p.data_pagamento_fornecedor)
+    .map((p) => ({
+      id: `out-${p.id_pagamento_peca}`,
+      date: p.data_pagamento_fornecedor || p.data_compra,
+      description: `Pagamento Fornecedor - ${p.item_os?.descricao || "Peça"}`,
+      type: "OUT" as const,
+      value: Number(p.custo_real),
+      details: `OS Nº ${p.item_os?.id_os || "?"} - ${p.fornecedor?.nome || "Fornecedor"}`,
+      categoria: "Peças / Fornecedores",
+    }));
+  // Map Inflows (Payments from Clients)
+  const inflowsMapped: ICashBookEntry[] = (inflows || []).map((p) => ({
+    id: `in-${p.id_pagamento_cliente}`,
+    date: p.data_pagamento,
+    description: `Recebimento OS Nº ${p.id_os || "?"}`,
+    type: "IN" as const,
+    value: Number(p.valor),
+    details: `Forma: ${p.metodo_pagamento}`,
+    categoria: "Recebimentos",
+  }));
+  return [...outflows, ...inflowsMapped].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
+};
 
 
 --- FILE: client\src\utils\formatCurrency.ts ---
@@ -36869,8 +37181,6 @@ model Pessoa {
   dt_cadastro     DateTime        @default(now()) @db.Timestamp(6)
   pessoa_fisica   PessoaFisica?
   pessoa_juridica PessoaJuridica?
-  entradas_estoque EntradaEstoque[]
-  pagamentos_peca PagamentoPeca[]
   @@map("pessoa")
 }
 model PessoaFisica {
@@ -36960,6 +37270,8 @@ model Fornecedor {
   updated_at          DateTime  @updatedAt
   deleted_at          DateTime?
   contas_pagar        ContasPagar[]
+  entradas_estoque    EntradaEstoque[]
+  pagamentos_peca     PagamentoPeca[]
   @@map("fornecedor")
 }
 model EquipamentoCliente {
@@ -37126,7 +37438,7 @@ model PagamentoPeca {
   deleted_at                DateTime?   @db.Timestamp(6)
   id_livro_caixa            Int?
   nf_numero                 String?     @db.VarChar(50)
-  fornecedor                Pessoa      @relation(fields: [id_pessoa], references: [id_pessoa])
+  fornecedor                Fornecedor  @relation(fields: [id_pessoa], references: [id_fornecedor])
   item_os                   ItensOs     @relation(fields: [id_item_os], references: [id_iten])
   livro_caixa               LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
   @@map("pagamento_peca")
@@ -37284,7 +37596,7 @@ model EntradaEstoque {
   obs           String?       @db.VarChar(500)
   created_at    DateTime      @default(now()) @db.Timestamp(6)
   nf_numero     String?       @db.VarChar(50)
-  fornecedor    Pessoa        @relation(fields: [id_pessoa], references: [id_pessoa])
+  fornecedor    Fornecedor    @relation(fields: [id_pessoa], references: [id_fornecedor])
   itens         ItemEntrada[]
   @@map("entrada_estoque")
 }
@@ -38136,12 +38448,6 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
-
---- FILE: server\prisma\migrations\migration_lock.toml ---
-# Please do not edit this file manually
-# It should be added in your version-control system (i.e. Git)
-provider = "postgresql"
 
 
 --- FILE: server\scripts\check_tipos.ts ---
@@ -40048,7 +40354,7 @@ export class ItensOsController {
           if (supplierId) {
               await pagamentoRepository.create({
                   item_os: { connect: { id_iten: item.id_iten } },
-                  fornecedor: { connect: { id_pessoa: supplierId } },
+                  fornecedor: { connect: { id_fornecedor: supplierId } },
                   custo_real: custo_real ? Number(custo_real) : 0,
                   data_compra: new Date(),
                   pago_ao_fornecedor: false
@@ -40109,7 +40415,7 @@ export class ItensOsController {
           if (existingPayments && existingPayments.length > 0) {
               if (id_fornecedor) {
                   const updateData: any = {
-                      fornecedor: { connect: { id_pessoa: Number(id_fornecedor) } }
+                      fornecedor: { connect: { id_fornecedor: Number(id_fornecedor) } }
                   };
                   if (custo_real) {
                       updateData.custo_real = Number(custo_real);
@@ -40123,7 +40429,7 @@ export class ItensOsController {
               // Create new if strictly provided
               await pagamentoRepository.create({
                   item_os: { connect: { id_iten: id } },
-                  fornecedor: { connect: { id_pessoa: Number(id_fornecedor) } },
+                  fornecedor: { connect: { id_fornecedor: Number(id_fornecedor) } },
                   custo_real: custo_real ? Number(custo_real) : 0,
                   data_compra: new Date(),
                   pago_ao_fornecedor: false
@@ -41070,7 +41376,45 @@ export const getHistorico = async (req: Request, res: Response) => {
       },
       orderBy: { dt_pagamento: "desc" },
     });
-    res.json(pagamentos);
+    const pagamentosMapped = pagamentos.map((pag) => {
+      const func = pag.funcionario;
+      const pctPecas = Number(func?.comissao_pecas || 0);
+      const servicosMapped = pag.servicos_pagos.map((s) => {
+        let valor_comissao_pecas = 0;
+        let lucro_pecas_snapshot = 0;
+        const itens = s.ordem_de_servico?.itens_os || [];
+        const lucroPecasTotal = itens.reduce((acc, item) => {
+          if (item.is_interno) return acc;
+          const valorVenda = Number(item.valor_venda || 0) * (item.quantidade || 1);
+          let lucroPeca = valorVenda;
+          if (item.pecas_estoque) {
+            const custo = Number(item.pecas_estoque.valor_custo || 0) * (item.quantidade || 1);
+            lucroPeca = valorVenda - custo;
+          } else if (item.pagamentos_peca?.[0]) {
+            const custoReal = Number(item.pagamentos_peca[0].custo_real || 0);
+            lucroPeca = valorVenda - custoReal;
+          }
+          return acc + Math.max(0, lucroPeca);
+        }, 0);
+        lucro_pecas_snapshot = lucroPecasTotal;
+        if (pctPecas > 0) {
+          // No histórico, assumimos que todos os serviços que tenham a mesma OS vão mostrar a comissão, ou ratear. 
+          // Para simplificar, assim como no pendente, a OS pode aparecer mais de uma vez se tiver mais de um serviço?
+          // Sim, mas a UI não reclama.
+          valor_comissao_pecas = (lucroPecasTotal * pctPecas) / 100;
+        }
+        return {
+          ...s,
+          valor_comissao_pecas,
+          lucro_pecas_snapshot,
+        };
+      });
+      return {
+        ...pag,
+        servicos_pagos: servicosMapped,
+      };
+    });
+    res.json(pagamentosMapped);
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar histórico" });
   }
@@ -42699,37 +43043,6 @@ export class OsStateMachine {
   // Helper para o frontend saber se pode editar
   static canEdit(status: OsStatus): boolean {
     return status !== OsStatus.FINALIZADA;
-  }
-}
-
-
---- FILE: server\src\middlewares\authMiddleware.ts ---
-import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-export function authMiddleware(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Response | void {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: "Token não fornecido." });
-  }
-  const parts = authHeader.split(" ");
-  if (parts.length !== 2 || parts[0] !== "Bearer") {
-    return res.status(401).json({ error: "Formato de token inválido." });
-  }
-  const token = parts[1] as string;
-  try {
-    const decoded = jwt.verify(
-      token,
-      (process.env.JWT_SECRET || "insira_uma_chave_aleatoria_super_segura_aqui") as string,
-    );
-    // Injeta os dados do usuário na requisição para uso posterior nas rotas protegidas
-    (req as any).usuario = decoded;
-    return next();
-  } catch (error) {
-    return res.status(401).json({ error: "Token inválido ou expirado." });
   }
 }
 
@@ -44515,12 +44828,6 @@ export class FechamentoFinanceiroRepository {
 }
 
 
-
-
-
-
-
-
 --- FILE: server\src\repositories\ordemDeServico.repository.ts ---
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
@@ -45291,14 +45598,9 @@ export class PagamentoPecaRepository {
           nf_numero: true,
           fornecedor: {
             select: {
-              id_pessoa: true,
+              id_fornecedor: true,
               nome: true,
-              pessoa_juridica: {
-                select: {
-                  nome_fantasia: true,
-                  razao_social: true,
-                },
-              },
+              nome_fantasia: true,
             },
           },
           item_os: {
@@ -45340,28 +45642,17 @@ export class PagamentoPecaRepository {
       }),
       prisma.pagamentoPeca.count({ where: { deleted_at: null } }),
     ]);
-    // CORREÇÃO DO BUG DO FORNECEDOR (Mapeamento Manual)
-    // O id_pessoa salvo no PagamentoPeca é, na verdade, o id_fornecedor da nova tabela de Fornecedores.
-    const fornecedoresIds = [...new Set(data.map((p) => p.id_pessoa).filter(Boolean))];
-    if (fornecedoresIds.length > 0) {
-      const fornecedores = await prisma.fornecedor.findMany({
-        where: { id_fornecedor: { in: fornecedoresIds as number[] } }
-      });
-      const mapFornecedores = new Map(fornecedores.map((f) => [f.id_fornecedor, f]));
-      data.forEach((p: any) => {
-        if (p.id_pessoa && mapFornecedores.has(p.id_pessoa)) {
-          const realFornecedor = mapFornecedores.get(p.id_pessoa)!;
-          p.fornecedor = {
-            id_pessoa: realFornecedor.id_fornecedor,
-            nome: realFornecedor.nome,
-            pessoa_juridica: {
-              nome_fantasia: realFornecedor.nome_fantasia,
-              razao_social: realFornecedor.nome, // fallback para manter compatibilidade com frontend
-            }
-          };
-        }
-      });
-    }
+    // Formatação de compatibilidade para o frontend antigo
+    data.forEach((p: any) => {
+      if (p.fornecedor) {
+        // O front lia id_pessoa e pessoa_juridica.nome_fantasia
+        p.fornecedor.id_pessoa = p.fornecedor.id_fornecedor;
+        p.fornecedor.pessoa_juridica = {
+          nome_fantasia: p.fornecedor.nome_fantasia,
+          razao_social: p.fornecedor.nome
+        };
+      }
+    });
     return {
       data,
       pagination: {
@@ -47494,38 +47785,6 @@ export class ServicoMaoDeObraRepository {
 
 
 
---- FILE: server\src\repositories\UsuarioRepository.ts ---
-import { PrismaClient, Usuario } from "@prisma/client";
-const prisma = new PrismaClient();
-export class UsuarioRepository {
-  async findByEmail(email: string): Promise<Usuario | null> {
-    return prisma.usuario.findUnique({
-      where: { email },
-    });
-  }
-  async findById(id_usuario: number): Promise<Usuario | null> {
-    return prisma.usuario.findUnique({
-      where: { id_usuario },
-    });
-  }
-  async count(): Promise<number> {
-    return prisma.usuario.count();
-  }
-  async create(data: any): Promise<Usuario> {
-    return prisma.usuario.create({
-      data,
-    });
-  }
-  async updatePassword(id_usuario: number, senha_hash: string): Promise<Usuario> {
-    return prisma.usuario.update({
-      where: { id_usuario },
-      data: {
-        senha_hash,
-        must_change_password: false,
-      },
-    });
-  }
-}
 
 
 --- FILE: server\src\repositories\veiculo.repository.ts ---
@@ -47963,16 +48222,6 @@ itensOsRoutes.put('/:id', controller.update);
 itensOsRoutes.delete('/:id', controller.delete);
 itensOsRoutes.get('/search/desc', controller.search);
 export { itensOsRoutes };
-
-
---- FILE: server\src\routes\livroCaixa.routes.ts ---
-import { Router } from 'express';
-import * as LivroCaixaController from '../controllers/livroCaixa.controller.js';
-export const livroCaixaRoutes = Router();
-livroCaixaRoutes.get('/', LivroCaixaController.getAll);
-livroCaixaRoutes.post('/', LivroCaixaController.create);
-livroCaixaRoutes.put('/:id', LivroCaixaController.update);
-livroCaixaRoutes.delete('/:id', LivroCaixaController.softDelete);
 
 
 --- FILE: server\src\routes\operadoraCartao.routes.ts ---

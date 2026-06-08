@@ -21,25 +21,15 @@ export class ItensOsController {
       
       // Se for uma peça externa (não vinda do estoque e não interna), cria registro de PagamentoPeca imediatamente
       if (!itemData.id_pecas_estoque && !itemData.is_interno) {
-          let supplierId = id_fornecedor ? Number(id_fornecedor) : null;
-          if (!supplierId) {
-              const defaultSupplier = await prisma.pessoa.findFirst({
-                  where: { is_fornecedor: true }
-              });
-              if (defaultSupplier) {
-                  supplierId = defaultSupplier.id_pessoa;
-              }
-          }
+          const supplierId = id_fornecedor ? Number(id_fornecedor) : null;
           
-          if (supplierId) {
-              await pagamentoRepository.create({
-                  item_os: { connect: { id_iten: item.id_iten } },
-                  fornecedor: { connect: { id_fornecedor: supplierId } },
-                  custo_real: custo_real ? Number(custo_real) : 0,
-                  data_compra: new Date(),
-                  pago_ao_fornecedor: false
-              });
-          }
+          await pagamentoRepository.create({
+              id_item_os: item.id_iten,
+              id_pessoa: supplierId,
+              custo_real: custo_real ? Number(custo_real) : 0,
+              data_compra: new Date(),
+              pago_ao_fornecedor: false
+          });
       }
 
       res.status(201).json(item);
@@ -105,7 +95,7 @@ export class ItensOsController {
           if (existingPayments && existingPayments.length > 0) {
               if (id_fornecedor) {
                   const updateData: any = {
-                      fornecedor: { connect: { id_fornecedor: Number(id_fornecedor) } }
+                      id_pessoa: Number(id_fornecedor)
                   };
                   if (custo_real) {
                       updateData.custo_real = Number(custo_real);
@@ -113,14 +103,14 @@ export class ItensOsController {
                   
                   await pagamentoRepository.update(existingPayments[0]!.id_pagamento_peca, updateData);
               } else {
-                  // If cleared, delete the payment record
-                  await pagamentoRepository.delete(existingPayments[0]!.id_pagamento_peca);
+                  // If cleared, set id_pessoa to null
+                  await pagamentoRepository.update(existingPayments[0]!.id_pagamento_peca, { id_pessoa: null } as any);
               }
           } else if (id_fornecedor) {
               // Create new if strictly provided
               await pagamentoRepository.create({
-                  item_os: { connect: { id_iten: id } },
-                  fornecedor: { connect: { id_fornecedor: Number(id_fornecedor) } },
+                  id_item_os: id,
+                  id_pessoa: Number(id_fornecedor),
                   custo_real: custo_real ? Number(custo_real) : 0,
                   data_compra: new Date(),
                   pago_ao_fornecedor: false

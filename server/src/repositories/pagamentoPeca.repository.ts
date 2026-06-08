@@ -2,9 +2,27 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 
 export class PagamentoPecaRepository {
-  async create(data: Prisma.PagamentoPecaCreateInput) {
-    return await prisma.pagamentoPeca.create({
-      data,
+  async create(data: Prisma.PagamentoPecaCreateInput | any) {
+    return await prisma.$transaction(async (tx) => {
+      const itemId = data.id_item_os || data.item_os?.connect?.id_iten;
+
+      if (itemId) {
+        const existing = await tx.pagamentoPeca.findFirst({
+          where: { id_item_os: itemId },
+        });
+
+        if (existing) {
+          const { id_item_os, item_os, ...updateData } = data as any;
+          return await tx.pagamentoPeca.update({
+            where: { id_pagamento_peca: existing.id_pagamento_peca },
+            data: updateData,
+          });
+        }
+      }
+
+      return await tx.pagamentoPeca.create({
+        data,
+      });
     });
   }
 
