@@ -17,6 +17,9 @@ import {
 import { PagamentoClienteForm } from "../components/financeiro/Forms/PagamentoClienteForm";
 import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
 import { LaborManager } from "../components/os/LaborManager";
+import { OsItemForm } from "../components/os/OsItemForm";
+import { OsItemsService } from "../services/osItems.service";
+import { FinanceiroService } from "../services/financeiro.service";
 import { Modal, Button, ActionButton, Card, Input, Select, TextArea } from "../components/ui";
 import { toast } from "react-toastify";
 
@@ -39,6 +42,7 @@ interface ItemOS {
     id_pessoa?: number;
     custo_real: number;
     pago_ao_fornecedor: boolean;
+    nf_numero?: string;
   }[];
 }
 
@@ -55,6 +59,7 @@ interface ItemFinanceiroState {
   id_fornecedor: string;
   custo_real: string;
   pago_fornecedor: boolean;
+  nf_numero?: string;
 }
 
 interface OSData {
@@ -130,6 +135,103 @@ export const FechamentoFinanceiroDetalhePage = () => {
     isOpen: boolean;
     data: any;
   }>({ isOpen: false, data: null });
+
+  const [partSearchResults, setPartSearchResults] = useState<any[]>([]);
+  const [nfsFornecedor, setNfsFornecedor] = useState<Record<string, { loading: boolean; nfs: any[] }>>({});
+
+  const loadNfsFornecedor = useCallback(async (id_fornecedor: string) => {
+    if (!id_fornecedor) return;
+    setNfsFornecedor((prev) => ({ ...prev, [id_fornecedor]: { loading: true, nfs: prev[id_fornecedor]?.nfs || [] } }));
+    try {
+      const res = await FinanceiroService.getNfsPendentes({ id_fornecedor: Number(id_fornecedor), limit: 100 });
+      setNfsFornecedor((prev) => ({ ...prev, [id_fornecedor]: { loading: false, nfs: res.data || [] } }));
+    } catch (error) {
+      console.error(error);
+      setNfsFornecedor((prev) => ({ ...prev, [id_fornecedor]: { loading: false, nfs: prev[id_fornecedor]?.nfs || [] } }));
+    }
+  }, []);
+
+  useEffect(() => {
+    const fornecedoresToLoad = new Set<string>();
+    Object.values(itemsState).forEach((item) => {
+      if (item.id_fornecedor && !nfsFornecedor[item.id_fornecedor]) {
+        fornecedoresToLoad.add(item.id_fornecedor);
+      }
+    });
+
+    fornecedoresToLoad.forEach((id) => {
+      loadNfsFornecedor(id);
+    });
+  }, [itemsState, nfsFornecedor, loadNfsFornecedor]);
+
+  const searchParts = async (query: string) => {
+    if (query.length < 2) {
+      setPartSearchResults([]);
+      return;
+    }
+    try {
+      const [stockRes, historyRes] = await Promise.all([
+        OsItemsService.searchStock(query),
+        OsItemsService.search(query),
+      ]);
+
+      const historyFormatted = historyRes.map((h: any) => ({
+        id_pecas_estoque: null,
+        nome: h.descricao,
+        valor_venda: h.valor_venda,
+        fabricante: "Histórico",
+        isHistory: true,
+      }));
+
+      const combined = [...stockRes, ...historyFormatted];
+      const unique = combined.filter(
+        (v, i, a) => a.findIndex((t) => t.nome === v.nome) === i,
+      );
+      setPartSearchResults(unique);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const checkStockAvailability = async (stockId: string | number) => {
+    try {
+      return await OsItemsService.checkAvailability(Number(stockId));
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+
+  const handleAddItem = async (itemData: any) => {
+    if (!osData) return false;
+    try {
+      const payload = {
+        id_os: Number(osData.id_os),
+        id_pecas_estoque: itemData.id_pecas_estoque
+          ? Number(itemData.id_pecas_estoque)
+          : null,
+        descricao: itemData.descricao,
+        quantidade: Number(itemData.quantidade),
+        valor_venda: Number(itemData.valor_venda),
+        valor_total: Number(itemData.quantidade) * Number(itemData.valor_venda),
+        codigo_referencia: itemData.codigo_referencia,
+        id_fornecedor: itemData.id_fornecedor
+          ? Number(itemData.id_fornecedor)
+          : null,
+        is_interno: itemData.is_interno,
+      };
+
+      await OsItemsService.create(payload);
+      toast.success("Item adicionado com sucesso!");
+      fetchOsData(osData.id_os);
+      setIsDirty(true);
+      return true;
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao adicionar item.");
+      return false;
+    }
+  };
 
   // Item Edit State
   const [editItemModal, setEditItemModal] = useState<{
@@ -245,6 +347,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
           pago_fornecedor: existingPayment
             ? existingPayment.pago_ao_fornecedor
             : false,
+          nf_numero: existingPayment?.nf_numero || "",
         };
       });
       setItemsState(initialItemsState);
@@ -390,41 +493,51 @@ export const FechamentoFinanceiroDetalhePage = () => {
         totalCusto: 0,
         lucro: 0,
         margem: 0,
-        totalItemsRevenue: 0,
-        totalItemsCost: 0,
-        totalLaborRevenue: 0,
-        totalInternalCost: 0,
+        faturamentoPecasExternas: 0,
+        custoPecasExternas: 0,
+        faturamentoEstoque: 0,
+        custoEstoque: 0,
+        faturamentoMaoDeObra: 0,
+        consumoInterno: 0,
       };
 
-    // Client Revenue (excluding internal items)
-    const totalItemsRevenue = osData.itens_os
-      .filter((i) => !i.is_interno)
-      .reduce((acc, i) => acc + Number(i.valor_total), 0);
+    let faturamentoPecasExternas = 0;
+    let custoPecasExternas = 0;
+    let faturamentoEstoque = 0;
+    let custoEstoque = 0;
+    let faturamentoMaoDeObra = 0;
+    let consumoInterno = 0;
 
-    const totalLaborRevenue =
-      osData.servicos_mao_de_obra?.reduce(
-        (acc, s) => acc + Number(s.valor),
-        0,
-      ) || 0;
-    const totalReceita = totalItemsRevenue + totalLaborRevenue;
-
-    // Costs (including internal items)
-    const totalItemsCost = osData.itens_os
-      .filter((i) => !i.is_interno)
-      .reduce(
-        (acc, i) => acc + Number(itemsState[i.id_iten]?.custo_real || 0),
-        0,
+    osData.itens_os.forEach((i) => {
+      const valorVenda = Number(i.valor_total);
+      const custoReal = Number(
+        itemsState[i.id_iten]?.custo_real || i.pecas_estoque?.valor_custo || 0
       );
 
-    const totalInternalCost = osData.itens_os
-      .filter((i) => i.is_interno)
-      .reduce(
-        (acc, i) => acc + Number(itemsState[i.id_iten]?.custo_real || 0),
-        0,
-      );
+      if (i.id_pecas_estoque) {
+        if (i.is_interno) {
+           consumoInterno += custoReal;
+        } else {
+           faturamentoEstoque += valorVenda;
+           custoEstoque += custoReal;
+        }
+      } else {
+        if (i.is_interno) {
+           consumoInterno += custoReal;
+        } else {
+           faturamentoPecasExternas += valorVenda;
+           custoPecasExternas += custoReal;
+        }
+      }
+    });
 
-    const totalCusto = totalItemsCost + totalInternalCost;
+    faturamentoMaoDeObra = osData.servicos_mao_de_obra?.reduce(
+      (acc, s) => acc + Number(s.valor),
+      0,
+    ) || 0;
 
+    const totalReceita = faturamentoPecasExternas + faturamentoEstoque + faturamentoMaoDeObra;
+    const totalCusto = custoPecasExternas + custoEstoque + consumoInterno;
     const lucro = totalReceita - totalCusto;
     const margem = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
 
@@ -433,10 +546,12 @@ export const FechamentoFinanceiroDetalhePage = () => {
       totalCusto,
       lucro,
       margem,
-      totalItemsRevenue,
-      totalItemsCost,
-      totalLaborRevenue,
-      totalInternalCost,
+      faturamentoPecasExternas,
+      custoPecasExternas,
+      faturamentoEstoque,
+      custoEstoque,
+      faturamentoMaoDeObra,
+      consumoInterno,
     };
   };
 
@@ -444,8 +559,12 @@ export const FechamentoFinanceiroDetalhePage = () => {
     totalReceita,
     totalCusto,
     lucro,
-    totalItemsRevenue,
-    totalLaborRevenue,
+    faturamentoPecasExternas,
+    custoPecasExternas,
+    faturamentoEstoque,
+    custoEstoque,
+    faturamentoMaoDeObra,
+    consumoInterno,
   } = calculateTotals();
 
   const handleSave = async (finalize: boolean = false) => {
@@ -514,7 +633,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
           await api.put(`/ordem-de-servico/${osData.id_os}`, {
             status: "FINALIZADA",
             valor_final: totalReceita,
-            valor_pecas: totalItemsRevenue,
+            valor_pecas: faturamentoPecasExternas + faturamentoEstoque,
           });
         }
         toast.success("OS Finalizada com Sucesso!");
@@ -830,6 +949,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
               <th className="p-4 w-1/3 border-b border-neutral-50">Peça</th>
               <th className="p-4 border-b border-neutral-50">Ref / Nota</th>
               <th className="p-4 border-b border-neutral-50">Fornecedor</th>
+              <th className="p-4 border-b border-neutral-50">Nota Fiscal</th>
               <th className="p-4 w-44 border-b border-neutral-50">
                 Custo (R$)
               </th>
@@ -892,6 +1012,34 @@ export const FechamentoFinanceiroDetalhePage = () => {
                           </option>
                         ))}
                       </Select>
+                    )}
+                  </td>
+                  <td className="p-4 first:rounded-l-lg last:rounded-r-lg">
+                    {item.pecas_estoque || item.id_pecas_estoque ? (
+                       <span className="text-xs text-neutral-400 font-medium">-</span>
+                    ) : (
+                      <Select
+                        className="!py-1.5 !px-3 !text-sm max-w-[150px]"
+                        value={itemsState[item.id_iten]?.nf_numero || ""}
+                        disabled={!itemsState[item.id_iten]?.id_fornecedor || nfsFornecedor[itemsState[item.id_iten]?.id_fornecedor]?.loading}
+                        onChange={(e) =>
+                          handleItemChange(
+                            item.id_iten,
+                            "nf_numero",
+                            e.target.value,
+                          )
+                        }
+                      >
+                        <option value="">Nenhuma NF</option>
+                        {itemsState[item.id_iten]?.id_fornecedor && nfsFornecedor[itemsState[item.id_iten]?.id_fornecedor]?.nfs.map((nf) => (
+                          <option key={nf.nf_numero} value={nf.nf_numero}>
+                            {nf.nf_numero} ({formatCurrency(nf.valor)})
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                    {itemsState[item.id_iten]?.id_fornecedor && nfsFornecedor[itemsState[item.id_iten]?.id_fornecedor]?.loading && (
+                      <div className="text-[10px] text-gray-400 mt-1 animate-pulse">Carregando...</div>
                     )}
                   </td>
                   <td className="p-4 first:rounded-l-lg last:rounded-r-lg">
@@ -1201,56 +1349,91 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
       {/* BOTTOM SUMMARY CARD */}
       <div className="bg-primary-600 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden mt-8">
-        {/* Background Glow Effect */}
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-8 items-end">
-          <div>
-            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-2 opacity-80">
-              Custo Total (Peças + Interno)
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="bg-white/10 rounded-xl p-4">
+            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
+              Peças Externas
             </p>
-            <p className="text-2xl font-bold text-white">
-              {formatCurrency(totalCusto)}
+            <p className="text-sm text-primary-200">
+              Fat: {formatCurrency(faturamentoPecasExternas)}
             </p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-sm font-black bg-white/20 px-2 py-0.5 rounded uppercase tracking-wider text-emerald-300">
-                Lucro Líquido: {formatCurrency(lucro)}
-              </span>
-            </div>
+            <p className="text-sm text-red-300">
+              Custo: {formatCurrency(custoPecasExternas)}
+            </p>
+            <p className="text-sm font-bold text-emerald-300 mt-1">
+              Lucro: {formatCurrency(faturamentoPecasExternas - custoPecasExternas)}
+            </p>
           </div>
-          <div>
-            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-2 opacity-80">
+
+          <div className="bg-white/10 rounded-xl p-4">
+            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
+              Estoque Próprio
+            </p>
+            <p className="text-sm text-primary-200">
+              Fat: {formatCurrency(faturamentoEstoque)}
+            </p>
+            <p className="text-sm text-red-300">
+              Custo: {formatCurrency(custoEstoque)}
+            </p>
+            <p className="text-sm font-bold text-emerald-300 mt-1">
+              Lucro: {formatCurrency(faturamentoEstoque - custoEstoque)}
+            </p>
+          </div>
+
+          <div className="bg-white/10 rounded-xl p-4">
+            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
               Mão de Obra
             </p>
-            <p className="text-2xl font-bold text-white">
-              {formatCurrency(totalLaborRevenue)}
+            <p className="text-sm text-primary-200">
+              Fat: {formatCurrency(faturamentoMaoDeObra)}
+            </p>
+            <p className="text-sm text-primary-200">
+              Custo: Já abatido das comissões
+            </p>
+            <p className="text-sm font-bold text-emerald-300 mt-1">
+              Lucro Bruto M.O: {formatCurrency(faturamentoMaoDeObra)}
             </p>
           </div>
-          <div>
-            <p className="text-xs font-medium text-white uppercase tracking-widest mb-2">
-              TOTAL À RECEBER
+
+          <div className="bg-white/10 rounded-xl p-4">
+            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
+              Consumo Interno / Prejuízo
             </p>
-            <p className="text-5xl font-bold text-white tracking-tighter drop-shadow-md">
-              {formatCurrency(totalReceita)}
+            <p className="text-sm text-primary-200">
+              Fat: R$ 0,00 (Não cobrado)
+            </p>
+            <p className="text-sm font-bold text-red-300 mt-1">
+              Custo Oficina: -{formatCurrency(consumoInterno)}
             </p>
           </div>
-          <div className="text-right">
-            <div
-              className={`inline-block px-6 py-3 rounded-2xl font-black uppercase text-sm tracking-wider shadow-xl ${
-                (osData.pagamentos_cliente?.reduce(
-                  (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
-                  0,
-                ) || 0) >= totalReceita
-                  ? "bg-emerald-500 text-white shadow-emerald-500/40"
-                  : "bg-amber-500 text-white shadow-amber-500/40 animate-pulse"
-              }`}
-            >
-              {(osData.pagamentos_cliente?.reduce(
-                (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
-                0,
-              ) || 0) >= totalReceita
-                ? "QUITADO"
-                : "PENDENTE"}
+
+          <div className="bg-white/20 rounded-xl p-4 flex flex-col justify-center items-end border border-white/30">
+            <p className="text-xs font-medium text-white uppercase tracking-widest mb-1">
+              LUCRO LÍQUIDO FINAL
+            </p>
+            <p className="text-3xl font-black text-white tracking-tighter drop-shadow-md">
+              {formatCurrency(lucro)}
+            </p>
+            <div className="flex justify-end gap-2 mt-2 w-full">
+               <div
+                  className={`inline-block px-3 py-1 rounded font-black uppercase text-[10px] tracking-wider ${
+                    (osData.pagamentos_cliente?.reduce(
+                      (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
+                      0,
+                    ) || 0) >= totalReceita
+                      ? "bg-emerald-500 text-white"
+                      : "bg-amber-500 text-white animate-pulse"
+                  }`}
+                >
+                  {(osData.pagamentos_cliente?.reduce(
+                    (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
+                    0,
+                  ) || 0) >= totalReceita
+                    ? "QUITADO"
+                    : "PENDENTE"}
+                </div>
             </div>
           </div>
         </div>

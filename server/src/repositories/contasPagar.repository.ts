@@ -557,14 +557,15 @@ export class ContasPagarRepository {
   }
 
   // ── Rota A: NFs Pendentes ──
-  async findNfsPendentes(params?: { search?: string; skip?: number; take?: number }) {
-    const { search, skip, take } = params || {};
+  async findNfsPendentes(params?: { search?: string; id_fornecedor?: number; skip?: number; take?: number }) {
+    const { search, id_fornecedor, skip, take } = params || {};
     
     const contas = await prisma.contasPagar.findMany({
       where: {
         nf_numero: { not: null },
         deleted_at: null,
-        ...(search ? { nf_numero: { contains: search, mode: "insensitive" } } : {})
+        ...(search ? { nf_numero: { contains: search, mode: "insensitive" } } : {}),
+        ...(id_fornecedor ? { id_fornecedor: id_fornecedor } : {})
       },
       select: {
         nf_numero: true,

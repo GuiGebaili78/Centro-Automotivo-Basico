@@ -58,12 +58,6 @@ export const FechamentoFinanceiroPage = () => {
     equipamentoNumeracao?: string | null;
   } | null>(null);
 
-
-  // Load data on mount
-  useEffect(() => {
-    loadData();
-  }, []);
-
   // Handle deep-link redirect via URL param
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -73,10 +67,17 @@ export const FechamentoFinanceiroPage = () => {
     }
   }, [location.search]);
 
-  const loadData = async () => {
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      loadData(universalFilters.search);
+    }, 500);
+    return () => clearTimeout(delayDebounceFn);
+  }, [universalFilters.search]);
+
+  const loadData = async (searchTerm?: string) => {
     try {
       const [fechamentosData, allOss] = await Promise.all([
-        FinanceiroService.getFechamentos(),
+        FinanceiroService.getFechamentos(searchTerm),
         OsService.getAll(),
       ]);
 

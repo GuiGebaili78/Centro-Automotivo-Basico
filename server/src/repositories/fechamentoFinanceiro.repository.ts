@@ -8,11 +8,18 @@ export class FechamentoFinanceiroRepository {
     });
   }
 
-  async findAll() {
-    return await prisma.fechamentoFinanceiro.findMany({
+  async findAll(searchTerm?: string) {
+    const query: Prisma.FechamentoFinanceiroFindManyArgs = {
+      where: {},
       include: {
         ordem_de_servico: {
           include: {
+            cliente: {
+              include: {
+                pessoa_fisica: { include: { pessoa: true } },
+                pessoa_juridica: true,
+              },
+            },
             veiculo: true,
             servicos_mao_de_obra: {
               where: { deleted_at: null },
@@ -31,7 +38,54 @@ export class FechamentoFinanceiroRepository {
           },
         },
       },
-    });
+    };
+
+    if (searchTerm) {
+      const searchNumber = !isNaN(Number(searchTerm)) ? Number(searchTerm) : undefined;
+      query.where = {
+        ordem_de_servico: {
+          OR: [
+            ...(searchNumber ? [{ id_os: searchNumber }] : []),
+            {
+              veiculo: {
+                OR: [
+                  { placa: { contains: searchTerm } },
+                  { modelo: { contains: searchTerm } },
+                ],
+              },
+            },
+            {
+              cliente: {
+                OR: [
+                  { pessoa_fisica: { pessoa: { nome: { contains: searchTerm } } } },
+                  { pessoa_juridica: { razao_social: { contains: searchTerm } } },
+                  { pessoa_juridica: { nome_fantasia: { contains: searchTerm } } },
+                ],
+              },
+            },
+            {
+              itens_os: {
+                some: {
+                  OR: [
+                    { descricao: { contains: searchTerm } },
+                    { codigo_referencia: { contains: searchTerm } },
+                    {
+                      pagamentos_peca: {
+                        some: {
+                          pessoa: { nome: { contains: searchTerm } },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      };
+    }
+
+    return await prisma.fechamentoFinanceiro.findMany(query);
   }
 
   async findById(id: number) {
@@ -64,6 +118,7 @@ export class FechamentoFinanceiroRepository {
             id_fornecedor,
             custo_real,
             pago_ao_fornecedor,
+            nf_numero,
           } = itemPeca;
 
           if (id_pagamento_peca) {
@@ -73,6 +128,7 @@ export class FechamentoFinanceiroRepository {
                 id_pessoa: Number(id_fornecedor),
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+                nf_numero: nf_numero || null,
               },
             });
           } else {
@@ -83,6 +139,7 @@ export class FechamentoFinanceiroRepository {
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
                 data_compra: new Date(),
+                nf_numero: nf_numero || null,
               },
             });
           }
@@ -158,6 +215,7 @@ export class FechamentoFinanceiroRepository {
             id_fornecedor,
             custo_real,
             pago_ao_fornecedor,
+            nf_numero,
           } = itemPeca;
 
           if (id_pagamento_peca) {
@@ -167,6 +225,7 @@ export class FechamentoFinanceiroRepository {
                 id_pessoa: Number(id_fornecedor),
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+                nf_numero: nf_numero || null,
               },
             });
           } else {
@@ -177,6 +236,7 @@ export class FechamentoFinanceiroRepository {
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
                 data_compra: new Date(),
+                nf_numero: nf_numero || null,
               },
             });
           }

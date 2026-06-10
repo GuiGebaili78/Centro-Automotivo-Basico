@@ -109,10 +109,11 @@ export const getNfsPendentes = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = (req.query.search as string) || "";
+    const id_fornecedor = req.query.id_fornecedor ? Number(req.query.id_fornecedor) : undefined;
     
     const skip = (page - 1) * limit;
 
-    const nfs = await repository.findNfsPendentes({ search, skip, take: limit });
+    const nfs = await repository.findNfsPendentes({ search, id_fornecedor, skip, take: limit });
     res.json(nfs); // Returning { data, total }
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar notas fiscais pendentes" });

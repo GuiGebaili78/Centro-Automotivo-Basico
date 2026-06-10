@@ -268,7 +268,7 @@ export class FinanceiroService {
   }
 
   // --- SINCRONIZAÇÃO DE NOTAS FISCAIS (FASE 2) ---
-  static async getNfsPendentes(params?: { search?: string; page?: number; limit?: number }): Promise<{ data: any[]; total: number }> {
+  static async getNfsPendentes(params?: { search?: string; page?: number; limit?: number; id_fornecedor?: number }): Promise<{ data: any[]; total: number }> {
     const response = await api.get("/contas-pagar/nfs-pendentes", { params });
     return response.data;
   }
@@ -294,8 +294,9 @@ export class FinanceiroService {
   }
 
   // --- FECHAMENTO & CONSOLIDAÇÃO ---
-  static async getFechamentos(): Promise<any[]> {
-    const response = await api.get("/fechamento-financeiro");
+  static async getFechamentos(searchTerm?: string): Promise<any[]> {
+    const query = searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : "";
+    const response = await api.get(`/fechamento-financeiro${query}`);
     return response.data;
   }
 

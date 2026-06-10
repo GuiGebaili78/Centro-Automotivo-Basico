@@ -18,7 +18,8 @@ export class FechamentoFinanceiroController {
 
   async findAll(req: Request, res: Response) {
     try {
-      const fechamentos = await repository.findAll();
+      const q = req.query.q ? String(req.query.q) : undefined;
+      const fechamentos = await repository.findAll(q);
       res.json(fechamentos);
     } catch (error) {
       res
