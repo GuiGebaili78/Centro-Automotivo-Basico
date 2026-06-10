@@ -48,8 +48,12 @@ export class FechamentoFinanceiroController {
       const id = Number(req.params.id);
       const fechamento = await repository.update(id, req.body);
       res.json(fechamento);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to update Fechamento Financeiro" });
+    } catch (error: any) {
+      const isValidationError = error.message?.includes("ABERTA");
+      res.status(400).json({
+        error: isValidationError ? error.message : "Falha ao atualizar Fechamento Financeiro",
+        details: isValidationError ? undefined : error.message,
+      });
     }
   }
 
@@ -80,9 +84,10 @@ export class FechamentoFinanceiroController {
       res.status(201).json(fechamento);
     } catch (error: any) {
       console.error("[CRÍTICO] Erro ao consolidar OS:", error);
-      res.status(500).json({
-        error: "Failed to consolidate OS",
-        details: error.message || error,
+      const isValidationError = error.message?.includes("ABERTA") || error.message?.includes("status que permita");
+      res.status(isValidationError ? 400 : 500).json({
+        error: isValidationError ? error.message : "Falha ao consolidar OS",
+        details: isValidationError ? undefined : (error.message || error),
       });
     }
   }

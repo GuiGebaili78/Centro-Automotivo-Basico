@@ -1,4 +1,4 @@
-PROJECT DUMP - 09/06/2026 20:14
+PROJECT DUMP - 10/06/2026 20:06
 =========================================
 
 --- FILE: dbbk.sh ---
@@ -450,7 +450,6 @@ O layout segue um estilo "Premium/Moderno". Regressões para estilos "padrão" o
 # Centro-Automotivo-Basico
 
 
---- FILE: .antigravity\rules.md ---
 Você é um desenvolvedor fullstack sênior, especialista em ReactJS, NextJS, TypeScript, TailwindCSS 3, Shadcn e Radix. Suas respostas devem ser diretas, profissionais e focadas em eficiência.  
 1. Fluxo de Trabalho e Economia de Tokens
 Planejamento Conciso: Antes de codificar, apresente um plano de implementação resumido e direto ao ponto. Aguarde minha aprovação para iniciar a codificação.  
@@ -856,8 +855,8 @@ src/components/os/OsTable.tsx(7,1): error TS6133: 'OsService' is declared but it
     "jsx": "react-jsx",
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
@@ -876,6 +875,7 @@ src/components/os/OsTable.tsx(7,1): error TS6133: 'OsService' is declared but it
 }
 
 
+--- FILE: client\tsconfig.node.json ---
 {
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
@@ -2332,104 +2332,6 @@ export const ClienteFormSection = memo(
 ClienteFormSection.displayName = "ClienteFormSection";
 
 
-/**
- * EquipamentoFormSection
- * 
- * Responsável por gerenciar os campos de peças avulsas na ficha do cliente.
- */
-import {
-  memo,
-  useState,
-  useImperativeHandle,
-  forwardRef,
-  useEffect,
-} from "react";
-import { Wrench, Tag, Hash } from "lucide-react";
-import { Input, TextArea } from "../../ui";
-export interface EquipamentoFormData {
-  nome_peca: string;
-  fabricante: string;
-  numeracao: string;
-  observacoes: string;
-}
-export interface EquipamentoFormSectionRef {
-  getData: () => EquipamentoFormData;
-}
-interface EquipamentoFormSectionProps {
-  initialData?: Partial<EquipamentoFormData>;
-  nomeInputRef?: React.Ref<HTMLInputElement>;
-}
-export const EquipamentoFormSection = memo(
-  forwardRef<EquipamentoFormSectionRef, EquipamentoFormSectionProps>(
-    ({ initialData, nomeInputRef }, ref) => {
-      const [nomePeca, setNomePeca] = useState(initialData?.nome_peca ?? "");
-      const [fabricante, setFabricante] = useState(initialData?.fabricante ?? "");
-      const [numeracao, setNumeracao] = useState(initialData?.numeracao ?? "");
-      const [observacoes, setObservacoes] = useState(initialData?.observacoes ?? "");
-      useEffect(() => {
-        if (!initialData) return;
-        if (initialData.nome_peca !== undefined) setNomePeca(initialData.nome_peca);
-        if (initialData.fabricante !== undefined) setFabricante(initialData.fabricante);
-        if (initialData.numeracao !== undefined) setNumeracao(initialData.numeracao);
-        if (initialData.observacoes !== undefined) setObservacoes(initialData.observacoes);
-      }, [initialData]);
-      useImperativeHandle(
-        ref,
-        () => ({
-          getData: () => ({
-            nome_peca: nomePeca,
-            fabricante,
-            numeracao,
-            observacoes,
-          }),
-        }),
-        [nomePeca, fabricante, numeracao, observacoes],
-      );
-      return (
-        <div className="space-y-4 animate-in fade-in duration-300">
-          <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-800 font-medium">
-            Cadastre os dados da peça avulsa para vincular ao patrimônio do cliente.
-          </div>
-          <div className="grid grid-cols-1 gap-4">
-            <Input
-              label="Nome da Peça / Equipamento *"
-              icon={Wrench}
-              ref={nomeInputRef as React.Ref<HTMLInputElement>}
-              value={nomePeca}
-              onChange={(e) => setNomePeca(e.target.value)}
-              placeholder="Ex: Alternador, Motor de Partida..."
-              required
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Fabricante / Marca"
-                icon={Tag}
-                value={fabricante}
-                onChange={(e) => setFabricante(e.target.value)}
-                placeholder="Ex: Bosch, Valeo..."
-              />
-              <Input
-                label="Numeração / Serial"
-                icon={Hash}
-                value={numeracao}
-                onChange={(e) => setNumeracao(e.target.value)}
-                placeholder="SN: 000000"
-              />
-            </div>
-            <TextArea
-              label="Observações Adicionais"
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Estado da peça, defeitos visíveis, etc..."
-              rows={3}
-            />
-          </div>
-        </div>
-      );
-    },
-  ),
-);
-EquipamentoFormSection.displayName = "EquipamentoFormSection";
 
 
 --- FILE: client\src\components\colaboradores\ColaboradoresTable.tsx ---
@@ -4886,7 +4788,6 @@ export const EntradaFornecedorForm = ({
                 setInvoice(val);
               }
             }}
-            labelClassName="text-amber-800 font-semibold"
             className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 text-amber-900 font-medium"
           >
             <option value="">Sem Sincronização (Livre)</option>
@@ -11438,17 +11339,30 @@ export const PagamentoPecasTab = ({
                   </td>
                   <td className="p-4 text-center">
                     <button
-                      onClick={() =>
+                      onClick={() => {
+                        const st = (p as any).item_os?.ordem_de_servico?.status;
+                        if (st === "ABERTA" || st === "AGENDAMENTO" || st === "ORCAMENTO") {
+                           setStatusMsg({ type: "error", text: "Não é possível liquidar peças de OS não consolidadas." });
+                           return;
+                        }
                         handleTogglePayment(
                           p.id_pagamento_peca,
                           p.pago_ao_fornecedor,
-                        )
-                      }
-                      className="hover:scale-110 transition-transform active:scale-95 text-neutral-400 hover:text-neutral-600"
+                        );
+                      }}
+                      className={`transition-transform text-neutral-400 ${
+                        (() => {
+                           const st = (p as any).item_os?.ordem_de_servico?.status;
+                           const disabled = st === "ABERTA" || st === "AGENDAMENTO" || st === "ORCAMENTO";
+                           return disabled ? "opacity-50 cursor-not-allowed" : "hover:scale-110 active:scale-95 hover:text-neutral-600";
+                        })()
+                      }`}
                       title={
-                        p.pago_ao_fornecedor
-                          ? "Desmarcar como pago"
-                          : "Marcar como pago"
+                        (() => {
+                           const st = (p as any).item_os?.ordem_de_servico?.status;
+                           if (st === "ABERTA" || st === "AGENDAMENTO" || st === "ORCAMENTO") return "Bloqueado: OS não consolidada";
+                           return p.pago_ao_fornecedor ? "Desmarcar como pago" : "Marcar como pago";
+                        })()
                       }
                     >
                       {p.pago_ao_fornecedor ? (
@@ -12487,6 +12401,7 @@ export const FechamentoFinanceiroForm = ({
           status: isStatusProtegido ? osData.status : "PRONTO PARA FINANCEIRO",
           valor_final: totalReceita,
           valor_pecas: totalItemsRevenue,
+          diagnostico: osData.diagnostico
         });
       } catch (err) {
         console.error("Erro ao atualizar OS:", err);
@@ -12667,13 +12582,12 @@ export const FechamentoFinanceiroForm = ({
                     <p className="text-sm font-black text-blue-400 uppercase mb-1 tracking-wider flex items-center gap-2">
                       <Wrench size={12} /> Diagnóstico (apenas informações internas da oficina)
                     </p>
-                    <div className="text-sm font-medium text-gray-700 leading-relaxed bg-blue-50/30 p-3 rounded-lg border border-blue-50">
-                      {osData.diagnostico || (
-                        <span className="italic text-gray-400">
-                          Não informado
-                        </span>
-                      )}
-                    </div>
+                    <textarea
+                      className="w-full bg-blue-50 border border-blue-200 text-blue-950 p-3 rounded-xl text-sm h-32 outline-none resize-none transition-all focus:shadow-sm focus:border-blue-400"
+                      placeholder="Insira o diagnóstico final..."
+                      value={osData.diagnostico || ""}
+                      onChange={(e) => setOsData({ ...osData, diagnostico: e.target.value })}
+                    />
                   </div>
                 </div>
                 {/* COL 3: Revenue (Span 3) */}
@@ -13507,9 +13421,10 @@ export const PagamentoClienteForm = ({
         result = await FinanceiroService.createPagamentoCliente(payload);
       }
       onSuccess(result);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Erro ao salvar pagamento. Verifique os dados.");
+      const apiError = err.response?.data?.error || err.message;
+      setError(apiError || "Erro ao salvar pagamento. Verifique os dados.");
     } finally {
       setLoading(false);
     }
@@ -13987,6 +13902,130 @@ export const PagamentoPecaForm = ({
 };
 
 
+--- FILE: client\src\components\fornecedores\FornecedoresTable.tsx ---
+import { ActionButton } from "../ui/ActionButton";
+import { User, Building2, MapPin, Phone, Edit, Trash2 } from "lucide-react";
+import type { IFornecedor } from "../../types/fornecedor.types";
+import { formatPhone } from "../../utils/normalize";
+interface FornecedoresTableProps {
+  fornecedores: IFornecedor[];
+  onEdit: (fornecedor: IFornecedor) => void;
+  onDelete: (id: number) => void;
+}
+export const FornecedoresTable = ({
+  fornecedores,
+  onEdit,
+  onDelete,
+}: FornecedoresTableProps) => {
+  return (
+    <table className="tabela-limpa w-full">
+      <thead>
+        <tr>
+          <th>Fornecedor</th>
+          <th>Localização</th>
+          <th>Contato</th>
+          <th className="text-center">Ações</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-neutral-100">
+        {fornecedores.map((f) => (
+          <tr
+            key={f.id_fornecedor}
+            className="hover:bg-neutral-50 transition-colors group"
+          >
+            <td className="py-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-primary-50 rounded-full flex items-center justify-center text-primary-600">
+                  {f.tipo_pessoa === "FISICA" ? (
+                    <User size={18} />
+                  ) : (
+                    <Building2 size={18} />
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium text-neutral-600">
+                    {f.nome_fantasia || f.nome}
+                  </p>
+                  {f.nome_fantasia && f.nome_fantasia !== f.nome && (
+                    <p className="text-base text-neutral-600 font-medium">
+                      {f.nome}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </td>
+            <td className="py-4">
+              <div className="flex items-center gap-2 text-neutral-600 text-base font-medium">
+                <MapPin size={14} className="text-neutral-600" />
+                <span className="uppercase">
+                  {f.logradouro ? (
+                    <>
+                      {f.logradouro}, {f.numero} - {f.bairro}
+                    </>
+                  ) : (
+                    <span className="text-neutral-400">
+                      Endereço não cadastrado
+                    </span>
+                  )}
+                </span>
+              </div>
+              {f.cidade && (
+                <div className="pl-6 text-base text-neutral-400 font-medium uppercase">
+                  {f.cidade}/{f.uf}
+                </div>
+              )}
+            </td>
+            <td className="py-4">
+              <div className="flex flex-col gap-1 items-start">
+                {f.contato && (
+                  <div className="font-medium text-neutral-600 text-base flex items-center gap-2 mb-1">
+                    <User size={14} className="text-neutral-600" />
+                    {f.contato}
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {f.whatsapp && (
+                    <div className="flex items-center gap-1.5 text-base font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-md">
+                      <Phone size={12} />
+                      {formatPhone(f.whatsapp)}
+                    </div>
+                  )}
+                  {f.telefone && f.telefone !== f.whatsapp && (
+                    <div className="flex items-center gap-1.5 text-base font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
+                      <Phone size={12} />
+                      {formatPhone(f.telefone)}
+                    </div>
+                  )}
+                </div>
+                {f.email && (
+                  <span className="text-base text-neutral-500 mt-1">
+                    {f.email}
+                  </span>
+                )}
+              </div>
+            </td>
+            <td className="py-4 pr-6">
+              <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ActionButton
+                  icon={Edit}
+                  label="Editar"
+                  variant="neutral"
+                  onClick={() => onEdit(f)}
+                />
+                <ActionButton
+                  icon={Trash2}
+                  label="Excluir"
+                  variant="danger"
+                  onClick={() => onDelete(f.id_fornecedor)}
+                />
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
 
 
 --- FILE: client\src\components\fornecedores\Forms\FornecedorForm.tsx ---
@@ -16455,19 +16494,19 @@ export const OsCreationModal = memo(
 import { Card } from "../ui";
 interface OsDiagnosisProps {
   defeitoRelatado?: string | null;
-  diagnostico?: string | null;
+  check_list?: string | null;
   onChangeDefeito: (val: string) => void;
-  onChangeDiagnostico: (val: string) => void;
+  onChangeCheckList: (val: string) => void;
   onBlurDefeito: (val: string) => void;
-  onBlurDiagnostico: (val: string) => void;
+  onBlurCheckList: (val: string) => void;
 }
 export const OsDiagnosis = ({
   defeitoRelatado,
-  diagnostico,
+  check_list,
   onChangeDefeito,
-  onChangeDiagnostico,
+  onChangeCheckList,
   onBlurDefeito,
-  onBlurDiagnostico,
+  onBlurCheckList,
 }: OsDiagnosisProps) => {
   return (
     <Card className="space-y-4 p-4 h-full">
@@ -16491,14 +16530,14 @@ export const OsDiagnosis = ({
           <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
           </div>
-          DIAGNÓSTICO (APENAS INFORMAÇÕES INTERNAS DA OFICINA)
+          CHECK LIST (AVARIAS PRÉVIAS, ARRANHÕES, ETC)
         </label>
         <textarea
           className="w-full bg-green-100 border border-green-300 text-emerald-950 p-3 rounded-xl text-base h-32 outline-none resize-none transition-all focus:shadow-sm placeholder:text-gray-400 print:bg-transparent print:text-black placeholder-shown:bg-neutral-25 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900 placeholder-shown:focus:border-neutral-200 placeholder-shown:focus:bg-neutral-25"
-          placeholder="Insira detalhes adicionais..."
-          value={diagnostico || ""}
-          onChange={(e) => onChangeDiagnostico(e.target.value)}
-          onBlur={(e) => onBlurDiagnostico(e.target.value)}
+          placeholder="Insira o check list do veículo..."
+          value={check_list || ""}
+          onChange={(e) => onChangeCheckList(e.target.value)}
+          onBlur={(e) => onBlurCheckList(e.target.value)}
         />
       </div>
     </Card>
@@ -26110,6 +26149,9 @@ import {
 import { PagamentoClienteForm } from "../components/financeiro/Forms/PagamentoClienteForm";
 import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
 import { LaborManager } from "../components/os/LaborManager";
+import { OsItemForm } from "../components/os/OsItemForm";
+import { OsItemsService } from "../services/osItems.service";
+import { FinanceiroService } from "../services/financeiro.service";
 import { Modal, Button, ActionButton, Card, Input, Select, TextArea } from "../components/ui";
 import { toast } from "react-toastify";
 interface ItemOS {
@@ -26131,6 +26173,7 @@ interface ItemOS {
     id_pessoa?: number;
     custo_real: number;
     pago_ao_fornecedor: boolean;
+    nf_numero?: string;
   }[];
 }
 interface IFornecedor {
@@ -26145,6 +26188,7 @@ interface ItemFinanceiroState {
   id_fornecedor: string;
   custo_real: string;
   pago_fornecedor: boolean;
+  nf_numero?: string;
 }
 interface OSData {
   id_os: number;
@@ -26214,6 +26258,93 @@ export const FechamentoFinanceiroDetalhePage = () => {
     isOpen: boolean;
     data: any;
   }>({ isOpen: false, data: null });
+  const [partSearchResults, setPartSearchResults] = useState<any[]>([]);
+  const [nfsFornecedor, setNfsFornecedor] = useState<Record<string, { loading: boolean; nfs: any[] }>>({});
+  const loadNfsFornecedor = useCallback(async (id_fornecedor: string) => {
+    if (!id_fornecedor) return;
+    setNfsFornecedor((prev) => ({ ...prev, [id_fornecedor]: { loading: true, nfs: prev[id_fornecedor]?.nfs || [] } }));
+    try {
+      const res = await FinanceiroService.getNfsPendentes({ id_fornecedor: Number(id_fornecedor), limit: 100 });
+      setNfsFornecedor((prev) => ({ ...prev, [id_fornecedor]: { loading: false, nfs: res.data || [] } }));
+    } catch (error) {
+      console.error(error);
+      setNfsFornecedor((prev) => ({ ...prev, [id_fornecedor]: { loading: false, nfs: prev[id_fornecedor]?.nfs || [] } }));
+    }
+  }, []);
+  useEffect(() => {
+    const fornecedoresToLoad = new Set<string>();
+    Object.values(itemsState).forEach((item) => {
+      if (item.id_fornecedor && !nfsFornecedor[item.id_fornecedor]) {
+        fornecedoresToLoad.add(item.id_fornecedor);
+      }
+    });
+    fornecedoresToLoad.forEach((id) => {
+      loadNfsFornecedor(id);
+    });
+  }, [itemsState, nfsFornecedor, loadNfsFornecedor]);
+  const searchParts = async (query: string) => {
+    if (query.length < 2) {
+      setPartSearchResults([]);
+      return;
+    }
+    try {
+      const [stockRes, historyRes] = await Promise.all([
+        OsItemsService.searchStock(query),
+        OsItemsService.search(query),
+      ]);
+      const historyFormatted = historyRes.map((h: any) => ({
+        id_pecas_estoque: null,
+        nome: h.descricao,
+        valor_venda: h.valor_venda,
+        fabricante: "Histórico",
+        isHistory: true,
+      }));
+      const combined = [...stockRes, ...historyFormatted];
+      const unique = combined.filter(
+        (v, i, a) => a.findIndex((t) => t.nome === v.nome) === i,
+      );
+      setPartSearchResults(unique);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+  const checkStockAvailability = async (stockId: string | number) => {
+    try {
+      return await OsItemsService.checkAvailability(Number(stockId));
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+  const handleAddItem = async (itemData: any) => {
+    if (!osData) return false;
+    try {
+      const payload = {
+        id_os: Number(osData.id_os),
+        id_pecas_estoque: itemData.id_pecas_estoque
+          ? Number(itemData.id_pecas_estoque)
+          : null,
+        descricao: itemData.descricao,
+        quantidade: Number(itemData.quantidade),
+        valor_venda: Number(itemData.valor_venda),
+        valor_total: Number(itemData.quantidade) * Number(itemData.valor_venda),
+        codigo_referencia: itemData.codigo_referencia,
+        id_fornecedor: itemData.id_fornecedor
+          ? Number(itemData.id_fornecedor)
+          : null,
+        is_interno: itemData.is_interno,
+      };
+      await OsItemsService.create(payload);
+      toast.success("Item adicionado com sucesso!");
+      fetchOsData(osData.id_os);
+      setIsDirty(true);
+      return true;
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao adicionar item.");
+      return false;
+    }
+  };
   // Item Edit State
   const [editItemModal, setEditItemModal] = useState<{
     isOpen: boolean;
@@ -26314,6 +26445,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
           pago_fornecedor: existingPayment
             ? existingPayment.pago_ao_fornecedor
             : false,
+          nf_numero: existingPayment?.nf_numero || "",
         };
       });
       setItemsState(initialItemsState);
@@ -26450,35 +26582,46 @@ export const FechamentoFinanceiroDetalhePage = () => {
         totalCusto: 0,
         lucro: 0,
         margem: 0,
-        totalItemsRevenue: 0,
-        totalItemsCost: 0,
-        totalLaborRevenue: 0,
-        totalInternalCost: 0,
+        faturamentoPecasExternas: 0,
+        custoPecasExternas: 0,
+        faturamentoEstoque: 0,
+        custoEstoque: 0,
+        faturamentoMaoDeObra: 0,
+        consumoInterno: 0,
       };
-    // Client Revenue (excluding internal items)
-    const totalItemsRevenue = osData.itens_os
-      .filter((i) => !i.is_interno)
-      .reduce((acc, i) => acc + Number(i.valor_total), 0);
-    const totalLaborRevenue =
-      osData.servicos_mao_de_obra?.reduce(
-        (acc, s) => acc + Number(s.valor),
-        0,
-      ) || 0;
-    const totalReceita = totalItemsRevenue + totalLaborRevenue;
-    // Costs (including internal items)
-    const totalItemsCost = osData.itens_os
-      .filter((i) => !i.is_interno)
-      .reduce(
-        (acc, i) => acc + Number(itemsState[i.id_iten]?.custo_real || 0),
-        0,
+    let faturamentoPecasExternas = 0;
+    let custoPecasExternas = 0;
+    let faturamentoEstoque = 0;
+    let custoEstoque = 0;
+    let faturamentoMaoDeObra = 0;
+    let consumoInterno = 0;
+    osData.itens_os.forEach((i) => {
+      const valorVenda = Number(i.valor_total);
+      const custoReal = Number(
+        itemsState[i.id_iten]?.custo_real || i.pecas_estoque?.valor_custo || 0
       );
-    const totalInternalCost = osData.itens_os
-      .filter((i) => i.is_interno)
-      .reduce(
-        (acc, i) => acc + Number(itemsState[i.id_iten]?.custo_real || 0),
-        0,
-      );
-    const totalCusto = totalItemsCost + totalInternalCost;
+      if (i.id_pecas_estoque) {
+        if (i.is_interno) {
+           consumoInterno += custoReal;
+        } else {
+           faturamentoEstoque += valorVenda;
+           custoEstoque += custoReal;
+        }
+      } else {
+        if (i.is_interno) {
+           consumoInterno += custoReal;
+        } else {
+           faturamentoPecasExternas += valorVenda;
+           custoPecasExternas += custoReal;
+        }
+      }
+    });
+    faturamentoMaoDeObra = osData.servicos_mao_de_obra?.reduce(
+      (acc, s) => acc + Number(s.valor),
+      0,
+    ) || 0;
+    const totalReceita = faturamentoPecasExternas + faturamentoEstoque + faturamentoMaoDeObra;
+    const totalCusto = custoPecasExternas + custoEstoque + consumoInterno;
     const lucro = totalReceita - totalCusto;
     const margem = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
     return {
@@ -26486,18 +26629,24 @@ export const FechamentoFinanceiroDetalhePage = () => {
       totalCusto,
       lucro,
       margem,
-      totalItemsRevenue,
-      totalItemsCost,
-      totalLaborRevenue,
-      totalInternalCost,
+      faturamentoPecasExternas,
+      custoPecasExternas,
+      faturamentoEstoque,
+      custoEstoque,
+      faturamentoMaoDeObra,
+      consumoInterno,
     };
   };
   const {
     totalReceita,
     totalCusto,
     lucro,
-    totalItemsRevenue,
-    totalLaborRevenue,
+    faturamentoPecasExternas,
+    custoPecasExternas,
+    faturamentoEstoque,
+    custoEstoque,
+    faturamentoMaoDeObra,
+    consumoInterno,
   } = calculateTotals();
   const handleSave = async (finalize: boolean = false) => {
     setLoading(true);
@@ -26555,7 +26704,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
           await api.put(`/ordem-de-servico/${osData.id_os}`, {
             status: "FINALIZADA",
             valor_final: totalReceita,
-            valor_pecas: totalItemsRevenue,
+            valor_pecas: faturamentoPecasExternas + faturamentoEstoque,
           });
         }
         toast.success("OS Finalizada com Sucesso!");
@@ -26856,6 +27005,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
               <th className="p-4 w-1/3 border-b border-neutral-50">Peça</th>
               <th className="p-4 border-b border-neutral-50">Ref / Nota</th>
               <th className="p-4 border-b border-neutral-50">Fornecedor</th>
+              <th className="p-4 border-b border-neutral-50">Nota Fiscal</th>
               <th className="p-4 w-44 border-b border-neutral-50">
                 Custo (R$)
               </th>
@@ -26918,6 +27068,34 @@ export const FechamentoFinanceiroDetalhePage = () => {
                           </option>
                         ))}
                       </Select>
+                    )}
+                  </td>
+                  <td className="p-4 first:rounded-l-lg last:rounded-r-lg">
+                    {item.pecas_estoque || item.id_pecas_estoque ? (
+                       <span className="text-xs text-neutral-400 font-medium">-</span>
+                    ) : (
+                      <Select
+                        className="!py-1.5 !px-3 !text-sm max-w-[150px]"
+                        value={itemsState[item.id_iten]?.nf_numero || ""}
+                        disabled={!itemsState[item.id_iten]?.id_fornecedor || nfsFornecedor[itemsState[item.id_iten]?.id_fornecedor]?.loading}
+                        onChange={(e) =>
+                          handleItemChange(
+                            item.id_iten,
+                            "nf_numero",
+                            e.target.value,
+                          )
+                        }
+                      >
+                        <option value="">Nenhuma NF</option>
+                        {itemsState[item.id_iten]?.id_fornecedor && nfsFornecedor[itemsState[item.id_iten]?.id_fornecedor]?.nfs.map((nf) => (
+                          <option key={nf.nf_numero} value={nf.nf_numero}>
+                            {nf.nf_numero} ({formatCurrency(nf.valor)})
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                    {itemsState[item.id_iten]?.id_fornecedor && nfsFornecedor[itemsState[item.id_iten]?.id_fornecedor]?.loading && (
+                      <div className="text-[10px] text-gray-400 mt-1 animate-pulse">Carregando...</div>
                     )}
                   </td>
                   <td className="p-4 first:rounded-l-lg last:rounded-r-lg">
@@ -27219,55 +27397,86 @@ export const FechamentoFinanceiroDetalhePage = () => {
       </div>
       {/* BOTTOM SUMMARY CARD */}
       <div className="bg-primary-600 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden mt-8">
-        {/* Background Glow Effect */}
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-8 items-end">
-          <div>
-            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-2 opacity-80">
-              Custo Total (Peças + Interno)
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="bg-white/10 rounded-xl p-4">
+            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
+              Peças Externas
             </p>
-            <p className="text-2xl font-bold text-white">
-              {formatCurrency(totalCusto)}
+            <p className="text-sm text-primary-200">
+              Fat: {formatCurrency(faturamentoPecasExternas)}
             </p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-sm font-black bg-white/20 px-2 py-0.5 rounded uppercase tracking-wider text-emerald-300">
-                Lucro Líquido: {formatCurrency(lucro)}
-              </span>
-            </div>
+            <p className="text-sm text-red-300">
+              Custo: {formatCurrency(custoPecasExternas)}
+            </p>
+            <p className="text-sm font-bold text-emerald-300 mt-1">
+              Lucro: {formatCurrency(faturamentoPecasExternas - custoPecasExternas)}
+            </p>
           </div>
-          <div>
-            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-2 opacity-80">
+          <div className="bg-white/10 rounded-xl p-4">
+            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
+              Estoque Próprio
+            </p>
+            <p className="text-sm text-primary-200">
+              Fat: {formatCurrency(faturamentoEstoque)}
+            </p>
+            <p className="text-sm text-red-300">
+              Custo: {formatCurrency(custoEstoque)}
+            </p>
+            <p className="text-sm font-bold text-emerald-300 mt-1">
+              Lucro: {formatCurrency(faturamentoEstoque - custoEstoque)}
+            </p>
+          </div>
+          <div className="bg-white/10 rounded-xl p-4">
+            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
               Mão de Obra
             </p>
-            <p className="text-2xl font-bold text-white">
-              {formatCurrency(totalLaborRevenue)}
+            <p className="text-sm text-primary-200">
+              Fat: {formatCurrency(faturamentoMaoDeObra)}
+            </p>
+            <p className="text-sm text-primary-200">
+              Custo: Já abatido das comissões
+            </p>
+            <p className="text-sm font-bold text-emerald-300 mt-1">
+              Lucro Bruto M.O: {formatCurrency(faturamentoMaoDeObra)}
             </p>
           </div>
-          <div>
-            <p className="text-xs font-medium text-white uppercase tracking-widest mb-2">
-              TOTAL À RECEBER
+          <div className="bg-white/10 rounded-xl p-4">
+            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
+              Consumo Interno / Prejuízo
             </p>
-            <p className="text-5xl font-bold text-white tracking-tighter drop-shadow-md">
-              {formatCurrency(totalReceita)}
+            <p className="text-sm text-primary-200">
+              Fat: R$ 0,00 (Não cobrado)
+            </p>
+            <p className="text-sm font-bold text-red-300 mt-1">
+              Custo Oficina: -{formatCurrency(consumoInterno)}
             </p>
           </div>
-          <div className="text-right">
-            <div
-              className={`inline-block px-6 py-3 rounded-2xl font-black uppercase text-sm tracking-wider shadow-xl ${
-                (osData.pagamentos_cliente?.reduce(
-                  (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
-                  0,
-                ) || 0) >= totalReceita
-                  ? "bg-emerald-500 text-white shadow-emerald-500/40"
-                  : "bg-amber-500 text-white shadow-amber-500/40 animate-pulse"
-              }`}
-            >
-              {(osData.pagamentos_cliente?.reduce(
-                (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
-                0,
-              ) || 0) >= totalReceita
-                ? "QUITADO"
-                : "PENDENTE"}
+          <div className="bg-white/20 rounded-xl p-4 flex flex-col justify-center items-end border border-white/30">
+            <p className="text-xs font-medium text-white uppercase tracking-widest mb-1">
+              LUCRO LÍQUIDO FINAL
+            </p>
+            <p className="text-3xl font-black text-white tracking-tighter drop-shadow-md">
+              {formatCurrency(lucro)}
+            </p>
+            <div className="flex justify-end gap-2 mt-2 w-full">
+               <div
+                  className={`inline-block px-3 py-1 rounded font-black uppercase text-[10px] tracking-wider ${
+                    (osData.pagamentos_cliente?.reduce(
+                      (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
+                      0,
+                    ) || 0) >= totalReceita
+                      ? "bg-emerald-500 text-white"
+                      : "bg-amber-500 text-white animate-pulse"
+                  }`}
+                >
+                  {(osData.pagamentos_cliente?.reduce(
+                    (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
+                    0,
+                  ) || 0) >= totalReceita
+                    ? "QUITADO"
+                    : "PENDENTE"}
+                </div>
             </div>
           </div>
         </div>
@@ -27539,14 +27748,10 @@ export const FechamentoFinanceiroPage = () => {
     veiculoModelo?: string;
     veiculoCor?: string;
     veiculoPlaca?: string;
-    equipamentoPeca?: string;
-    equipamentoFabricante?: string;
-    equipamentoNumeracao?: string;
+    equipamentoPeca?: string | null;
+    equipamentoFabricante?: string | null;
+    equipamentoNumeracao?: string | null;
   } | null>(null);
-  // Load data on mount
-  useEffect(() => {
-    loadData();
-  }, []);
   // Handle deep-link redirect via URL param
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -27555,10 +27760,16 @@ export const FechamentoFinanceiroPage = () => {
       handleOpenFechamento(Number(urlIdOs));
     }
   }, [location.search]);
-  const loadData = async () => {
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      loadData(universalFilters.search);
+    }, 500);
+    return () => clearTimeout(delayDebounceFn);
+  }, [universalFilters.search]);
+  const loadData = async (searchTerm?: string) => {
     try {
       const [fechamentosData, allOss] = await Promise.all([
-        FinanceiroService.getFechamentos(),
+        FinanceiroService.getFechamentos(searchTerm),
         OsService.getAll(),
       ]);
       const fechamentosWithOs = fechamentosData.map((f: any) => {
@@ -27954,9 +28165,9 @@ export const FechamentoFinanceiroPage = () => {
           veiculoModelo={printData.veiculoModelo}
           veiculoCor={printData.veiculoCor}
           veiculoPlaca={printData.veiculoPlaca}
-          equipamentoPeca={printData.equipamentoPeca}
-          equipamentoFabricante={printData.equipamentoFabricante}
-          equipamentoNumeracao={printData.equipamentoNumeracao}
+          equipamentoPeca={printData.equipamentoPeca || undefined}
+          equipamentoFabricante={printData.equipamentoFabricante || undefined}
+          equipamentoNumeracao={printData.equipamentoNumeracao || undefined}
         />
       )}
     </PageLayout>
@@ -28522,106 +28733,6 @@ export const LivroCaixaPage = () => {
 
 
 --- FILE: client\src\pages\Login.tsx ---
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { API_BASE } from "../services/api";
-import { Input, Button, Card } from "../components/ui";
-import { Mail, Lock, ShieldAlert, Key } from "lucide-react";
-export const Login: React.FC = () => {
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, senha }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Erro ao realizar login");
-      }
-      const mustChange = Boolean(data.must_change_password);
-      login(data.token, data.usuario, mustChange);
-      if (mustChange) {
-        navigate("/alterar-senha", { replace: true });
-      } else {
-        navigate("/"); // Redireciona para a Home/Dashboard do sistema
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md p-8 border border-slate-200/60 shadow-xl bg-white rounded-2xl space-y-6">
-        <div className="flex flex-col items-center text-center">
-          <div className="p-3.5 bg-primary-50 rounded-2xl text-primary-600 mb-4 shadow-sm border border-primary-100/50">
-            <Key size={32} />
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-            Centro Automotivo
-          </h2>
-          <p className="text-sm text-slate-500 mt-2">
-            Preencha suas credenciais para acessar o sistema
-          </p>
-        </div>
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-semibold flex items-start gap-2.5">
-            <ShieldAlert size={20} className="shrink-0 text-red-500 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-        <form onSubmit={handleLogin} className="space-y-4">
-          <Input
-            label="E-mail"
-            type="email"
-            icon={Mail}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="seuemail@oficina.com"
-            required
-          />
-          <Input
-            label="Senha"
-            type="password"
-            icon={Lock}
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            placeholder="Sua senha de acesso"
-            required
-          />
-          <div className="pt-2">
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full text-base font-bold h-12 uppercase tracking-wide"
-              variant="primary"
-              isLoading={loading}
-            >
-              Entrar
-            </Button>
-          </div>
-        </form>
-      </Card>
-    </div>
-  );
-};
-
-
---- FILE: client\src\pages\NotasFiscaisPage.tsx ---
 import { useState, useEffect } from "react";
 import { FinanceiroService } from "../services/financeiro.service";
 import { formatCurrency } from "../utils/formatCurrency";
@@ -30250,11 +30361,11 @@ export const OrdemDeServicoDetalhePage = () => {
         <div className="h-full lg:col-span-1">
           <OsDiagnosis
             defeitoRelatado={os.defeito_relatado}
-            diagnostico={os.diagnostico}
+            check_list={os.check_list}
             onChangeDefeito={(val) => updateOSField("defeito_relatado", val)}
             onBlurDefeito={(val) => updateOSField("defeito_relatado", val)}
-            onChangeDiagnostico={(val) => updateOSField("diagnostico", val)}
-            onBlurDiagnostico={(val) => updateOSField("diagnostico", val)}
+            onChangeCheckList={(val) => updateOSField("check_list", val)}
+            onBlurCheckList={(val) => updateOSField("check_list", val)}
           />
         </div>
         <Card className="p-6 h-full flex flex-col lg:col-span-2">
@@ -32261,6 +32372,7 @@ export const PagamentoPecaPage = () => {
           onFilterChange={setUniversalFilters}
           initialState={{ status: "PENDING" }}
           config={{
+            isFutureProjection: true,
             enableFornecedor: true,
             enableOperadora: false,
             enableOsId: true,
@@ -32550,7 +32662,6 @@ export const PagamentoPecaPage = () => {
                 onChange={(e) =>
                   setEditPayment({ ...editPayment, nf_numero: e.target.value })
                 }
-                labelClassName="text-amber-800 font-semibold"
                 className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 text-amber-900 font-medium"
               >
                 <option value="">Sem Sincronização (Livre)</option>
@@ -33151,6 +33262,176 @@ export const PessoaJuridicaPage = () => {
       )}
     </div>
   );
+};
+
+
+--- FILE: client\src\pages\PessoaPage.tsx ---
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
+import type { IPessoa } from '../types/backend';
+import { PessoaForm } from '../components/pessoa/Forms/PessoaForm';
+import { Modal, Input, Select } from '../components/ui';
+import { Plus, Search, Trash2, Edit, User } from 'lucide-react';
+export const PessoaPage = () => {
+    const [pessoas, setPessoas] = useState<IPessoa[]>([]);
+    const [showModal, setShowModal] = useState(false);
+    const [searchId, setSearchId] = useState('');
+    const [editData, setEditData] = useState<IPessoa | null>(null);
+    useEffect(() => {
+        loadPessoas();
+    }, []);
+    const loadPessoas = async () => {
+        try {
+            const response = await api.get('/pessoa');
+            setPessoas(response.data);
+        } catch (error) {
+            alert('Erro ao carregar pessoas');
+        }
+    };
+    const handleSearch = async () => {
+        try {
+            const response = await api.get(`/pessoa/${searchId}`);
+            setEditData(response.data);
+        } catch (error) {
+            alert('Pessoa não encontrada');
+            setEditData(null);
+        }
+    };
+    const handleUpdate = async () => {
+        if (!editData) return;
+        try {
+            await api.put(`/pessoa/${editData.id_pessoa}`, editData);
+            alert('Pessoa atualizada!');
+            loadPessoas();
+        } catch (error) {
+            alert('Erro ao atualizar pessoa');
+        }
+    };
+    const handleDelete = async () => {
+        if (!searchId) return;
+        try {
+            await api.delete(`/pessoa/${searchId}`);
+            alert('Pessoa deletada!');
+            loadPessoas();
+            setEditData(null);
+            setSearchId('');
+        } catch (error) {
+            alert('Erro ao deletar pessoa');
+        }
+    };
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Gerenciar Pessoas</h1>
+                    <p className="text-slate-500">Cadastro base de pessoas (antes de PF/PJ).</p>
+                </div>
+                <button 
+                    onClick={() => setShowModal(true)}
+                    className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
+                >
+                    <Plus size={20} />
+                    Nova Pessoa
+                </button>
+            </div>
+            {/* LIST */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50">
+                        <tr>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">ID</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Nome</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Gênero</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Data Nascimento</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Cadastro</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {pessoas.map((p) => (
+                            <tr key={p.id_pessoa} className="hover:bg-slate-50">
+                                <td className="p-4 text-gray-500 font-mono">#{p.id_pessoa}</td>
+                                <td className="p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
+                                            <User size={18} />
+                                        </div>
+                                        <div className="font-medium text-slate-900">{p.nome}</div>
+                                    </div>
+                                </td>
+                                <td className="p-4 text-slate-600">{p.genero || '-'}</td>
+                                <td className="p-4 text-slate-600">
+                                    {p.dt_nascimento ? new Date(p.dt_nascimento).toLocaleDateString('pt-BR') : '-'}
+                                </td>
+                                <td className="p-4 text-xs text-slate-500">
+                                    {new Date(p.dt_cadastro).toLocaleDateString('pt-BR')}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {/* MANAGE */}
+            <div className="bg-white p-4 rounded-xl border border-gray-200">
+                <h2 className="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Manutenção de Pessoa (Por ID)</h2>
+                <div className="flex gap-4 mb-4 items-end">
+                    <div className="w-64">
+                        <Input 
+                            type="number" 
+                            value={searchId} 
+                            onChange={(e) => setSearchId(e.target.value)} 
+                            placeholder="Digite o ID da Pessoa..." 
+                        />
+                    </div>
+                    <button onClick={handleSearch} className="flex items-center gap-2 bg-slate-600 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 font-medium h-11">
+                        <Search size={18} /> Localizar
+                    </button>
+                    {searchId && <button onClick={handleDelete} className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2.5 rounded-lg hover:bg-red-200 font-medium h-11">
+                        <Trash2 size={18} /> Excluir
+                    </button>}
+                </div>
+                {editData && (
+                    <div className="bg-slate-50 p-4 rounded border animate-in fade-in">
+                        <h3 className="font-bold mb-2">Editando: {editData.nome}</h3>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="col-span-2">
+                                <Input 
+                                    label="Nome"
+                                    value={editData.nome} 
+                                    onChange={(e) => setEditData({...editData, nome: e.target.value})} 
+                                />
+                            </div>
+                            <div>
+                                <Select 
+                                    label="Gênero"
+                                    value={editData.genero || ''} 
+                                    onChange={(e) => setEditData({...editData, genero: e.target.value})} 
+                                >
+                                    <option value="">Selecione...</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Feminino">Feminino</option>
+                                    <option value="Outro">Outro</option>
+                                </Select>
+                            </div>
+                        </div>
+                        <button onClick={handleUpdate} className="flex items-center gap-2 bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold">
+                            <Edit size={18} /> Salvar Alterações
+                        </button>
+                    </div>
+                )}
+            </div>
+            {showModal && (
+                <Modal title="Nova Pessoa" onClose={() => setShowModal(false)}>
+                    <PessoaForm 
+                        onSuccess={() => {
+                            setShowModal(false);
+                            loadPessoas();
+                        }}
+                        onCancel={() => setShowModal(false)}
+                    />
+                </Modal>
+            )}
+        </div>
+    );
 };
 
 
@@ -35298,66 +35579,6 @@ export const ClienteService = {
     await api.delete(`/cliente/${id}`);
   },
 };
-
-
---- FILE: client\src\services\colaborador.service.ts ---
-import { api } from "./api";
-import type {
-  IFuncionario,
-  IFuncionarioPayload,
-  IPessoaCreatePayload,
-} from "../types/colaborador.types";
-export const ColaboradorService = {
-  getAll: async () => {
-    const response = await api.get<IFuncionario[]>("/funcionario");
-    return response.data;
-  },
-  create: async (
-    payload: IFuncionarioPayload,
-    pessoaData?: IPessoaCreatePayload,
-    cpf?: string,
-  ) => {
-    // If it's a completely new collaborator, we might need to create Person and PF first.
-    // However, the form separates this logic.
-    // Ideally, the backend should handle this transactional complexity in a single endpoint /funcionario/full
-    // But adhering to the existing logic, we'll keep the orchestration in the service if possible, or support the payload.
-    // If payload has ID_PESSOA_FISICA, just create func.
-    if (payload.id_pessoa_fisica) {
-      const response = await api.post<IFuncionario>("/funcionario", payload);
-      return response.data;
-    }
-    // Otherwise, we perform the chain here (Transactional logic on Client side - legacy pattern)
-    if (!pessoaData)
-      throw new Error("Dados da pessoa obrigatórios para novo cadastro.");
-    const pessoaRes = await api.post("/pessoa", pessoaData);
-    const idPessoa = pessoaRes.data.id_pessoa;
-    const pfRes = await api.post("/pessoa-fisica", {
-      id_pessoa: idPessoa,
-      cpf: cpf?.replace(/\D/g, "") || null,
-    });
-    const idPf = pfRes.data.id_pessoa_fisica;
-    const finalPayload = { ...payload, id_pessoa_fisica: idPf };
-    const funcRes = await api.post<IFuncionario>("/funcionario", finalPayload);
-    return funcRes.data;
-  },
-  update: async (
-    id: number,
-    data: IFuncionarioPayload,
-    pessoaData?: IPessoaCreatePayload,
-    idPessoa?: number,
-  ) => {
-    const response = await api.put<IFuncionario>(`/funcionario/${id}`, data);
-    if (idPessoa && pessoaData) {
-      await api.put(`/pessoa/${idPessoa}`, pessoaData).catch(console.warn);
-    }
-    return response.data;
-  },
-  delete: async (id: number) => {
-    await api.delete(`/funcionario/${id}`);
-  },
-};
-
-
 --- FILE: client\src\services\ConfiguracaoService.ts ---
 import axios from "axios";
 import { API_BASE } from "./api";
@@ -35710,7 +35931,7 @@ export class FinanceiroService {
     return response.data;
   }
   // --- SINCRONIZAÇÃO DE NOTAS FISCAIS (FASE 2) ---
-  static async getNfsPendentes(params?: { search?: string; page?: number; limit?: number }): Promise<{ data: any[]; total: number }> {
+  static async getNfsPendentes(params?: { search?: string; page?: number; limit?: number; id_fornecedor?: number }): Promise<{ data: any[]; total: number }> {
     const response = await api.get("/contas-pagar/nfs-pendentes", { params });
     return response.data;
   }
@@ -35733,8 +35954,9 @@ export class FinanceiroService {
     return response.data;
   }
   // --- FECHAMENTO & CONSOLIDAÇÃO ---
-  static async getFechamentos(): Promise<any[]> {
-    const response = await api.get("/fechamento-financeiro");
+  static async getFechamentos(searchTerm?: string): Promise<any[]> {
+    const query = searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : "";
+    const response = await api.get(`/fechamento-financeiro${query}`);
     return response.data;
   }
   static async deleteFechamento(id: number | string): Promise<void> {
@@ -36015,7 +36237,7 @@ export const RelatoriosService = {
     type: "categoria" | "subcategoria",
     categoriaId?: number,
     subcategoriaId?: number,
-  ): Promise<TimelineDespesasResponse> => {
+  ): Promise<any> => {
     const response = await api.get("/relatorios/despesas-temporal", {
       params: {
         startDate,
@@ -36203,83 +36425,6 @@ export interface IClientSearchResult {
 
 
 --- FILE: client\src\types\colaborador.types.ts ---
-import type { IFuncionario } from "./backend";
-export type { IFuncionario };
-export interface IFuncionarioPayload {
-  // Relation (optional if new)
-  id_pessoa_fisica?: number;
-  // Fields
-  ativo: "S" | "N";
-  cargo: string;
-  salario?: number | null; // deprecated in favor of valor_pagamento usually
-  valor_pagamento?: number | null;
-  tipo_pagamento?: string | null;
-  comissao?: number | null;
-  comissao_pecas?: number | null;
-  dt_admissao: string; // ISO Date
-  obs?: string | null;
-  // MEI
-  razao_social?: string | null;
-  nome_fantasia?: string | null;
-  cnpj_mei?: string | null;
-  inscricao_municipal?: string | null;
-  // Personal / Address (for creation flow)
-  rg?: string | null;
-  cep?: string | null;
-  logradouro?: string | null;
-  numero?: string | null;
-  complemento?: string | null;
-  bairro?: string | null;
-  cidade?: string | null;
-  uf?: string | null;
-  telefone_pessoal?: string | null;
-  email_pessoal?: string | null;
-  especialidade?: string | null;
-  // Finance
-  banco?: string | null;
-  agencia?: string | null;
-  conta?: string | null;
-  chave_pix?: string | null;
-  periodicidade_pagamento?: string | null;
-  dia_vencimento?: number | null;
-  // Docs
-  url_ccmei?: string | null;
-  url_cnh?: string | null;
-  equipamentos_epis?: string | null;
-}
-export interface IPessoaCreatePayload {
-  nome: string;
-  genero?: string | null;
-  dt_nascimento?: string | null;
-}
-export interface IPessoaFisicaCreatePayload {
-  id_pessoa: number;
-  cpf?: string | null;
-}
-
-
---- FILE: client\src\types\dashboard.types.ts ---
-export interface IDashboardStats {
-  osAberta: number;
-  contasPagarPending: number;
-  contasPagarOverdue: number;
-  contasPagarHojeCount?: number;
-  contasPagarHojeValor?: number;
-  contasPagarAmanhaCount?: number;
-  contasPagarAmanhaValor?: number;
-  contasPagar7DiasCount?: number;
-  contasPagar7DiasValor?: number;
-  livroCaixaEntries: number;
-  livroCaixaExits: number;
-  autoPecasPendentes: number;
-  consolidacao: number;
-  alertaEstoque: number;
-}
-export interface IDashboardData {
-  stats: IDashboardStats;
-  recentOss: any[]; // Using any[] for now as IOs might be complex, but ideally IOs
-}
-export type FilterPeriod = "HOJE" | "SEMANA" | "MES" | "STATUS";
 
 
 --- FILE: client\src\types\estoque.types.ts ---
@@ -37099,6 +37244,571 @@ COPY . .
 CMD [ "npm", "run", "dev" ]
 
 
+--- FILE: server\head_schema.prisma ---
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model Pessoa {
+  id_pessoa       Int             @id @default(autoincrement())
+  nome            String          @db.VarChar(100)
+  genero          String?         @db.VarChar(20)
+  dt_nascimento   DateTime?       @db.Date
+  obs             String?         @db.VarChar(500)
+  is_cliente      Boolean         @default(false)
+  is_fornecedor   Boolean         @default(false)
+  is_colaborador  Boolean         @default(false)
+  dt_cadastro     DateTime        @default(now()) @db.Timestamp(6)
+  pessoa_fisica   PessoaFisica?
+  pessoa_juridica PessoaJuridica?
+  @@map("pessoa")
+}
+model PessoaFisica {
+  id_pessoa_fisica Int          @id @default(autoincrement())
+  id_pessoa        Int          @unique
+  cpf              String?      @db.VarChar(11)
+  dt_cadastro      DateTime     @default(now()) @db.Timestamp(6)
+  clientes         Cliente[]
+  funcionario      Funcionario?
+  pessoa           Pessoa       @relation(fields: [id_pessoa], references: [id_pessoa])
+  @@map("pessoa_fisica")
+}
+model PessoaJuridica {
+  id_pessoa_juridica Int       @id @default(autoincrement())
+  id_pessoa          Int       @unique
+  razao_social       String    @db.VarChar(100)
+  nome_fantasia      String?   @db.VarChar(100)
+  cnpj               String?   @db.VarChar(14)
+  inscricao_estadual String?   @db.VarChar(50)
+  dt_cadastro        DateTime  @default(now()) @db.Timestamp(6)
+  clientes           Cliente[]
+  pessoa             Pessoa    @relation(fields: [id_pessoa], references: [id_pessoa])
+  @@map("pessoa_juridica")
+}
+model Tipo {
+  id_tipo     Int       @id @default(autoincrement())
+  funcao      String?   @db.VarChar(50)
+  dt_cadastro DateTime  @default(now()) @db.Timestamp(6)
+  clientes    Cliente[]
+  @@map("tipo")
+}
+model Cliente {
+  id_cliente         Int              @id @default(autoincrement())
+  id_pessoa_fisica   Int?
+  id_pessoa_juridica Int?
+  tipo_pessoa        Int
+  telefone_1         String           @db.VarChar(15)
+  telefone_2         String?          @db.VarChar(15)
+  telefone_3         String?          @db.VarChar(15)
+  email              String?          @db.VarChar(100)
+  logradouro         String?          @db.VarChar(150)
+  nr_logradouro      String?          @db.VarChar(10)
+  compl_logradouro   String?          @db.VarChar(50)
+  bairro             String?          @db.VarChar(100)
+  cidade             String?          @db.VarChar(100)
+  estado             String?          @db.Char(2)
+  dt_cadastro        DateTime         @default(now()) @db.Timestamp(6)
+  cep                String?          @db.VarChar(10)
+  pessoa_fisica      PessoaFisica?    @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
+  pessoa_juridica    PessoaJuridica?  @relation(fields: [id_pessoa_juridica], references: [id_pessoa_juridica])
+  tipo               Tipo             @relation(fields: [tipo_pessoa], references: [id_tipo])
+  ordens_de_servico  OrdemDeServico[]
+  veiculos           Veiculo[]
+  equipamentos       EquipamentoCliente[]
+  @@index([id_pessoa_fisica])
+  @@index([id_pessoa_juridica])
+  @@index([tipo_pessoa])
+  @@map("cliente")
+}
+model Fornecedor {
+  id_fornecedor       Int       @id @default(autoincrement())
+  nome                String
+  nome_fantasia       String?
+  documento           String?   // CPF ou CNPJ
+  inscricao_estadual  String?
+  inscricao_municipal String?
+  tipo_pessoa         String    @default("JURIDICA")
+  cep                 String?
+  logradouro          String?
+  numero              String?
+  complemento         String?
+  bairro              String?
+  cidade              String?
+  uf                  String?
+  contato             String?
+  telefone            String?
+  whatsapp            String?
+  email               String?
+  banco               String?
+  agencia             String?
+  conta               String?
+  chave_pix           String?
+  categoria_produto   String?
+  condicoes_pagamento String?
+  obs                 String?   @db.Text
+  dt_cadastro         DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
+  contas_pagar        ContasPagar[]
+  entradas_estoque    EntradaEstoque[]
+  pagamentos_peca     PagamentoPeca[]
+  @@map("fornecedor")
+}
+model EquipamentoCliente {
+  id_equipamento    Int              @id @default(autoincrement())
+  id_cliente        Int
+  nome_peca         String           @db.VarChar(100)
+  fabricante        String?          @db.VarChar(50)
+  numeracao         String?          @db.VarChar(50)
+  observacoes       String?          @db.VarChar(500)
+  created_at        DateTime         @default(now()) @db.Timestamp(6)
+  updated_at        DateTime         @default(now()) @updatedAt @db.Timestamp(6)
+  cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
+  ordens_de_servico OrdemDeServico[]
+  @@map("equipamento_cliente")
+}
+model Funcionario {
+  id_funcionario          Int                @id @default(autoincrement())
+  id_pessoa_fisica        Int                @unique
+  ativo                   String             @db.Char(1)
+  cargo                   String             @db.VarChar(50)
+  salario                 Decimal?           @db.Decimal(10, 2)
+  comissao                Int?
+  dt_admissao             DateTime           @db.Timestamp(6)
+  dt_recisao              DateTime?          @db.Timestamp(6)
+  motivo_saida            String?            @db.VarChar(200)
+  obs                     String?            @db.VarChar(500)
+  dt_cadastro             DateTime           @default(now()) @db.Timestamp(6)
+  agencia                 String?            @db.VarChar(20)
+  bairro                  String?            @db.VarChar(100)
+  banco                   String?            @db.VarChar(50)
+  cep                     String?            @db.VarChar(10)
+  chave_pix               String?            @db.VarChar(100)
+  cidade                  String?            @db.VarChar(100)
+  cnpj_mei                String?            @db.VarChar(20)
+  comissao_pecas          Decimal?           @db.Decimal(5, 2)
+  complemento             String?            @db.VarChar(100)
+  conta                   String?            @db.VarChar(20)
+  dia_vencimento          Int?
+  email_pessoal           String?            @db.VarChar(100)
+  equipamentos_epis       String?
+  especialidade           String?            @db.VarChar(100)
+  inscricao_municipal     String?            @db.VarChar(50)
+  logradouro              String?            @db.VarChar(150)
+  nome_fantasia           String?            @db.VarChar(100)
+  numero                  String?            @db.VarChar(20)
+  periodicidade_pagamento String?            @db.VarChar(50)
+  razao_social            String?            @db.VarChar(100)
+  rg                      String?            @db.VarChar(20)
+  telefone_pessoal        String?            @db.VarChar(20)
+  tipo_pagamento          String?            @db.VarChar(50)
+  uf                      String?            @db.Char(2)
+  url_ccmei               String?            @db.VarChar(500)
+  url_cnh                 String?            @db.VarChar(500)
+  valor_pagamento         Decimal?           @db.Decimal(10, 2)
+  pessoa_fisica           PessoaFisica       @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
+  ordens_de_servico       OrdemDeServico[]
+  pagamentos              PagamentoEquipe[]
+  servicos_mao_de_obra    ServicoMaoDeObra[]
+  @@map("funcionario")
+}
+model PecasEstoque {
+  id_pecas_estoque      Int           @id @default(autoincrement())
+  fabricante            String?       @db.VarChar(50)
+  nome                  String        @db.VarChar(255)
+  descricao             String        @db.VarChar(255)
+  valor_custo           Decimal       @db.Decimal(10, 2)
+  valor_venda           Decimal       @db.Decimal(10, 2)
+  estoque_atual         Int
+  estoque_minimo        Int           @default(0)
+  unidade_medida        String?       @db.VarChar(20)
+  dt_ultima_compra      DateTime?     @db.Timestamp(6)
+  dt_cadastro           DateTime      @default(now()) @db.Timestamp(6)
+  custo_unitario_padrao Decimal       @default(0) @db.Decimal(10, 2)
+  itens_entrada         ItemEntrada[]
+  itens_os              ItensOs[]
+  @@map("pecas_estoque")
+}
+model Veiculo {
+  id_veiculo        Int              @id @default(autoincrement())
+  id_cliente        Int
+  placa             String           @db.VarChar(8)
+  chassi            String?          @db.VarChar(20)
+  marca             String           @db.VarChar(50)
+  modelo            String           @db.VarChar(50)
+  versao            String?          @db.VarChar(50)
+  ano_modelo        String           @db.VarChar(10)
+  ano_fabricacao    String?          @db.VarChar(10)
+  cor               String           @db.VarChar(30)
+  combustivel       String           @db.VarChar(20)
+  obs               String?          @db.VarChar(500)
+  dt_cadastro       DateTime         @default(now()) @db.Timestamp(6)
+  ordens_de_servico OrdemDeServico[]
+  cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
+  @@map("veiculo")
+}
+model OrdemDeServico {
+  id_os                 Int                   @id @default(autoincrement())
+  id_cliente            Int
+  id_veiculo            Int?
+  id_equipamento        Int?
+  id_funcionario        Int?
+  dt_abertura           DateTime              @default(now()) @db.Timestamp(6)
+  dt_entrega            DateTime?             @db.Timestamp(6)
+  km_entrada            Int?
+  status                String                @db.VarChar(50)
+  defeito_relatado      String?               @db.VarChar(500)
+  diagnostico           String?               @db.VarChar(500)
+  check_list            String?               @db.VarChar(500)
+  valor_servico         Decimal?              @db.Decimal(10, 2)
+  valor_pecas           Decimal?              @db.Decimal(10, 2)
+  valor_final           Decimal?              @db.Decimal(12, 2)
+  modo_pagamento        String?               @db.VarChar(50)
+  cod_pagamento         String?               @db.VarChar(80)
+  parcelas              Int
+  obs                   String?               @db.VarChar(500)
+  dt_cadastro           DateTime              @default(now()) @db.Timestamp(6)
+  valor_mao_de_obra     Decimal?              @db.Decimal(10, 2)
+  valor_total_cliente   Decimal?              @db.Decimal(10, 2)
+  obs_final             String?               @db.VarChar(500)
+  obs_interna           String?               @db.VarChar(1000)
+  deleted_at            DateTime?             @db.Timestamp(6)
+  updated_at            DateTime              @default(now()) @updatedAt @db.Timestamp(6)
+  fechamento_financeiro FechamentoFinanceiro[]
+  itens_os              ItensOs[]
+  cliente               Cliente               @relation(fields: [id_cliente], references: [id_cliente])
+  funcionario           Funcionario?          @relation(fields: [id_funcionario], references: [id_funcionario])
+  veiculo               Veiculo?              @relation(fields: [id_veiculo], references: [id_veiculo])
+  equipamento           EquipamentoCliente?   @relation(fields: [id_equipamento], references: [id_equipamento])
+  pagamentos_cliente    PagamentoCliente[]
+  recebiveis_cartao     RecebivelCartao[]
+  servicos_mao_de_obra  ServicoMaoDeObra[]
+  @@index([id_cliente])
+  @@index([id_veiculo])
+  @@index([id_equipamento])
+  @@index([status])
+  @@index([deleted_at])
+  @@map("ordem_de_servico")
+}
+model ItensOs {
+  id_iten           Int             @id @default(autoincrement())
+  id_os             Int
+  id_pecas_estoque  Int?
+  descricao         String          @db.VarChar(500)
+  valor_total       Decimal         @db.Decimal(12, 2)
+  dt_cadastro       DateTime        @default(now()) @db.Timestamp(6)
+  quantidade        Int
+  valor_venda       Decimal         @db.Decimal(10, 2)
+  codigo_referencia String?         @db.VarChar(50)
+  is_interno        Boolean         @default(false)
+  deleted_at        DateTime?       @db.Timestamp(6)
+  ordem_de_servico  OrdemDeServico  @relation(fields: [id_os], references: [id_os])
+  pecas_estoque     PecasEstoque?   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
+  pagamentos_peca   PagamentoPeca[]
+  @@map("itens_os")
+}
+model PagamentoPeca {
+  id_pagamento_peca         Int         @id @default(autoincrement())
+  id_item_os                Int
+  id_pessoa                 Int?
+  custo_real                Decimal     @db.Decimal(10, 2)
+  valor_desconto_rateado    Decimal?    @db.Decimal(10, 2)
+  data_compra               DateTime    @db.Timestamp(6)
+  data_pagamento_fornecedor DateTime?   @db.Timestamp(6)
+  pago_ao_fornecedor        Boolean     @default(false)
+  deleted_at                DateTime?   @db.Timestamp(6)
+  id_livro_caixa            Int?
+  nf_numero                 String?     @db.VarChar(50)
+  fornecedor                Fornecedor? @relation(fields: [id_pessoa], references: [id_fornecedor])
+  item_os                   ItensOs     @relation(fields: [id_item_os], references: [id_iten])
+  livro_caixa               LivroCaixa? @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
+  @@map("pagamento_peca")
+}
+model FechamentoFinanceiro {
+  id_fechamento_financeiro   Int            @id @default(autoincrement())
+  id_os                      Int
+  custo_total_pecas_real     Decimal        @db.Decimal(10, 2)
+  lucro_pecas                Decimal?       @db.Decimal(10, 2)
+  lucro_mao_de_obra          Decimal?       @db.Decimal(10, 2)
+  lucro_total                Decimal?       @db.Decimal(10, 2)
+  data_fechamento_financeiro DateTime       @default(now()) @db.Timestamp(6)
+  deleted_at                 DateTime?      @db.Timestamp(6)
+  ordem_de_servico           OrdemDeServico @relation(fields: [id_os], references: [id_os])
+  @@map("fechamento_financeiro")
+}
+model PagamentoCliente {
+  id_pagamento_cliente Int              @id @default(autoincrement())
+  id_os                Int
+  metodo_pagamento     String           @db.VarChar(50)
+  valor                Decimal          @db.Decimal(10, 2)
+  data_pagamento       DateTime         @default(now()) @db.Timestamp(6)
+  bandeira_cartao      String?          @db.VarChar(50)
+  codigo_transacao     String?          @db.VarChar(100)
+  qtd_parcelas         Int              @default(1)
+  tipo_parcelamento    String?          @default("LOJA") @db.VarChar(20) // 'LOJA' or 'CLIENTE'
+  obs                  String?          @db.VarChar(500)
+  deleted_at           DateTime?        @db.Timestamp(6)
+  id_livro_caixa       Int?
+  id_operadora         Int?
+  id_conta_bancaria    Int?
+  conta_bancaria       ContaBancaria?   @relation(fields: [id_conta_bancaria], references: [id_conta])
+  livro_caixa          LivroCaixa?      @relation(fields: [id_livro_caixa], references: [id_livro_caixa])
+  operadora            OperadoraCartao? @relation(fields: [id_operadora], references: [id_operadora])
+  ordem_de_servico     OrdemDeServico   @relation(fields: [id_os], references: [id_os])
+  @@map("pagamento_cliente")
+}
+model ServicoMaoDeObra {
+  id_servico_mao_de_obra Int              @id @default(autoincrement())
+  id_os                  Int
+  id_funcionario         Int
+  valor                  Decimal          @db.Decimal(10, 2)
+  descricao              String?          @db.VarChar(255)
+  categoria              String           @default("MECANICA") @db.VarChar(50) // 'MECANICA' or 'ELETRICA'
+  dt_cadastro            DateTime         @default(now()) @db.Timestamp(6)
+  deleted_at             DateTime?        @db.Timestamp(6)
+  id_pagamento_equipe    Int?
+  status_pagamento       String           @default("PENDENTE") @db.VarChar(20)
+  funcionario            Funcionario      @relation(fields: [id_funcionario], references: [id_funcionario])
+  ordem_de_servico       OrdemDeServico   @relation(fields: [id_os], references: [id_os])
+  pagamento_equipe       PagamentoEquipe? @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
+  @@map("servico_mao_de_obra")
+}
+model AuditLog {
+  id_log       Int      @id @default(autoincrement())
+  tabela       String   @db.VarChar(50)
+  registro_id  Int
+  acao         String   @db.VarChar(50)
+  valor_antigo String?
+  valor_novo   String?
+  usuario_id   Int?
+  dt_criacao   DateTime @default(now()) @db.Timestamp(6)
+  @@map("audit_log")
+}
+model ContasPagar {
+  id_conta_pagar       Int       @id @default(autoincrement())
+  descricao            String    @db.VarChar(255)
+  valor                Decimal   @db.Decimal(10, 2)
+  dt_vencimento        DateTime  @db.Date
+  dt_pagamento         DateTime? @db.Date
+  status               String    @db.VarChar(20)
+  categoria            String?   @db.VarChar(50)
+  obs                  String?   @db.VarChar(500)
+  dt_cadastro          DateTime  @default(now()) @db.Timestamp(6)
+  updated_at           DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  deleted_at           DateTime? @db.Timestamp(6)
+  credor               String?   @db.VarChar(100)
+  dt_emissao           DateTime? @db.Date
+  forma_pagamento      String?   @db.VarChar(50)
+  num_documento        String?   @db.VarChar(50)
+  url_anexo            String?   @db.VarChar(500)
+  id_grupo_recorrencia String?   @db.VarChar(50)
+  numero_parcela       Int?
+  total_parcelas       Int?
+  nf_numero            String?   @db.VarChar(50)
+  nf_parcela           Int?
+  nf_total_parcelas    Int?
+  nf_boleto            String?   @db.VarChar(100)
+  id_categoria         Int?
+  categoria_financeira CategoriaFinanceira? @relation(fields: [id_categoria], references: [id_categoria])
+  id_fornecedor        Int?
+  fornecedor_rel       Fornecedor?          @relation(fields: [id_fornecedor], references: [id_fornecedor])
+  @@map("contas_pagar")
+}
+model PagamentoEquipe {
+  id_pagamento_equipe  Int                @id @default(autoincrement())
+  id_funcionario       Int
+  valor_total          Decimal            @db.Decimal(10, 2)
+  forma_pagamento      String?            @db.VarChar(50)
+  premio_valor         Decimal?           @db.Decimal(10, 2)
+  premio_descricao     String?            @db.VarChar(255)
+  dt_pagamento         DateTime           @default(now()) @db.Timestamp(6)
+  tipo_lancamento      String             @default("COMISSAO") @db.VarChar(50)
+  referencia_inicio    DateTime?          @db.Date
+  referencia_fim       DateTime?          @db.Date
+  obs                  String?            @db.VarChar(500)
+  descontado           Boolean            @default(false)
+  id_pagamento_deducao Int?
+  movimentacoes_caixa  LivroCaixa[]
+  funcionario          Funcionario        @relation(fields: [id_funcionario], references: [id_funcionario])
+  pagamento_deducao    PagamentoEquipe?   @relation("DeducaoVale", fields: [id_pagamento_deducao], references: [id_pagamento_equipe])
+  vales_deduzidos      PagamentoEquipe[]  @relation("DeducaoVale")
+  servicos_pagos       ServicoMaoDeObra[]
+  @@map("pagamento_equipe")
+}
+model LivroCaixa {
+  id_livro_caixa      Int               @id @default(autoincrement())
+  descricao           String            @db.VarChar(255)
+  valor               Decimal           @db.Decimal(10, 2)
+  tipo_movimentacao   String            @db.VarChar(10)
+  categoria           String            @db.VarChar(50)
+  dt_movimentacao     DateTime          @default(now()) @db.Timestamp(6)
+  obs                 String?           @db.VarChar(500)
+  origem              String            @default("MANUAL") @db.VarChar(20)
+  deleted_at          DateTime?         @db.Timestamp(6)
+  id_pagamento_equipe Int?
+  id_conta_bancaria   Int?
+  conta               ContaBancaria?    @relation(fields: [id_conta_bancaria], references: [id_conta])
+  pagamento_equipe    PagamentoEquipe?  @relation(fields: [id_pagamento_equipe], references: [id_pagamento_equipe])
+  pagamento_cliente   PagamentoCliente[]
+  pagamento_peca      PagamentoPeca[]
+  id_categoria         Int?
+  categoria_financeira CategoriaFinanceira? @relation(fields: [id_categoria], references: [id_categoria])
+  @@map("livro_caixa")
+}
+model CategoriaFinanceira {
+  id_categoria  Int                   @id @default(autoincrement())
+  nome          String                @db.VarChar(50)
+  tipo          String                @db.VarChar(10) // 'RECEITA' or 'DESPESA'
+  parentId      Int?
+  dt_cadastro   DateTime              @default(now()) @db.Timestamp(6)
+  parent        CategoriaFinanceira?  @relation("CategoriaHierarchy", fields: [parentId], references: [id_categoria])
+  children      CategoriaFinanceira[] @relation("CategoriaHierarchy")
+  movimentacoes LivroCaixa[]
+  contas_pagar  ContasPagar[]
+  @@unique([nome, parentId])
+  @@map("categoria_financeira")
+}
+model EntradaEstoque {
+  id_entrada    Int           @id @default(autoincrement())
+  id_pessoa     Int
+  nota_fiscal   String?       @db.VarChar(50)
+  data_compra   DateTime      @default(now()) @db.Timestamp(6)
+  valor_total   Decimal       @db.Decimal(10, 2)
+  obs           String?       @db.VarChar(500)
+  created_at    DateTime      @default(now()) @db.Timestamp(6)
+  nf_numero     String?       @db.VarChar(50)
+  fornecedor    Fornecedor    @relation(fields: [id_pessoa], references: [id_fornecedor])
+  itens         ItemEntrada[]
+  @@map("entrada_estoque")
+}
+model ItemEntrada {
+  id_item_entrada  Int            @id @default(autoincrement())
+  id_entrada       Int
+  id_pecas_estoque Int
+  quantidade       Int
+  valor_custo      Decimal        @db.Decimal(10, 2)
+  margem_lucro     Decimal?       @db.Decimal(10, 2)
+  valor_venda      Decimal        @db.Decimal(10, 2)
+  ref_cod          String?        @db.VarChar(50)
+  condicao         String?        @db.VarChar(50)
+  aplicacao        String?        @db.VarChar(255)
+  obs              String?        @db.VarChar(255)
+  entrada          EntradaEstoque @relation(fields: [id_entrada], references: [id_entrada])
+  peca             PecasEstoque   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
+  @@map("item_entrada")
+}
+model ContaBancaria {
+  id_conta           Int                @id @default(autoincrement())
+  nome               String             @db.VarChar(50)
+  banco              String?            @db.VarChar(50)
+  agencia            String?            @db.VarChar(20)
+  conta              String?            @db.VarChar(20)
+  saldo_atual        Decimal            @default(0) @db.Decimal(12, 2)
+  ativo              Boolean            @default(true)
+  dt_cadastro        DateTime           @default(now()) @db.Timestamp(6)
+  vincular_caixa     Boolean            @default(false)
+  movimentacoes      LivroCaixa[]
+  operadoras         OperadoraCartao[]
+  pagamentos_cliente PagamentoCliente[]
+  @@map("conta_bancaria")
+}
+model OperadoraCartao {
+  id_operadora        Int                @id @default(autoincrement())
+  nome                String             @db.VarChar(50)
+  taxa_debito         Decimal            @default(0) @db.Decimal(5, 2)
+  prazo_debito        Int                @default(1)
+  taxa_credito_vista  Decimal            @default(0) @db.Decimal(5, 2)
+  prazo_credito_vista Int                @default(30)
+  taxa_credito_parc   Decimal            @default(0) @db.Decimal(5, 2)
+  prazo_credito_parc  Int                @default(30)
+  taxa_antecipacao    Decimal            @default(0) @db.Decimal(5, 2)
+  antecipacao_auto    Boolean            @default(false)
+  id_conta_destino    Int
+  vincular_caixa      Boolean            @default(false)
+  ativo               Boolean            @default(true)
+  conta_destino       ContaBancaria      @relation(fields: [id_conta_destino], references: [id_conta])
+  pagamentos_cliente  PagamentoCliente[]
+  recebivel_cartao    RecebivelCartao[]
+  taxas_operadora     TaxaOperadoraCartao[]
+  @@map("operadora_cartao")
+}
+model TaxaOperadoraCartao {
+  id_taxa                Int             @id @default(autoincrement())
+  id_operadora           Int
+  modalidade             String          @db.VarChar(20) // 'DEBITO', 'CREDITO', 'CREDITO_AVISTA', 'PIX'
+  parcela                Int
+  taxa_base_pct          Decimal         @default(0) @db.Decimal(5, 2) // Taxa m+�quina quando LOJA assume os juros
+  taxa_juros_pct         Decimal         @default(0) @db.Decimal(5, 2) // Juros do parcelamento (repassados ao cliente ou absorvidos pela loja)
+  taxa_base_cliente_pct  Decimal?        @default(0) @db.Decimal(5, 2) // Taxa m+�quina quando CLIENTE assume os juros
+  taxa_antecipacao       Decimal?        @default(0) @db.Decimal(5, 2)
+  operadora              OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
+  @@unique([id_operadora, modalidade, parcela])
+  @@map("taxa_operadora_cartao")
+}
+model RecebivelCartao {
+  id_recebivel      Int             @id @default(autoincrement())
+  id_os             Int?
+  id_operadora      Int?
+  num_parcela       Int             @default(1)
+  total_parcelas    Int             @default(1)
+  valor_bruto       Decimal         @db.Decimal(10, 2)
+  valor_liquido     Decimal         @db.Decimal(10, 2)
+  taxa_aplicada     Decimal         @db.Decimal(10, 2)
+  tipo_parcelamento String?         @default("LOJA") @db.VarChar(20)
+  data_venda        DateTime        @default(now()) @db.Date
+  data_prevista     DateTime        @db.Date
+  data_recebimento  DateTime?       @db.Date
+  status            String          @default("PENDENTE")
+  confirmado_em     DateTime?       @db.Timestamp(6)
+  confirmado_por    String?         @db.VarChar(100)
+  // ������ Snapshot Hist+�rico (Congelamento de Taxa) ������
+  taxa_pct_snapshot   Decimal?      @db.Decimal(5, 2) // Taxa % total no instante da venda
+  modalidade_snapshot String?       @db.VarChar(20)    // 'DEBITO', 'CREDITO', 'CREDITO_AVISTA', 'PIX'
+  operadora         OperadoraCartao? @relation(fields: [id_operadora], references: [id_operadora])
+  ordem_de_servico  OrdemDeServico?  @relation(fields: [id_os], references: [id_os])
+  @@map("recebivel_cartao")
+}
+model Configuracao {
+  id                String   @id @default(uuid())
+  nomeFantasia      String   @db.VarChar(100)
+  razaoSocial       String?  @db.VarChar(100)
+  cnpj              String?  @db.VarChar(18)
+  inscricaoEstadual String?  @db.VarChar(20)
+  endereco          String?  @db.VarChar(255)
+  telefone          String?  @db.VarChar(20)
+  telefone2         String?  @db.VarChar(20)
+  email             String?  @db.VarChar(100)
+  logoUrl           String?  @db.VarChar(500) // URL/Path to the uploaded logo
+  logoImpressaoUrl  String?  @db.VarChar(500)
+  smtpHost          String?  @db.VarChar(100)
+  smtpPort          Int?
+  smtpUser          String?  @db.VarChar(100)
+  smtpPass          String?  @db.VarChar(100)
+  createdAt         DateTime @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime @updatedAt @db.Timestamp(6)
+  @@map("configuracao")
+}
+enum PerfilAcesso {
+  ADMIN
+  ATENDENTE
+  MECANICO
+}
+model Usuario {
+  id_usuario            Int          @id @default(autoincrement())
+  nome                  String
+  email                 String       @unique
+  senha_hash            String
+  perfil                PerfilAcesso
+  must_change_password  Boolean      @default(false)
+  created_at            DateTime     @default(now())
+  updated_at            DateTime     @updatedAt
+}
+
+
 --- FILE: server\package.json ---
 {
   "name": "server",
@@ -37543,6 +38253,7 @@ model OrdemDeServico {
   status                String                @db.VarChar(50)
   defeito_relatado      String?               @db.VarChar(500)
   diagnostico           String?               @db.VarChar(500)
+  check_list            String?               @db.VarChar(500)
   valor_servico         Decimal?              @db.Decimal(10, 2)
   valor_pecas           Decimal?              @db.Decimal(10, 2)
   valor_final           Decimal?              @db.Decimal(12, 2)
@@ -39620,8 +40331,9 @@ export const getNfsPendentes = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = (req.query.search as string) || "";
+    const id_fornecedor = req.query.id_fornecedor ? Number(req.query.id_fornecedor) : undefined;
     const skip = (page - 1) * limit;
-    const nfs = await repository.findNfsPendentes({ search, skip, take: limit });
+    const nfs = await repository.findNfsPendentes({ search, id_fornecedor, skip, take: limit });
     res.json(nfs); // Returning { data, total }
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar notas fiscais pendentes" });
@@ -39958,7 +40670,8 @@ export class FechamentoFinanceiroController {
   }
   async findAll(req: Request, res: Response) {
     try {
-      const fechamentos = await repository.findAll();
+      const q = req.query.q ? String(req.query.q) : undefined;
+      const fechamentos = await repository.findAll(q);
       res.json(fechamentos);
     } catch (error) {
       res
@@ -40035,344 +40748,6 @@ export class FechamentoFinanceiroController {
         error: "Failed to reverse consolidation",
         details: error.message,
       });
-    }
-  }
-}
-
-
---- FILE: server\src\controllers\financeiro.controller.ts ---
-import { Request, Response } from "express";
-import { prisma } from "../prisma.js";
-export class FinanceiroController {
-  async getGeneralSummary(req: Request, res: Response) {
-    try {
-      const { startDate, endDate, source, category, search } = req.query;
-      const where: any = {
-        deleted_at: null,
-      };
-      if (startDate && endDate) {
-        where.dt_movimentacao = {
-          gte: new Date((startDate as string) + "T00:00:00"),
-          lte: new Date((endDate as string) + "T23:59:59"),
-        };
-      }
-      if (source && source !== "ALL") {
-        where.origem = source === "MANUAL" ? "MANUAL" : "AUTOMATICA";
-      }
-      if (category && category !== "ALL") {
-        where.categoria = category;
-      }
-      if (search) {
-        const searchVal = String(search).toLowerCase();
-        // search covers description, category, and id
-        where.OR = [
-          { descricao: { contains: searchVal, mode: "insensitive" } },
-          { categoria: { contains: searchVal, mode: "insensitive" } },
-          { obs: { contains: searchVal, mode: "insensitive" } },
-        ];
-        if (!isNaN(Number(searchVal))) {
-          where.OR.push({ id_livro_caixa: Number(searchVal) });
-          where.OR.push({ valor: Number(searchVal) });
-        }
-      }
-      // Add "NOT CONCILIACAO" globally as it's filtered in the frontend currently
-      where.categoria = { ...where.categoria, not: "CONCILIACAO_CARTAO" };
-      // 1. Total Inflows (ENTRADA)
-      const inflows = await prisma.livroCaixa.aggregate({
-        where: { ...where, tipo_movimentacao: "ENTRADA" },
-        _sum: { valor: true },
-      });
-      // 2. Total Outflows (SAIDA)
-      const outflows = await prisma.livroCaixa.aggregate({
-        where: { ...where, tipo_movimentacao: "SAIDA" },
-        _sum: { valor: true },
-      });
-      const totalInflow = Number(inflows._sum.valor) || 0;
-      const totalOutflow = Number(outflows._sum.valor) || 0;
-      res.json({
-        totalInflow,
-        totalOutflow,
-        balance: totalInflow - totalOutflow,
-      });
-    } catch (error) {
-      console.error("Financeiro Summary Error:", error);
-      res.status(500).json({ error: "Failed to load financial summary" });
-    }
-  }
-  // Optimized KPI for Relatorios
-  async getKPIs(req: Request, res: Response) {
-    try {
-      const { startDate, endDate } = req.query;
-      const start = startDate
-        ? new Date((startDate as string) + "T00:00:00")
-        : new Date(new Date().setDate(new Date().getDate() - 30));
-      const end = endDate
-        ? new Date((endDate as string) + "T23:59:59")
-        : new Date();
-      // Sum of all REAL inflows (PagamentoCliente or Manual ENTRADA)
-      const totalInflow = await prisma.livroCaixa.aggregate({
-        where: {
-          tipo_movimentacao: "ENTRADA",
-          dt_movimentacao: { gte: start, lte: end },
-          deleted_at: null,
-          NOT: {
-            categoria: {
-              in: ["CONCILIACAO_CARTAO", "TRANSFERENCIA", "AJUSTE_SALDO"],
-            },
-          },
-        },
-        _sum: { valor: true },
-      });
-      const totalOutflow = await prisma.livroCaixa.aggregate({
-        where: {
-          tipo_movimentacao: "SAIDA",
-          dt_movimentacao: { gte: start, lte: end },
-          deleted_at: null,
-        },
-        _sum: { valor: true },
-      });
-      const receita = Number(totalInflow._sum.valor) || 0;
-      const despesa = Number(totalOutflow._sum.valor) || 0;
-      const lucro = receita - despesa;
-      // Count OS for average ticket
-      const osCount = await prisma.ordemDeServico.count({
-        where: {
-          status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
-          dt_entrega: { gte: start, lte: end },
-          deleted_at: null,
-        },
-      });
-      res.json({
-        receita,
-        despesa,
-        lucro,
-        margem: receita > 0 ? (lucro / receita) * 100 : 0,
-        ticket: osCount > 0 ? receita / osCount : 0,
-      });
-    } catch (error) {
-      console.error("Financeiro KPIs Error:", error);
-      res.status(500).json({ error: "Failed to load kpis" });
-    }
-  }
-  async getEvolution(req: Request, res: Response) {
-    try {
-      const { startDate, endDate, groupBy = "day" } = req.query;
-      const start = new Date((startDate as string) + "T00:00:00");
-      const end = new Date((endDate as string) + "T23:59:59");
-      const requestedGroupBy = String(groupBy).toLowerCase();
-      const validIntervals = ["day", "week", "month", "quarter", "year"];
-      const interval = validIntervals.includes(requestedGroupBy)
-        ? requestedGroupBy
-        : "day";
-      // Aggregation using UNION ALL for high performance
-      // source tables: ordem_de_servico (revenue), contas_pagar (expense), pagamento_equipe (expense)
-      const data: any[] = await prisma.$queryRawUnsafe(
-        `
-        SELECT 
-          DATE_TRUNC('${interval}', combined.dt) as date,
-          SUM(combined.receita)::FLOAT as receitas,
-          SUM(combined.despesa)::FLOAT as despesas
-        FROM (
-          /* 1. Receitas de OS Finalizadas */
-          SELECT updated_at as dt, CAST(valor_total_cliente AS DECIMAL) as receita, 0 as despesa 
-          FROM "ordem_de_servico" 
-          WHERE status IN ('FINALIZADA', 'PAGA_CLIENTE', 'FINANCEIRO') 
-            AND deleted_at IS NULL
-            AND updated_at BETWEEN $1 AND $2
-          UNION ALL
-          /* 2. Despesas de Contas Pagas */
-          SELECT dt_pagamento as dt, 0 as receita, CAST(valor AS DECIMAL) as despesa 
-          FROM "contas_pagar" 
-          WHERE status = 'PAGO' 
-            AND deleted_at IS NULL
-            AND dt_pagamento BETWEEN $1 AND $2
-          UNION ALL
-          /* 3. Despesas de Equipe */
-          SELECT dt_pagamento as dt, 0 as receita, CAST(valor_total AS DECIMAL) as despesa 
-          FROM "pagamento_equipe" 
-          WHERE dt_pagamento BETWEEN $1 AND $2
-        ) as combined
-        GROUP BY 1
-        ORDER BY 1 ASC
-      `,
-        start,
-        end,
-      );
-      // Simple mapping to match chart expected format (label + values)
-      const result = data.map((row) => ({
-        date: row.date,
-        receita: row.receitas || 0,
-        despesa: row.despesas || 0,
-        label:
-          interval === "month"
-            ? new Date(row.date).toLocaleDateString("pt-BR", {
-                month: "short",
-                year: "2-digit",
-              })
-            : new Date(row.date).toLocaleDateString("pt-BR", {
-                day: "2-digit",
-                month: "2-digit",
-              }),
-      }));
-      res.json(result);
-    } catch (error) {
-      console.error("Financeiro Evolution Error:", error);
-      res.status(500).json({ error: "Failed to load evolution data" });
-    }
-  }
-  async getMovimentacoes(req: Request, res: Response) {
-    try {
-      const { startDate, endDate, search, osId, status } = req.query;
-      let params: any[] = [];
-      let idx = 1;
-      let whereLC = "WHERE (lc.categoria != 'CONCILIACAO_CARTAO' OR lc.categoria IS NULL)";
-      let wherePP = "WHERE pp.id_livro_caixa IS NULL AND ((pp.pago_ao_fornecedor = true AND pp.data_pagamento_fornecedor IS NOT NULL) OR pp.deleted_at IS NOT NULL)";
-      let wherePC = "WHERE pc.id_livro_caixa IS NULL";
-      if (startDate && endDate) {
-        params.push(new Date((startDate as string) + "T00:00:00"));
-        params.push(new Date((endDate as string) + "T23:59:59"));
-        const pStart = `$${idx++}`;
-        const pEnd = `$${idx++}`;
-        whereLC += ` AND lc.dt_movimentacao BETWEEN ${pStart} AND ${pEnd}`;
-        wherePP += ` AND COALESCE(pp.data_pagamento_fornecedor, pp.data_compra) BETWEEN ${pStart} AND ${pEnd}`;
-        wherePC += ` AND pc.data_pagamento BETWEEN ${pStart} AND ${pEnd}`;
-      }
-      if (status && status !== "ALL") {
-        if (status === "PAID") {
-          whereLC += ` AND lc.tipo_movimentacao = 'ENTRADA'`;
-          wherePP += ` AND 1 = 0`; // Peças is always Saída
-        } else if (status === "PENDING") {
-          whereLC += ` AND lc.tipo_movimentacao = 'SAIDA'`;
-          wherePC += ` AND 1 = 0`; // Cliente is always Entrada
-        }
-      }
-      if (osId) {
-        params.push(Number(osId));
-        const pOs = `$${idx++}`;
-        whereLC += ` AND 1 = 0`; // Manual entries don't have direct OS link in this unified view
-        wherePP += ` AND os.id_os = ${pOs}`;
-        wherePC += ` AND os.id_os = ${pOs}`;
-      }
-      if (search) {
-        params.push(`%${search}%`);
-        const pSearch = `$${idx++}`;
-        whereLC += ` AND (lc.descricao ILIKE ${pSearch} OR lc.obs ILIKE ${pSearch} OR lc.categoria ILIKE ${pSearch})`;
-        wherePP += ` AND (('OS Nº ' || os.id_os || ' - ' || COALESCE(v.modelo, 'Veículo')) ILIKE ${pSearch} OR COALESCE(pf.nome, p_j.nome_fantasia, p_j.razao_social) ILIKE ${pSearch} OR f.nome ILIKE ${pSearch})`;
-        wherePC += ` AND (('Serviços: OS Nº ' || os.id_os) ILIKE ${pSearch} OR COALESCE(pf.nome, p_j.nome_fantasia, p_j.razao_social) ILIKE ${pSearch})`;
-      }
-      const sqlQuery = `
-        SELECT * FROM (
-          SELECT 
-            'man-' || lc.id_livro_caixa as id,
-            lc.id_livro_caixa as "rawId",
-            lc.dt_movimentacao as date,
-            lc.descricao as description,
-            CASE WHEN lc.tipo_movimentacao = 'ENTRADA' THEN 'IN' ELSE 'OUT' END as type,
-            lc.valor as value,
-            lc.categoria as category,
-            NULL as vehicle,
-            NULL as client,
-            NULL as supplier,
-            lc.obs as obs,
-            CASE WHEN lc.origem = 'AUTOMATICA' THEN 'AUTO' ELSE 'MANUAL' END as source,
-            lc.deleted_at,
-            cb.nome as conta_bancaria,
-            NULL as "paymentMethod",
-            NULL::int as os_id
-          FROM livro_caixa lc
-          LEFT JOIN conta_bancaria cb ON lc.id_conta_bancaria = cb.id_conta
-          ${whereLC}
-          UNION ALL
-          SELECT
-            'out-' || pp.id_pagamento_peca as id,
-            pp.id_pagamento_peca as "rawId",
-            COALESCE(pp.data_pagamento_fornecedor, pp.data_compra) as date,
-            'OS Nº ' || os.id_os || ' - ' || COALESCE(v.modelo, 'Veículo') as description,
-            'OUT' as type,
-            pp.custo_real as value,
-            'Auto Peças' as category,
-            v.placa || ' - ' || v.modelo as vehicle,
-            COALESCE(pf.nome, p_j.nome_fantasia, p_j.razao_social) as client,
-            f.nome as supplier,
-            '' as obs,
-            'AUTO' as source,
-            pp.deleted_at,
-            NULL as conta_bancaria,
-            NULL as "paymentMethod",
-            os.id_os as os_id
-          FROM pagamento_peca pp
-          JOIN itens_os io ON pp.id_item_os = io.id_iten
-          JOIN ordem_de_servico os ON io.id_os = os.id_os
-          LEFT JOIN veiculo v ON os.id_veiculo = v.id_veiculo
-          LEFT JOIN cliente c ON os.id_cliente = c.id_cliente
-          LEFT JOIN pessoa_fisica p_f ON c.id_pessoa_fisica = p_f.id_pessoa_fisica
-          LEFT JOIN pessoa pf ON p_f.id_pessoa = pf.id_pessoa
-          LEFT JOIN pessoa_juridica p_j ON c.id_pessoa_juridica = p_j.id_pessoa_juridica
-          LEFT JOIN pessoa pj ON p_j.id_pessoa = pj.id_pessoa
-          LEFT JOIN pessoa f ON pp.id_pessoa = f.id_pessoa
-          ${wherePP}
-          UNION ALL
-          SELECT
-            'in-' || pc.id_pagamento_cliente as id,
-            pc.id_pagamento_cliente as "rawId",
-            pc.data_pagamento as date,
-            'Serviços: OS Nº ' || os.id_os as description,
-            'IN' as type,
-            pc.valor as value,
-            'Receita' as category,
-            v.placa || ' - ' || v.modelo as vehicle,
-            COALESCE(pf.nome, p_j.nome_fantasia, p_j.razao_social) as client,
-            NULL as supplier,
-            pc.obs as obs,
-            'AUTO' as source,
-            pc.deleted_at,
-            COALESCE(cb.nome, op.nome) as conta_bancaria,
-            pc.metodo_pagamento as "paymentMethod",
-            os.id_os as os_id
-          FROM pagamento_cliente pc
-          JOIN ordem_de_servico os ON pc.id_os = os.id_os
-          LEFT JOIN veiculo v ON os.id_veiculo = v.id_veiculo
-          LEFT JOIN cliente c ON os.id_cliente = c.id_cliente
-          LEFT JOIN pessoa_fisica p_f ON c.id_pessoa_fisica = p_f.id_pessoa_fisica
-          LEFT JOIN pessoa pf ON p_f.id_pessoa = pf.id_pessoa
-          LEFT JOIN pessoa_juridica p_j ON c.id_pessoa_juridica = p_j.id_pessoa_juridica
-          LEFT JOIN pessoa pj ON p_j.id_pessoa = pj.id_pessoa
-          LEFT JOIN conta_bancaria cb ON pc.id_conta_bancaria = cb.id_conta
-          LEFT JOIN operadora_cartao op ON pc.id_operadora = op.id_operadora
-          ${wherePC}
-        ) as combined
-        ORDER BY date DESC
-      `;
-      const rows: any[] = await prisma.$queryRawUnsafe(sqlQuery, ...params);
-      // Calculate totals
-      let totalInflow = 0;
-      let totalOutflow = 0;
-      let balance = 0;
-      const filteredRows = rows.map(r => {
-        const val = Number(r.value);
-        if (r.deleted_at === null) {
-          if (r.type === 'IN') {
-            totalInflow += val;
-            balance += val;
-          } else {
-            totalOutflow += val;
-            balance -= val;
-          }
-        }
-        return {
-          ...r,
-          value: val,
-        };
-      });
-      res.json({
-        data: filteredRows, // Add pagination later if required, for now just returns all matched which shouldn't be much given date range
-        totalInflow,
-        totalOutflow,
-        balance
-      });
-    } catch (error: any) {
-      console.error("Financeiro Movimentacoes Error:", error);
-      res.status(500).json({ error: "Failed to load movimentacoes", detail: error.message });
     }
   }
 }
@@ -40509,18 +40884,11 @@ export class ItensOsController {
         itemData.valor_venda = 0;
         itemData.valor_total = 0;
       }
-      const item = await repository.create(itemData);
-      // Se for uma peça externa (não vinda do estoque e não interna), cria registro de PagamentoPeca imediatamente
-      if (!itemData.id_pecas_estoque && !itemData.is_interno) {
-          const supplierId = id_fornecedor ? Number(id_fornecedor) : null;
-          await pagamentoRepository.create({
-              id_item_os: item.id_iten,
-              id_pessoa: supplierId,
-              custo_real: custo_real ? Number(custo_real) : 0,
-              data_compra: new Date(),
-              pago_ao_fornecedor: false
-          });
-      }
+      const extraData = {
+          id_fornecedor: id_fornecedor ? Number(id_fornecedor) : null,
+          custo_real: custo_real ? Number(custo_real) : 0
+      };
+      const item = await repository.create(itemData, extraData);
       res.status(201).json(item);
     } catch (error) {
       res.status(400).json({ error: 'Failed to create Item OS', details: error });
@@ -40568,34 +40936,14 @@ export class ItensOsController {
         itemData.valor_venda = 0;
         itemData.valor_total = 0;
       }
-      const item = await repository.update(id, itemData);
+      const extraData: { id_fornecedor?: number | null, custo_real?: number } = {};
       if (id_fornecedor !== undefined) {
-          // Check if payment record exists
-          const existingPayments = await pagamentoRepository.findByItemId(id);
-          if (existingPayments && existingPayments.length > 0) {
-              if (id_fornecedor) {
-                  const updateData: any = {
-                      id_pessoa: Number(id_fornecedor)
-                  };
-                  if (custo_real) {
-                      updateData.custo_real = Number(custo_real);
-                  }
-                  await pagamentoRepository.update(existingPayments[0]!.id_pagamento_peca, updateData);
-              } else {
-                  // If cleared, set id_pessoa to null
-                  await pagamentoRepository.update(existingPayments[0]!.id_pagamento_peca, { id_pessoa: null } as any);
-              }
-          } else if (id_fornecedor) {
-              // Create new if strictly provided
-              await pagamentoRepository.create({
-                  id_item_os: id,
-                  id_pessoa: Number(id_fornecedor),
-                  custo_real: custo_real ? Number(custo_real) : 0,
-                  data_compra: new Date(),
-                  pago_ao_fornecedor: false
-              });
-          }
+        extraData.id_fornecedor = id_fornecedor ? Number(id_fornecedor) : null;
       }
+      if (custo_real !== undefined) {
+        extraData.custo_real = Number(custo_real);
+      }
+      const item = await repository.update(id, itemData, extraData);
       res.json(item);
     } catch (error) {
       console.error(error);
@@ -40626,62 +40974,19 @@ export class ItensOsController {
 
 --- FILE: server\src\controllers\livroCaixa.controller.ts ---
 import { Request, Response } from "express";
-import { prisma } from "../prisma.js";
+import livroCaixaRepository from "../repositories/livroCaixa.repository.js";
 export const getAll = async (req: Request, res: Response) => {
   try {
-    const registros = await prisma.livroCaixa.findMany({
-      include: { conta: true },
-      orderBy: { dt_movimentacao: "desc" },
-      take: 200, // Limit to last 200 for performance? Or pagination later.
-    });
+    const registros = await livroCaixaRepository.getAll();
     res.json(registros);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao buscar livro caixa" });
   }
 };
 export const create = async (req: Request, res: Response) => {
   try {
-    const {
-      descricao,
-      valor,
-      tipo_movimentacao,
-      categoria,
-      id_categoria,
-      obs,
-      origem,
-      id_conta_bancaria,
-    } = req.body;
-    // Transaction to update balance if account provided
-    const result = await prisma.$transaction(async (tx) => {
-      const registro = await tx.livroCaixa.create({
-        data: {
-          descricao,
-          valor,
-          tipo_movimentacao,
-          categoria,
-          id_categoria: id_categoria ? Number(id_categoria) : null,
-          obs: obs ?? null,
-          origem: origem || "MANUAL",
-          id_conta_bancaria: id_conta_bancaria
-            ? Number(id_conta_bancaria)
-            : null,
-        },
-      });
-      if (id_conta_bancaria) {
-        if (tipo_movimentacao === "ENTRADA") {
-          await tx.contaBancaria.update({
-            where: { id_conta: Number(id_conta_bancaria) },
-            data: { saldo_atual: { increment: valor } },
-          });
-        } else {
-          await tx.contaBancaria.update({
-            where: { id_conta: Number(id_conta_bancaria) },
-            data: { saldo_atual: { decrement: valor } },
-          });
-        }
-      }
-      return registro;
-    });
+    const result = await livroCaixaRepository.create(req.body);
     res.status(201).json(result);
   } catch (error) {
     console.error(error);
@@ -40691,27 +40996,10 @@ export const create = async (req: Request, res: Response) => {
 export const update = async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
-    const {
-      descricao,
-      valor,
-      tipo_movimentacao,
-      categoria,
-      id_categoria,
-      obs,
-    } = req.body;
-    const registro = await prisma.livroCaixa.update({
-      where: { id_livro_caixa: Number(id) },
-      data: {
-        descricao,
-        valor,
-        tipo_movimentacao,
-        categoria,
-        id_categoria: id_categoria ? Number(id_categoria) : null,
-        obs: obs ?? null,
-      },
-    });
+    const registro = await livroCaixaRepository.update(Number(id), req.body);
     res.json(registro);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao atualizar registro" });
   }
 };
@@ -40719,16 +41007,11 @@ export const softDelete = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { obs } = req.body;
   try {
-    const registro = await prisma.livroCaixa.update({
-      where: { id_livro_caixa: Number(id) },
-      data: {
-        deleted_at: new Date(),
-        obs: obs ?? null, // Update obs if provided
-      },
-    });
+    const registro = await livroCaixaRepository.softDelete(Number(id), obs);
     res.json(registro);
-  } catch (error) {
-    res.status(500).json({ error: "Erro ao deletar registro" });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message || "Erro ao deletar registro" });
   }
 };
 
@@ -41143,11 +41426,11 @@ export class PagamentoClienteController {
     try {
       const result = await repository.createWithRecebiveis(req.body);
       res.status(201).json(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       res
         .status(400)
-        .json({ error: "Failed to create PagamentoCliente", details: error });
+        .json({ error: error?.message || "Failed to create PagamentoCliente", details: error });
     }
   }
   async findAll(req: Request, res: Response) {
@@ -41918,6 +42201,58 @@ export class PessoaController {
 }
 
 
+--- FILE: server\src\controllers\pessoaFisica.controller.ts ---
+import { Request, Response } from 'express';
+import { PessoaFisicaRepository } from '../repositories/pessoaFisica.repository.js';
+const repository = new PessoaFisicaRepository();
+export class PessoaFisicaController {
+  async create(req: Request, res: Response) {
+    try {
+      const pessoaFisica = await repository.create(req.body);
+      res.status(201).json(pessoaFisica);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to create PessoaFisica', details: error });
+    }
+  }
+  async findAll(req: Request, res: Response) {
+    try {
+      const pessoasFisicas = await repository.findAll();
+      res.json(pessoasFisicas);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch PessoasFisicas' });
+    }
+  }
+  async findById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const pessoaFisica = await repository.findById(id);
+      if (!pessoaFisica) {
+        return res.status(404).json({ error: 'PessoaFisica not found' });
+      }
+      res.json(pessoaFisica);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch PessoaFisica' });
+    }
+  }
+  async update(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const pessoaFisica = await repository.update(id, req.body);
+      res.json(pessoaFisica);
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to update PessoaFisica' });
+    }
+  }
+  async delete(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      await repository.delete(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to delete PessoaFisica' });
+    }
+  }
+}
 
 
 --- FILE: server\src\controllers\pessoaJuridica.controller.ts ---
@@ -43221,6 +43556,318 @@ export class AuditLogRepository {
 }
 
 
+--- FILE: server\src\repositories\cliente.repository.ts ---
+import { Prisma } from "@prisma/client";
+import { prisma } from "../prisma.js";
+export class ClienteRepository {
+  async create(data: any) {
+    console.log(
+      "📥 ClienteRepository.create - Received data:",
+      JSON.stringify(data, null, 2)
+    );
+    // VALIDATE DUPLICITY BEFORE CREATING
+    if (data.tipo_pessoa === 2 || data.tipo === "JURIDICA") {
+      if (data.cnpj) {
+        const existingCnpj = await prisma.pessoaJuridica.findFirst({
+          where: { cnpj: data.cnpj }
+        });
+        if (existingCnpj) {
+          throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+        }
+      }
+      if (data.inscricao_estadual) {
+        const existingIe = await prisma.pessoaJuridica.findFirst({
+          where: { inscricao_estadual: data.inscricao_estadual }
+        });
+        if (existingIe) {
+          throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+        }
+      }
+    } else {
+      if (data.cpf) {
+        const existingCpf = await prisma.pessoaFisica.findFirst({
+          where: { cpf: data.cpf }
+        });
+        if (existingCpf) {
+          throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+        }
+      }
+    }
+    // TRANSACTIONAL CREATION FOR SIMPLIFIED PAYLOAD
+    // If 'nome' is provided and we don't have explicit foreign keys, assume we need to create the person structure.
+    if (data.nome && !data.id_pessoa_fisica && !data.id_pessoa_juridica) {
+      return await prisma.$transaction(async (tx) => {
+        // 1. Create Base Pessoa
+        const pessoa = await tx.pessoa.create({
+          data: {
+            nome: data.nome,
+          },
+        });
+        let idPessoaFisica = null;
+        let idPessoaJuridica = null;
+        let tipoPessoaId = 1; // Default to Fisica
+        if (data.tipo === "JURIDICA") {
+          tipoPessoaId = 2;
+          const pj = await tx.pessoaJuridica.create({
+            data: {
+              id_pessoa: pessoa.id_pessoa,
+              razao_social: data.nome, // Using name as Razao Social for simplicity
+              cnpj: data.cnpj || null,
+            },
+          });
+          idPessoaJuridica = pj.id_pessoa_juridica;
+        } else {
+          // Default to FISICA
+          const pf = await tx.pessoaFisica.create({
+            data: {
+              id_pessoa: pessoa.id_pessoa,
+              cpf: data.cpf || null,
+            },
+          });
+          idPessoaFisica = pf.id_pessoa_fisica;
+        }
+        // 2. Create Cliente
+        const cliente = await tx.cliente.create({
+          data: {
+            id_pessoa_fisica: idPessoaFisica,
+            id_pessoa_juridica: idPessoaJuridica,
+            tipo_pessoa: tipoPessoaId,
+            telefone_1: data.telefone_1,
+            telefone_2: data.telefone_2 || null,
+            email: data.email || null,
+            logradouro: data.logradouro || null,
+            nr_logradouro: data.nr_logradouro || null,
+            compl_logradouro: data.compl_logradouro || null,
+            bairro: data.bairro || null,
+            cidade: data.cidade || null,
+            estado: data.estado || null,
+            cep: data.cep || null,
+          },
+        });
+        console.log("✅ Cliente transaction complete:", cliente.id_cliente);
+        return cliente;
+      });
+    }
+    // EXISTING LOGIC (If IDs are provided)
+    const { id_pessoa_fisica, id_pessoa_juridica, ...clienteData } = data;
+    const payload = {
+      ...clienteData,
+      id_pessoa_fisica: id_pessoa_fisica || null,
+      id_pessoa_juridica: id_pessoa_juridica || null,
+    };
+    console.log(
+      "📤 ClienteRepository.create - Sending to Prisma:",
+      JSON.stringify(payload, null, 2)
+    );
+    try {
+      const result = await prisma.cliente.create({
+        data: payload,
+      });
+      console.log("✅ ClienteRepository.create - Success:", result.id_cliente);
+      return result;
+    } catch (error: any) {
+      console.error("❌ ClienteRepository.create - Error:", error);
+      throw error;
+    }
+  }
+  async findAll() {
+    return await prisma.cliente.findMany({
+      include: {
+        pessoa_fisica: { include: { pessoa: true } },
+        pessoa_juridica: { include: { pessoa: true } },
+        tipo: true,
+        veiculos: true,
+        equipamentos: true,
+      },
+    });
+  }
+  async findById(id: number) {
+    return await prisma.cliente.findUnique({
+      where: { id_cliente: id },
+      include: {
+        pessoa_fisica: { include: { pessoa: true } },
+        pessoa_juridica: { include: { pessoa: true } },
+        tipo: true,
+        veiculos: true,
+        equipamentos: true,
+        ordens_de_servico: true,
+      },
+    });
+  }
+  async update(id: number, data: any) {
+    // 1. Get current client to find associated person IDs
+    const currentCliente = await prisma.cliente.findUnique({
+      where: { id_cliente: id },
+      include: {
+        pessoa_fisica: true,
+        pessoa_juridica: true
+      }
+    });
+    if (!currentCliente) {
+      throw new Error("Cliente não encontrado.");
+    }
+    // 2. Validate CPF / CNPJ / IE duplicity
+    if (data.cpf) {
+      const pfWhere: any = { cpf: data.cpf };
+      if (currentCliente.id_pessoa_fisica) {
+        pfWhere.id_pessoa_fisica = { not: currentCliente.id_pessoa_fisica };
+      }
+      const existing = await prisma.pessoaFisica.findFirst({
+        where: pfWhere
+      });
+      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+    }
+    if (data.cnpj) {
+      const pjWhere: any = { cnpj: data.cnpj };
+      if (currentCliente.id_pessoa_juridica) {
+        pjWhere.id_pessoa_juridica = { not: currentCliente.id_pessoa_juridica };
+      }
+      const existing = await prisma.pessoaJuridica.findFirst({
+        where: pjWhere
+      });
+      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+    }
+    if (data.inscricao_estadual) {
+      const pjWhere: any = { inscricao_estadual: data.inscricao_estadual };
+      if (currentCliente.id_pessoa_juridica) {
+        pjWhere.id_pessoa_juridica = { not: currentCliente.id_pessoa_juridica };
+      }
+      const existing = await prisma.pessoaJuridica.findFirst({
+        where: pjWhere
+      });
+      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+    }
+    return await prisma.$transaction(async (tx) => {
+      // 1. Extract nested data
+      const {
+        nome, razao_social, nome_fantasia, cpf, cnpj, inscricao_estadual,
+        id_pessoa_fisica, id_pessoa_juridica, tipo_pessoa, tipo, ...clienteData
+      } = data;
+      // 2. Update Cliente base data
+      const cliente = await tx.cliente.update({
+        where: { id_cliente: id },
+        data: clienteData as Prisma.ClienteUpdateInput,
+        include: {
+          pessoa_fisica: true,
+          pessoa_juridica: true
+        }
+      });
+      // 3. Update PessoaFisica or PessoaJuridica if provided
+      if (cliente.pessoa_fisica) {
+        if (cpf !== undefined) {
+          await tx.pessoaFisica.update({
+            where: { id_pessoa_fisica: cliente.pessoa_fisica.id_pessoa_fisica },
+            data: { cpf }
+          });
+        }
+        if (nome !== undefined) {
+          await tx.pessoa.update({
+            where: { id_pessoa: cliente.pessoa_fisica.id_pessoa },
+            data: { nome }
+          });
+        }
+      } else if (cliente.pessoa_juridica) {
+        if (cnpj !== undefined || razao_social !== undefined || nome_fantasia !== undefined || inscricao_estadual !== undefined) {
+          await tx.pessoaJuridica.update({
+            where: { id_pessoa_juridica: cliente.pessoa_juridica.id_pessoa_juridica },
+            data: {
+              cnpj: cnpj !== undefined ? cnpj : undefined,
+              razao_social: razao_social !== undefined ? razao_social : undefined,
+              nome_fantasia: nome_fantasia !== undefined ? nome_fantasia : undefined,
+              inscricao_estadual: inscricao_estadual !== undefined ? inscricao_estadual : undefined,
+            }
+          });
+        }
+        if (nome !== undefined || razao_social !== undefined) {
+          await tx.pessoa.update({
+            where: { id_pessoa: cliente.pessoa_juridica.id_pessoa },
+            data: { nome: razao_social || nome }
+          });
+        }
+      }
+      return cliente;
+    });
+  }
+  async delete(id: number) {
+    const activeOs = await prisma.ordemDeServico.findFirst({
+      where: {
+        id_cliente: id,
+        deleted_at: null,
+        status: { notIn: ["FINALIZADA", "CANCELADA"] },
+      },
+    });
+    if (activeOs) {
+      throw new Error("Não é possível excluir o cliente pois há uma Ordem de Serviço ativa vinculada (OS: " + activeOs.id_os + ").");
+    }
+    return await prisma.cliente.delete({
+      where: { id_cliente: id },
+    });
+  }
+  // Case-insensitive & accent-insensitive search by name
+  async searchByName(searchTerm: string) {
+    const searchPattern = `%${searchTerm}%`;
+    const ids = await prisma.$queryRaw<{ id_cliente: number }[]>`
+      SELECT c.id_cliente
+      FROM "cliente" c
+      LEFT JOIN "pessoa_fisica" pf ON c.id_pessoa_fisica = pf.id_pessoa_fisica
+      LEFT JOIN "pessoa" p1 ON pf.id_pessoa = p1.id_pessoa
+      LEFT JOIN "pessoa_juridica" pj ON c.id_pessoa_juridica = pj.id_pessoa_juridica
+      LEFT JOIN "pessoa" p2 ON pj.id_pessoa = p2.id_pessoa
+      WHERE unaccent(p1.nome) ILIKE unaccent(${searchPattern})
+         OR unaccent(p2.nome) ILIKE unaccent(${searchPattern})
+         OR (pj.nome_fantasia IS NOT NULL AND unaccent(pj.nome_fantasia) ILIKE unaccent(${searchPattern}))
+      LIMIT 20
+    `;
+    const idList = ids.map((item) => item.id_cliente);
+    if (idList.length === 0) {
+      return [];
+    }
+    return await prisma.cliente.findMany({
+      where: {
+        id_cliente: { in: idList },
+      },
+      include: {
+        pessoa_fisica: { include: { pessoa: true } },
+        pessoa_juridica: { include: { pessoa: true } },
+        tipo: true,
+        veiculos: true,
+      },
+    });
+  }
+}
+
+
+--- FILE: server\src\repositories\configuracao.repository.ts ---
+import { prisma } from "../prisma.js";
+export const ConfiguracaoRepository = {
+  get: async () => {
+    return await prisma.configuracao.findFirst();
+  },
+  upsert: async (data: any) => {
+    // Busca o registro existente para decidir entre update e create.
+    // A tabela usa UUID como PK, então não podemos usar `where: { id: 1 }`.
+    // Usamos findFirst + condicional update/create como um "upsert lógico",
+    // já que a tabela sempre terá no máximo 1 registro (singleton).
+    const existing = await prisma.configuracao.findFirst();
+    if (existing) {
+      return await prisma.configuracao.update({
+        where: { id: existing.id },
+        data,
+      });
+    } else {
+      // Primeira inserção — garantir campo obrigatório nomeFantasia (NOT NULL)
+      if (!data.nomeFantasia) {
+        data.nomeFantasia = "Oficina";
+      }
+      return await prisma.configuracao.create({
+        data,
+      });
+    }
+  },
+};
+
+
+--- FILE: server\src\repositories\contasPagar.repository.ts ---
 import { prisma } from "../prisma.js";
 import crypto from "crypto";
 const normalizeDate = (dateInfo: any): Date | null => {
@@ -43705,13 +44352,14 @@ export class ContasPagarRepository {
     });
   }
   // ── Rota A: NFs Pendentes ──
-  async findNfsPendentes(params?: { search?: string; skip?: number; take?: number }) {
-    const { search, skip, take } = params || {};
+  async findNfsPendentes(params?: { search?: string; id_fornecedor?: number; skip?: number; take?: number }) {
+    const { search, id_fornecedor, skip, take } = params || {};
     const contas = await prisma.contasPagar.findMany({
       where: {
         nf_numero: { not: null },
         deleted_at: null,
-        ...(search ? { nf_numero: { contains: search, mode: "insensitive" } } : {})
+        ...(search ? { nf_numero: { contains: search, mode: "insensitive" } } : {}),
+        ...(id_fornecedor ? { id_fornecedor: id_fornecedor } : {})
       },
       select: {
         nf_numero: true,
@@ -43977,11 +44625,18 @@ export class FechamentoFinanceiroRepository {
       data,
     });
   }
-  async findAll() {
-    return await prisma.fechamentoFinanceiro.findMany({
+  async findAll(searchTerm?: string) {
+    const query: Prisma.FechamentoFinanceiroFindManyArgs = {
+      where: {},
       include: {
         ordem_de_servico: {
           include: {
+            cliente: {
+              include: {
+                pessoa_fisica: { include: { pessoa: true } },
+                pessoa_juridica: true,
+              },
+            },
             veiculo: true,
             servicos_mao_de_obra: {
               where: { deleted_at: null },
@@ -44000,7 +44655,52 @@ export class FechamentoFinanceiroRepository {
           },
         },
       },
-    });
+    };
+    if (searchTerm) {
+      const searchNumber = !isNaN(Number(searchTerm)) ? Number(searchTerm) : undefined;
+      query.where = {
+        ordem_de_servico: {
+          OR: [
+            ...(searchNumber ? [{ id_os: searchNumber }] : []),
+            {
+              veiculo: {
+                OR: [
+                  { placa: { contains: searchTerm } },
+                  { modelo: { contains: searchTerm } },
+                ],
+              },
+            },
+            {
+              cliente: {
+                OR: [
+                  { pessoa_fisica: { pessoa: { nome: { contains: searchTerm } } } },
+                  { pessoa_juridica: { razao_social: { contains: searchTerm } } },
+                  { pessoa_juridica: { nome_fantasia: { contains: searchTerm } } },
+                ],
+              },
+            },
+            {
+              itens_os: {
+                some: {
+                  OR: [
+                    { descricao: { contains: searchTerm } },
+                    { codigo_referencia: { contains: searchTerm } },
+                    {
+                      pagamentos_peca: {
+                        some: {
+                          pessoa: { nome: { contains: searchTerm } },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      };
+    }
+    return await prisma.fechamentoFinanceiro.findMany(query);
   }
   async findById(id: number) {
     return await prisma.fechamentoFinanceiro.findUnique({
@@ -44028,6 +44728,7 @@ export class FechamentoFinanceiroRepository {
             id_fornecedor,
             custo_real,
             pago_ao_fornecedor,
+            nf_numero,
           } = itemPeca;
           if (id_pagamento_peca) {
             await tx.pagamentoPeca.update({
@@ -44036,6 +44737,7 @@ export class FechamentoFinanceiroRepository {
                 id_pessoa: Number(id_fornecedor),
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+                nf_numero: nf_numero || null,
               },
             });
           } else {
@@ -44046,6 +44748,7 @@ export class FechamentoFinanceiroRepository {
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
                 data_compra: new Date(),
+                nf_numero: nf_numero || null,
               },
             });
           }
@@ -44114,6 +44817,7 @@ export class FechamentoFinanceiroRepository {
             id_fornecedor,
             custo_real,
             pago_ao_fornecedor,
+            nf_numero,
           } = itemPeca;
           if (id_pagamento_peca) {
             await tx.pagamentoPeca.update({
@@ -44122,6 +44826,7 @@ export class FechamentoFinanceiroRepository {
                 id_pessoa: Number(id_fornecedor),
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+                nf_numero: nf_numero || null,
               },
             });
           } else {
@@ -44132,6 +44837,7 @@ export class FechamentoFinanceiroRepository {
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
                 data_compra: new Date(),
+                nf_numero: nf_numero || null,
               },
             });
           }
@@ -44840,6 +45546,9 @@ export class FornecedorRepository {
     });
   }
 }
+
+
+--- FILE: server\src\repositories\funcionario.repository.ts ---
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 export class FuncionarioRepository {
@@ -44925,31 +45634,34 @@ import { OrdemDeServicoRepository } from './ordemDeServico.repository.js';
 const auditRepo = new AuditLogRepository();
 const osRepo = new OrdemDeServicoRepository();
 export class ItensOsRepository {
-  async create(data: Prisma.ItensOsCreateInput) {
-    const created = await prisma.itensOs.create({
-      data,
-    });
-    await auditRepo.create({
-        tabela: 'itens_os',
-        registro_id: created.id_iten,
-        acao: 'CREATE',
-        valor_novo: created
-    });
-    // Criar PagamentoPeca sem fornecedor vinculado
-    // Se for peça de estoque interno, o frontend já não permite edição de fornecedor,
-    // mas deixamos criado para manter o padrão de relacionamento.
-    await prisma.pagamentoPeca.create({
-      data: {
-        id_item_os: created.id_iten,
-        id_pessoa: null,
-        custo_real: 0,
-        data_compra: new Date(),
-        pago_ao_fornecedor: false,
+  async create(data: Prisma.ItensOsCreateInput, extraData?: { id_fornecedor?: number | null, custo_real?: number }) {
+    return await prisma.$transaction(async (tx) => {
+      const created = await tx.itensOs.create({
+        data,
+      });
+      await auditRepo.create({
+          tabela: 'itens_os',
+          registro_id: created.id_iten,
+          acao: 'CREATE',
+          valor_novo: created
+      });
+      // Se for uma peça externa (não vinda do estoque e não interna), cria registro de PagamentoPeca imediatamente
+      const isFromStock = !!data.pecas_estoque?.connect;
+      if (!isFromStock && !data.is_interno) {
+        await tx.pagamentoPeca.create({
+          data: {
+            id_item_os: created.id_iten,
+            id_pessoa: extraData?.id_fornecedor || null,
+            custo_real: extraData?.custo_real || 0,
+            data_compra: new Date(),
+            pago_ao_fornecedor: false,
+          }
+        });
       }
+      // Recalculate OS totals
+      await osRepo.recalculateTotals(created.id_os, tx);
+      return created;
     });
-    // Recalculate OS totals
-    await osRepo.recalculateTotals(created.id_os);
-    return created;
   }
   async findAll(includeInternal: boolean = false) {
     return await prisma.itensOs.findMany({
@@ -44976,22 +45688,52 @@ export class ItensOsRepository {
       include: { pecas_estoque: true, pagamentos_peca: true }
     });
   }
-  async update(id: number, data: Prisma.ItensOsUpdateInput) {
-    const current = await this.findById(id);
-    const updated = await prisma.itensOs.update({
-      where: { id_iten: id },
-      data,
+  async update(id: number, data: Prisma.ItensOsUpdateInput, extraData?: { id_fornecedor?: number | null, custo_real?: number }) {
+    return await prisma.$transaction(async (tx) => {
+      const current = await this.findById(id); // Using global prisma for find is ok here since it's just reading
+      const updated = await tx.itensOs.update({
+        where: { id_iten: id },
+        data,
+      });
+      await auditRepo.create({
+          tabela: 'itens_os',
+          registro_id: id,
+          acao: 'UPDATE',
+          valor_antigo: current,
+          valor_novo: updated
+      });
+      if (extraData && extraData.id_fornecedor !== undefined) {
+          const existingPayments = await tx.pagamentoPeca.findMany({ where: { id_item_os: id } });
+          if (existingPayments && existingPayments.length > 0) {
+              if (extraData.id_fornecedor) {
+                  const updateData: any = { id_pessoa: extraData.id_fornecedor };
+                  if (extraData.custo_real !== undefined) updateData.custo_real = extraData.custo_real;
+                  await tx.pagamentoPeca.update({
+                      where: { id_pagamento_peca: existingPayments[0]!.id_pagamento_peca },
+                      data: updateData
+                  });
+              } else {
+                  await tx.pagamentoPeca.update({
+                      where: { id_pagamento_peca: existingPayments[0]!.id_pagamento_peca },
+                      data: { id_pessoa: null }
+                  });
+              }
+          } else if (extraData.id_fornecedor) {
+              await tx.pagamentoPeca.create({
+                data: {
+                  id_item_os: id,
+                  id_pessoa: extraData.id_fornecedor,
+                  custo_real: extraData.custo_real || 0,
+                  data_compra: new Date(),
+                  pago_ao_fornecedor: false,
+                }
+              });
+          }
+      }
+      // Recalculate OS totals
+      await osRepo.recalculateTotals(updated.id_os, tx);
+      return updated;
     });
-    await auditRepo.create({
-        tabela: 'itens_os',
-        registro_id: id,
-        acao: 'UPDATE',
-        valor_antigo: current,
-        valor_novo: updated
-    });
-    // Recalculate OS totals
-    await osRepo.recalculateTotals(updated.id_os);
-    return updated;
   }
   async delete(id: number) {
     const current = await this.findById(id);
@@ -45031,6 +45773,123 @@ export class ItensOsRepository {
     });
   }
 }
+
+
+--- FILE: server\src\repositories\livroCaixa.repository.ts ---
+import { prisma } from "../prisma.js";
+export class LivroCaixaRepository {
+  async getAll() {
+    return prisma.livroCaixa.findMany({
+      where: { deleted_at: null },
+      include: { conta: true },
+      orderBy: { dt_movimentacao: "desc" },
+      take: 200,
+    });
+  }
+  async create(data: any) {
+    const {
+      descricao,
+      valor,
+      tipo_movimentacao,
+      categoria,
+      id_categoria,
+      obs,
+      origem,
+      id_conta_bancaria,
+    } = data;
+    return prisma.$transaction(async (tx) => {
+      const registro = await tx.livroCaixa.create({
+        data: {
+          descricao,
+          valor,
+          tipo_movimentacao,
+          categoria,
+          id_categoria: id_categoria ? Number(id_categoria) : null,
+          obs: obs ?? null,
+          origem: origem || "MANUAL",
+          id_conta_bancaria: id_conta_bancaria
+            ? Number(id_conta_bancaria)
+            : null,
+        },
+      });
+      if (id_conta_bancaria) {
+        if (tipo_movimentacao === "ENTRADA") {
+          await tx.contaBancaria.update({
+            where: { id_conta: Number(id_conta_bancaria) },
+            data: { saldo_atual: { increment: valor } },
+          });
+        } else {
+          await tx.contaBancaria.update({
+            where: { id_conta: Number(id_conta_bancaria) },
+            data: { saldo_atual: { decrement: valor } },
+          });
+        }
+      }
+      return registro;
+    });
+  }
+  async update(id: number, data: any) {
+    const {
+      descricao,
+      valor,
+      tipo_movimentacao,
+      categoria,
+      id_categoria,
+      obs,
+    } = data;
+    return prisma.livroCaixa.update({
+      where: { id_livro_caixa: id },
+      data: {
+        descricao,
+        valor,
+        tipo_movimentacao,
+        categoria,
+        id_categoria: id_categoria ? Number(id_categoria) : null,
+        obs: obs ?? null,
+      },
+    });
+  }
+  async softDelete(id: number, obs?: string) {
+    return prisma.$transaction(async (tx) => {
+      const original = await tx.livroCaixa.findUnique({
+        where: { id_livro_caixa: id },
+      });
+      if (!original) {
+        throw new Error("Registro do Livro Caixa não encontrado.");
+      }
+      if (original.deleted_at) {
+        throw new Error("Registro do Livro Caixa já estava excluído.");
+      }
+      // Deleta logicamente
+      const updated = await tx.livroCaixa.update({
+        where: { id_livro_caixa: id },
+        data: {
+          deleted_at: new Date(),
+          obs: obs ? obs : original.obs,
+        },
+      });
+      // Estorno matemático da conta bancária
+      if (original.id_conta_bancaria) {
+        // Estornar significa aplicar a operação oposta do que foi feito
+        if (original.tipo_movimentacao === "ENTRADA") {
+          // Uma ENTRADA original que é apagada deve decrementar o saldo
+          await tx.contaBancaria.update({
+            where: { id_conta: original.id_conta_bancaria },
+            data: { saldo_atual: { decrement: original.valor } },
+          });
+        } else if (original.tipo_movimentacao === "SAIDA") {
+          // Uma SAÍDA original que é apagada deve incrementar o saldo
+          await tx.contaBancaria.update({
+            where: { id_conta: original.id_conta_bancaria },
+            data: { saldo_atual: { increment: original.valor } },
+          });
+        }
+      }
+      return updated;
+    });
+  }
+}
+export default new LivroCaixaRepository();
 
 
 --- FILE: server\src\repositories\ordemDeServico.repository.ts ---
@@ -45403,12 +46262,12 @@ export class OrdemDeServicoRepository {
     });
     return updated;
   }
-  async recalculateTotals(id_os: number) {
-    const items = await prisma.itensOs.aggregate({
+  async recalculateTotals(id_os: number, tx: any = prisma) {
+    const items = await tx.itensOs.aggregate({
         where: { id_os, deleted_at: null, is_interno: false },
         _sum: { valor_total: true }
     });
-    const labor = await prisma.servicoMaoDeObra.aggregate({
+    const labor = await tx.servicoMaoDeObra.aggregate({
         where: { id_os, deleted_at: null },
         _sum: { valor: true }
     });
@@ -45416,7 +46275,7 @@ export class OrdemDeServicoRepository {
     const valor_mao_de_obra = labor._sum?.valor || new Prisma.Decimal(0);
     // Ensure accurate decimal addition
     const valor_total_cliente = new Prisma.Decimal(valor_pecas).plus(new Prisma.Decimal(valor_mao_de_obra));
-    await prisma.ordemDeServico.update({
+    await tx.ordemDeServico.update({
         where: { id_os },
         data: {
             valor_pecas,
@@ -45592,7 +46451,24 @@ export class PagamentoClienteRepository {
         ? Number(rawContaBancaria)
         : null;
     return await prisma.$transaction(async (tx) => {
-      // 0. IDEMPOTENCY CHECK (Prevent Double Click Submission)
+      // 0. EXISTENCE CHECKS (Prevent FK violations for PIX/Dinheiro/Cartão in Production)
+      if (id_conta_bancaria) {
+        const conta = await tx.contaBancaria.findUnique({
+          where: { id_conta: id_conta_bancaria }
+        });
+        if (!conta) {
+          throw new Error("A conta bancária informada não existe ou foi removida.");
+        }
+      }
+      if (id_operadora) {
+        const operadora = await tx.operadoraCartao.findUnique({
+          where: { id_operadora: Number(id_operadora) }
+        });
+        if (!operadora) {
+          throw new Error("A operadora/maquininha informada não existe ou foi removida.");
+        }
+      }
+      // 1. IDEMPOTENCY CHECK (Prevent Double Click Submission)
       const duplicateCheck = await tx.pagamentoCliente.findFirst({
         where: {
           id_os: Number(data.id_os),
@@ -45919,6 +46795,10 @@ export class PagamentoPecaRepository {
       if (!pagamento) throw new Error("Pagamento não encontrado");
       if (pagamento.pago_ao_fornecedor)
         throw new Error("Pagamento já realizado.");
+      const osStatus = pagamento.item_os?.ordem_de_servico?.status;
+      if (osStatus === "ABERTA" || osStatus === "AGENDAMENTO" || osStatus === "ORCAMENTO") {
+        throw new Error("Não é possível pagar uma peça de uma OS que ainda não foi finalizada/consolidada.");
+      }
       // BUSCAR CATEGORIA: Auto Peças > Pg. Fornecedor
       const categoria = await tx.categoriaFinanceira.findFirst({
         where: {
@@ -46016,6 +46896,13 @@ export class PagamentoPecaRepository {
         throw new Error("Nenhum pagamento encontrado");
       if (pagamentos.some((p) => p.pago_ao_fornecedor))
         throw new Error("Uma ou mais peças já foram pagas.");
+      const invalidOS = pagamentos.some((p) => {
+        const st = p.item_os?.ordem_de_servico?.status;
+        return st === "ABERTA" || st === "AGENDAMENTO" || st === "ORCAMENTO";
+      });
+      if (invalidOS) {
+        throw new Error("Não é possível liquidar peças de OSs que não estão finalizadas/consolidadas.");
+      }
       // 2. Calcular Valor Total Selecionado (Bruto)
       const valorTotalBruto = pagamentos.reduce(
         (acc, p) => acc + Number(p.custo_real),
@@ -48508,6 +49395,21 @@ apiRouter.use("/dashboard", dashboardRoutes);
 export { apiRouter };
 
 
+--- FILE: server\src\routes\itensOs.routes.ts ---
+import { Router } from 'express';
+import { ItensOsController } from '../controllers/itensOs.controller.js';
+const itensOsRoutes = Router();
+const controller = new ItensOsController();
+itensOsRoutes.post('/', controller.create);
+itensOsRoutes.get('/', controller.findAll);
+itensOsRoutes.get('/os/:idOs', controller.findByOsId);
+itensOsRoutes.get('/:id', controller.findById);
+itensOsRoutes.put('/:id', controller.update);
+itensOsRoutes.delete('/:id', controller.delete);
+itensOsRoutes.get('/search/desc', controller.search);
+export { itensOsRoutes };
+
+
 --- FILE: server\src\routes\livroCaixa.routes.ts ---
 import { Router } from 'express';
 import * as LivroCaixaController from '../controllers/livroCaixa.controller.js';
@@ -48582,6 +49484,25 @@ pagamentoPecaRoutes.put("/:id", controller.update);
 pagamentoPecaRoutes.post("/baixa", controller.baixa);
 pagamentoPecaRoutes.delete("/:id", controller.delete);
 export { pagamentoPecaRoutes };
+
+
+--- FILE: server\src\routes\pecasEstoque.routes.ts ---
+import { Router } from 'express';
+import { PecasEstoqueController } from '../controllers/pecasEstoque.controller.js';
+const pecasEstoqueRoutes = Router();
+const controller = new PecasEstoqueController();
+pecasEstoqueRoutes.post('/entry', controller.createEntry);
+pecasEstoqueRoutes.get('/entry/:id', controller.findEntryById);  // deve vir antes de /:id
+pecasEstoqueRoutes.put('/entry/:id', controller.updateEntry);     // deve vir antes de /:id
+pecasEstoqueRoutes.delete('/entry/:id', controller.deleteEntry);
+pecasEstoqueRoutes.post('/', controller.create);
+pecasEstoqueRoutes.get('/', controller.findAll);
+pecasEstoqueRoutes.get('/search', controller.search);
+pecasEstoqueRoutes.get('/:id/availability', controller.getAvailability);
+pecasEstoqueRoutes.get('/:id', controller.findById);
+pecasEstoqueRoutes.put('/:id', controller.update);
+pecasEstoqueRoutes.delete('/:id', controller.delete);
+export { pecasEstoqueRoutes };
 
 
 --- FILE: server\src\routes\pessoa.routes.ts ---

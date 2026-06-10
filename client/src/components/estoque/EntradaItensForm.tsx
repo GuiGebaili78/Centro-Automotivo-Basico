@@ -39,6 +39,7 @@ export const EntradaItensForm = ({
   const [rowAplicacao, setRowAplicacao] = useState("");
   const [rowObs, setRowObs] = useState("");
   const [rowMinStock, setRowMinStock] = useState("");
+  const [editingTempId, setEditingTempId] = useState<number | null>(null);
 
   // New Part Fields (if isNewPart)
   const [newPartName, setNewPartName] = useState("");
@@ -143,7 +144,22 @@ export const EntradaItensForm = ({
       obs: rowObs,
     };
 
-    setItems([...items, newItem]);
+    if (editingTempId !== null) {
+      setItems(
+        items
+          .map((i) => {
+            if (i.tempId !== editingTempId) return i;
+            if ((i as any).id_item_entrada) return { ...i, _delete: true, _editing: false };
+            return { ...i, _markedForRemoval: true };
+          })
+          .filter((i) => !(i as any)._markedForRemoval)
+          .concat(newItem)
+      );
+      setEditingTempId(null);
+      toast.success("Item atualizado!");
+    } else {
+      setItems([...items, newItem]);
+    }
 
     // Reset Inputs
     setRowQtd("");
@@ -228,7 +244,30 @@ export const EntradaItensForm = ({
     setRowObs(item.obs || "");
     setRowMinStock(String(item.new_part_data?.estoque_minimo || 0));
 
-    handleRemoveItem(item.tempId);
+    // Marcar item como "em edição" sem soft-delete prematuro
+    setEditingTempId(item.tempId);
+    setItems(items.map((i) => i.tempId === item.tempId ? { ...i, _editing: true } : i));
+  };
+
+  /** Cancela a edição em andamento sem modificar o item original no banco */
+  const handleCancelEdit = () => {
+    setItems(items.map((i) => i.tempId === editingTempId ? { ...i, _editing: false } : i));
+    setEditingTempId(null);
+    setRowQtd("");
+    setRowCost("");
+    setRowMargin("");
+    setRowSale("");
+    setRowRef("");
+    setRowCondicao("");
+    setRowAplicacao("");
+    setRowObs("");
+    setRowMinStock("");
+    setSelectedStockPart(null);
+    setPartSearch("");
+    setIsNewPart(false);
+    setNewPartName("");
+    setNewPartDesc("");
+    setNewPartFab("");
   };
 
   // Itens visíveis para contagem no cabeçalho (exclui novos removidos)
@@ -434,14 +473,26 @@ export const EntradaItensForm = ({
                 }).format(Number(rowQtd || 0) * Number(rowCost || 0))}
               </span>
             </div>
-            <Button
-              onClick={handleAddItem}
-              className="w-full"
-              variant="primary"
-              icon={Plus}
-            >
-              ADICIONAR
-            </Button>
+            <div className="flex flex-col gap-2">
+              {editingTempId !== null && (
+                <Button
+                  onClick={handleCancelEdit}
+                  className="w-full"
+                  variant="ghost"
+                  icon={RotateCcw}
+                >
+                  Cancelar Edição
+                </Button>
+              )}
+              <Button
+                onClick={handleAddItem}
+                className="w-full"
+                variant="primary"
+                icon={editingTempId !== null ? Save : Plus}
+              >
+                {editingTempId !== null ? "ATUALIZAR ITEM" : "ADICIONAR"}
+              </Button>
+            </div>
           </div>
         </div>
       </Card>
@@ -512,6 +563,11 @@ export const EntradaItensForm = ({
                               SERÁ REMOVIDO
                             </span>
                           )}
+                          {(i as any)._editing && (
+                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold uppercase border border-amber-200 animate-pulse">
+                              EM EDIÇÃO...
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -542,25 +598,26 @@ export const EntradaItensForm = ({
                           />
                         ) : (
                           <>
-                            {!isSaved && (
-                              <ActionButton
-                                icon={Edit}
-                                label="Editar"
-                                variant="neutral"
-                                onClick={() => handleEditItem(i)}
-                              />
-                            )}
                             <ActionButton
-                              icon={Plus} // Ou ícone de cópia melhor, ex: Copy
+                              icon={Edit}
+                              label="Editar"
+                              variant="neutral"
+                              onClick={() => handleEditItem(i)}
+                              disabled={(editingTempId !== null && i.tempId !== editingTempId) || (i as any)._delete}
+                            />
+                            <ActionButton
+                              icon={Plus}
                               label="Duplicar"
                               variant="neutral"
                               onClick={() => handleDuplicateItem(i)}
+                              disabled={editingTempId !== null || (i as any)._delete}
                             />
                             <ActionButton
                               icon={Trash2}
                               label="Remover"
                               variant="danger"
                               onClick={() => handleRemoveItem(i.tempId)}
+                              disabled={(editingTempId !== null && i.tempId !== editingTempId) || (i as any)._delete}
                             />
                           </>
                         )}

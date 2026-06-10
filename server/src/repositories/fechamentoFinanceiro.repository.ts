@@ -98,6 +98,21 @@ export class FechamentoFinanceiroRepository {
   async update(id: number, data: any) {
     const { itemsPecas, ...fechamentoData } = data;
 
+    const fechamentoAtual = await prisma.fechamentoFinanceiro.findUnique({
+      where: { id_fechamento_financeiro: id },
+      include: { ordem_de_servico: true },
+    });
+
+    if (!fechamentoAtual) {
+      throw new Error("Fechamento Financeiro não encontrado.");
+    }
+
+    if (fechamentoAtual.ordem_de_servico.status === "ABERTA") {
+      throw new Error(
+        "Não é possível consolidar. A Ordem de Serviço continua ABERTA. Finalize a OS antes de prosseguir."
+      );
+    }
+
     return await prisma.$transaction(async (tx) => {
       // 1. Atualizar Fechamento
       const fechamento = await tx.fechamentoFinanceiro.update({
@@ -200,10 +215,18 @@ export class FechamentoFinanceiroRepository {
       }
 
       const isFinalizada = os.status === "FINALIZADA";
-      const allowedStatuses = ["ABERTA", "PRONTO PARA FINANCEIRO", "FINANCEIRO", "FINALIZADA", "EM_ANDAMENTO"];
-      
+
+      if (os.status === "ABERTA") {
+        throw new Error(
+          "Não é possível consolidar. A Ordem de Serviço continua ABERTA. Finalize a OS antes de prosseguir."
+        );
+      }
+
+      const allowedStatuses = ["PRONTO PARA FINANCEIRO", "FINANCEIRO", "FINALIZADA", "EM_ANDAMENTO"];
       if (!allowedStatuses.includes(os.status)) {
-        throw new Error("OS não está num status que permita inserção financeira (necessita estar ABERTA, EM ANDAMENTO, PRONTO PARA FINANCEIRO ou FINANCEIRO).");
+        throw new Error(
+          "OS não está num status que permita inserção financeira (necessita estar EM ANDAMENTO, PRONTO PARA FINANCEIRO ou FINANCEIRO)."
+        );
       }
 
       // 0. Processar Pagamentos de Peças (UPSET em lote dentro da transação)
