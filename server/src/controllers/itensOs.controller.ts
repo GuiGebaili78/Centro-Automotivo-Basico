@@ -17,20 +17,12 @@ export class ItensOsController {
         itemData.valor_total = 0;
       }
 
-      const item = await repository.create(itemData);
-      
-      // Se for uma peça externa (não vinda do estoque e não interna), cria registro de PagamentoPeca imediatamente
-      if (!itemData.id_pecas_estoque && !itemData.is_interno) {
-          const supplierId = id_fornecedor ? Number(id_fornecedor) : null;
-          
-          await pagamentoRepository.create({
-              id_item_os: item.id_iten,
-              id_pessoa: supplierId,
-              custo_real: custo_real ? Number(custo_real) : 0,
-              data_compra: new Date(),
-              pago_ao_fornecedor: false
-          });
-      }
+      const extraData = {
+          id_fornecedor: id_fornecedor ? Number(id_fornecedor) : null,
+          custo_real: custo_real ? Number(custo_real) : 0
+      };
+
+      const item = await repository.create(itemData, extraData);
 
       res.status(201).json(item);
     } catch (error) {
@@ -86,37 +78,15 @@ export class ItensOsController {
         itemData.valor_total = 0;
       }
 
-      const item = await repository.update(id, itemData);
-
+      const extraData: { id_fornecedor?: number | null, custo_real?: number } = {};
       if (id_fornecedor !== undefined) {
-          // Check if payment record exists
-          const existingPayments = await pagamentoRepository.findByItemId(id);
-          
-          if (existingPayments && existingPayments.length > 0) {
-              if (id_fornecedor) {
-                  const updateData: any = {
-                      id_pessoa: Number(id_fornecedor)
-                  };
-                  if (custo_real) {
-                      updateData.custo_real = Number(custo_real);
-                  }
-                  
-                  await pagamentoRepository.update(existingPayments[0]!.id_pagamento_peca, updateData);
-              } else {
-                  // If cleared, set id_pessoa to null
-                  await pagamentoRepository.update(existingPayments[0]!.id_pagamento_peca, { id_pessoa: null } as any);
-              }
-          } else if (id_fornecedor) {
-              // Create new if strictly provided
-              await pagamentoRepository.create({
-                  id_item_os: id,
-                  id_pessoa: Number(id_fornecedor),
-                  custo_real: custo_real ? Number(custo_real) : 0,
-                  data_compra: new Date(),
-                  pago_ao_fornecedor: false
-              });
-          }
+        extraData.id_fornecedor = id_fornecedor ? Number(id_fornecedor) : null;
       }
+      if (custo_real !== undefined) {
+        extraData.custo_real = Number(custo_real);
+      }
+
+      const item = await repository.update(id, itemData, extraData);
 
       res.json(item);
     } catch (error) {

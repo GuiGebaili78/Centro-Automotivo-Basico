@@ -96,7 +96,26 @@ export class PagamentoClienteRepository {
         : null;
 
     return await prisma.$transaction(async (tx) => {
-      // 0. IDEMPOTENCY CHECK (Prevent Double Click Submission)
+      // 0. EXISTENCE CHECKS (Prevent FK violations for PIX/Dinheiro/Cartão in Production)
+      if (id_conta_bancaria) {
+        const conta = await tx.contaBancaria.findUnique({
+          where: { id_conta: id_conta_bancaria }
+        });
+        if (!conta) {
+          throw new Error("A conta bancária informada não existe ou foi removida.");
+        }
+      }
+
+      if (id_operadora) {
+        const operadora = await tx.operadoraCartao.findUnique({
+          where: { id_operadora: Number(id_operadora) }
+        });
+        if (!operadora) {
+          throw new Error("A operadora/maquininha informada não existe ou foi removida.");
+        }
+      }
+
+      // 1. IDEMPOTENCY CHECK (Prevent Double Click Submission)
       const duplicateCheck = await tx.pagamentoCliente.findFirst({
         where: {
           id_os: Number(data.id_os),

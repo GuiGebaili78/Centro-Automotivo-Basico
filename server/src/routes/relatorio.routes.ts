@@ -25,4 +25,9 @@ relatoriosRoutes.get(
   relatoriosController.getEvolucaoDespesasTemporal,
 );
 
+relatoriosRoutes.get(
+  "/pendentes-consolidacao",
+  relatoriosController.getPendentesConsolidacao,
+);
+
 export { relatoriosRoutes };

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   format,
   startOfMonth,
@@ -61,6 +62,15 @@ const GROUP_BY_LABELS: Record<GroupByOption, string> = {
 
 // ─── Componente principal ──────────────────────────────────────────────────────
 export const RelatoriosPage = () => {
+  const navigate = useNavigate();
+  const [pendingConsolidations, setPendingConsolidations] = useState<{ hasPending: boolean; count: number } | null>(null);
+
+  useEffect(() => {
+    RelatoriosService.verificarPendenciasConsolidacao()
+      .then(setPendingConsolidations)
+      .catch(console.error);
+  }, []);
+
   // Estado global (filtro do topo)
   const [loading, setLoading] = useState(false);
   const [resumo, setResumo] = useState<ResumoFinanceiro | null>(null);
@@ -218,6 +228,27 @@ export const RelatoriosPage = () => {
       subtitle="Análise financeira e de performance 360º"
     >
       <div className="space-y-6 relative">
+        {pendingConsolidations?.hasPending && (
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm mb-2 flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={20} />
+              <div>
+                <h3 className="text-sm font-bold text-amber-800">Aviso de Integridade dos Relatórios</h3>
+                <p className="text-sm text-amber-700 mt-1">
+                  Para que os relatórios apresentem os valores corretos, é necessário que todas as consolidações de OS sejam concluídas. 
+                  Existem <strong>{pendingConsolidations.count}</strong> OS(s) pendente(s) de fechamento financeiro.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate("/fechamento-financeiro")}
+              className="text-sm font-semibold text-amber-700 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors shrink-0"
+            >
+              Ir para Consolidação
+            </button>
+          </div>
+        )}
+
         {/* ── Sticky Filter Global ── */}
         <div className="sticky top-[72px] z-30 bg-slate-50/95 backdrop-blur-md pb-4 pt-2 border-b border-neutral-200 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 mb-6 transition-all duration-300">
           <ReportFilter

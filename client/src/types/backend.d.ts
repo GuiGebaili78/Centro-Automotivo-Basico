@@ -168,6 +168,7 @@ export interface IOrdemDeServico {
   status: string;
   defeito_relatado?: string | null;
   diagnostico?: string | null;
+  check_list?: string | null;
   valor_servico?: number | null;
   valor_pecas?: number | null;
   valor_final?: number | null;
@@ -293,6 +294,7 @@ export interface IPagamentoPeca {
   data_compra: string;
   data_pagamento_fornecedor?: string | null;
   pago_ao_fornecedor: boolean;
+  nf_numero?: string | null;
 
   // Optional Joins
   item_os?: IItensOs;
@@ -323,6 +325,7 @@ export interface IContasPagar {
   num_documento?: string | null;
   forma_pagamento?: string | null;
   url_anexo?: string | null;
+  id_fornecedor?: number | null;
 
   // Recurrence fields
   id_grupo_recorrencia?: string | null;
@@ -409,6 +412,7 @@ export interface IRecebivelCartao {
   valor_bruto: number;
   valor_liquido: number;
   taxa_aplicada: number;
+  tipo_parcelamento?: string | null;
 
   data_venda: string;
   data_prevista: string;

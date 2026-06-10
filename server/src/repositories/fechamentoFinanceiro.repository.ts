@@ -742,9 +742,10 @@ export class FechamentoFinanceiroRepository {
               );
             }
 
-            // Remover LivroCaixa
-            await tx.livroCaixa.delete({
+            // Inativar LivroCaixa (Soft Delete)
+            await tx.livroCaixa.update({
               where: { id_livro_caixa: p.id_livro_caixa },
+              data: { deleted_at: new Date() },
             });
           }
 

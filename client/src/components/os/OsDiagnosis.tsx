@@ -2,20 +2,20 @@ import { Card } from "../ui";
 
 interface OsDiagnosisProps {
   defeitoRelatado?: string | null;
-  diagnostico?: string | null;
+  check_list?: string | null;
   onChangeDefeito: (val: string) => void;
-  onChangeDiagnostico: (val: string) => void;
+  onChangeCheckList: (val: string) => void;
   onBlurDefeito: (val: string) => void;
-  onBlurDiagnostico: (val: string) => void;
+  onBlurCheckList: (val: string) => void;
 }
 
 export const OsDiagnosis = ({
   defeitoRelatado,
-  diagnostico,
+  check_list,
   onChangeDefeito,
-  onChangeDiagnostico,
+  onChangeCheckList,
   onBlurDefeito,
-  onBlurDiagnostico,
+  onBlurCheckList,
 }: OsDiagnosisProps) => {
   return (
     <Card className="space-y-4 p-4 h-full">
@@ -39,14 +39,14 @@ export const OsDiagnosis = ({
           <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
           </div>
-          DIAGNÓSTICO (APENAS INFORMAÇÕES INTERNAS DA OFICINA)
+          CHECK LIST (AVARIAS PRÉVIAS, ARRANHÕES, ETC)
         </label>
         <textarea
           className="w-full bg-green-100 border border-green-300 text-emerald-950 p-3 rounded-xl text-base h-32 outline-none resize-none transition-all focus:shadow-sm placeholder:text-gray-400 print:bg-transparent print:text-black placeholder-shown:bg-neutral-25 placeholder-shown:border-neutral-200 placeholder-shown:text-gray-900 placeholder-shown:focus:border-neutral-200 placeholder-shown:focus:bg-neutral-25"
-          placeholder="Insira detalhes adicionais..."
-          value={diagnostico || ""}
-          onChange={(e) => onChangeDiagnostico(e.target.value)}
-          onBlur={(e) => onBlurDiagnostico(e.target.value)}
+          placeholder="Insira o check list do veículo..."
+          value={check_list || ""}
+          onChange={(e) => onChangeCheckList(e.target.value)}
+          onBlur={(e) => onBlurCheckList(e.target.value)}
         />
       </div>
     </Card>

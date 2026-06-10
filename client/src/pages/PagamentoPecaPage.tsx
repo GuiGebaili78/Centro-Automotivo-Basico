@@ -301,6 +301,7 @@ export const PagamentoPecaPage = () => {
           onFilterChange={setUniversalFilters}
           initialState={{ status: "PENDING" }}
           config={{
+            isFutureProjection: true,
             enableFornecedor: true,
             enableOperadora: false,
             enableOsId: true,
@@ -593,7 +594,6 @@ export const PagamentoPecaPage = () => {
                 onChange={(e) =>
                   setEditPayment({ ...editPayment, nf_numero: e.target.value })
                 }
-                labelClassName="text-amber-800 font-semibold"
                 className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 text-amber-900 font-medium"
               >
                 <option value="">Sem Sincronização (Livre)</option>

@@ -333,6 +333,13 @@ export class RelatoriosService {
   ) {
     return await relatoriosRepository.getEvolucaoMensal(startDate, endDate, groupBy);
   }
+
+  /**
+   * Verifica se existem OSs finalizadas pendentes de consolidação
+   */
+  async checkPendingConsolidations() {
+    return await relatoriosRepository.checkPendingConsolidations();
+  }
 }
 
 export const relatoriosService = new RelatoriosService();

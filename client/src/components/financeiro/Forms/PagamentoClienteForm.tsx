@@ -245,9 +245,10 @@ export const PagamentoClienteForm = ({
       }
 
       onSuccess(result);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Erro ao salvar pagamento. Verifique os dados.");
+      const apiError = err.response?.data?.error || err.message;
+      setError(apiError || "Erro ao salvar pagamento. Verifique os dados.");
     } finally {
       setLoading(false);
     }

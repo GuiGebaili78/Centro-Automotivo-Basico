@@ -66,7 +66,7 @@ export const RelatoriosService = {
     type: "categoria" | "subcategoria",
     categoriaId?: number,
     subcategoriaId?: number,
-  ): Promise<TimelineDespesasResponse> => {
+  ): Promise<any> => {
     const response = await api.get("/relatorios/despesas-temporal", {
       params: {
         startDate,
@@ -76,6 +76,11 @@ export const RelatoriosService = {
         ...(subcategoriaId !== undefined && { subcategoriaId }),
       },
     });
+    return response.data;
+  },
+
+  verificarPendenciasConsolidacao: async (): Promise<{ hasPending: boolean; count: number }> => {
+    const response = await api.get("/relatorios/pendentes-consolidacao");
     return response.data;
   },
 };

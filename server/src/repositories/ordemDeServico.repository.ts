@@ -406,13 +406,13 @@ export class OrdemDeServicoRepository {
     return updated;
   }
 
-  async recalculateTotals(id_os: number) {
-    const items = await prisma.itensOs.aggregate({
+  async recalculateTotals(id_os: number, tx: any = prisma) {
+    const items = await tx.itensOs.aggregate({
         where: { id_os, deleted_at: null, is_interno: false },
         _sum: { valor_total: true }
     });
     
-    const labor = await prisma.servicoMaoDeObra.aggregate({
+    const labor = await tx.servicoMaoDeObra.aggregate({
         where: { id_os, deleted_at: null },
         _sum: { valor: true }
     });
@@ -423,7 +423,7 @@ export class OrdemDeServicoRepository {
     // Ensure accurate decimal addition
     const valor_total_cliente = new Prisma.Decimal(valor_pecas).plus(new Prisma.Decimal(valor_mao_de_obra));
  
-    await prisma.ordemDeServico.update({
+    await tx.ordemDeServico.update({
         where: { id_os },
         data: {
             valor_pecas,

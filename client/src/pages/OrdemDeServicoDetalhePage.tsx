@@ -231,11 +231,11 @@ export const OrdemDeServicoDetalhePage = () => {
         <div className="h-full lg:col-span-1">
           <OsDiagnosis
             defeitoRelatado={os.defeito_relatado}
-            diagnostico={os.diagnostico}
+            check_list={os.check_list}
             onChangeDefeito={(val) => updateOSField("defeito_relatado", val)}
             onBlurDefeito={(val) => updateOSField("defeito_relatado", val)}
-            onChangeDiagnostico={(val) => updateOSField("diagnostico", val)}
-            onBlurDiagnostico={(val) => updateOSField("diagnostico", val)}
+            onChangeCheckList={(val) => updateOSField("check_list", val)}
+            onBlurCheckList={(val) => updateOSField("check_list", val)}
           />
         </div>
         

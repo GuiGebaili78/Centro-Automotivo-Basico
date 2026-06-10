@@ -345,13 +345,16 @@ export class RecebivelCartaoRepository {
       });
 
       // 3. Remover registros de conciliação do LivroCaixa para este recebível
-      await tx.livroCaixa.deleteMany({
+      await tx.livroCaixa.updateMany({
         where: {
           categoria: "CONCILIACAO_CARTAO",
           OR: [
             { descricao: { contains: `[REC_ID:${id}]` } },
             { obs: { contains: `[REC_ID:${id}]` } },
           ],
+        },
+        data: {
+          deleted_at: new Date(),
         },
       });
 

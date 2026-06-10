@@ -409,6 +409,7 @@ export const FechamentoFinanceiroForm = ({
           status: isStatusProtegido ? osData.status : "PRONTO PARA FINANCEIRO",
           valor_final: totalReceita,
           valor_pecas: totalItemsRevenue,
+          diagnostico: osData.diagnostico
         });
       } catch (err) {
         console.error("Erro ao atualizar OS:", err);
@@ -600,13 +601,12 @@ export const FechamentoFinanceiroForm = ({
                     <p className="text-sm font-black text-blue-400 uppercase mb-1 tracking-wider flex items-center gap-2">
                       <Wrench size={12} /> Diagnóstico (apenas informações internas da oficina)
                     </p>
-                    <div className="text-sm font-medium text-gray-700 leading-relaxed bg-blue-50/30 p-3 rounded-lg border border-blue-50">
-                      {osData.diagnostico || (
-                        <span className="italic text-gray-400">
-                          Não informado
-                        </span>
-                      )}
-                    </div>
+                    <textarea
+                      className="w-full bg-blue-50 border border-blue-200 text-blue-950 p-3 rounded-xl text-sm h-32 outline-none resize-none transition-all focus:shadow-sm focus:border-blue-400"
+                      placeholder="Insira o diagnóstico final..."
+                      value={osData.diagnostico || ""}
+                      onChange={(e) => setOsData({ ...osData, diagnostico: e.target.value })}
+                    />
                   </div>
                 </div>
 

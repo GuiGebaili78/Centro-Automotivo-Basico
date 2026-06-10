@@ -139,6 +139,16 @@ export class RelatoriosController {
       return res.status(500).json({ error: "Internal Server Error" });
     }
   }
+
+  async getPendentesConsolidacao(req: Request, res: Response) {
+    try {
+      const data = await relatoriosService.checkPendingConsolidations();
+      return res.json(data);
+    } catch (error) {
+      console.error("Error in getPendentesConsolidacao:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
 }
 
 export const relatoriosController = new RelatoriosController();

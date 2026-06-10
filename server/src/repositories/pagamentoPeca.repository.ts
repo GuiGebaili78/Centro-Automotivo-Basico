@@ -155,6 +155,11 @@ export class PagamentoPecaRepository {
       if (!pagamento) throw new Error("Pagamento não encontrado");
       if (pagamento.pago_ao_fornecedor)
         throw new Error("Pagamento já realizado.");
+        
+      const osStatus = pagamento.item_os?.ordem_de_servico?.status;
+      if (osStatus === "ABERTA" || osStatus === "AGENDAMENTO" || osStatus === "ORCAMENTO") {
+        throw new Error("Não é possível pagar uma peça de uma OS que ainda não foi finalizada/consolidada.");
+      }
 
       // BUSCAR CATEGORIA: Auto Peças > Pg. Fornecedor
       const categoria = await tx.categoriaFinanceira.findFirst({
@@ -263,6 +268,14 @@ export class PagamentoPecaRepository {
         throw new Error("Nenhum pagamento encontrado");
       if (pagamentos.some((p) => p.pago_ao_fornecedor))
         throw new Error("Uma ou mais peças já foram pagas.");
+
+      const invalidOS = pagamentos.some((p) => {
+        const st = p.item_os?.ordem_de_servico?.status;
+        return st === "ABERTA" || st === "AGENDAMENTO" || st === "ORCAMENTO";
+      });
+      if (invalidOS) {
+        throw new Error("Não é possível liquidar peças de OSs que não estão finalizadas/consolidadas.");
+      }
 
       // 2. Calcular Valor Total Selecionado (Bruto)
       const valorTotalBruto = pagamentos.reduce(

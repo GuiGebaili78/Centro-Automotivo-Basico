@@ -13,11 +13,11 @@ export class PagamentoClienteController {
     try {
       const result = await repository.createWithRecebiveis(req.body);
       res.status(201).json(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       res
         .status(400)
-        .json({ error: "Failed to create PagamentoCliente", details: error });
+        .json({ error: error?.message || "Failed to create PagamentoCliente", details: error });
     }
   }
 

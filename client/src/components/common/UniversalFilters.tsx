@@ -27,6 +27,7 @@ export interface UniversalFiltersConfig {
   enableStatus?: boolean;
   enableCategoria?: boolean;
   enableSubcategoria?: boolean;
+  isFutureProjection?: boolean;
   fornecedores?: { id: number | string; nome: string }[];
   operadoras?: { id: number | string; nome: string }[];
   statusOptions?: { value: string; label: string }[];
@@ -75,28 +76,46 @@ type PeriodKey = "TODAY" | "7D" | "30D" | "MONTH";
 
 const getRangeForPeriod = (
   period: PeriodKey,
+  isFutureProjection: boolean = false
 ): { startDate: string; endDate: string } => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const end = localDateStr(today);
+  const todayStr = localDateStr(today);
 
-  if (period === "TODAY") return { startDate: end, endDate: end };
+  if (period === "TODAY") return { startDate: todayStr, endDate: todayStr };
 
+  if (isFutureProjection) {
+    if (period === "7D") {
+      const end = new Date(today);
+      end.setDate(end.getDate() + 6);
+      return { startDate: todayStr, endDate: localDateStr(end) };
+    }
+    if (period === "30D") {
+      const end = new Date(today);
+      end.setDate(end.getDate() + 29);
+      return { startDate: todayStr, endDate: localDateStr(end) };
+    }
+    // MONTH: Today until end of current month
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return { startDate: todayStr, endDate: localDateStr(end) };
+  }
+
+  // Comportamento Retroativo (Padrão)
   if (period === "7D") {
     const start = new Date(today);
     start.setDate(start.getDate() - 6);
-    return { startDate: localDateStr(start), endDate: end };
+    return { startDate: localDateStr(start), endDate: todayStr };
   }
 
   if (period === "30D") {
     const start = new Date(today);
     start.setDate(start.getDate() - 29);
-    return { startDate: localDateStr(start), endDate: end };
+    return { startDate: localDateStr(start), endDate: todayStr };
   }
 
   // MONTH — first day of current month
   const start = new Date(today.getFullYear(), today.getMonth(), 1);
-  return { startDate: localDateStr(start), endDate: end };
+  return { startDate: localDateStr(start), endDate: todayStr };
 };
 
 // ─── Shared CSS tokens ────────────────────────────────────────────────────────
@@ -183,7 +202,7 @@ export const UniversalFilters = ({
   );
 
   const handlePeriod = (period: PeriodKey) => {
-    const range = getRangeForPeriod(period);
+    const range = getRangeForPeriod(period, config.isFutureProjection);
     setManualDate({ start: false, end: false });
     update({ activePeriod: period, ...range });
   };

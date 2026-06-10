@@ -239,6 +239,7 @@ model OrdemDeServico {
   status                String                @db.VarChar(50)
   defeito_relatado      String?               @db.VarChar(500)
   diagnostico           String?               @db.VarChar(500)
+  check_list            String?               @db.VarChar(500)
   valor_servico         Decimal?              @db.Decimal(10, 2)
   valor_pecas           Decimal?              @db.Decimal(10, 2)
   valor_final           Decimal?              @db.Decimal(12, 2)

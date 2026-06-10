@@ -210,7 +210,7 @@ export class FinanceiroController {
       let params: any[] = [];
       let idx = 1;
 
-      let whereLC = "WHERE (lc.categoria != 'CONCILIACAO_CARTAO' OR lc.categoria IS NULL)";
+      let whereLC = "WHERE lc.deleted_at IS NULL AND (lc.categoria != 'CONCILIACAO_CARTAO' OR lc.categoria IS NULL)";
       let wherePP = "WHERE pp.id_livro_caixa IS NULL AND ((pp.pago_ao_fornecedor = true AND pp.data_pagamento_fornecedor IS NOT NULL) OR pp.deleted_at IS NOT NULL)";
       let wherePC = "WHERE pc.id_livro_caixa IS NULL";
 

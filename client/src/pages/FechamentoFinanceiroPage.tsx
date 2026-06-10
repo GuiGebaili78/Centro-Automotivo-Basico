@@ -53,9 +53,9 @@ export const FechamentoFinanceiroPage = () => {
     veiculoModelo?: string;
     veiculoCor?: string;
     veiculoPlaca?: string;
-    equipamentoPeca?: string;
-    equipamentoFabricante?: string;
-    equipamentoNumeracao?: string;
+    equipamentoPeca?: string | null;
+    equipamentoFabricante?: string | null;
+    equipamentoNumeracao?: string | null;
   } | null>(null);
 
 
@@ -488,9 +488,9 @@ export const FechamentoFinanceiroPage = () => {
           veiculoModelo={printData.veiculoModelo}
           veiculoCor={printData.veiculoCor}
           veiculoPlaca={printData.veiculoPlaca}
-          equipamentoPeca={printData.equipamentoPeca}
-          equipamentoFabricante={printData.equipamentoFabricante}
-          equipamentoNumeracao={printData.equipamentoNumeracao}
+          equipamentoPeca={printData.equipamentoPeca || undefined}
+          equipamentoFabricante={printData.equipamentoFabricante || undefined}
+          equipamentoNumeracao={printData.equipamentoNumeracao || undefined}
         />
       )}
     </PageLayout>

@@ -1,65 +1,19 @@
 import { Request, Response } from "express";
-import { prisma } from "../prisma.js";
+import livroCaixaRepository from "../repositories/livroCaixa.repository.js";
 
 export const getAll = async (req: Request, res: Response) => {
   try {
-    const registros = await prisma.livroCaixa.findMany({
-      include: { conta: true },
-      orderBy: { dt_movimentacao: "desc" },
-      take: 200, // Limit to last 200 for performance? Or pagination later.
-    });
+    const registros = await livroCaixaRepository.getAll();
     res.json(registros);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao buscar livro caixa" });
   }
 };
 
 export const create = async (req: Request, res: Response) => {
   try {
-    const {
-      descricao,
-      valor,
-      tipo_movimentacao,
-      categoria,
-      id_categoria,
-      obs,
-      origem,
-      id_conta_bancaria,
-    } = req.body;
-
-    // Transaction to update balance if account provided
-    const result = await prisma.$transaction(async (tx) => {
-      const registro = await tx.livroCaixa.create({
-        data: {
-          descricao,
-          valor,
-          tipo_movimentacao,
-          categoria,
-          id_categoria: id_categoria ? Number(id_categoria) : null,
-          obs: obs ?? null,
-          origem: origem || "MANUAL",
-          id_conta_bancaria: id_conta_bancaria
-            ? Number(id_conta_bancaria)
-            : null,
-        },
-      });
-
-      if (id_conta_bancaria) {
-        if (tipo_movimentacao === "ENTRADA") {
-          await tx.contaBancaria.update({
-            where: { id_conta: Number(id_conta_bancaria) },
-            data: { saldo_atual: { increment: valor } },
-          });
-        } else {
-          await tx.contaBancaria.update({
-            where: { id_conta: Number(id_conta_bancaria) },
-            data: { saldo_atual: { decrement: valor } },
-          });
-        }
-      }
-      return registro;
-    });
-
+    const result = await livroCaixaRepository.create(req.body);
     res.status(201).json(result);
   } catch (error) {
     console.error(error);
@@ -70,27 +24,10 @@ export const create = async (req: Request, res: Response) => {
 export const update = async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
-    const {
-      descricao,
-      valor,
-      tipo_movimentacao,
-      categoria,
-      id_categoria,
-      obs,
-    } = req.body;
-    const registro = await prisma.livroCaixa.update({
-      where: { id_livro_caixa: Number(id) },
-      data: {
-        descricao,
-        valor,
-        tipo_movimentacao,
-        categoria,
-        id_categoria: id_categoria ? Number(id_categoria) : null,
-        obs: obs ?? null,
-      },
-    });
+    const registro = await livroCaixaRepository.update(Number(id), req.body);
     res.json(registro);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao atualizar registro" });
   }
 };
@@ -99,15 +36,10 @@ export const softDelete = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { obs } = req.body;
   try {
-    const registro = await prisma.livroCaixa.update({
-      where: { id_livro_caixa: Number(id) },
-      data: {
-        deleted_at: new Date(),
-        obs: obs ?? null, // Update obs if provided
-      },
-    });
+    const registro = await livroCaixaRepository.softDelete(Number(id), obs);
     res.json(registro);
-  } catch (error) {
-    res.status(500).json({ error: "Erro ao deletar registro" });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message || "Erro ao deletar registro" });
   }
 };

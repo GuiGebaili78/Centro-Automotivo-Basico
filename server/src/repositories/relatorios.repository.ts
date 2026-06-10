@@ -670,4 +670,21 @@ export class RelatoriosRepository {
       keys: Array.from(distinctKeys),
     };
   }
+
+  async checkPendingConsolidations(): Promise<{ hasPending: boolean; count: number }> {
+    const pendentesCount = await prisma.ordemDeServico.count({
+      where: {
+        status: { in: ["ABERTA", "EM_ANDAMENTO", "PRONTO PARA FINANCEIRO", "FINANCEIRO", "FINALIZADA"] },
+        deleted_at: null,
+        fechamento_financeiro: {
+          none: {} // OS que não possuem fechamento
+        }
+      }
+    });
+
+    return {
+      hasPending: pendentesCount > 0,
+      count: pendentesCount
+    };
+  }
 }

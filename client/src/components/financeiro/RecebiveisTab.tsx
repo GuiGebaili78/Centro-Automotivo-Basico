@@ -202,6 +202,7 @@ export const RecebiveisTab = () => {
           enableFornecedor: false,
           enableOperadora: true,
           enableOsId: true,
+          isFutureProjection: true,
           operadoras: operadorasList,
           statusOptions: [
             { value: "ALL", label: "Todos" },

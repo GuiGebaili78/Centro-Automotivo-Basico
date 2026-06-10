@@ -233,6 +233,7 @@ export const ContasAPagarPage = () => {
             enableOsId: false,
             enableCategoria: true,
             enableSubcategoria: true,
+            isFutureProjection: true,
             fornecedores: fornecedoresList.map(f => ({ id: f.nome, nome: f.nome_fantasia || f.razao_social || f.nome })),
             statusOptions: [
               { value: "ALL", label: "Todas" },

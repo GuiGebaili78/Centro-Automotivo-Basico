@@ -92,7 +92,6 @@ export const EntradaFornecedorForm = ({
                 setInvoice(val);
               }
             }}
-            labelClassName="text-amber-800 font-semibold"
             className="border-amber-300 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/10 text-amber-900 font-medium"
           >
             <option value="">Sem Sincronização (Livre)</option>

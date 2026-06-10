@@ -204,6 +204,7 @@ export const PagamentoPecasTab = ({
           enableFornecedor: true,
           enableOperadora: false,
           enableOsId: true,
+          isFutureProjection: true,
           fornecedores: fornecedoresList,
           statusOptions: [
             { value: "ALL", label: "Todos" },
@@ -321,17 +322,30 @@ export const PagamentoPecasTab = ({
                   </td>
                   <td className="p-4 text-center">
                     <button
-                      onClick={() =>
+                      onClick={() => {
+                        const st = (p as any).item_os?.ordem_de_servico?.status;
+                        if (st === "ABERTA" || st === "AGENDAMENTO" || st === "ORCAMENTO") {
+                           setStatusMsg({ type: "error", text: "Não é possível liquidar peças de OS não consolidadas." });
+                           return;
+                        }
                         handleTogglePayment(
                           p.id_pagamento_peca,
                           p.pago_ao_fornecedor,
-                        )
-                      }
-                      className="hover:scale-110 transition-transform active:scale-95 text-neutral-400 hover:text-neutral-600"
+                        );
+                      }}
+                      className={`transition-transform text-neutral-400 ${
+                        (() => {
+                           const st = (p as any).item_os?.ordem_de_servico?.status;
+                           const disabled = st === "ABERTA" || st === "AGENDAMENTO" || st === "ORCAMENTO";
+                           return disabled ? "opacity-50 cursor-not-allowed" : "hover:scale-110 active:scale-95 hover:text-neutral-600";
+                        })()
+                      }`}
                       title={
-                        p.pago_ao_fornecedor
-                          ? "Desmarcar como pago"
-                          : "Marcar como pago"
+                        (() => {
+                           const st = (p as any).item_os?.ordem_de_servico?.status;
+                           if (st === "ABERTA" || st === "AGENDAMENTO" || st === "ORCAMENTO") return "Bloqueado: OS não consolidada";
+                           return p.pago_ao_fornecedor ? "Desmarcar como pago" : "Marcar como pago";
+                        })()
                       }
                     >
                       {p.pago_ao_fornecedor ? (
