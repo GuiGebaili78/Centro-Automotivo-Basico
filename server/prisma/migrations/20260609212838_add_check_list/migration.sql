@@ -1,1 +1,1 @@
-ALTER TABLE "OrdemDeServico" ADD COLUMN "check_list" VARCHAR(500);
+ALTER TABLE "ordem_de_servico" ADD COLUMN "check_list" VARCHAR(500);
