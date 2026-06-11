@@ -143,7 +143,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
     if (!id_fornecedor) return;
     setNfsFornecedor((prev) => ({ ...prev, [id_fornecedor]: { loading: true, nfs: prev[id_fornecedor]?.nfs || [] } }));
     try {
-      const res = await FinanceiroService.getNfsPendentes({ id_fornecedor: Number(id_fornecedor), limit: 100 });
+      const res = await FinanceiroService.getNfsPendentes({ id_fornecedor: Number(id_fornecedor) });
       setNfsFornecedor((prev) => ({ ...prev, [id_fornecedor]: { loading: false, nfs: res.data || [] } }));
     } catch (error) {
       console.error(error);

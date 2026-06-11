@@ -106,16 +106,30 @@ export const deleteConta = async (req: Request, res: Response) => {
 
 export const getNfsPendentes = async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
     const search = (req.query.search as string) || "";
     const id_fornecedor = req.query.id_fornecedor ? Number(req.query.id_fornecedor) : undefined;
-    
-    const skip = (page - 1) * limit;
 
-    const nfs = await repository.findNfsPendentes({ search, id_fornecedor, skip, take: limit });
-    res.json(nfs); // Returning { data, total }
+    // Se 'limit' foi explicitamente enviado na query, ativa a paginação. Caso contrário, desativa.
+    const hasExplicitLimit = req.query.limit !== undefined;
+    const limit = hasExplicitLimit ? parseInt(req.query.limit as string) : undefined;
+    const page = hasExplicitLimit ? (parseInt(req.query.page as string) || 1) : undefined;
+    const skip = (hasExplicitLimit && page) ? (page - 1) * limit! : undefined;
+
+    const nfs = await repository.findNfsPendentes({
+      search,
+      id_fornecedor,
+      skip,
+      take: limit,
+    });
+
+    // BLINDAGEM DE CONTRATO (Defesa em profundidade para garantir o formato { data, total })
+    if (Array.isArray(nfs)) {
+      return res.json({ data: nfs, total: nfs.length });
+    }
+
+    return res.json(nfs);
   } catch (error) {
+    console.error("Erro em getNfsPendentes:", error);
     res.status(500).json({ error: "Erro ao buscar notas fiscais pendentes" });
   }
 };
