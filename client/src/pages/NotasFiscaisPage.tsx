@@ -178,28 +178,39 @@ export const NotasFiscaisPage = () => {
                         {(() => {
                           const totalBoletos = nf.boletos?.length || 0;
                           const paidBoletos = nf.boletos?.filter((b: any) => b.status === "PAGO").length || 0;
-                          
-                          let badgeText = nf.status === "PAGO" ? "QUITADO" : "PENDENTE";
-                          let badgeStyle = nf.status === "PAGO" ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700";
+                          const hasAtrasado = nf.boletos?.some((b: any) => b.status === "ATRASADO");
 
-                          if (totalBoletos > 0) {
-                            if (paidBoletos === totalBoletos) {
-                              badgeText = `PAGO ${paidBoletos}/${totalBoletos}`;
-                              badgeStyle = "bg-emerald-100 text-emerald-700";
-                            } else if (paidBoletos > 0) {
-                              badgeText = `PAGO ${paidBoletos}/${totalBoletos}`;
-                              badgeStyle = "bg-blue-100 text-blue-700";
-                            } else {
-                              badgeText = `PAGO 0/${totalBoletos}`;
-                              badgeStyle = "bg-orange-100 text-orange-700";
-                            }
+                          // Regra de Quitação: todos os boletos pagos OU sem boletos mas NF marcada como PAGO
+                          const isPago =
+                            (totalBoletos > 0 && paidBoletos === totalBoletos) ||
+                            (totalBoletos === 0 && nf.status === "PAGO");
+
+                          // Sufixo com contagem de parcelas (exibido quando há boletos)
+                          const fracao = totalBoletos > 0 ? ` ${paidBoletos}/${totalBoletos}` : "";
+
+                          let badgeLabel: string;
+                          let badgeStyle: string;
+
+                          if (isPago) {
+                            badgeLabel = "Pago";
+                            badgeStyle = "bg-emerald-100 text-emerald-700";
+                          } else if (hasAtrasado) {
+                            badgeLabel = "Atrasado";
+                            badgeStyle = "bg-red-100 text-red-700";
+                          } else if (totalBoletos > 0) {
+                            badgeLabel = "Em Pagamento";
+                            badgeStyle = "bg-orange-100 text-orange-700";
+                          } else {
+                            // totalBoletos === 0 && nf.status !== "PAGO"
+                            badgeLabel = "Sem Financeiro";
+                            badgeStyle = "bg-slate-100 text-slate-500";
                           }
 
                           return (
                             <span
                               className={`px-3 py-1 rounded-md text-sm font-bold uppercase tracking-wider ${badgeStyle}`}
                             >
-                              {badgeText}
+                              {badgeLabel}{fracao}
                             </span>
                           );
                         })()}
