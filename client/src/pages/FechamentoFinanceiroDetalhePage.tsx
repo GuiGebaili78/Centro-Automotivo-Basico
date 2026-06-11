@@ -105,6 +105,7 @@ interface OSData {
     id_servico_mao_de_obra: number;
     valor: number;
     funcionario?: {
+      comissao?: number | null;
       pessoa_fisica?: {
         pessoa: {
           nome: string;
@@ -1347,97 +1348,71 @@ export const FechamentoFinanceiroDetalhePage = () => {
         </div>
       </div>
 
-      {/* BOTTOM SUMMARY CARD */}
-      <div className="bg-primary-600 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden mt-8">
-        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <div className="bg-white/10 rounded-xl p-4">
-            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
-              Peças Externas
-            </p>
-            <p className="text-sm text-primary-200">
-              Fat: {formatCurrency(faturamentoPecasExternas)}
-            </p>
-            <p className="text-sm text-red-300">
-              Custo: {formatCurrency(custoPecasExternas)}
-            </p>
-            <p className="text-sm font-bold text-emerald-300 mt-1">
-              Lucro: {formatCurrency(faturamentoPecasExternas - custoPecasExternas)}
-            </p>
+      {/* RESUMO FINANCEIRO DO FECHAMENTO */}
+      <div className="mt-8 flex justify-end">
+        <div className="bg-white border border-neutral-200 rounded-2xl shadow-sm overflow-hidden w-full max-w-sm">
+          <div className="px-5 py-3 border-b border-neutral-100">
+            <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+              Resumo do Fechamento
+            </h4>
           </div>
-
-          <div className="bg-white/10 rounded-xl p-4">
-            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
-              Estoque Próprio
-            </p>
-            <p className="text-sm text-primary-200">
-              Fat: {formatCurrency(faturamentoEstoque)}
-            </p>
-            <p className="text-sm text-red-300">
-              Custo: {formatCurrency(custoEstoque)}
-            </p>
-            <p className="text-sm font-bold text-emerald-300 mt-1">
-              Lucro: {formatCurrency(faturamentoEstoque - custoEstoque)}
-            </p>
-          </div>
-
-          <div className="bg-white/10 rounded-xl p-4">
-            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
-              Mão de Obra
-            </p>
-            <p className="text-sm text-primary-200">
-              Fat: {formatCurrency(faturamentoMaoDeObra)}
-            </p>
-            <p className="text-sm text-primary-200">
-              Custo: Já abatido das comissões
-            </p>
-            <p className="text-sm font-bold text-emerald-300 mt-1">
-              Lucro Bruto M.O: {formatCurrency(faturamentoMaoDeObra)}
-            </p>
-          </div>
-
-          <div className="bg-white/10 rounded-xl p-4">
-            <p className="text-xs font-medium text-primary-100 uppercase tracking-widest mb-1 opacity-80">
-              Consumo Interno / Prejuízo
-            </p>
-            <p className="text-sm text-primary-200">
-              Fat: R$ 0,00 (Não cobrado)
-            </p>
-            <p className="text-sm font-bold text-red-300 mt-1">
-              Custo Oficina: -{formatCurrency(consumoInterno)}
-            </p>
-          </div>
-
-          <div className="bg-white/20 rounded-xl p-4 flex flex-col justify-center items-end border border-white/30">
-            <p className="text-xs font-medium text-white uppercase tracking-widest mb-1">
-              LUCRO LÍQUIDO FINAL
-            </p>
-            <p className="text-3xl font-black text-white tracking-tighter drop-shadow-md">
-              {formatCurrency(lucro)}
-            </p>
-            <div className="flex justify-end gap-2 mt-2 w-full">
-               <div
-                  className={`inline-block px-3 py-1 rounded font-black uppercase text-[10px] tracking-wider ${
-                    (osData.pagamentos_cliente?.reduce(
-                      (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
-                      0,
-                    ) || 0) >= totalReceita
-                      ? "bg-emerald-500 text-white"
-                      : "bg-amber-500 text-white animate-pulse"
-                  }`}
-                >
-                  {(osData.pagamentos_cliente?.reduce(
-                    (acc, p) => (p.deleted_at ? acc : acc + Number(p.valor)),
-                    0,
-                  ) || 0) >= totalReceita
-                    ? "QUITADO"
-                    : "PENDENTE"}
-                </div>
+          <div className="divide-y divide-neutral-100">
+            {/* Ordem de Serviço */}
+            <div className="flex items-center justify-between px-5 py-2">
+              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Ordem de Serviço</span>
+              <span className="text-sm font-bold text-neutral-900">{formatCurrency(totalReceita)}</span>
             </div>
+            {/* Mão de Obra */}
+            <div className="flex items-center justify-between px-5 py-2">
+              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Mão de Obra</span>
+              <span className="text-sm font-semibold text-neutral-700">{formatCurrency(faturamentoMaoDeObra)}</span>
+            </div>
+            {/* Auto Peças */}
+            <div className="flex items-center justify-between px-5 py-2">
+              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Auto Peças</span>
+              <span className="text-sm font-semibold text-red-600">- {formatCurrency(custoPecasExternas)}</span>
+            </div>
+            {/* Estoque */}
+            <div className="flex items-center justify-between px-5 py-2">
+              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Estoque</span>
+              <span className="text-sm font-semibold text-red-600">- {formatCurrency(custoEstoque)}</span>
+            </div>
+            {/* Comissões */}
+            {(() => {
+              const totalComissoes = (osData.servicos_mao_de_obra || []).reduce((acc, s) => {
+                const pct = Number(s.funcionario?.comissao || 0);
+                return acc + (Number(s.valor) * pct) / 100;
+              }, 0);
+              const lucroComComissoes = lucro - totalComissoes;
+              return (
+                <>
+                  <div className="flex items-center justify-between px-5 py-2">
+                    <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Comissões</span>
+                    <span className="text-sm font-semibold text-red-600">- {formatCurrency(totalComissoes)}</span>
+                  </div>
+                  {/* Prejuízos */}
+                  <div className="flex items-center justify-between px-5 py-2">
+                    <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Prejuízos</span>
+                    <span className="text-sm font-semibold text-red-600">- {formatCurrency(consumoInterno)}</span>
+                  </div>
+                  {/* Lucro Total */}
+                  <div className="flex items-center justify-between px-5 py-3 bg-neutral-50">
+                    <span className={`text-sm font-black uppercase tracking-wide ${lucroComComissoes >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                      Lucro Total
+                    </span>
+                    <span className={`text-base font-black ${lucroComComissoes >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      {formatCurrency(lucroComComissoes)}
+                    </span>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
+
+      {/* BOTTOM SUMMARY CARD — removido */}
+
 
       {/* ACTIONS (Inline now) */}
       <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
