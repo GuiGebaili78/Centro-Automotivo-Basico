@@ -22,6 +22,7 @@ export interface IItemEntrada {
     nome: string;
     descricao: string;
     fabricante: string;
+    localizacao?: string;
     unidade_medida: string;
     estoque_minimo: number;
   } | null;

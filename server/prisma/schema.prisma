@@ -201,6 +201,9 @@ model PecasEstoque {
   dt_ultima_compra      DateTime?     @db.Timestamp(6)
   dt_cadastro           DateTime      @default(now()) @db.Timestamp(6)
   custo_unitario_padrao Decimal       @default(0) @db.Decimal(10, 2)
+  aplicacao             String?       @db.Text
+  ref_cod               String?       @db.Text
+  localizacao           String?       @db.VarChar(255)
   itens_entrada         ItemEntrada[]
   itens_os              ItensOs[]
 
@@ -498,10 +501,10 @@ model ItemEntrada {
   valor_custo      Decimal        @db.Decimal(10, 2)
   margem_lucro     Decimal?       @db.Decimal(10, 2)
   valor_venda      Decimal        @db.Decimal(10, 2)
-  ref_cod          String?        @db.VarChar(50)
-  condicao         String?        @db.VarChar(50)
-  aplicacao        String?        @db.VarChar(255)
-  obs              String?        @db.VarChar(255)
+  ref_cod          String?        @db.Text
+  condicao         String?        @db.VarChar(100)
+  aplicacao        String?        @db.Text
+  obs              String?        @db.Text
   entrada          EntradaEstoque @relation(fields: [id_entrada], references: [id_entrada])
   peca             PecasEstoque   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
 

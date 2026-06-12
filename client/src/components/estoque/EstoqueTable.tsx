@@ -45,8 +45,12 @@ export const EstoqueTable = ({
             lastEntry?.fornecedor?.nome ||
             "-";
           const dataCompra = lastEntry?.data_compra
-            ? new Date(lastEntry.data_compra).toLocaleDateString()
-            : "-";
+            ? new Date(lastEntry.data_compra).toLocaleDateString("pt-BR")
+            : "SEM DATA";
+
+          const condicaoItem = (p as any).itens_entrada?.[0]?.condicao || "Nova";
+          const aplicacaoItem = p.aplicacao || (p as any).itens_entrada?.[0]?.aplicacao || "Geral";
+          const refCodItem = p.ref_cod || (p as any).itens_entrada?.[0]?.ref_cod;
 
           return (
             <tr
@@ -57,17 +61,42 @@ export const EstoqueTable = ({
                 {p.id_pecas_estoque}
               </td>
               <td className="text-left">
-                <div className="flex flex-col items-start">
+                <div className="flex flex-col items-start gap-0.5">
                   <span className="font-bold text-neutral-600 text-base uppercase">
                     {p.nome}
                   </span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-neutral-500 font-medium uppercase truncate max-w-[200px]" title={aplicacaoItem}>
+                      Aplica: <span className="text-primary-600">{aplicacaoItem}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {p.localizacao && (
+                      <span className="text-[10px] font-bold bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded uppercase">
+                        Loc: {p.localizacao}
+                      </span>
+                    )}
+                    {refCodItem && (
+                      <span className="text-[10px] font-bold bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded uppercase">
+                        Ref: {refCodItem}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </td>
-              <td
-                className="text-left text-base text-neutral-600 max-w-[200px] truncate px-2 uppercase"
-                title={p.fabricante || "GENÉRICO"}
-              >
-                {p.fabricante || "GENÉRICO"}
+              <td className="text-left px-2">
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-base text-neutral-600 max-w-[150px] truncate uppercase font-medium" title={p.fabricante || "GENÉRICO"}>
+                    {p.fabricante || "GENÉRICO"}
+                  </span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                    condicaoItem.toLowerCase() === 'usada' || condicaoItem.toLowerCase() === 'usado'
+                      ? 'bg-orange-50 text-orange-600 border border-orange-100'
+                      : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                  }`}>
+                    {condicaoItem}
+                  </span>
+                </div>
               </td>
               <td className="text-left">
                 <div className="flex flex-col items-start">

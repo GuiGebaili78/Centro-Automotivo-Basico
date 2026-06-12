@@ -50,6 +50,10 @@ export class PecasEstoqueRepository {
         OR: [
           { nome: { contains: query, mode: "insensitive" } },
           { descricao: { contains: query, mode: "insensitive" } },
+          { fabricante: { contains: query, mode: "insensitive" } },
+          { aplicacao: { contains: query, mode: "insensitive" } },
+          { ref_cod: { contains: query, mode: "insensitive" } },
+          { localizacao: { contains: query, mode: "insensitive" } }
         ],
       },
       take: 20,
@@ -127,6 +131,7 @@ export class PecasEstoqueRepository {
               estoque_minimo: item.new_part_data.estoque_minimo || 0,
               custo_unitario_padrao: item.valor_custo, // Init standard cost
               fabricante: item.new_part_data.fabricante || null,
+              localizacao: item.new_part_data.localizacao || null,
             },
           });
           partId = newPart.id_pecas_estoque;
@@ -250,47 +255,48 @@ export class PecasEstoqueRepository {
         include: { itens: { include: { peca: true } } },
       });
       if (!entrada) throw new Error("Entrada de estoque não encontrada.");
+      const payloadIds = data.itens
+        .map((i) => i.id_item_entrada)
+        .filter((id) => id !== undefined && id !== null);
 
-      // 2. Processar cada item do payload
-      for (const item of data.itens) {
-        // --- REMOÇÃO ---
-        if (item._delete && item.id_item_entrada) {
-          const itemExistente = entrada.itens.find(
-            (i) => i.id_item_entrada === item.id_item_entrada,
-          );
-          if (!itemExistente) continue;
+      // --- 2. DELEÇÃO: Itens que estão no banco mas NÃO vieram no payload ---
+      const itemsToDelete = entrada.itens.filter(
+        (dbItem) => !payloadIds.includes(dbItem.id_item_entrada)
+      );
 
-          const partId = itemExistente.id_pecas_estoque;
+      for (const itemExistente of itemsToDelete) {
+        const partId = itemExistente.id_pecas_estoque;
 
-          // Validação de segurança: verificar movimentação ativa em OS
-          const osAtivas = await tx.itensOs.count({
-            where: {
-              id_pecas_estoque: partId,
+        // Validação de segurança: verificar movimentação ativa em OS
+        const osAtivas = await tx.itensOs.count({
+          where: {
+            id_pecas_estoque: partId,
+            deleted_at: null,
+            ordem_de_servico: {
+              status: { notIn: ["FINALIZADA", "CANCELADA", "PAGA_CLIENTE"] },
               deleted_at: null,
-              ordem_de_servico: {
-                status: { notIn: ["FINALIZADA", "CANCELADA", "PAGA_CLIENTE"] },
-                deleted_at: null,
-              },
             },
-          });
-          if (osAtivas > 0) {
-            const nomePeca = itemExistente.peca?.nome || `ID ${partId}`;
-            throw new Error(
-              `A peça "${nomePeca}" não pode ser removida pois já está vinculada a uma Ordem de Serviço ativa. Finalize ou cancele a OS antes de remover este item.`,
-            );
-          }
-
-          // Decrementar estoque e remover item
-          await tx.pecasEstoque.update({
-            where: { id_pecas_estoque: partId },
-            data: { estoque_atual: { decrement: itemExistente.quantidade } },
-          });
-          await tx.itemEntrada.delete({
-            where: { id_item_entrada: item.id_item_entrada },
-          });
-          continue;
+          },
+        });
+        if (osAtivas > 0) {
+          const nomePeca = itemExistente.peca?.nome || `ID ${partId}`;
+          throw new Error(
+            `A peça "${nomePeca}" não pode ser removida pois já está vinculada a uma Ordem de Serviço ativa. Finalize ou cancele a OS antes de remover este item.`,
+          );
         }
 
+        // Decrementar estoque e remover item
+        await tx.pecasEstoque.update({
+          where: { id_pecas_estoque: partId },
+          data: { estoque_atual: { decrement: itemExistente.quantidade } },
+        });
+        await tx.itemEntrada.delete({
+          where: { id_item_entrada: itemExistente.id_item_entrada },
+        });
+      }
+
+      // --- 3. ATUALIZAÇÃO e CRIAÇÃO ---
+      for (const item of data.itens) {
         // --- ATUALIZAÇÃO de item existente ---
         if (item.id_item_entrada) {
           await tx.itemEntrada.update({
@@ -323,6 +329,7 @@ export class PecasEstoqueRepository {
               estoque_minimo: item.new_part_data.estoque_minimo || 0,
               custo_unitario_padrao: item.valor_custo,
               fabricante: item.new_part_data.fabricante || null,
+              localizacao: item.new_part_data.localizacao || null,
             },
           });
           partId = newPart.id_pecas_estoque;

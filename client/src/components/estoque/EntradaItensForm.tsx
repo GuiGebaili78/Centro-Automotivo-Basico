@@ -45,6 +45,7 @@ export const EntradaItensForm = ({
   const [newPartName, setNewPartName] = useState("");
   const [newPartDesc, setNewPartDesc] = useState("");
   const [newPartFab, setNewPartFab] = useState("");
+  const [newPartLoc, setNewPartLoc] = useState("");
   const [newPartUnit, setNewPartUnit] = useState("UN");
 
   const handleCostChange = (val: string) => {
@@ -127,6 +128,7 @@ export const EntradaItensForm = ({
             nome: newPartName || partSearch,
             descricao: newPartDesc || newPartName || partSearch,
             fabricante: newPartFab,
+            localizacao: newPartLoc,
             unidade_medida: newPartUnit,
             estoque_minimo: Number(rowMinStock) || 0,
           }
@@ -177,6 +179,7 @@ export const EntradaItensForm = ({
     setNewPartName("");
     setNewPartDesc("");
     setNewPartFab("");
+    setNewPartLoc("");
   };
 
   /** Remove item novo (sem id_item_entrada) ou marca item salvo para exclusão */
@@ -219,6 +222,7 @@ export const EntradaItensForm = ({
       setPartSearch(item.new_part_data.nome);
       setNewPartName(item.new_part_data.nome);
       setNewPartFab(item.new_part_data.fabricante || "");
+      setNewPartLoc(item.new_part_data.localizacao || "");
       setNewPartUnit(item.new_part_data.unidade_medida || "UN");
       setSelectedStockPart(null);
     } else {
@@ -268,6 +272,7 @@ export const EntradaItensForm = ({
     setNewPartName("");
     setNewPartDesc("");
     setNewPartFab("");
+    setNewPartLoc("");
   };
 
   // Itens visíveis para contagem no cabeçalho (exclui novos removidos)
@@ -320,14 +325,20 @@ export const EntradaItensForm = ({
                     <button
                       key={p.id_pecas_estoque}
                       onClick={() => selectPart(p)}
-                      className="w-full text-left p-3 hover:bg-neutral-50 flex justify-between border-b border-neutral-50 last:border-0"
+                      className="w-full text-left p-3 hover:bg-neutral-50 flex flex-col gap-1 border-b border-neutral-100 last:border-0 transition-colors"
                     >
-                      <span className="font-bold text-neutral-700">
-                        {p.nome}
-                      </span>
-                      <span className="text-xs font-medium text-neutral-400">
-                        {p.fabricante} • {p.estoque_atual} un
-                      </span>
+                      <div className="flex justify-between items-baseline">
+                        <span className="font-bold text-neutral-800 uppercase text-sm">{p.nome}</span>
+                        <span className="text-xs font-bold bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded uppercase ring-1 ring-neutral-200">
+                          {p.estoque_atual} {p.unidade_medida || "UN"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-neutral-500 font-medium uppercase mt-1">
+                        {p.fabricante && <span>Marca: {p.fabricante}</span>}
+                        {p.ref_cod && <span>Ref: {p.ref_cod}</span>}
+                        {p.localizacao && <span className="text-amber-600 font-semibold bg-amber-50 px-1 rounded">Loc: {p.localizacao}</span>}
+                        {p.aplicacao && <span className="text-primary-600 font-semibold bg-primary-50 px-1 rounded">Aplica: {p.aplicacao}</span>}
+                      </div>
                     </button>
                   ))}
                   <button
@@ -364,13 +375,22 @@ export const EntradaItensForm = ({
           </div>
 
           {/* New Part: Extra Fields Always Visible but Disabled if not new */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <div>
               <Input
                 label="Fabricante"
                 placeholder="Marca"
                 value={newPartFab}
                 onChange={(e) => setNewPartFab(e.target.value)}
+                disabled={!isNewPart}
+              />
+            </div>
+            <div>
+              <Input
+                label="Localização"
+                placeholder="Ex: Prateleira A"
+                value={newPartLoc}
+                onChange={(e) => setNewPartLoc(e.target.value)}
                 disabled={!isNewPart}
               />
             </div>
