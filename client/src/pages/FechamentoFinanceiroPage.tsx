@@ -85,7 +85,10 @@ export const FechamentoFinanceiroPage = () => {
         const foundOs = allOss.find((os) => os.id_os === f.id_os);
         return {
           ...f,
-          ordem_de_servico: foundOs || f.ordem_de_servico,
+          ordem_de_servico: {
+            ...(foundOs || {}),
+            ...(f.ordem_de_servico || {}),
+          },
         };
       });
 
@@ -478,16 +481,68 @@ export const FechamentoFinanceiroPage = () => {
                         <div className="h-4"></div>
                       </div>
                     </td>
-                    <td className="p-4 align-top text-slate-600 text-center">
-                      <div className="flex flex-col items-center">
-                        <span
-                          className="px-2 py-1 rounded-md text-xs font-black uppercase whitespace-nowrap ring-1 bg-green-50 text-green-700 ring-green-600/20"
-                        >
-                          FINALIZADA
-                        </span>
-                        <div className="h-4"></div>
-                      </div>
+                    <td className="p-4 align-top text-center">
+                      {(() => {
+                        const os = fech.ordem_de_servico;
+
+                        // CLI: pagamentos acumulados do cliente >= valor total da OS (se for 0, também está OK)
+                        const totalPago = (os?.pagamentos_cliente || []).reduce((acc: number, p: any) => acc + Number(p.valor), 0);
+                        const valorOs = Number(os?.valor_total_cliente || 0);
+                        const isCli = valorOs === 0 || totalPago >= valorOs;
+
+                        // CON: todos os itens externos têm ao menos 1 pagamentos_peca com custo_real > 0
+                        const itensExternos = (os?.itens_os || []);
+                        const isCon = itensExternos.length === 0 || itensExternos.every((item: any) =>
+                          item.pagamentos_peca?.some((pp: any) => Number(pp.custo_real) > 0)
+                        );
+
+                        // PEC: todos os itens externos com pago_ao_fornecedor = true OU nf_numero preenchido
+                        const isPec = itensExternos.length === 0 || itensExternos.every((item: any) =>
+                          item.pagamentos_peca?.some((pp: any) => pp.pago_ao_fornecedor === true || !!pp.nf_numero)
+                        );
+
+                        // REC: nenhum recebível com status PENDENTE (sem recebíveis = OK)
+                        const recebiveis = os?.recebiveis_cartao || [];
+                        const isRec = recebiveis.length === 0 || !recebiveis.some((r: any) => r.status === "PENDENTE");
+
+                        const badges = [
+                          { key: "CLI", label: "CLI", ok: isCli, title: "Faturamento do Cliente Totalizado", route: `/fechamento-financeiro/${fech.id_os}` },
+                          { key: "CON", label: "CON", ok: isCon, title: "Consolidação de Custos Preenchida", route: `/fechamento-financeiro/${fech.id_os}` },
+                          { key: "PEC", label: "PEC", ok: isPec, title: "Fornecedores de Peças Quitados", route: "/pagamento-peca" },
+                          { key: "REC", label: "REC", ok: isRec, title: "Fluxo de Recebíveis de Cartão OK", route: "/recebiveis" },
+                        ];
+
+                        return (
+                          <div className="flex flex-col items-center h-full">
+                            {/* Badge Principal de Status Dinâmico */}
+                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase whitespace-nowrap shadow-sm ${getStatusStyle(os?.status || "")}`}>
+                              {os?.status || "N/A"}
+                            </span>
+
+                            {/* Circuito Pro de Auditoria */}
+                            <div className="flex flex-wrap gap-1 justify-center mt-3 max-w-[140px]">
+                              {badges.map((b) => (
+                                <button
+                                  key={b.key}
+                                  title={b.title}
+                                  onClick={(e) => { e.stopPropagation(); navigate(b.route); }}
+                                  className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide transition-all border cursor-pointer hover:brightness-95 ${
+                                    b.ok
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm"
+                                      : "bg-amber-50 text-amber-600 border-amber-300 shadow-sm"
+                                  }`}
+                                >
+                                  {b.ok && <CheckCircle className="w-2.5 h-2.5" />}
+                                  {b.label}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="h-4"></div>
+                          </div>
+                        );
+                      })()}
                     </td>
+
                     <td className="p-4 align-top text-slate-600 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <ActionButton

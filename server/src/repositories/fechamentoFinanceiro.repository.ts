@@ -35,9 +35,31 @@ export class FechamentoFinanceiroRepository {
                 },
               },
             },
+            pagamentos_cliente: {
+              where: { deleted_at: null },
+              select: { valor: true },
+            },
+            itens_os: {
+              where: { deleted_at: null, is_interno: false },
+              select: {
+                id_iten: true,
+                pagamentos_peca: {
+                  where: { deleted_at: null },
+                  select: {
+                    custo_real: true,
+                    pago_ao_fornecedor: true,
+                    nf_numero: true,
+                  },
+                },
+              },
+            },
+            recebiveis_cartao: {
+              select: { status: true },
+            },
           },
         },
       },
+
     };
 
     if (searchTerm) {
