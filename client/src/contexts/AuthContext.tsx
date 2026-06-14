@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
 interface User {
   id_usuario: number;
@@ -69,6 +69,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("@CentroAutomotivo:user");
     localStorage.removeItem("@CentroAutomotivo:mustChangePassword");
   };
+
+  // Escuta o evento de "unauthorized" despachado pelo Axios
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+    };
+
+    window.addEventListener("unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("unauthorized", handleUnauthorized);
+  }, []);
 
   return (
     <AuthContext.Provider

@@ -163,6 +163,10 @@ export class VeiculoRepository {
         }
       }
     }
+
+    // REGRA DE NEGÓCIO: A alteração do id_cliente neste veículo NÃO se propaga para as 
+    // Ordens de Serviço antigas (OrdemDeServico). O Prisma naturalmente isola essa 
+    // chave estrangeira (a OS possui seu próprio id_cliente). O histórico fica blindado.
     return await prisma.veiculo.update({
       where: { id_veiculo: id },
       data,

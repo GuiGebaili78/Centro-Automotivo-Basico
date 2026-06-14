@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { nowSP } from "../utils/date.js";
 
 export class RecebivelCartaoRepository {
   async create(data: Prisma.RecebivelCartaoCreateInput) {
@@ -243,11 +244,28 @@ export class RecebivelCartaoRepository {
       const isCard = recebivel.id_operadora != null;
       const isDinheiro = recebivel.tipo_parcelamento?.toUpperCase() === "DINHEIRO";
       
-      let targetAccountId = null;
+      let targetAccountId: number | null | undefined = null;
       if (isCard) {
         targetAccountId = recebivel.operadora?.id_conta_destino;
       } else if (!isDinheiro) {
         targetAccountId = idContaBancaria;
+        
+        // Regra de Fallback: buscar conta bancária no pagamento original
+        if (!targetAccountId) {
+          const pagamentoOriginal = await tx.pagamentoCliente.findFirst({
+            where: {
+              id_os: recebivel.id_os,
+              metodo_pagamento: "PIX",
+              id_conta_bancaria: { gt: 0 },
+            },
+          });
+          
+          if (pagamentoOriginal && pagamentoOriginal.id_conta_bancaria) {
+            targetAccountId = pagamentoOriginal.id_conta_bancaria;
+          } else {
+            throw new Error(`O recebimento da OS #${recebivel.id_os} não possui conta bancária de destino informada. Por favor, selecione a conta manualmente antes de confirmar.`);
+          }
+        }
       }
 
       // 2. Atualizar saldo da conta bancária se houver (PIX, Transf, Cartão)
@@ -256,43 +274,13 @@ export class RecebivelCartaoRepository {
           where: { id_conta: targetAccountId },
           data: {
             saldo_atual: {
-              increment: Number(recebivel.valor_liquido),
+              increment: new Prisma.Decimal(recebivel.valor_liquido as any),
             },
           },
         });
 
-        const nomeBanco = isCard && recebivel.operadora?.conta_destino
-          ? (recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome)
-          : `Conta #${targetAccountId}`; 
-
-        await tx.livroCaixa.create({
-          data: {
-            descricao: isCard 
-              ? `${recebivel.operadora?.nome} / ${nomeBanco} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`
-              : `Recebimento OS #${recebivel.id_os} - Conciliação Bancária`,
-            valor: recebivel.valor_liquido,
-            tipo_movimentacao: "ENTRADA",
-            categoria: isCard ? "CONCILIACAO_CARTAO" : "CONCILIACAO",
-            dt_movimentacao: new Date(),
-            origem: "AUTOMATICA",
-            id_conta_bancaria: targetAccountId,
-            obs: `[REC_ID:${id}]`,
-          },
-        });
-      } else {
-        // Dinheiro (Caixa físico, sem conta vinculada)
-        await tx.livroCaixa.create({
-          data: {
-            descricao: `Recebimento OS #${recebivel.id_os} - Conciliação em Dinheiro`,
-            valor: recebivel.valor_liquido,
-            tipo_movimentacao: "ENTRADA",
-            categoria: "CONCILIACAO_DINHEIRO",
-            dt_movimentacao: new Date(),
-            origem: "AUTOMATICA",
-            id_conta_bancaria: null,
-            obs: `[REC_ID:${id}]`,
-          },
-        });
+        // A criação do Livro Caixa de conciliação foi removida para evitar duplicidade 
+        // e arredondamentos fantasmas (centavos), conforme Fase 3.
       }
 
       // 4. Atualizar status do recebível
@@ -300,8 +288,8 @@ export class RecebivelCartaoRepository {
         where: { id_recebivel: id },
         data: {
           status: "RECEBIDO",
-          data_recebimento: new Date(),
-          confirmado_em: new Date(),
+          data_recebimento: nowSP(),
+          confirmado_em: nowSP(),
           confirmado_por: confirmadoPor,
         } as any,
       });
@@ -572,6 +560,23 @@ export class RecebivelCartaoRepository {
           targetAccountId = recebivel.operadora?.id_conta_destino;
         } else if (!isDinheiro) {
           targetAccountId = idContaBancaria;
+          
+          // Regra de Fallback: buscar conta bancária no pagamento original
+          if (!targetAccountId) {
+            const pagamentoOriginal = await tx.pagamentoCliente.findFirst({
+              where: {
+                id_os: recebivel.id_os,
+                metodo_pagamento: "PIX",
+                id_conta_bancaria: { gt: 0 },
+              },
+            });
+            
+            if (pagamentoOriginal && pagamentoOriginal.id_conta_bancaria) {
+              targetAccountId = pagamentoOriginal.id_conta_bancaria;
+            } else {
+              throw new Error(`O recebimento da OS #${recebivel.id_os} não possui conta bancária de destino informada. Por favor, selecione a conta manualmente antes de confirmar.`);
+            }
+          }
         }
 
         if (targetAccountId) {
@@ -580,44 +585,13 @@ export class RecebivelCartaoRepository {
             where: { id_conta: targetAccountId },
             data: {
               saldo_atual: {
-                increment: Number(recebivel.valor_liquido),
+                increment: new Prisma.Decimal(recebivel.valor_liquido as any),
               },
             },
           });
 
-          const nomeBanco = isCard && recebivel.operadora?.conta_destino
-            ? (recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome)
-            : `Conta #${targetAccountId}`;
-
-          // Registrar no extrato (LivroCaixa com conta vinculada)
-          await tx.livroCaixa.create({
-            data: {
-              descricao: isCard
-                ? `${recebivel.operadora?.nome} / ${nomeBanco} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`
-                : `Recebimento Lote OS #${recebivel.id_os} - Conciliação Bancária`,
-              valor: recebivel.valor_liquido,
-              tipo_movimentacao: "ENTRADA",
-              categoria: isCard ? "CONCILIACAO_CARTAO" : "CONCILIACAO",
-              dt_movimentacao: new Date(),
-              origem: "AUTOMATICA",
-              id_conta_bancaria: targetAccountId,
-              obs: `[REC_ID:${id}]`,
-            },
-          });
-        } else {
-          // Dinheiro
-          await tx.livroCaixa.create({
-            data: {
-              descricao: `Recebimento Lote OS #${recebivel.id_os} - Conciliação Dinheiro`,
-              valor: recebivel.valor_liquido,
-              tipo_movimentacao: "ENTRADA",
-              categoria: "CONCILIACAO_DINHEIRO",
-              dt_movimentacao: new Date(),
-              origem: "AUTOMATICA",
-              id_conta_bancaria: null,
-              obs: `[REC_ID:${id}]`,
-            },
-          });
+          // A criação do Livro Caixa de conciliação foi removida para evitar duplicidade 
+          // e arredondamentos fantasmas (centavos), conforme Fase 3.
         }
 
         // Atualizar status do recebível
@@ -625,8 +599,8 @@ export class RecebivelCartaoRepository {
           where: { id_recebivel: id },
           data: {
             status: "RECEBIDO",
-            data_recebimento: new Date(),
-            confirmado_em: new Date(),
+            data_recebimento: nowSP(),
+            confirmado_em: nowSP(),
             confirmado_por: confirmadoPor,
           } as any,
         });

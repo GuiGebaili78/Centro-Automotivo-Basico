@@ -44,6 +44,8 @@ import { ContasBancariasPage } from "./pages/ContasBancariasPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { Login } from "./pages/Login";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 import { AlertsProvider } from "./contexts/AlertsContext";
 
@@ -52,6 +54,8 @@ const router = createBrowserRouter(
     <>
       {/* Rota Pública */}
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Rotas Protegidas (Sobe o PrivateRoute encobrindo o Layout inteiro) */}
       <Route element={<PrivateRoute />}>

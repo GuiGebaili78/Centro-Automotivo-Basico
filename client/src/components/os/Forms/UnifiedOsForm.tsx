@@ -51,6 +51,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
     ano: new Date().getFullYear().toString(),
     ano_fabricacao: new Date().getFullYear().toString(),
     combustivel: "FLEX",
+    chassi: "",
     isNew: true,
   });
 
@@ -166,6 +167,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
           ano_modelo: vehicleData.ano,
           ano_fabricacao: vehicleData.ano_fabricacao,
           combustivel: vehicleData.combustivel,
+          chassi: vehicleData.chassi || null,
         } : null,
         // Send equipment if AVULSO mode or if provided
         equipamento: (osMode === "AVULSO" || equipData.nome_peca) ? {
@@ -410,8 +412,38 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
                     }
                     className="font-bold text-neutral-800"
                     placeholder="Ex: Gol"
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <Select
+                  label="Combustível"
+                  value={vehicleData.combustivel}
+                  onChange={(e) =>
+                    setVehicleData({ ...vehicleData, combustivel: e.target.value })
+                  }
+                  className="font-bold text-neutral-800"
+                >
+                  <option value="FLEX">FLEX</option>
+                  <option value="GASOLINA">GASOLINA</option>
+                  <option value="ALCOOL">ÁLCOOL</option>
+                  <option value="DIESEL">DIESEL</option>
+                  <option value="GNV">GNV</option>
+                  <option value="ELETRICO">ELÉTRICO</option>
+                  <option value="HIBRIDO">HÍBRIDO</option>
+                </Select>
+              </div>
+              <div>
+                <Input
+                  label="Chassi (Opcional)"
+                  value={vehicleData.chassi}
+                  onChange={(e) =>
+                    setVehicleData({ ...vehicleData, chassi: e.target.value.toUpperCase() })
+                  }
+                  className="font-bold text-neutral-800 uppercase"
+                  placeholder="17 Dígitos"
+                  maxLength={17}
                 />
-                </div>
+              </div>
             </div>
           </div>
         </div>

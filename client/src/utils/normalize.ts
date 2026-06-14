@@ -1,5 +1,11 @@
 // Utility functions for data normalization and search
 
+/** Remove acentos e converte para lowercase para comparações insensíveis. */
+export function normalizeStr(s: string): string {
+  if (!s) return "";
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
 /**
  * Normaliza uma placa de veículo removendo hífens e convertendo para maiúsculas
  * Exemplos: "GIN-1175" -> "GIN1175", "gin1175" -> "GIN1175"

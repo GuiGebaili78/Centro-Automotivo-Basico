@@ -3,6 +3,7 @@ import type { FC, ChangeEvent, InputHTMLAttributes } from "react";
 import { Loader2 } from "lucide-react";
 import { Input } from "./Input";
 import { Button } from "./Button";
+import { normalizeStr } from "../../utils/normalize";
 
 interface AutocompleteInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   label: string;
@@ -40,6 +41,11 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
     setLoading(true);
     try {
       const results = await fetchSuggestions(query);
+      const exactMatch = results.find(r => normalizeStr(r) === normalizeStr(query));
+      if (exactMatch) {
+        handleSelect(exactMatch);
+        return;
+      }
       setSuggestions(results);
     } catch (e) {
       console.error(e);

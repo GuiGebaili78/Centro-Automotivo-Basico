@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import debounce from "lodash.debounce";
 import { useNavigate, useParams, useBlocker } from "react-router-dom";
 import { formatCurrency } from "../utils/formatCurrency";
 import { api } from "../services/api";
@@ -60,6 +61,7 @@ interface ItemFinanceiroState {
   custo_real: string;
   pago_fornecedor: boolean;
   nf_numero?: string;
+  custo_zero?: boolean;
 }
 
 interface OSData {
@@ -126,6 +128,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
   const [fetchingOs, setFetchingOs] = useState(false);
 
   const [osData, setOsData] = useState<OSData | null>(null);
+  const isLocked = osData?.status === "QUITADO" || osData?.status === "CONSOLIDADO" || false;
   const [fornecedores, setFornecedores] = useState<IFornecedor[]>([]);
 
   const [itemsState, setItemsState] = useState<
@@ -259,6 +262,25 @@ export const FechamentoFinanceiroDetalhePage = () => {
   // Dirty Check State
   const [isDirty, setIsDirty] = useState(false);
 
+  const debouncedSaveNotes = useMemo(
+    () => debounce(async (payload: {
+      id_os: number;
+      defeito_relatado?: string;
+      diagnostico?: string;
+      obs_interna?: string;
+    }) => {
+      try {
+        await api.put(`/ordem-de-servico/${payload.id_os}`, payload);
+      } catch (e) {
+        console.error('[auto-save] Falha ao salvar notas:', e);
+        toast.error('Falha de conexão: Não foi possível salvar as anotações.');
+      }
+    }, 1500),
+    []
+  );
+
+  useEffect(() => () => debouncedSaveNotes.cancel(), [debouncedSaveNotes]);
+
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       isDirty && currentLocation.pathname !== nextLocation.pathname,
@@ -349,6 +371,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             ? existingPayment.pago_ao_fornecedor
             : false,
           nf_numero: existingPayment?.nf_numero || "",
+          custo_zero: false,
         };
       });
       setItemsState(initialItemsState);
@@ -379,6 +402,36 @@ export const FechamentoFinanceiroDetalhePage = () => {
     });
   };
 
+  const debouncedUpsertCustoZero = useCallback(
+    debounce(async (id_item_os: number, checked: boolean, custo_real_prev: string | number) => {
+      try {
+        await api.patch(`/pagamento-peca/item/${id_item_os}/custo-zero`, {
+          custo_zero: checked,
+          custo_real: Number(custo_real_prev || 0),
+        });
+      } catch (error: any) {
+        console.error(error);
+        const msg = error.response?.data?.error || "Erro ao salvar Custo Zero.";
+        toast.error(msg);
+        
+        // Rollback
+        setItemsState((prev) => {
+          const itemState = prev[id_item_os];
+          if (!itemState) return prev;
+          return {
+            ...prev,
+            [id_item_os]: {
+              ...itemState,
+              custo_zero: !checked,
+              custo_real: custo_real_prev,
+            },
+          };
+        });
+      }
+    }, 500),
+    []
+  );
+
   const handleItemChange = (
     id_iten: number,
     field: keyof ItemFinanceiroState,
@@ -395,6 +448,24 @@ export const FechamentoFinanceiroDetalhePage = () => {
       return newState;
     });
     setIsDirty(true);
+  };
+
+  const saveItemCost = async (id_iten: number, custo_real: string) => {
+    const st = itemsState[id_iten];
+    if (!st) return;
+    try {
+      if (st.id_pagamento_peca) {
+        await api.put(`/pagamento-peca/${st.id_pagamento_peca}`, {
+          custo_real: st.custo_zero ? 0 : Number(custo_real),
+          pago_ao_fornecedor: st.pago_fornecedor,
+          id_pessoa: st.custo_zero ? null : (st.id_fornecedor ? Number(st.id_fornecedor) : null),
+          nf_numero: st.custo_zero ? null : (st.nf_numero || null),
+        });
+      }
+    } catch (e) {
+      console.error('[auto-save] Falha ao salvar custo:', e);
+      toast.error('Falha de conexão: O custo da peça não pôde ser salvo.');
+    }
   };
 
   // --- ITEM CRUD ---
@@ -574,6 +645,9 @@ export const FechamentoFinanceiroDetalhePage = () => {
 
     try {
       const pagamentoPromises = osData.itens_os.map(async (item) => {
+        // Trava de Isolamento: Estoque vs. Auto Peças
+        if (item.id_pecas_estoque) return null;
+
         const st = itemsState[item.id_iten];
         if (!st) return null;
 
@@ -717,6 +791,37 @@ export const FechamentoFinanceiroDetalhePage = () => {
     });
   };
 
+  const handleReabrirFechamento = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Reabrir Fechamento",
+      message: "Tem certeza que deseja reabrir esta OS? Isso reverterá a consolidação no caixa e apagará os recebíveis criados.",
+      onConfirm: async () => {
+        try {
+          const idFechamento = Array.isArray(osData?.fechamento_financeiro) 
+            ? osData?.fechamento_financeiro[0]?.id_fechamento_financeiro 
+            : (osData?.fechamento_financeiro as any)?.id_fechamento_financeiro;
+            
+          if (!idFechamento) {
+            toast.error("ID de fechamento não encontrado.");
+            return;
+          }
+          await api.post(`/fechamento-financeiro/reverter`, { idFechamento });
+          toast.success("Fechamento reaberto com sucesso!");
+          navigate(location.pathname, { replace: true, state: { reload: true } });
+          if (osData) fetchOsData(osData.id_os);
+        } catch (error: any) {
+          const msg =
+            error.response?.data?.details ||
+            error.response?.data?.error ||
+            "Erro ao reabrir Fechamento.";
+          toast.error(`Falha: ${msg}`, { autoClose: 7000 });
+        }
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
   return (
     <div className="space-y-6 pb-20">
       {blocker.state === "blocked" && (
@@ -800,6 +905,15 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 REABRIR OS
               </Button>
             )}
+            {isLocked && (
+              <Button
+                variant="ghost"
+                className="text-amber-600 hover:bg-amber-50 hover:text-amber-700 border border-amber-200 h-11 px-6 font-bold"
+                onClick={handleReabrirFechamento}
+              >
+                REABRIR FECHAMENTO
+              </Button>
+            )}
           </div>
         </div>
 
@@ -876,8 +990,25 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 placeholder="Descreva o defeito..."
                 value={osData.defeito_relatado || ""}
                 onChange={(e) => {
-                  setOsData({ ...osData, defeito_relatado: e.target.value });
+                  const updated = { ...osData, defeito_relatado: e.target.value };
+                  setOsData(updated);
                   setIsDirty(true);
+                  debouncedSaveNotes({
+                    id_os: osData.id_os,
+                    defeito_relatado: updated.defeito_relatado,
+                    diagnostico: updated.diagnostico,
+                    obs_interna: updated.obs_interna,
+                  });
+                }}
+                onBlur={() => {
+                  debouncedSaveNotes.cancel();
+                  if (osData) {
+                    api.put(`/ordem-de-servico/${osData.id_os}`, {
+                      defeito_relatado: osData.defeito_relatado,
+                      diagnostico: osData.diagnostico,
+                      obs_interna: osData.obs_interna,
+                    }).catch(console.error);
+                  }
                 }}
               />
             </div>
@@ -894,8 +1025,25 @@ export const FechamentoFinanceiroDetalhePage = () => {
                 placeholder="Descreva o diagnóstico e a solução técnica..."
                 value={osData.diagnostico || ""}
                 onChange={(e) => {
-                  setOsData({ ...osData, diagnostico: e.target.value });
+                  const updated = { ...osData, diagnostico: e.target.value };
+                  setOsData(updated);
                   setIsDirty(true);
+                  debouncedSaveNotes({
+                    id_os: osData.id_os,
+                    defeito_relatado: updated.defeito_relatado,
+                    diagnostico: updated.diagnostico,
+                    obs_interna: updated.obs_interna,
+                  });
+                }}
+                onBlur={() => {
+                  debouncedSaveNotes.cancel();
+                  if (osData) {
+                    api.put(`/ordem-de-servico/${osData.id_os}`, {
+                      defeito_relatado: osData.defeito_relatado,
+                      diagnostico: osData.diagnostico,
+                      obs_interna: osData.obs_interna,
+                    }).catch(console.error);
+                  }
                 }}
               />
             </div>
@@ -949,6 +1097,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             <tr>
               <th className="p-4 w-1/3 border-b border-neutral-50">Peça</th>
               <th className="p-4 border-b border-neutral-50">Ref / Nota</th>
+              <th className="p-4 border-b border-neutral-50 text-center">Custo Zero</th>
               <th className="p-4 border-b border-neutral-50">Fornecedor</th>
               <th className="p-4 border-b border-neutral-50">Nota Fiscal</th>
               <th className="p-4 w-44 border-b border-neutral-50">
@@ -989,10 +1138,36 @@ export const FechamentoFinanceiroDetalhePage = () => {
                   <td className="p-4 text-xs font-mono font-bold text-gray-500 first:rounded-l-lg last:rounded-r-lg">
                     {item.codigo_referencia || "-"}
                   </td>
+                  <td className="p-4 text-center first:rounded-l-lg last:rounded-r-lg">
+                    {item.pecas_estoque || item.id_pecas_estoque ? (
+                      <span className="text-xs text-neutral-400 font-medium">-</span>
+                    ) : (
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                        checked={itemsState[item.id_iten]?.custo_zero || false}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          const st = itemsState[item.id_iten];
+                          const previousCustoReal = st?.custo_real || 0;
+                          
+                          // Optimistic update
+                          handleItemChange(item.id_iten, "custo_zero", checked);
+                          
+                          // Auto-save the zero cost toggle with debouncing
+                          debouncedUpsertCustoZero(item.id_iten, checked, previousCustoReal);
+                        }}
+                      />
+                    )}
+                  </td>
                   <td className="p-4 first:rounded-l-lg last:rounded-r-lg">
                     {item.pecas_estoque || item.id_pecas_estoque ? (
                       <div className="flex items-center gap-2 px-3 py-2 bg-neutral-100 rounded-lg border border-neutral-200 text-neutral-500 font-bold text-xs uppercase tracking-wider justify-center">
                         <Truck size={14} /> Estoque Próprio
+                      </div>
+                    ) : itemsState[item.id_iten]?.custo_zero ? (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-200 text-emerald-600 font-bold text-xs uppercase tracking-wider justify-center">
+                        Sem Custo
                       </div>
                     ) : (
                       <Select
@@ -1018,6 +1193,8 @@ export const FechamentoFinanceiroDetalhePage = () => {
                   <td className="p-4 first:rounded-l-lg last:rounded-r-lg">
                     {item.pecas_estoque || item.id_pecas_estoque ? (
                        <span className="text-xs text-neutral-400 font-medium">-</span>
+                    ) : itemsState[item.id_iten]?.custo_zero ? (
+                       <span className="text-xs text-emerald-400 font-medium opacity-50">-</span>
                     ) : (
                       <Select
                         className="!py-1.5 !px-3 !text-sm max-w-[150px]"
@@ -1039,7 +1216,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
                         ))}
                       </Select>
                     )}
-                    {itemsState[item.id_iten]?.id_fornecedor && nfsFornecedor[itemsState[item.id_iten]?.id_fornecedor]?.loading && (
+                    {itemsState[item.id_iten]?.id_fornecedor && nfsFornecedor[itemsState[item.id_iten]?.id_fornecedor]?.loading && !itemsState[item.id_iten]?.custo_zero && (
                       <div className="text-[10px] text-gray-400 mt-1 animate-pulse">Carregando...</div>
                     )}
                   </td>
@@ -1062,6 +1239,17 @@ export const FechamentoFinanceiroDetalhePage = () => {
                             : "Estoque"}
                         </div>
                       </div>
+                    ) : itemsState[item.id_iten]?.custo_zero ? (
+                      <div className="opacity-50">
+                        <div className="flex items-center border border-neutral-100 rounded-lg bg-neutral-50 px-3 py-2 w-full">
+                          <span className="text-gray-400 text-xs font-bold mr-2">R$</span>
+                          <Input
+                            disabled
+                            value="0.00"
+                            className="!p-0 bg-transparent border-0 focus:ring-0 text-sm font-bold text-gray-400 cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex items-center border border-neutral-200 rounded-lg bg-white px-3 py-2 w-full focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent transition-all shadow-sm">
                         <span className="text-gray-400 text-xs font-bold mr-2">
@@ -1080,12 +1268,14 @@ export const FechamentoFinanceiroDetalhePage = () => {
                           }
                           onBlur={(e) => {
                             const val = parseFloat(e.target.value);
-                            if (!isNaN(val))
+                            if (!isNaN(val)) {
                               handleItemChange(
                                 item.id_iten,
                                 "custo_real",
                                 val.toFixed(2),
                               );
+                              saveItemCost(item.id_iten, val.toFixed(2));
+                            }
                           }}
                           className="!p-0 bg-transparent border-0 focus:ring-0 text-sm font-bold text-gray-900"
                           placeholder="0.00"
@@ -1094,25 +1284,38 @@ export const FechamentoFinanceiroDetalhePage = () => {
                     )}
                   </td>
                   <td className="p-4 text-center first:rounded-l-lg last:rounded-r-lg">
-                    <div className="flex items-center justify-center gap-1">
-                      <ActionButton
-                        icon={Edit}
-                        label="Editar"
-                        onClick={() => handleOpenEditItem(item)}
-                        variant="neutral"
-                      />
-                      <ActionButton
-                        icon={Trash2}
-                        label="Excluir"
-                        onClick={() => handleDeleteItemOS(item.id_iten)}
-                        variant="danger"
-                      />
-                    </div>
+                    {!isLocked && (
+                      <div className="flex items-center justify-center gap-1">
+                        <ActionButton
+                          icon={Edit}
+                          label="Editar"
+                          onClick={() => handleOpenEditItem(item)}
+                          variant="neutral"
+                        />
+                        <ActionButton
+                          icon={Trash2}
+                          label="Excluir"
+                          onClick={() => handleDeleteItemOS(item.id_iten)}
+                          variant="danger"
+                        />
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
           </tbody>
         </table>
+        {!isLocked && (
+          <div className="p-4 bg-white border-t border-neutral-100">
+            <OsItemForm
+              onAdd={handleAddItem}
+              onSearch={searchParts}
+              searchResults={partSearchResults}
+              setSearchResults={setPartSearchResults}
+              checkAvailability={checkStockAvailability}
+            />
+          </div>
+        )}
       </div>
 
       {/* INTERNAL CONSUMPTION (Hidden from client) */}

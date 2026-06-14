@@ -10,6 +10,10 @@ import {
   endOfQuarter,
   startOfYear,
   endOfYear,
+  startOfWeek,
+  endOfWeek,
+  addDays,
+  addWeeks,
   format,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -101,7 +105,7 @@ export class RelatoriosRepository {
       },
     });
     const receitaEstoque = itensEstoque.reduce((acc, item) => acc + Number(item.valor_total || 0), 0);
-    const receitaTotal = receitaMaoDeObra + receitaAutoPecas + receitaEstoque;
+    const fluxoCaixaBruto = receitaMaoDeObra + receitaAutoPecas + receitaEstoque;
 
     // ─── 2. CUSTOS DE PRODUTOS VENDIDOS (CPV) ───
     // Custo de compra das Peças Externas (Auto Peças)
@@ -231,19 +235,85 @@ export class RelatoriosRepository {
 
     // ─── 5. RESULTADOS (Lucro Líquido / Margens) ───
     const lucroMaoDeObra = receitaMaoDeObra - despesasMaoDeObra;
-    const lucroAutoPecas = receitaAutoPecas - custoAutoPecas;
-    const lucroEstoque = receitaEstoque - custoEstoque;
+    // Lucro de Peças de Terceiros (Auto Peças) - APENAS OS FINALIZADA
+    const itensExternosFinalizadas = await prisma.itensOs.findMany({
+      where: {
+        is_interno: false,
+        id_pecas_estoque: null,
+        deleted_at: null,
+        ordem_de_servico: {
+          status: "FINALIZADA",
+          updated_at: { gte: start, lte: end },
+        },
+      },
+      include: { pagamentos_peca: true },
+    });
+    const lucroAutoPecas = itensExternosFinalizadas.reduce((acc, item) => {
+      const valorVenda = Number(item.valor_total || 0);
+      const custoReal = item.pagamentos_peca.reduce((sum, p) => sum + Number(p.custo_real || 0), 0);
+      return acc + (valorVenda - custoReal);
+    }, 0);
+
+    // Lucro de Peças de Estoque - APENAS OS FINALIZADA
+    const itensEstoqueFinalizadas = await prisma.itensOs.findMany({
+      where: {
+        is_interno: false,
+        id_pecas_estoque: { not: null },
+        deleted_at: null,
+        ordem_de_servico: {
+          status: "FINALIZADA",
+          updated_at: { gte: start, lte: end },
+        },
+      },
+      include: { pecas_estoque: true },
+    });
+    const lucroEstoque = itensEstoqueFinalizadas.reduce((acc, item) => {
+      const valorVenda = Number(item.valor_total || 0);
+      const custoReal = Number(item.quantidade) * Number(item.pecas_estoque?.valor_custo || 0);
+      return acc + (valorVenda - custoReal);
+    }, 0);
 
     // Lucro Líquido Total = Lucros operacionais de segmentos - despesas oficina comuns - prejuízos internos
     const lucroLiquidoTotal = lucroMaoDeObra + lucroAutoPecas + lucroEstoque - despesasOficinaContas - totalPrejuizos;
 
+    const receitaOperacional = receitaMaoDeObra + (lucroAutoPecas > 0 ? lucroAutoPecas : 0) + (lucroEstoque > 0 ? lucroEstoque : 0);
+
     const medias = {
-      receitaBruta: receitaTotal / diffMeses,
+      receitaBruta: fluxoCaixaBruto / diffMeses,
       lucroLiquido: lucroLiquidoTotal / diffMeses,
       despesasTotais: totalDespesas / diffMeses,
     };
 
+    // ─── 6. ESTOQUE ABSOLUTO E COMPRAS (DASHBOARD) ───
+    interface SumResult { sum: number }
+    const resultEstoqueImobilizado = await prisma.$queryRaw<SumResult[]>`
+      SELECT SUM(estoque_atual * valor_custo) as sum
+      FROM pecas_estoque
+      WHERE estoque_atual > 0
+    `;
+    const estoqueImobilizado = Number(resultEstoqueImobilizado[0]?.sum || 0);
+
+    const comprasEstoqueAgg = await prisma.entradaEstoque.aggregate({
+      where: { data_compra: { gte: start, lte: end } },
+      _sum: { valor_total: true }
+    });
+    const comprasPeriodoEstoque = Number(comprasEstoqueAgg._sum?.valor_total || 0);
+
+    const dashboard = {
+      receitaBruta: fluxoCaixaBruto,
+      despesaBruta: totalDespesas,
+      lucroLiquido: lucroLiquidoTotal,
+      prejuizos: totalPrejuizos,
+      estoque: {
+        comprasPeriodo: comprasPeriodoEstoque,
+        vendasPeriodo: receitaEstoque,
+        lucroPeriodo: lucroEstoque,
+        imobilizadoAbsoluto: estoqueImobilizado,
+      }
+    };
+
     return {
+      dashboard,
       periodo: { start, end },
       bruta: {
         maoDeObra: receitaMaoDeObra,
@@ -251,7 +321,8 @@ export class RelatoriosRepository {
         estoque: receitaEstoque,
         receitaPecas: receitaAutoPecas + receitaEstoque,
         receitaServicos: receitaMaoDeObra,
-        total: receitaTotal,
+        total: receitaOperacional,
+        fluxoCaixaBruto: fluxoCaixaBruto,
       },
       despesas: {
         maoDeObra: despesasMaoDeObra,
@@ -283,7 +354,7 @@ export class RelatoriosRepository {
         .sort((a, b) => b.valor - a.valor),
       indicadores: {
         lucroLiquido: lucroLiquidoTotal,
-        margemLiquida: receitaTotal > 0 ? (lucroLiquidoTotal / receitaTotal) * 100 : 0,
+        margemLiquida: receitaOperacional > 0 ? (lucroLiquidoTotal / receitaOperacional) * 100 : 0,
         pontoEquilibrio: totalDespesas,
       },
     };
@@ -292,7 +363,7 @@ export class RelatoriosRepository {
   async getEvolucaoMensal(
     startDate: Date,
     endDate: Date,
-    groupBy: "month" | "quarter" | "semester" | "year" = "month"
+    groupBy: "day" | "week" | "month" | "quarter" | "semester" | "year" = "month"
   ) {
     const start = startOfDay(startDate);
     const end = endOfDay(endDate);
@@ -356,7 +427,29 @@ export class RelatoriosRepository {
     const buckets: { start: Date; end: Date; label: string }[] = [];
     let current = new Date(start);
 
-    if (groupBy === "month") {
+    if (groupBy === "day") {
+      current = startOfDay(start);
+      const limit = endOfDay(end);
+      while (current <= limit) {
+        buckets.push({
+          start: startOfDay(current),
+          end: endOfDay(current),
+          label: format(current, "dd/MM", { locale: ptBR }),
+        });
+        current = addDays(current, 1);
+      }
+    } else if (groupBy === "week") {
+      current = startOfWeek(start, { weekStartsOn: 1 });
+      const limit = endOfWeek(end, { weekStartsOn: 1 });
+      while (current <= limit) {
+        buckets.push({
+          start: startOfWeek(current, { weekStartsOn: 1 }),
+          end: endOfWeek(current, { weekStartsOn: 1 }),
+          label: `Sem ${format(current, "dd/MM", { locale: ptBR })}`,
+        });
+        current = addWeeks(current, 1);
+      }
+    } else if (groupBy === "month") {
       current = startOfMonth(start);
       const limit = endOfMonth(end);
       while (current <= limit) {
@@ -531,9 +624,13 @@ export class RelatoriosRepository {
         despesasOficinaContas -
         totalPrejuizos;
 
+      const fluxoCaixaBruto = receitaTotal;
+      const receitaOperacional = receitaMaoDeObra + (lucroAutoPecas > 0 ? lucroAutoPecas : 0) + (lucroEstoque > 0 ? lucroEstoque : 0);
+
       return {
         label: bucket.label.charAt(0).toUpperCase() + bucket.label.slice(1),
-        receita: receitaTotal,
+        receita: receitaOperacional,
+        fluxoCaixaBruto: fluxoCaixaBruto,
         despesa: totalDespesas,
         despesaOficina: despesasOficina,
         despesaAutoPecas: despesaAutoPecas,

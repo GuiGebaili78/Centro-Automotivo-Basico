@@ -1,11 +1,15 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { AuditLogRepository } from './auditLog.repository.js';
+import { nowSP } from '../utils/date.js';
 
 const auditRepo = new AuditLogRepository();
 
 export class OrdemDeServicoRepository {
   async create(data: Prisma.OrdemDeServicoCreateInput) {
+    if (!data.dt_abertura) {
+      data.dt_abertura = nowSP();
+    }
     const created = await prisma.ordemDeServico.create({
       data,
     });
@@ -159,6 +163,7 @@ export class OrdemDeServicoRepository {
                 km_entrada: data.os.km_entrada ? Number(data.os.km_entrada) : null,
                 defeito_relatado: data.os.defeito_relatado,
                 status: data.os.status || 'ABERTA',
+                dt_abertura: nowSP(),
                 valor_total_cliente: 0,
                 valor_mao_de_obra: 0,
                 parcelas: data.os.parcelas || 1 
@@ -206,6 +211,8 @@ export class OrdemDeServicoRepository {
             { itens_os: { some: { descricao: { contains: trimmedSearch, mode: 'insensitive' } } } },
             { itens_os: { some: { codigo_referencia: { contains: trimmedSearch, mode: 'insensitive' } } } },
             { itens_os: { some: { pecas_estoque: { nome: { contains: trimmedSearch, mode: 'insensitive' } } } } },
+            { itens_os: { some: { pagamentos_peca: { some: { fornecedor: { nome: { contains: trimmedSearch, mode: 'insensitive' } } } } } } },
+            { itens_os: { some: { pagamentos_peca: { some: { fornecedor: { nome_fantasia: { contains: trimmedSearch, mode: 'insensitive' } } } } } } },
             { servicos_mao_de_obra: { some: { descricao: { contains: trimmedSearch, mode: 'insensitive' } } } }
         ];
 
@@ -370,9 +377,14 @@ export class OrdemDeServicoRepository {
     // However, sometimes we need to update status FROM Finalizada TO Something else (Reopen).
     // So assume the Caller handles logic, or we check if data DOES NOT contain status change.
     
+    const updatedData = { ...data, updated_at: nowSP() };
+    if (data.status === 'FINALIZADA' && !data.dt_entrega) {
+      updatedData.dt_entrega = nowSP();
+    }
+
     const updated = await prisma.ordemDeServico.update({
       where: { id_os: id },
-      data,
+      data: updatedData,
     });
 
     await auditRepo.create({

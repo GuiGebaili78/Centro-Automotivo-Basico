@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { API_BASE } from "../services/api";
 import { Input, Button, Card } from "../components/ui";
@@ -90,6 +90,12 @@ export const Login: React.FC = () => {
             placeholder="Sua senha de acesso"
             required
           />
+
+          <div className="flex justify-end pt-1">
+            <Link to="/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
+              Esqueceu a senha?
+            </Link>
+          </div>
 
           <div className="pt-2">
             <Button

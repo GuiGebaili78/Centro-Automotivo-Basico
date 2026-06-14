@@ -1,13 +1,15 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
+import { dayjs, TIMEZONE, getDayBoundsSP } from "../utils/date.js";
 
 export class RelatorioFinanceiroController {
   async getDashboard(req: Request, res: Response) {
     try {
       // 1. Definição de datas (Default: Últimos 30 dias se não vier na query)
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - 30);
+      // 1. Definição de datas (Default: Últimos 30 dias se não vier na query)
+      const now = dayjs().tz(TIMEZONE);
+      const endDate = getDayBoundsSP(now).end;
+      const startDate = getDayBoundsSP(now.subtract(30, 'day')).start;
 
       // --- A. KPIS GERAIS ---
 

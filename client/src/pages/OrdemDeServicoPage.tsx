@@ -108,7 +108,10 @@ export const OrdemDeServicoPage = () => {
 
   useEffect(() => {
     loadOss(filters.search);
-  }, [filters.search, loadOss]);
+    if (location.state?.reload) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [filters.search, loadOss, location.state?.reload, navigate, location.pathname]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);

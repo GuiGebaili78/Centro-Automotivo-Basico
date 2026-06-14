@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
+import { dayjs, TIMEZONE, getDayBoundsSP, getMonthBoundsSP } from "../utils/date.js";
 
 export class RelatorioController {
   async getRelatorioCompleto(req: Request, res: Response) {
@@ -7,13 +8,17 @@ export class RelatorioController {
       const { startDate, endDate } = req.query;
 
       // Definição de datas (padrão: mês atual se não informado)
-      const now = new Date();
-      const start = startDate
-        ? new Date(startDate as string)
-        : new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = endDate
-        ? new Date(endDate as string)
-        : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      let start: Date;
+      let end: Date;
+
+      if (startDate && endDate) {
+        start = getDayBoundsSP(startDate as string).start;
+        end = getDayBoundsSP(endDate as string).end;
+      } else {
+        const bounds = getMonthBoundsSP(dayjs().tz(TIMEZONE));
+        start = bounds.start;
+        end = bounds.end;
+      }
 
       // --- KPIs PRINCIPAIS ---
       const osFinalizadas = await prisma.ordemDeServico.findMany({
@@ -90,7 +95,8 @@ export class RelatorioController {
         }
 
         // Evolução Mensal
-        const mesKey = os.updated_at.toISOString().slice(0, 7);
+        const localDate = dayjs(os.updated_at).tz(TIMEZONE);
+        const mesKey = localDate.format('YYYY-MM');
         if (!evolucaoMensal[mesKey]) {
           evolucaoMensal[mesKey] = {
             maoDeObra: 0,
@@ -103,7 +109,7 @@ export class RelatorioController {
         evolucaoMensal[mesKey].lucroPecasExternas += lucroPecasExternasOs;
 
         // Evolução Diária
-        const diaKey = os.updated_at.toISOString().slice(0, 10);
+        const diaKey = localDate.format('YYYY-MM-DD');
         evolucaoDiaria[diaKey] =
           (evolucaoDiaria[diaKey] || 0) + Number(os.valor_final || 0);
       }

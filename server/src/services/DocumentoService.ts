@@ -35,16 +35,16 @@ const fonts = {
   },
 };
 
-const formatDoc = (doc: string) => {
+const maskDoc = (doc: string) => {
   if (!doc) return "";
   const cleaned = doc.replace(/\D/g, "");
   if (cleaned.length === 11) {
-    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.***.***-$4");
   }
   if (cleaned.length === 14) {
     return cleaned.replace(
       /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
-      "$1.$2.$3/$4-$5",
+      "$1.***.***/$4-$5",
     );
   }
   return doc;
@@ -162,7 +162,7 @@ export class DocumentoService {
         os.cliente.pessoa_fisica?.pessoa.nome ||
         os.cliente.pessoa_juridica?.nome_fantasia ||
         "Cliente não identificado";
-      const clienteDoc = formatDoc(
+      const clienteDoc = maskDoc(
         os.cliente.pessoa_fisica?.cpf || os.cliente.pessoa_juridica?.cnpj || "",
       );
       const veiculoDesc = os.veiculo ? `${os.veiculo.modelo} - ${os.veiculo.placa}` : (os.equipamento ? `${os.equipamento.nome_peca}` : "Veículo/Peça Diversa");

@@ -158,6 +158,26 @@ export class PagamentoPecaController {
     }
   }
 
+  async updateCustoZero(req: Request, res: Response) {
+    try {
+      const id_item_os = Number(req.params.id_item_os);
+      const { custo_zero, custo_real } = req.body;
+
+      if (isNaN(id_item_os)) {
+        return res.status(400).json({ error: "Invalid item ID" });
+      }
+
+      const result = await repository.upsertCustoZero(id_item_os, Boolean(custo_zero), custo_real);
+      res.json(result);
+    } catch (error: any) {
+      const msg = error.message || "";
+      if (msg.includes("FINALIZADA") || msg.includes("Nota Fiscal")) {
+        return res.status(403).json({ error: msg });
+      }
+      res.status(400).json({ error: "Failed to update custo zero", details: msg });
+    }
+  }
+
   async delete(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);

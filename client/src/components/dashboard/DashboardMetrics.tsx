@@ -79,10 +79,10 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
           <div className="flex justify-between items-center w-full px-2 mb-2">
             <div className="flex flex-col items-center">
               <h3 className="text-lg text-neutral-600">
-                {stats.contasPagarPending}
+                {stats.contasPagarFimMesCount ?? 0}
               </h3>
-              <p className="text-[10px] text-neutral-400 uppercase mt-0.5">
-                Total
+              <p className="text-[10px] text-neutral-400 uppercase mt-0.5 whitespace-nowrap">
+                FINAL DO MÊS
               </p>
             </div>
             

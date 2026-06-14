@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { nowSP } from "../utils/date.js";
 
 export class FechamentoFinanceiroRepository {
   async create(data: Prisma.FechamentoFinanceiroCreateInput) {
@@ -71,17 +72,17 @@ export class FechamentoFinanceiroRepository {
             {
               veiculo: {
                 OR: [
-                  { placa: { contains: searchTerm } },
-                  { modelo: { contains: searchTerm } },
+                  { placa: { contains: searchTerm, mode: 'insensitive' } },
+                  { modelo: { contains: searchTerm, mode: 'insensitive' } },
                 ],
               },
             },
             {
               cliente: {
                 OR: [
-                  { pessoa_fisica: { pessoa: { nome: { contains: searchTerm } } } },
-                  { pessoa_juridica: { razao_social: { contains: searchTerm } } },
-                  { pessoa_juridica: { nome_fantasia: { contains: searchTerm } } },
+                  { pessoa_fisica: { pessoa: { nome: { contains: searchTerm, mode: 'insensitive' } } } },
+                  { pessoa_juridica: { razao_social: { contains: searchTerm, mode: 'insensitive' } } },
+                  { pessoa_juridica: { nome_fantasia: { contains: searchTerm, mode: 'insensitive' } } },
                 ],
               },
             },
@@ -89,12 +90,17 @@ export class FechamentoFinanceiroRepository {
               itens_os: {
                 some: {
                   OR: [
-                    { descricao: { contains: searchTerm } },
-                    { codigo_referencia: { contains: searchTerm } },
+                    { descricao: { contains: searchTerm, mode: 'insensitive' } },
+                    { codigo_referencia: { contains: searchTerm, mode: 'insensitive' } },
                     {
                       pagamentos_peca: {
                         some: {
-                          pessoa: { nome: { contains: searchTerm } },
+                          fornecedor: {
+                            OR: [
+                              { nome: { contains: searchTerm, mode: 'insensitive' } },
+                              { nome_fantasia: { contains: searchTerm, mode: 'insensitive' } },
+                            ],
+                          },
                         },
                       },
                     },
@@ -263,20 +269,32 @@ export class FechamentoFinanceiroRepository {
             nf_numero,
           } = itemPeca;
 
+          const idItemOsNum = Number(id_item_os);
+          const osItem = os.itens_os.find((i) => i.id_iten === idItemOsNum);
+          
+          // Trava de Isolamento: Estoque vs. Auto Peças
+          if (osItem?.id_pecas_estoque) {
+            console.log(`[AVISO] Tentativa de criar PagamentoPeca para item de estoque bloqueada (Item OS #${id_item_os}).`);
+            continue;
+          }
+
           if (id_pagamento_peca) {
             await tx.pagamentoPeca.update({
               where: { id_pagamento_peca },
               data: {
                 id_pessoa: Number(id_fornecedor),
-                custo_real: Number(custo_real),
+                custo_real: custo_real !== undefined && custo_real !== null && custo_real !== "" ? Number(custo_real) : undefined,
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
                 nf_numero: nf_numero || null,
               },
             });
           } else {
+            if (custo_real === undefined || custo_real === null || custo_real === "") {
+                throw new Error("O custo_real é obrigatório para gerar o Pagamento da Peça Externa.");
+            }
             await tx.pagamentoPeca.create({
               data: {
-                id_item_os: Number(id_item_os),
+                id_item_os: idItemOsNum,
                 id_pessoa: Number(id_fornecedor),
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
@@ -380,7 +398,7 @@ export class FechamentoFinanceiroRepository {
             lucro_pecas: lucroPecas,
             lucro_mao_de_obra: lucroMaoDeObra,
             lucro_total: lucroTotal,
-            data_fechamento_financeiro: new Date(),
+            data_fechamento_financeiro: nowSP(),
             deleted_at: null,
           },
         });
@@ -392,7 +410,7 @@ export class FechamentoFinanceiroRepository {
             lucro_pecas: lucroPecas,
             lucro_mao_de_obra: lucroMaoDeObra,
             lucro_total: lucroTotal,
-            data_fechamento_financeiro: new Date(),
+            data_fechamento_financeiro: nowSP(),
           },
         });
       }
@@ -493,7 +511,7 @@ export class FechamentoFinanceiroRepository {
                 tipo_movimentacao: "ENTRADA",
                 categoria: nomeCategoriaServicos, // Fallback string
                 id_categoria: idCategoriaServicos || null,
-                dt_movimentacao: new Date(),
+                dt_movimentacao: nowSP(),
                 origem: "AUTOMATICA",
                 id_conta_bancaria: idContaBancaria,
               },
@@ -532,7 +550,7 @@ export class FechamentoFinanceiroRepository {
                 tipo_movimentacao: "ENTRADA",
                 categoria: nomeCategoriaServicos,
                 id_categoria: idCategoriaServicos || null,
-                dt_movimentacao: new Date(),
+                dt_movimentacao: nowSP(),
                 origem: "AUTOMATICA",
                 id_conta_bancaria: null,
               },
@@ -579,7 +597,7 @@ export class FechamentoFinanceiroRepository {
                 tipo_movimentacao: "ENTRADA",
                 categoria: nomeCategoriaServicos,
                 id_categoria: idCategoriaServicos || null,
-                dt_movimentacao: new Date(),
+                dt_movimentacao: nowSP(),
                 origem: "AUTOMATICA",
                 id_conta_bancaria: null,
               },
@@ -673,7 +691,7 @@ export class FechamentoFinanceiroRepository {
                     tipoParcelamento
                 );
 
-                const dataPrevistaBase = new Date();
+                const dataPrevistaBase = nowSP();
                 if (operadora.antecipacao_auto) {
                   dataPrevistaBase.setDate(dataPrevistaBase.getDate() + 1);
                 } else {
@@ -706,7 +724,7 @@ export class FechamentoFinanceiroRepository {
                       valor_liquido: valorLiquidoPorParcela,
                       taxa_aplicada: taxaPorParcela,
                       tipo_parcelamento: tipoParcelamento,
-                      data_venda: new Date(),
+                      data_venda: nowSP(),
                       data_prevista: dataPrevistaParcela,
                       status: "PENDENTE",
                     },

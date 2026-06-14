@@ -26,6 +26,7 @@ import {
   Save,
   DollarSign,
   Plus,
+  AlertTriangle,
 } from "lucide-react";
 import { ModalPagamentoUnificado } from "../components/financeiro/ModalPagamentoUnificado";
 import { UniversalFilters } from "../components/common/UniversalFilters";
@@ -65,6 +66,11 @@ export const PagamentoPecaPage = () => {
     id: number | null;
   }>({ isOpen: false, id: null });
   const [showZeroCostWarning, setShowZeroCostWarning] = useState(false);
+  const [nfDetailsModal, setNfDetailsModal] = useState<{
+    isOpen: boolean;
+    nf: any | null;
+    loading: boolean;
+  }>({ isOpen: false, nf: null, loading: false });
 
   useEffect(() => {
     loadData();
@@ -226,6 +232,18 @@ export const PagamentoPecaPage = () => {
       nf_numero: payment.nf_numero || "",
     });
     setShowEditModal(true);
+  };
+
+  const handleNfClick = async (nf_numero: string) => {
+    setNfDetailsModal({ isOpen: true, nf: null, loading: true });
+    try {
+      const centralNfs = await FinanceiroService.getNotasFiscaisCentral();
+      const nfData = centralNfs.find((n: any) => n.nf_numero === nf_numero);
+      setNfDetailsModal({ isOpen: true, nf: nfData || { nf_numero, not_found: true }, loading: false });
+    } catch (error) {
+      toast.error("Erro ao carregar detalhes da NF.");
+      setNfDetailsModal({ isOpen: false, nf: null, loading: false });
+    }
   };
 
   // --- Supplier list for UniversalFilters (memoized to avoid cascade re-renders) ---
@@ -427,12 +445,14 @@ export const PagamentoPecaPage = () => {
                           </span>
                           {p.nf_numero && (
                             <div className="flex flex-col gap-1 mt-1 col-span-2">
-                              <span
-                                className="px-2 py-0.5 rounded-full text-xs font-bold bg-neutral-100 text-neutral-700 border border-neutral-200 shadow-sm text-center"
-                                title={`Sincronização com a NF ${p.nf_numero}`}
+                              <button
+                                type="button"
+                                onClick={() => handleNfClick(p.nf_numero)}
+                                className="px-2 py-0.5 rounded-full text-xs font-bold bg-neutral-100 text-neutral-700 border border-neutral-200 shadow-sm text-center hover:bg-neutral-200 transition-colors"
+                                title={`Ver detalhes da NF ${p.nf_numero}`}
                               >
                                 NF: {p.nf_numero}
-                              </span>
+                              </button>
                               <div className="scale-95 origin-left">
                                 <NfSyncBadge nf_numero={p.nf_numero} />
                               </div>
@@ -482,16 +502,22 @@ export const PagamentoPecaPage = () => {
                           {p.nf_numero ? (
                             <div className="flex flex-col items-center">
                               {p.pago_ao_fornecedor ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm animate-in fade-in duration-300">
+                                <button
+                                  type="button"
+                                  onClick={() => handleNfClick(p.nf_numero)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm animate-in fade-in duration-300 hover:bg-emerald-100 transition-colors"
+                                >
                                   ✓ Pago (NF: {p.nf_numero})
-                                </span>
+                                </button>
                               ) : (
-                                <span
-                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 cursor-not-allowed select-none shadow-sm animate-in fade-in duration-300"
-                                  title={`🔒 Item vinculado à NF ${p.nf_numero}. A quitação automática ocorrerá na baixa do Contas a Pagar.`}
+                                <button
+                                  type="button"
+                                  onClick={() => handleNfClick(p.nf_numero)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm animate-in fade-in duration-300 hover:bg-amber-100 transition-colors"
+                                  title={`🔒 Item vinculado à NF ${p.nf_numero}. Clique para ver detalhes.`}
                                 >
                                   Aguardando NF: {p.nf_numero}
-                                </span>
+                                </button>
                               )}
                             </div>
                           ) : p.pago_ao_fornecedor ? (
@@ -685,6 +711,118 @@ export const PagamentoPecaPage = () => {
         confirmText="Continuar Mesmo Assim"
         variant="primary"
       />
+
+      {/* NF Details Modal */}
+      {nfDetailsModal.isOpen && (
+        <Modal title={`Detalhes da Nota Fiscal: ${nfDetailsModal.nf?.nf_numero || "Carregando..."}`} onClose={() => setNfDetailsModal({ isOpen: false, nf: null, loading: false })}>
+          <div className="space-y-4">
+            {nfDetailsModal.loading ? (
+              <div className="p-10 flex items-center justify-center text-neutral-500">
+                Carregando informações da NF...
+              </div>
+            ) : nfDetailsModal.nf?.not_found ? (
+              <div className="p-10 text-center flex flex-col items-center">
+                <AlertTriangle size={40} className="text-amber-500 mb-2" />
+                <p className="text-neutral-700 font-medium">Nota Fiscal não encontrada na central.</p>
+                <p className="text-sm text-neutral-500 mt-1">Nenhum lançamento no contas a pagar, estoque ou itens de OS parece pertencer a esta NF de forma validada.</p>
+              </div>
+            ) : nfDetailsModal.nf ? (
+              <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+                <div className="bg-neutral-50 p-4 border-b border-neutral-200 flex justify-between items-center">
+                  <div>
+                    <p className="text-xs font-bold text-neutral-500 uppercase">Credor Principal</p>
+                    <p className="text-lg font-bold text-neutral-800">{nfDetailsModal.nf.credor}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-neutral-500 uppercase">Valor Total (Contas a Pagar)</p>
+                    <p className="text-lg font-bold text-blue-600">{formatCurrency(nfDetailsModal.nf.valor_total)}</p>
+                  </div>
+                </div>
+                
+                <div className="p-4 space-y-6 max-h-[60vh] overflow-y-auto">
+                  {/* Boletos */}
+                  {nfDetailsModal.nf.boletos?.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-bold text-neutral-700 mb-3 uppercase tracking-wider flex items-center gap-2">
+                        <Calendar size={16} className="text-neutral-400" />
+                        Parcelas / Boletos ({nfDetailsModal.nf.boletos.length})
+                      </h4>
+                      <div className="grid gap-2">
+                        {nfDetailsModal.nf.boletos.map((b: any, i: number) => (
+                          <div key={b.id_conta_pagar || i} className="flex items-center justify-between p-3 bg-neutral-50 rounded border border-neutral-100">
+                            <div>
+                              <p className="font-medium text-sm text-neutral-800">{b.descricao}</p>
+                              <p className="text-xs text-neutral-500 mt-0.5">Vence: {new Date(b.dt_vencimento).toLocaleDateString()}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-neutral-700">{formatCurrency(b.valor)}</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${b.status === "PAGO" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                                {b.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Peças de OS */}
+                  {nfDetailsModal.nf.pecas_os?.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-bold text-neutral-700 mb-3 uppercase tracking-wider flex items-center gap-2">
+                        <CheckSquare size={16} className="text-neutral-400" />
+                        Peças aplicadas em OS ({nfDetailsModal.nf.pecas_os.length})
+                      </h4>
+                      <div className="grid gap-2">
+                        {nfDetailsModal.nf.pecas_os.map((p: any, i: number) => (
+                          <div key={p.id_pagamento_peca || i} className="flex items-center justify-between p-3 bg-neutral-50 rounded border border-neutral-100">
+                            <div>
+                              <p className="font-medium text-sm text-neutral-800 line-clamp-1">{p.descricao}</p>
+                              <p className="text-xs text-neutral-500 mt-0.5">OS: {p.id_os || "Avulsa"} • {p.veiculo}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-neutral-700">{formatCurrency(p.custo_real)}</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${p.pago_ao_fornecedor ? "bg-emerald-100 text-emerald-700" : "bg-neutral-200 text-neutral-600"}`}>
+                                {p.pago_ao_fornecedor ? "BAIXADO" : "PENDENTE"}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Estoque */}
+                  {nfDetailsModal.nf.pecas_estoque?.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-bold text-neutral-700 mb-3 uppercase tracking-wider flex items-center gap-2">
+                        <Truck size={16} className="text-neutral-400" />
+                        Entradas no Estoque ({nfDetailsModal.nf.pecas_estoque.length})
+                      </h4>
+                      <div className="grid gap-2">
+                        {nfDetailsModal.nf.pecas_estoque.map((e: any, i: number) => (
+                          <div key={e.id_entrada_estoque || i} className="flex items-center justify-between p-3 bg-neutral-50 rounded border border-neutral-100">
+                            <div>
+                              <p className="font-medium text-sm text-neutral-800">Entrada Lote #{e.id_entrada_estoque}</p>
+                              <p className="text-xs text-neutral-500 mt-0.5">{new Date(e.data_compra).toLocaleDateString()}</p>
+                            </div>
+                            <span className="font-bold text-neutral-700">{formatCurrency(e.valor_total)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <div className="flex justify-end mt-6 pt-4 border-t border-neutral-100">
+            <Button variant="ghost" onClick={() => setNfDetailsModal({ isOpen: false, nf: null, loading: false })}>
+              Fechar
+            </Button>
+          </div>
+        </Modal>
+      )}
     </PageLayout>
   );
 };

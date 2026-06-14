@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ContasPagarRepository } from "../repositories/contasPagar.repository.js";
+import { startOfDay, endOfDay, parseISO } from "date-fns";
 
 const repository = new ContasPagarRepository();
 
@@ -15,7 +16,21 @@ export const createConta = async (req: Request, res: Response) => {
 export const getContas = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
-    const contas = await repository.findAll(startDate as string, endDate as string);
+    
+    let start: Date | undefined;
+    let end: Date | undefined;
+
+    if (startDate && typeof startDate === "string") {
+      const parsedStart = parseISO(startDate.split('T')[0]);
+      start = startOfDay(parsedStart);
+    }
+    
+    if (endDate && typeof endDate === "string") {
+      const parsedEnd = parseISO(endDate.split('T')[0]);
+      end = endOfDay(parsedEnd);
+    }
+
+    const contas = await repository.findAll(start, end);
     res.json(contas);
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar contas" });

@@ -54,4 +54,48 @@ export class FuncionarioController {
       res.status(400).json({ error: 'Failed to delete Funcionario' });
     }
   }
+
+  // --- DIÁRIAS ---
+
+  async registrarDiarias(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const lote = req.body.lote; // Array<{ data_trabalho, presente, valor_diaria }>
+      if (!lote || !Array.isArray(lote)) {
+        return res.status(400).json({ error: 'Formato de lote inválido' });
+      }
+      const resultados = await repository.registrarDiarias(id, lote);
+      res.json(resultados);
+    } catch (error) {
+      res.status(400).json({ error: 'Falha ao registrar diárias', details: error });
+    }
+  }
+
+  async listarDiarias(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const { inicio, fim } = req.query;
+      if (!inicio || !fim) {
+        return res.status(400).json({ error: 'Período (inicio e fim) é obrigatório' });
+      }
+      const diarias = await repository.listarDiarias(id, inicio as string, fim as string);
+      res.json(diarias);
+    } catch (error) {
+      res.status(500).json({ error: 'Falha ao buscar diárias', details: error });
+    }
+  }
+
+  async marcarDiariasComoPagas(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const ids = req.body.ids; // Array<number>
+      if (!ids || !Array.isArray(ids)) {
+        return res.status(400).json({ error: 'Formato de ids inválido' });
+      }
+      const result = await repository.marcarDiariasComoPagas(id, ids);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: 'Falha ao marcar diárias como pagas', details: error });
+    }
+  }
 }

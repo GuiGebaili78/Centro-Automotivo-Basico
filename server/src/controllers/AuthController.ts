@@ -2,8 +2,10 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { UsuarioRepository } from "../repositories/UsuarioRepository.js";
+import { AuthService } from "../services/AuthService.js";
 
 const usuarioRepository = new UsuarioRepository();
+const authService = new AuthService();
 
 export class AuthController {
   async setupAdmin(req: Request, res: Response): Promise<Response | any> {
@@ -48,44 +50,21 @@ export class AuthController {
 
   async login(req: Request, res: Response): Promise<Response | any> {
     try {
-      const { email, senha } = req.body;
+      const { email, password } = req.body;
+      const senhaFornecida = password || req.body.senha;
 
-      if (!email || !senha) {
+      if (!email || !senhaFornecida) {
         return res
           .status(400)
           .json({ error: "E-mail e senha são obrigatórios." });
       }
 
-      const usuario = await usuarioRepository.findByEmail(email);
-
-      if (!usuario) {
-        return res.status(401).json({ error: "Credenciais inválidas." });
-      }
-
-      const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
-
-      if (!senhaValida) {
-        return res.status(401).json({ error: "Credenciais inválidas." });
-      }
-
-      // Separa a senha do restante dos dados para não retornar no JSON
-      const { senha_hash, ...usuarioSemSenha } = usuario;
-
-      const token = jwt.sign(
-        { id_usuario: usuario.id_usuario, perfil: usuario.perfil },
-        (process.env.JWT_SECRET as string) ||
-          "insira_uma_chave_aleatoria_super_segura_aqui",
-        { expiresIn: "1d" },
-      );
-
-      return res.status(200).json({
-        usuario: usuarioSemSenha,
-        token,
-        must_change_password: usuario.must_change_password,
-      });
-    } catch (error) {
+      const result = await authService.login(email, senhaFornecida);
+      return res.status(200).json(result);
+    } catch (error: any) {
       console.error("Erro no login:", error);
-      return res.status(500).json({ error: "Erro interno do servidor." });
+      // Retornar genérico
+      return res.status(401).json({ error: "Credenciais inválidas." });
     }
   }
 
@@ -142,5 +121,38 @@ export class AuthController {
 
   async getServerTime(req: Request, res: Response): Promise<Response> {
     return res.status(200).json({ serverTime: new Date().toISOString() });
+  }
+
+  async forgotPassword(req: Request, res: Response): Promise<Response | any> {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: "E-mail é obrigatório." });
+      }
+
+      await authService.forgotPassword(email);
+
+      // Privacy Lock: Sempre retornar 200 genérico para evitar enumeração de usuário.
+      return res.status(200).json({ 
+        message: "Se o e-mail estiver cadastrado, um link de recuperação foi enviado." 
+      });
+    } catch (error) {
+      console.error("[AuthController] forgotPassword error:", error);
+      return res.status(500).json({ error: "Erro interno ao processar a solicitação." });
+    }
+  }
+
+  async resetPassword(req: Request, res: Response): Promise<Response | any> {
+    try {
+      const { email, token, password } = req.body;
+      if (!email || !token || !password) {
+        return res.status(400).json({ error: "E-mail, token e nova senha são obrigatórios." });
+      }
+
+      await authService.resetPassword(email, token, password);
+      return res.status(200).json({ message: "Senha redefinida com sucesso." });
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message || "Erro ao redefinir a senha." });
+    }
   }
 }

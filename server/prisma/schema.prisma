@@ -184,8 +184,22 @@ model Funcionario {
   ordens_de_servico       OrdemDeServico[]
   pagamentos              PagamentoEquipe[]
   servicos_mao_de_obra    ServicoMaoDeObra[]
+  registros_diarias       RegistroDiaria[]
 
   @@map("funcionario")
+}
+
+model RegistroDiaria {
+  id_registro    Int         @id @default(autoincrement())
+  id_funcionario Int
+  data_trabalho  DateTime    @db.Date
+  presente       Boolean     @default(true) // False indica falta justificada/injustificada
+  pago           Boolean     @default(false)
+  valor_diaria   Decimal     @db.Decimal(10, 2)
+  funcionario    Funcionario @relation(fields: [id_funcionario], references: [id_funcionario])
+
+  @@unique([id_funcionario, data_trabalho])
+  @@map("registro_diaria")
 }
 
 model PecasEstoque {
@@ -486,9 +500,11 @@ model EntradaEstoque {
   valor_total   Decimal       @db.Decimal(10, 2)
   obs           String?       @db.VarChar(500)
   created_at    DateTime      @default(now()) @db.Timestamp(6)
-  nf_numero     String?       @db.VarChar(50)
-  fornecedor    Fornecedor    @relation(fields: [id_pessoa], references: [id_fornecedor])
-  itens         ItemEntrada[]
+  nf_numero                 String?       @db.VarChar(50)
+  pago_ao_fornecedor        Boolean       @default(false)
+  data_pagamento_fornecedor DateTime?     @db.Timestamp(6)
+  fornecedor                Fornecedor    @relation(fields: [id_pessoa], references: [id_fornecedor])
+  itens                     ItemEntrada[]
 
   @@map("entrada_estoque")
 }
@@ -629,4 +645,6 @@ model Usuario {
   must_change_password  Boolean      @default(false)
   created_at            DateTime     @default(now())
   updated_at            DateTime     @updatedAt
+  reset_password_token  String?      @db.VarChar(255)
+  reset_password_expires DateTime?
 }

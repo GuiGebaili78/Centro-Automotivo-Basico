@@ -1,9 +1,20 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { FormEvent } from "react";
 import { Plus, Package } from "lucide-react";
 import { Button } from "../ui";
 import { formatCurrency } from "../../utils/formatCurrency";
+import { normalizeStr } from "../../utils/normalize";
 import { toast } from "react-toastify";
+
+export interface OsItemFormState {
+  id_pecas_estoque: string | number;
+  quantidade: string | number;
+  valor_venda: string | number;
+  descricao: string;
+  codigo_referencia: string;
+  id_fornecedor: string | number;
+  is_interno: boolean;
+}
 
 interface OsItemFormProps {
   onAdd: (item: any) => Promise<boolean>;
@@ -11,6 +22,8 @@ interface OsItemFormProps {
   searchResults: any[];
   setSearchResults: (results: any[]) => void;
   checkAvailability: (stockId: string | number) => Promise<any>;
+  externalState?: OsItemFormState;
+  onExternalStateChange?: (state: OsItemFormState) => void;
 }
 
 export const OsItemForm = ({
@@ -19,8 +32,10 @@ export const OsItemForm = ({
   searchResults,
   setSearchResults,
   checkAvailability,
+  externalState,
+  onExternalStateChange,
 }: OsItemFormProps) => {
-  const [newItem, setNewItem] = useState({
+  const [internalItem, setInternalItem] = useState<OsItemFormState>({
     id_pecas_estoque: "",
     quantidade: "1",
     valor_venda: "",
@@ -29,6 +44,16 @@ export const OsItemForm = ({
     id_fornecedor: "",
     is_interno: false,
   });
+
+  const newItem = externalState || internalItem;
+  const setNewItem = onExternalStateChange || setInternalItem;
+
+  useEffect(() => {
+    if (searchResults.length === 0 || !newItem.descricao) return;
+    const normalized = normalizeStr(newItem.descricao);
+    const exact = searchResults.find(r => normalizeStr(r.nome) === normalized);
+    if (exact) handleSelectPart(exact);
+  }, [searchResults, newItem.descricao]);
 
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [selectedStockInfo, setSelectedStockInfo] = useState<{

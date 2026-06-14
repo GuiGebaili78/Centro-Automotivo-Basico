@@ -26,6 +26,53 @@ export class PagamentoPecaRepository {
     });
   }
 
+  async upsertCustoZero(id_item_os: number, custo_zero: boolean, custo_restaurado?: number) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Validar integridade da OS
+      const item = await tx.itensOs.findUnique({
+        where: { id_iten: id_item_os },
+        include: { ordem_de_servico: true },
+      });
+
+      if (!item) throw new Error("Item da OS não encontrado.");
+      if (item.ordem_de_servico.status === "FINALIZADA") {
+        throw new Error("Não é possível alterar custo de peças em uma OS já finalizada.");
+      }
+
+      // 2. Buscar pagamento existente
+      const existing = await tx.pagamentoPeca.findFirst({
+        where: { id_item_os: id_item_os },
+      });
+
+      if (existing) {
+        // Trava: Não permite Custo Zero se houver NF
+        if (existing.nf_numero) {
+          throw new Error("Não é possível alterar o custo de uma peça que já possui Nota Fiscal vinculada.");
+        }
+
+        const custoFinal = custo_zero ? 0 : (custo_restaurado ?? Number(existing.custo_real));
+
+        return await tx.pagamentoPeca.update({
+          where: { id_pagamento_peca: existing.id_pagamento_peca },
+          data: {
+            custo_real: custoFinal,
+            // Importante: id_pessoa não é alterado para manter rastreabilidade
+          },
+        });
+      } else {
+        // Se não existir, criar o registro de pagamento zerado (ou com valor restaurado)
+        const custoFinal = custo_zero ? 0 : (custo_restaurado ?? 0);
+        return await tx.pagamentoPeca.create({
+          data: {
+            id_item_os: id_item_os,
+            custo_real: custoFinal,
+            data_compra: new Date(),
+          },
+        });
+      }
+    });
+  }
+
   async findAll(page: number = 1, limit: number = 50) {
     const skip = (page - 1) * limit;
 
@@ -156,9 +203,8 @@ export class PagamentoPecaRepository {
       if (pagamento.pago_ao_fornecedor)
         throw new Error("Pagamento já realizado.");
         
-      const osStatus = pagamento.item_os?.ordem_de_servico?.status;
-      if (osStatus === "ABERTA" || osStatus === "AGENDAMENTO" || osStatus === "ORCAMENTO") {
-        throw new Error("Não é possível pagar uma peça de uma OS que ainda não foi finalizada/consolidada.");
+      if (pagamento.nf_numero) {
+        throw new Error("Esta peça está vinculada a uma Nota Fiscal. A baixa deve ser realizada através da quitação do Contas a Pagar correspondente.");
       }
 
       // BUSCAR CATEGORIA: Auto Peças > Pg. Fornecedor
@@ -269,12 +315,9 @@ export class PagamentoPecaRepository {
       if (pagamentos.some((p) => p.pago_ao_fornecedor))
         throw new Error("Uma ou mais peças já foram pagas.");
 
-      const invalidOS = pagamentos.some((p) => {
-        const st = p.item_os?.ordem_de_servico?.status;
-        return st === "ABERTA" || st === "AGENDAMENTO" || st === "ORCAMENTO";
-      });
-      if (invalidOS) {
-        throw new Error("Não é possível liquidar peças de OSs que não estão finalizadas/consolidadas.");
+      const temNotaFiscal = pagamentos.some((p) => p.nf_numero);
+      if (temNotaFiscal) {
+        throw new Error("Uma ou mais peças estão vinculadas a uma Nota Fiscal. A baixa deve ser realizada através da quitação do Contas a Pagar correspondente.");
       }
 
       // 2. Calcular Valor Total Selecionado (Bruto)

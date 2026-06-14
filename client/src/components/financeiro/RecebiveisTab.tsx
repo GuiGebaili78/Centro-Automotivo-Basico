@@ -112,7 +112,16 @@ export const RecebiveisTab = () => {
     try {
       const requiresContaBancaria = filteredData
         .filter((r) => selectedIds.includes(r.id_recebivel))
-        .some((r) => r.id_operadora === null && (r as any).tipo_parcelamento?.toUpperCase() !== 'DINHEIRO');
+        .some((r) => {
+          if (r.id_operadora !== null) return false;
+          if ((r as any).tipo_parcelamento?.toUpperCase() === 'DINHEIRO') return false;
+          
+          // Verifica se já existe um pagamento PIX na OS que possua conta_bancaria registrada
+          const pagamentos = (r as any).ordem_de_servico?.pagamentos_cliente || [];
+          const hasPixWithAccount = pagamentos.some((p: any) => p.metodo_pagamento === 'PIX' && p.id_conta_bancaria);
+          
+          return !hasPixWithAccount;
+        });
 
       if (requiresContaBancaria && selectedContaBancaria === "") {
         toast.error("Selecione a Conta Bancária de destino para o PIX/Transferência.");
@@ -153,7 +162,15 @@ export const RecebiveisTab = () => {
 
   const requiresContaBancaria = filteredData
     .filter((r) => selectedIds.includes(r.id_recebivel))
-    .some((r) => r.id_operadora === null && (r as any).tipo_parcelamento?.toUpperCase() !== 'DINHEIRO');
+    .some((r) => {
+      if (r.id_operadora !== null) return false;
+      if ((r as any).tipo_parcelamento?.toUpperCase() === 'DINHEIRO') return false;
+      
+      const pagamentos = (r as any).ordem_de_servico?.pagamentos_cliente || [];
+      const hasPixWithAccount = pagamentos.some((p: any) => p.metodo_pagamento === 'PIX' && p.id_conta_bancaria);
+      
+      return !hasPixWithAccount;
+    });
 
   const getModalityBadge = (r: IRecebivelCartao) => {
     const modality = (r as any).modalidade_snapshot 

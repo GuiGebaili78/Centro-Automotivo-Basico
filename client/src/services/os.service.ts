@@ -3,9 +3,14 @@ import type { IOrdemDeServico } from "../types/backend";
 import { OsStatus } from "../types/os.types";
 
 export const OsService = {
-  getAll: async (searchTerm?: string) => {
-    const params = searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : '';
-    const response = await api.get<IOrdemDeServico[]>(`/ordem-de-servico${params}`);
+  getAll: async (searchTerm?: string, statusFilter?: string[]) => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.append("search", searchTerm);
+    if (statusFilter && statusFilter.length > 0) {
+      statusFilter.forEach(status => params.append("status", status));
+    }
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+    const response = await api.get<IOrdemDeServico[]>(`/ordem-de-servico${queryString}`);
     return response.data;
   },
 

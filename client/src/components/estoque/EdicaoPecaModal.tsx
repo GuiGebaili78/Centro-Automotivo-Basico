@@ -14,7 +14,7 @@ interface EdicaoPecaModalProps {
   isOpen: boolean;
   onClose: () => void;
   peca: IPecasEstoque | null;
-  onSuccess: () => void;
+  onSuccess: (updated?: IPecasEstoque) => void;
   onDeleteRequest: (peca: IPecasEstoque) => void;
 }
 
@@ -117,9 +117,9 @@ export const EdicaoPecaModal = ({
         estoque_minimo: Number(formData.estoque_minimo),
       };
 
-      await EstoqueService.update(peca.id_pecas_estoque, payload);
+      const updatedPeca = await EstoqueService.update(peca.id_pecas_estoque, payload);
       toast.success("Peça atualizada com sucesso!");
-      onSuccess();
+      onSuccess(updatedPeca);
       onClose();
     } catch (error: any) {
       console.error(error);

@@ -67,6 +67,16 @@ export const OrdemDeServicoDetalhePage = () => {
   const { confirmState, requestConfirm, closeConfirm } = useConfirm();
   const [showDateEdit, setShowDateEdit] = useState(false);
 
+  const [osItemFormState, setOsItemFormState] = useState({
+    id_pecas_estoque: "",
+    quantidade: "1",
+    valor_venda: "",
+    descricao: "",
+    codigo_referencia: "",
+    id_fornecedor: "",
+    is_interno: false,
+  });
+
   // Declarative UI state and Ref
   const [isPulsing, setIsPulsing] = useState(false);
   const totalsSectionRef = useRef<HTMLDivElement>(null);
@@ -82,7 +92,7 @@ export const OrdemDeServicoDetalhePage = () => {
   }, []);
 
   // --- HANDLERS ---
-  const handleBack = () => navigate("/");
+  const handleBack = () => navigate("/", { state: { reload: true } });
 
   const handleFinish = () => {
     requestConfirm(
@@ -99,7 +109,7 @@ export const OrdemDeServicoDetalhePage = () => {
         });
         if (success) {
           closeConfirm();
-          setTimeout(() => navigate("/"), 1000);
+          setTimeout(() => navigate("/", { state: { reload: true } }), 1000);
         }
       },
     );
@@ -274,6 +284,8 @@ export const OrdemDeServicoDetalhePage = () => {
           searchResults={partSearchResults}
           setSearchResults={setPartSearchResults}
           checkAvailability={checkStockAvailability}
+          externalState={osItemFormState}
+          onExternalStateChange={setOsItemFormState}
         />
       </Card>
 

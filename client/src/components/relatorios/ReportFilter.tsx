@@ -6,6 +6,10 @@ import {
   subMonths,
   startOfYear,
   endOfYear,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
 } from "date-fns";
 import { Input, Button } from "../ui";
 import { CalendarDays } from "lucide-react";
@@ -49,6 +53,14 @@ export const ReportFilter = ({
     let end = new Date();
 
     switch (preset) {
+      case "today":
+        start = startOfDay(today);
+        end = endOfDay(today);
+        break;
+      case "thisWeek":
+        start = startOfWeek(today, { weekStartsOn: 1 });
+        end = endOfWeek(today, { weekStartsOn: 1 });
+        break;
       case "thisMonth":
         start = startOfMonth(today);
         end = endOfMonth(today);
@@ -77,6 +89,8 @@ export const ReportFilter = ({
   };
 
   const presets = [
+    { key: "today", label: "Hoje" },
+    { key: "thisWeek", label: "Esta Semana" },
     { key: "thisMonth", label: "Este Mês" },
     { key: "last3Months", label: "Últimos 3 Meses" },
     { key: "last6Months", label: "Últimos 6 Meses" },

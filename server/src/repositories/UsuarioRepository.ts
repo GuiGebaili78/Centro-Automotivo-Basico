@@ -31,6 +31,18 @@ export class UsuarioRepository {
       data: {
         senha_hash,
         must_change_password: false,
+        reset_password_token: null,
+        reset_password_expires: null,
+      },
+    });
+  }
+
+  async updateResetToken(id_usuario: number, tokenHash: string | null, expires: Date | null): Promise<Usuario> {
+    return prisma.usuario.update({
+      where: { id_usuario },
+      data: {
+        reset_password_token: tokenHash,
+        reset_password_expires: expires,
       },
     });
   }

@@ -10,4 +10,9 @@ funcionarioRoutes.get('/:id', controller.findById);
 funcionarioRoutes.put('/:id', controller.update);
 funcionarioRoutes.delete('/:id', controller.delete);
 
+// --- DIÁRIAS ---
+funcionarioRoutes.post('/:id/diarias', controller.registrarDiarias);
+funcionarioRoutes.get('/:id/diarias', controller.listarDiarias);
+funcionarioRoutes.put('/:id/diarias/pagas', controller.marcarDiariasComoPagas);
+
 export { funcionarioRoutes };

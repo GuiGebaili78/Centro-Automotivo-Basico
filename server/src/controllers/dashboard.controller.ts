@@ -1,23 +1,16 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
 import { OrdemDeServicoRepository } from "../repositories/ordemDeServico.repository.js";
+import { dayjs, TIMEZONE, getDayBoundsSP, getMonthBoundsSP } from "../utils/date.js";
 
 const osRepository = new OrdemDeServicoRepository();
 
 export class DashboardController {
   async getDashboardData(req: Request, res: Response) {
     try {
-      const now = new Date();
-      const todayStr = now.toISOString().split("T")[0];
-
-      // Use UTC range for "Today" to match how the frontend was doing it (startsWith todayLocal)
-      // or better, use local time range.
-      const year = now.getFullYear();
-      const month = now.getMonth();
-      const date = now.getDate();
-      
-      const startOfDay = new Date(Date.UTC(year, month, date, 0, 0, 0, 0));
-      const endOfDay = new Date(Date.UTC(year, month, date, 23, 59, 59, 999));
+      const now = dayjs().tz(TIMEZONE);
+      const startOfDay = getDayBoundsSP(now).start;
+      const endOfDay = getDayBoundsSP(now).end;
 
       // --- AGGREGATIONS / COUNTS ---
 
@@ -25,15 +18,6 @@ export class DashboardController {
       const osAberta = await prisma.ordemDeServico.count({
         where: {
           status: { in: ["ABERTA", "EM_ANDAMENTO"] },
-          deleted_at: null,
-        },
-      });
-
-      // 2. Contas a Pagar (Split)
-      // Pending: status PENDENTE (Total)
-      const contasPagarPending = await prisma.contasPagar.count({
-        where: {
-          status: "PENDENTE",
           deleted_at: null,
         },
       });
@@ -47,14 +31,13 @@ export class DashboardController {
         },
       });
 
-      const tomorrowStart = new Date(startOfDay);
-      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-      const tomorrowEnd = new Date(endOfDay);
-      tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+      const tomorrowStart = getDayBoundsSP(now.add(1, 'day')).start;
+      const tomorrowEnd = getDayBoundsSP(now.add(1, 'day')).end;
 
-      const next7DaysStart = new Date(startOfDay);
-      const next7DaysEnd = new Date(endOfDay);
-      next7DaysEnd.setDate(next7DaysEnd.getDate() + 7);
+      const next7DaysStart = startOfDay;
+      const next7DaysEnd = getDayBoundsSP(now.add(7, 'day')).end;
+      
+      const endOfMonth = getMonthBoundsSP(now).end;
 
       const contasPagarHojeList = await prisma.contasPagar.findMany({
         where: { status: "PENDENTE", dt_vencimento: { gte: startOfDay, lte: endOfDay }, deleted_at: null },
@@ -73,6 +56,12 @@ export class DashboardController {
       });
       const contasPagar7DiasCount = contasPagar7DiasList.length;
       const contasPagar7DiasValor = contasPagar7DiasList.reduce((sum, c) => sum + Number(c.valor), 0);
+
+      const contasPagarFimMesList = await prisma.contasPagar.findMany({
+        where: { status: "PENDENTE", dt_vencimento: { gte: startOfDay, lte: endOfMonth }, deleted_at: null },
+      });
+      const contasPagarFimMesCount = contasPagarFimMesList.length;
+      const contasPagarFimMesValor = contasPagarFimMesList.reduce((sum, c) => sum + Number(c.valor), 0);
 
       // 3. Livro Caixa Entries (Today)
       // Matches manual + auto entries
@@ -158,7 +147,8 @@ export class DashboardController {
       res.json({
         stats: {
           osAberta,
-          contasPagarPending,
+          contasPagarFimMesCount,
+          contasPagarFimMesValor,
           contasPagarOverdue,
           contasPagarHojeCount,
           contasPagarHojeValor,

@@ -96,6 +96,16 @@ export class ContasPagarRepository {
                 data_pagamento_fornecedor: created.dt_pagamento || new Date(),
               },
             });
+            await tx.entradaEstoque.updateMany({
+              where: {
+                nf_numero: created.nf_numero,
+                pago_ao_fornecedor: false,
+              },
+              data: {
+                pago_ao_fornecedor: true,
+                data_pagamento_fornecedor: created.dt_pagamento || new Date(),
+              },
+            });
           }
         }
       }
@@ -140,16 +150,16 @@ export class ContasPagarRepository {
     });
   }
 
-  async findAll(startDate?: string, endDate?: string) {
+  async findAll(startDate?: Date, endDate?: Date) {
     const where: any = { deleted_at: null };
     
     if (startDate || endDate) {
       where.dt_vencimento = {};
       if (startDate) {
-        where.dt_vencimento.gte = new Date(`${startDate}T00:00:00.000Z`);
+        where.dt_vencimento.gte = startDate;
       }
       if (endDate) {
-        where.dt_vencimento.lte = new Date(`${endDate}T23:59:59.999Z`);
+        where.dt_vencimento.lte = endDate;
       }
     }
 
@@ -266,6 +276,16 @@ export class ContasPagarRepository {
                 data_pagamento_fornecedor: updated.dt_pagamento || new Date(),
               },
             });
+            await tx.entradaEstoque.updateMany({
+              where: {
+                nf_numero: updated.nf_numero,
+                pago_ao_fornecedor: false,
+              },
+              data: {
+                pago_ao_fornecedor: true,
+                data_pagamento_fornecedor: updated.dt_pagamento || new Date(),
+              },
+            });
           }
         }
       }
@@ -328,6 +348,17 @@ export class ContasPagarRepository {
                 deleted_at: null,
                 // Só reverte peças que foram pagas automaticamente (sem livro_caixa individual)
                 id_livro_caixa: null,
+              },
+              data: {
+                pago_ao_fornecedor: false,
+                data_pagamento_fornecedor: null,
+              },
+            });
+
+            await tx.entradaEstoque.updateMany({
+              where: {
+                nf_numero: current.nf_numero,
+                pago_ao_fornecedor: true,
               },
               data: {
                 pago_ao_fornecedor: false,

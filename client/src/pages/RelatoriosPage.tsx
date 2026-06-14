@@ -20,6 +20,7 @@ import type {
 } from "../types/relatorios.types";
 import { RelatoriosService } from "../services/relatorios.service";
 import { FinanceiroService } from "../services/financeiro.service";
+import { EstoqueService } from "../services/estoque.service";
 import { formatCurrency } from "../utils/formatCurrency";
 import {
   BarChart,
@@ -47,6 +48,7 @@ import {
   Filter,
   AlertTriangle,
   X,
+  Info,
 } from "lucide-react";
 import { Select } from "../components/ui";
 
@@ -80,6 +82,7 @@ export const RelatoriosPage = () => {
   );
   const [operadorasStats, setOperadorasStats] = useState<OperadoraStats[]>([]);
   const [categoriasFinanceiras, setCategoriasFinanceiras] = useState<any[]>([]);
+  const [estoqueGeral, setEstoqueGeral] = useState<any[]>([]);
 
   // Datas globais do filtro superior para sincronizar Timeline de Despesas
   const [globalDates, setGlobalDates] = useState({ startDate: "", endDate: "" });
@@ -124,16 +127,18 @@ export const RelatoriosPage = () => {
     setLoading(true);
     setGlobalDates({ startDate, endDate });
     try {
-      const [resumoData, equipeData, evolucaoDespesasData, operadorasData] = await Promise.all([
+      const [resumoData, equipeData, evolucaoDespesasData, operadorasData, estoqueData] = await Promise.all([
         RelatoriosService.getResumoFinanceiro(startDate, endDate),
         RelatoriosService.getPerformanceEquipe(startDate, endDate),
         RelatoriosService.getEvolucaoDespesas(startDate, endDate),
         RelatoriosService.getOperadorasCartao(startDate, endDate),
+        EstoqueService.getAll(),
       ]);
       setResumo(resumoData);
       setEquipe(equipeData);
       setEvolucaoDespesas(evolucaoDespesasData);
       setOperadorasStats(operadorasData);
+      setEstoqueGeral(estoqueData);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar relatórios.");
@@ -229,20 +234,20 @@ export const RelatoriosPage = () => {
     >
       <div className="space-y-6 relative">
         {pendingConsolidations?.hasPending && (
-          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm mb-2 flex items-start justify-between">
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm mb-2 flex items-start justify-between">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={20} />
+              <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
               <div>
-                <h3 className="text-sm font-bold text-amber-800">Aviso de Integridade dos Relatórios</h3>
-                <p className="text-sm text-amber-700 mt-1">
-                  Para que os relatórios apresentem os valores corretos, é necessário que todas as consolidações de OS sejam concluídas. 
+                <h3 className="text-sm font-bold text-red-800">Aviso de Integridade dos Relatórios</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Para relatórios corretos, conclua as consolidações pendentes. 
                   Existem <strong>{pendingConsolidations.count}</strong> OS(s) pendente(s) de fechamento financeiro.
                 </p>
               </div>
             </div>
             <button
               onClick={() => navigate("/fechamento-financeiro")}
-              className="text-sm font-semibold text-amber-700 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors shrink-0"
+              className="text-sm font-semibold text-red-700 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors shrink-0"
             >
               Ir para Consolidação
             </button>
@@ -263,9 +268,9 @@ export const RelatoriosPage = () => {
           </div>
         ) : (
           <>
-            {/* ── Row 1: 4 KPI Cards ── */}
+            {/* ── Row 1: 5 KPI Cards ── */}
             {resumo && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 {/* 1. Receita Bruta */}
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-neutral-100 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-4">
@@ -274,7 +279,7 @@ export const RelatoriosPage = () => {
                         Receita Bruta
                       </p>
                       <h3 className="text-2xl font-bold text-neutral-800 mt-1">
-                        {formatCurrency(resumo.bruta.total)}
+                        {formatCurrency(resumo.dashboard.receitaBruta)}
                       </h3>
                     </div>
                     <div className="bg-emerald-50 p-2 rounded-lg">
@@ -283,9 +288,9 @@ export const RelatoriosPage = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs border-t border-neutral-50 pt-3">
                     <div className="text-center">
-                      <span className="block text-neutral-400 mb-0.5">Serviços</span>
-                      <span className="font-semibold text-neutral-600 truncate block">
-                        {formatCurrency(resumo.bruta.receitaServicos ?? resumo.bruta.maoDeObra)}
+                      <span className="block text-neutral-400 mb-0.5">Operacional Líquida</span>
+                      <span className="font-semibold text-emerald-600 truncate block">
+                        {formatCurrency(resumo.bruta.total)}
                       </span>
                     </div>
                     <div className="text-center border-l border-neutral-100">
@@ -297,30 +302,49 @@ export const RelatoriosPage = () => {
                   </div>
                 </div>
 
-                {/* 2. Lucro Líquido */}
+                {/* 2. Despesa Bruta */}
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-neutral-100 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <p className="text-xs font-semibold uppercase text-neutral-400 tracking-wider">
+                      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase text-neutral-400 tracking-wider" title="Soma dos pagamentos a fornecedores efetivamente liquidados no período (Regime de Caixa).">
+                        Despesa Bruta
+                        <Info size={14} className="text-neutral-400 cursor-help" />
+                      </p>
+                      <h3 className="text-2xl font-bold text-red-600 mt-1">
+                        - {formatCurrency(resumo.dashboard.despesaBruta)}
+                      </h3>
+                    </div>
+                    <div className="bg-red-50 p-2 rounded-lg">
+                      <TrendingDown size={20} className="text-red-500" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 text-xs border-t border-neutral-50 pt-3">
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">Regime de Caixa:</span>
+                      <strong className="text-neutral-700">
+                        {formatCurrency(resumo.dashboard.despesaBruta)}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Lucro Líquido */}
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-neutral-100 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase text-neutral-400 tracking-wider" title="Lucro apurado apenas sobre serviços e peças de Ordens de Serviço já finalizadas (Regime de Competência).">
                         Lucro Líquido
+                        <Info size={14} className="text-neutral-400 cursor-help" />
                       </p>
                       <h3
                         className={`text-2xl font-bold mt-1 ${
-                          resumo.indicadores.lucroLiquido >= 0
+                          resumo.dashboard.lucroLiquido >= 0
                             ? "text-blue-600"
                             : "text-red-600"
                         }`}
                       >
-                        {formatCurrency(resumo.indicadores.lucroLiquido)}
+                        {formatCurrency(resumo.dashboard.lucroLiquido)}
                       </h3>
-                      <span className="text-sm font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 mt-1 inline-block">
-                        {(
-                          (resumo.indicadores.lucroLiquido /
-                            (resumo.bruta.total || 1)) *
-                          100
-                        ).toFixed(1)}
-                        % Margem
-                      </span>
                     </div>
                     <div className="bg-blue-50 p-2 rounded-lg">
                       <Wallet size={20} className="text-blue-500" />
@@ -348,50 +372,16 @@ export const RelatoriosPage = () => {
                   </div>
                 </div>
 
-                {/* 3. Despesas Totais */}
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-neutral-100 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase text-neutral-400 tracking-wider">
-                        Despesas Totais
-                      </p>
-                      <h3 className="text-2xl font-bold text-red-600 mt-1">
-                        - {formatCurrency(resumo.despesas.total)}
-                      </h3>
-                    </div>
-                    <div className="bg-red-50 p-2 rounded-lg">
-                      <TrendingDown size={20} className="text-red-500" />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1 text-xs border-t border-neutral-50 pt-3">
-                    <div className="flex justify-between">
-                      <span className="text-neutral-500">Operacional:</span>
-                      <strong className="text-neutral-700">
-                        {formatCurrency(resumo.despesas.oficina)}
-                      </strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-neutral-500">Auto Peças:</span>
-                      <strong className="text-neutral-700">
-                        {formatCurrency(resumo.despesas.autoPecas)}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-
                 {/* 4. Prejuízos */}
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-neutral-100 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <p className="text-xs font-semibold uppercase text-neutral-400 tracking-wider">
-                        Prejuízos
+                        Prejuízos / Consumo
                       </p>
                       <h3 className="text-2xl font-bold text-amber-600 mt-1">
-                        {formatCurrency(resumo.prejuizos?.total || 0)}
+                        {formatCurrency(resumo.dashboard.prejuizos)}
                       </h3>
-                      <span className="text-xs text-neutral-400 block mt-0.5">
-                        consumo interno
-                      </span>
                     </div>
                     <div className="bg-amber-50 p-2 rounded-lg">
                       <AlertTriangle size={20} className="text-amber-500" />
@@ -399,16 +389,37 @@ export const RelatoriosPage = () => {
                   </div>
                   <div className="flex flex-col gap-1 text-xs border-t border-neutral-50 pt-3">
                     <div className="flex justify-between">
-                      <span className="text-neutral-500">Estoque:</span>
-                      <strong className="text-neutral-700">
-                        {formatCurrency(resumo.prejuizos?.estoque || 0)}
-                      </strong>
+                      <span className="text-neutral-500">Uso interno na oficina</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-neutral-500">Auto Peças:</span>
-                      <strong className="text-neutral-700">
-                        {formatCurrency(resumo.prejuizos?.autoPecas || 0)}
-                      </strong>
+                  </div>
+                </div>
+
+                {/* 5. Estoque Híbrido (2x2 Grid) */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-neutral-100 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-xs font-semibold uppercase text-neutral-400 tracking-wider">
+                      Estoque Híbrido
+                    </p>
+                    <div className="bg-indigo-50 p-1.5 rounded-lg">
+                      <ListFilter size={16} className="text-indigo-500" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-3 mt-1">
+                    <div className="bg-neutral-50 p-2 rounded border border-neutral-100">
+                      <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider block mb-0.5">Compras (Período)</span>
+                      <span className="font-bold text-neutral-700 text-sm block">{formatCurrency(resumo.dashboard.estoque.comprasPeriodo)}</span>
+                    </div>
+                    <div className="bg-neutral-50 p-2 rounded border border-neutral-100">
+                      <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider block mb-0.5">Vendas (Período)</span>
+                      <span className="font-bold text-neutral-700 text-sm block">{formatCurrency(resumo.dashboard.estoque.vendasPeriodo)}</span>
+                    </div>
+                    <div className="bg-emerald-50 p-2 rounded border border-emerald-100">
+                      <span className="text-[10px] text-emerald-600 uppercase font-bold tracking-wider block mb-0.5">Lucro (Período)</span>
+                      <span className="font-bold text-emerald-700 text-sm block">{formatCurrency(resumo.dashboard.estoque.lucroPeriodo)}</span>
+                    </div>
+                    <div className="bg-indigo-50 p-2 rounded border border-indigo-100">
+                      <span className="text-[10px] text-indigo-600 uppercase font-bold tracking-wider block mb-0.5">Imobilizado Total</span>
+                      <span className="font-bold text-indigo-700 text-sm block">{formatCurrency(resumo.dashboard.estoque.imobilizadoAbsoluto)}</span>
                     </div>
                   </div>
                 </div>
@@ -454,6 +465,8 @@ export const RelatoriosPage = () => {
                   </div>
 
                   <div className="flex bg-neutral-100 p-0.5 rounded-lg border border-neutral-200">
+                    <button type="button" onClick={() => setEvolGroupBy("day")} className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${evolGroupBy === "day" ? "bg-white text-neutral-800 shadow-sm" : "text-neutral-500 hover:text-neutral-800"}`}>Diário</button>
+                    <button type="button" onClick={() => setEvolGroupBy("week")} className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${evolGroupBy === "week" ? "bg-white text-neutral-800 shadow-sm" : "text-neutral-500 hover:text-neutral-800"}`}>Semanal</button>
                     {(Object.keys(GROUP_BY_LABELS) as GroupByOption[]).map((key) => (
                       <button
                         key={key}

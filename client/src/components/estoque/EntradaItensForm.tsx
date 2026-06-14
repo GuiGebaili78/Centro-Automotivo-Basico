@@ -5,6 +5,7 @@ import { Card, Input, Select, Button, ActionButton } from "../ui";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { EstoqueService } from "../../services/estoque.service";
 import type { IItemEntrada, IPecasEstoque } from "../../types/estoque.types";
+import { normalizeStr } from "../../utils/normalize";
 
 interface EntradaItensFormProps {
   items: IItemEntrada[];
@@ -86,6 +87,8 @@ export const EntradaItensForm = ({
     }
     try {
       const results = await EstoqueService.searchParts(q);
+      const exactMatch = results.find(p => normalizeStr(p.nome) === normalizeStr(q));
+      if (exactMatch) { selectPart(exactMatch); return; }
       setPartResults(results);
     } catch (e) {
       console.error(e);

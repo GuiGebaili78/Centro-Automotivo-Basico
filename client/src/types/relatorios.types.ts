@@ -57,6 +57,18 @@ export interface ResumoFinanceiro {
   despesasPorCategoria: { categoria: string; valor: number }[];
   indicadores: IndicadoresFinanceiros;
   consumoInterno?: number;
+  dashboard: {
+    receitaBruta: number;
+    despesaBruta: number;
+    lucroLiquido: number;
+    prejuizos: number;
+    estoque: {
+      comprasPeriodo: number;
+      vendasPeriodo: number;
+      lucroPeriodo: number;
+      imobilizadoAbsoluto: number;
+    };
+  };
 }
 
 export interface PerformanceFuncionario {

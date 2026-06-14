@@ -56,7 +56,14 @@ export class OrdemDeServicoService {
   }
 
   async findAll(filters: any) {
-    const statusArray = filters?.status ? filters.status.split(',') : undefined;
+    let statusArray: string[] | undefined = undefined;
+    if (filters?.status) {
+      if (Array.isArray(filters.status)) {
+        statusArray = filters.status as string[];
+      } else if (typeof filters.status === 'string') {
+        statusArray = filters.status.split(',');
+      }
+    }
     const take = filters?.take ? parseInt(filters.take, 10) : undefined;
     return this.repository.findAll(filters?.search, statusArray, take);
   }

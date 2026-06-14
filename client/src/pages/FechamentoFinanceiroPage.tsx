@@ -78,7 +78,13 @@ export const FechamentoFinanceiroPage = () => {
     try {
       const [fechamentosData, allOss] = await Promise.all([
         FinanceiroService.getFechamentos(searchTerm),
-        OsService.getAll(),
+        OsService.getAll(searchTerm, [
+          "ABERTA",
+          "EM_ANDAMENTO",
+          "PRONTO PARA FINANCEIRO",
+          "FINANCEIRO",
+          "FINALIZADA"
+        ]),
       ]);
 
       const fechamentosWithOs = fechamentosData.map((f: any) => {
@@ -490,10 +496,10 @@ export const FechamentoFinanceiroPage = () => {
                         const valorOs = Number(os?.valor_total_cliente || 0);
                         const isCli = valorOs === 0 || totalPago >= valorOs;
 
-                        // CON: todos os itens externos têm ao menos 1 pagamentos_peca com custo_real > 0
-                        const itensExternos = (os?.itens_os || []);
+                        // CON: todos os itens externos têm ao menos 1 pagamentos_peca com custo_real >= 0
+                        const itensExternos = (os?.itens_os || []).filter((i: any) => !i.id_pecas_estoque);
                         const isCon = itensExternos.length === 0 || itensExternos.every((item: any) =>
-                          item.pagamentos_peca?.some((pp: any) => Number(pp.custo_real) > 0)
+                          item.pagamentos_peca?.some((pp: any) => pp.custo_real !== null && pp.custo_real !== undefined && Number(pp.custo_real) >= 0)
                         );
 
                         // PEC: todos os itens externos com pago_ao_fornecedor = true OU nf_numero preenchido

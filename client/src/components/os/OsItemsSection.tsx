@@ -12,6 +12,8 @@ interface OsItemsSectionProps {
   searchResults: any[];
   setSearchResults: (results: any[]) => void;
   checkAvailability: (stockId: string | number) => Promise<any>;
+  externalState?: any;
+  onExternalStateChange?: (state: any) => void;
 }
 
 export const OsItemsSection = ({
@@ -24,6 +26,8 @@ export const OsItemsSection = ({
   searchResults,
   setSearchResults,
   checkAvailability,
+  externalState,
+  onExternalStateChange,
 }: OsItemsSectionProps) => {
   return (
     <div className="space-y-4 pt-4 border-t border-dashed border-neutral-200">
@@ -41,6 +45,8 @@ export const OsItemsSection = ({
           searchResults={searchResults}
           setSearchResults={setSearchResults}
           checkAvailability={checkAvailability}
+          externalState={externalState}
+          onExternalStateChange={onExternalStateChange}
         />
       )}
 

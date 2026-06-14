@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -43,23 +43,35 @@ export const PecasEstoquePage = () => {
     }
   };
 
-  const filteredPecas = pecas.filter((p) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
+  const filteredPecas = useMemo(() => {
+    if (!searchTerm.trim()) return pecas;
+    const term = searchTerm.toLowerCase().trim();
 
-    // Safely access nested properties
-    const lastEntry = (p as any).itens_entrada?.[0]?.entrada;
-    const fornecedor =
-      lastEntry?.fornecedor?.nome_fantasia || lastEntry?.fornecedor?.nome || "";
+    return pecas.filter((p) => {
+      const lastEntry = (p as any).itens_entrada?.[0]?.entrada;
+      const firstItem = (p as any).itens_entrada?.[0];
 
-    return (
-      p.nome.toLowerCase().includes(term) ||
-      (p.descricao && p.descricao.toLowerCase().includes(term)) ||
-      (p.fabricante && p.fabricante.toLowerCase().includes(term)) ||
-      String(p.id_pecas_estoque).includes(term) ||
-      (fornecedor && fornecedor.toLowerCase().includes(term))
-    );
-  });
+      const fields: (string | number | null | undefined)[] = [
+        p.nome,
+        p.descricao,
+        p.fabricante,
+        p.id_pecas_estoque,
+        p.localizacao,
+        p.aplicacao ?? firstItem?.aplicacao,
+        firstItem?.ref_cod ?? p.ref_cod,
+        firstItem?.condicao,
+        lastEntry?.fornecedor?.nome_fantasia,
+        lastEntry?.fornecedor?.nome,
+        lastEntry?.nf_numero,
+        p.estoque_atual,
+        lastEntry?.data_compra
+          ? new Date(lastEntry.data_compra).toLocaleDateString('pt-BR')
+          : null,
+      ];
+
+      return fields.some(f => f != null && String(f).toLowerCase().includes(term));
+    });
+  }, [pecas, searchTerm]);
 
   const handleOpenEdit = (p: IPecasEstoque) => {
     setEditData(p);
@@ -134,7 +146,17 @@ export const PecasEstoquePage = () => {
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
         peca={editData}
-        onSuccess={loadPecas}
+        onSuccess={(updated) => {
+          if (updated) {
+            setPecas((prev) =>
+              prev.map((p) =>
+                p.id_pecas_estoque === updated.id_pecas_estoque ? { ...p, ...updated } : p
+              )
+            );
+          } else {
+            loadPecas();
+          }
+        }}
         onDeleteRequest={(p) => {
           // Re-use logic for delete request confirm
           handleDeleteClick(p);
