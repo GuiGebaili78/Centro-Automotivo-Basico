@@ -81,7 +81,7 @@ export class RelatoriosController {
       const data = await relatoriosService.getEvolucaoMensal(
         start,
         end,
-        (groupBy as "day" | "week" | "month" | "quarter" | "semester" | "year") || "month",
+        (groupBy as "month" | "quarter" | "semester" | "year") || "month",
       );
       return res.json(data);
     } catch (error) {

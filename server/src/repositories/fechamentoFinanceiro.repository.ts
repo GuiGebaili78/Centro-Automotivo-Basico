@@ -279,14 +279,17 @@ export class FechamentoFinanceiroRepository {
           }
 
           if (id_pagamento_peca) {
+            const updateData: any = {
+              id_pessoa: Number(id_fornecedor),
+              pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+              nf_numero: nf_numero || null,
+            };
+            if (custo_real !== undefined && custo_real !== null && custo_real !== "") {
+              updateData.custo_real = Number(custo_real);
+            }
             await tx.pagamentoPeca.update({
               where: { id_pagamento_peca },
-              data: {
-                id_pessoa: Number(id_fornecedor),
-                custo_real: custo_real !== undefined && custo_real !== null && custo_real !== "" ? Number(custo_real) : undefined,
-                pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
-                nf_numero: nf_numero || null,
-              },
+              data: updateData,
             });
           } else {
             if (custo_real === undefined || custo_real === null || custo_real === "") {

@@ -252,6 +252,10 @@ export class RecebivelCartaoRepository {
         
         // Regra de Fallback: buscar conta bancária no pagamento original
         if (!targetAccountId) {
+          if (!recebivel.id_os) {
+            throw new Error("Recebível sem OS informada não pode buscar pagamento original PIX.");
+          }
+
           const pagamentoOriginal = await tx.pagamentoCliente.findFirst({
             where: {
               id_os: recebivel.id_os,
@@ -563,6 +567,10 @@ export class RecebivelCartaoRepository {
           
           // Regra de Fallback: buscar conta bancária no pagamento original
           if (!targetAccountId) {
+            if (!recebivel.id_os) {
+              throw new Error("Recebível sem OS informada não pode buscar pagamento original PIX.");
+            }
+
             const pagamentoOriginal = await tx.pagamentoCliente.findFirst({
               where: {
                 id_os: recebivel.id_os,

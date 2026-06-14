@@ -15,10 +15,10 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     return res.status(401).json({ error: "Token mal formatado." });
   }
 
-  const token = parts[1];
+  const token = parts[1] as string;
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET as string);
     // Anexar payload minimalista à requisição
     (req as any).user = decoded;
     return next();

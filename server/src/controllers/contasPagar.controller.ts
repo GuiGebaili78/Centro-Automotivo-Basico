@@ -21,12 +21,12 @@ export const getContas = async (req: Request, res: Response) => {
     let end: Date | undefined;
 
     if (startDate && typeof startDate === "string") {
-      const parsedStart = parseISO(startDate.split('T')[0]);
+      const parsedStart = parseISO((startDate.split('T')[0]) || "");
       start = startOfDay(parsedStart);
     }
     
     if (endDate && typeof endDate === "string") {
-      const parsedEnd = parseISO(endDate.split('T')[0]);
+      const parsedEnd = parseISO((endDate.split('T')[0]) || "");
       end = endOfDay(parsedEnd);
     }
 
@@ -130,12 +130,12 @@ export const getNfsPendentes = async (req: Request, res: Response) => {
     const page = hasExplicitLimit ? (parseInt(req.query.page as string) || 1) : undefined;
     const skip = (hasExplicitLimit && page) ? (page - 1) * limit! : undefined;
 
-    const nfs = await repository.findNfsPendentes({
-      search,
-      id_fornecedor,
-      skip,
-      take: limit,
-    });
+    const params: any = { search };
+    if (id_fornecedor !== undefined) params.id_fornecedor = id_fornecedor;
+    if (skip !== undefined) params.skip = skip;
+    if (limit !== undefined) params.take = limit;
+
+    const nfs = await repository.findNfsPendentes(params);
 
     // BLINDAGEM DE CONTRATO (Defesa em profundidade para garantir o formato { data, total })
     if (Array.isArray(nfs)) {
