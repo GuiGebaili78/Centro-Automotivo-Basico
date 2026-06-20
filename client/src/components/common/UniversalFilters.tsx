@@ -86,9 +86,13 @@ const getRangeForPeriod = (
 
   if (isFutureProjection) {
     if (period === "7D") {
+      // Dashboard "7 Dias" excludes "Hoje" (day 1) and "Amanhã" (day 2).
+      // So we start on Day 3 and end on Day 8.
+      const start = new Date(today);
+      start.setDate(start.getDate() + 2);
       const end = new Date(today);
-      end.setDate(end.getDate() + 6);
-      return { startDate: todayStr, endDate: localDateStr(end) };
+      end.setDate(end.getDate() + 8);
+      return { startDate: localDateStr(start), endDate: localDateStr(end) };
     }
     if (period === "30D") {
       const end = new Date(today);

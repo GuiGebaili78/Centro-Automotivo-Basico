@@ -8,8 +8,11 @@ export class PessoaJuridicaController {
     try {
       const pessoaJuridica = await repository.create(req.body);
       res.status(201).json(pessoaJuridica);
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to create PessoaJuridica', details: error });
+    } catch (error: any) {
+      if (error && error.code === 'P2002') {
+        return res.status(400).json({ error: 'Este CNPJ já está cadastrado no sistema.' });
+      }
+      res.status(400).json({ error: 'Failed to create PessoaJuridica', details: error.message || error });
     }
   }
 
@@ -40,8 +43,11 @@ export class PessoaJuridicaController {
       const id = Number(req.params.id);
       const pessoaJuridica = await repository.update(id, req.body);
       res.json(pessoaJuridica);
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to update PessoaJuridica' });
+    } catch (error: any) {
+      if (error && error.code === 'P2002') {
+        return res.status(400).json({ error: 'Este CNPJ já está cadastrado no sistema.' });
+      }
+      res.status(400).json({ error: 'Failed to update PessoaJuridica', details: error.message || error });
     }
   }
 

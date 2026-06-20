@@ -1,4 +1,4 @@
-PROJECT DUMP - 14/06/2026 12:08
+PROJECT DUMP - 19/06/2026 17:59
 =========================================
 
 --- FILE: dbbk.sh ---
@@ -235,6 +235,76 @@ volumes:
 networks:
   app-network:
     driver: bridge
+
+
+--- FILE: fix-dates.ts ---
+import fs from 'fs';
+import path from 'path';
+function walk(dir: string, fileList: string[] = []) {
+  const files = fs.readdirSync(dir);
+  for (const file of files) {
+    const filePath = path.join(dir, file);
+    if (fs.statSync(filePath).isDirectory()) {
+      walk(filePath, fileList);
+    } else {
+      if (filePath.endsWith('.tsx') || filePath.endsWith('.ts')) {
+        fileList.push(filePath);
+      }
+    }
+  }
+  return fileList;
+}
+const files = walk('c:/workspace/Meus Projetos/Centro Automotivo APP/App Centro Automotivo/client/src');
+let count = 0;
+for (const file of files) {
+  let content = fs.readFileSync(file, 'utf8');
+  let changed = false;
+  if (content.includes('new Date().toISOString()')) {
+    count++;
+    changed = true;
+    // Replace .split('T')[0] pattern specifically to .format("YYYY-MM-DD")
+    content = content.replace(/new Date\(\)\.toISOString\(\)\.split\(['"]T['"]\)?\[0\]/g, 'dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD")');
+    // Replace remaining .toISOString() pattern to .format()
+    content = content.replace(/new Date\(\)\.toISOString\(\)/g, 'dayjs().tz("America/Sao_Paulo").format()');
+    // Also fix getSyncedDate().toISOString().split("T")[0] specifically
+    content = content.replace(/getSyncedDate\(\)\.toISOString\(\)\.split\(['"]T['"]\)\[0\]/g, 'dayjs(getSyncedDate()).tz("America/Sao_Paulo").format("YYYY-MM-DD")');
+  }
+  // Also catch getSyncedDate alone if it wasn't caught
+  if (content.includes('getSyncedDate().toISOString().split') && !changed) {
+    count++;
+    changed = true;
+    content = content.replace(/getSyncedDate\(\)\.toISOString\(\)\.split\(['"]T['"]\)\[0\]/g, 'dayjs(getSyncedDate()).tz("America/Sao_Paulo").format("YYYY-MM-DD")');
+  }
+  if (changed) {
+    // Check if dayjs is imported
+    if (!content.includes('import dayjs from "dayjs"') && !content.includes("import dayjs from 'dayjs'")) {
+      // Find the last import and add our imports after it
+      const imports = [
+        'import dayjs from "dayjs";',
+        'import utc from "dayjs/plugin/utc";',
+        'import timezone from "dayjs/plugin/timezone";',
+        'dayjs.extend(utc);',
+        'dayjs.extend(timezone);'
+      ].join('\n');
+      const lines = content.split('\n');
+      let lastImportIndex = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('import ')) {
+          lastImportIndex = i;
+        }
+      }
+      if (lastImportIndex !== -1) {
+        lines.splice(lastImportIndex + 1, 0, imports);
+        content = lines.join('\n');
+      } else {
+        content = imports + '\n' + content;
+      }
+    }
+    fs.writeFileSync(file, content);
+    console.log('Updated:', file);
+  }
+}
+console.log('Total files updated:', count);
 
 
 --- FILE: fix_tbodys.js ---
@@ -1275,6 +1345,7 @@ server {
     "@types/lodash.debounce": "^4.0.9",
     "axios": "^1.13.2",
     "date-fns": "^4.1.0",
+    "dayjs": "^1.11.21",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.561.0",
     "react": "18.3.1",
@@ -1706,6 +1777,8 @@ import { ContasBancariasPage } from "./pages/ContasBancariasPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { Login } from "./pages/Login";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 import { AlertsProvider } from "./contexts/AlertsContext";
 const router = createBrowserRouter(
@@ -1713,6 +1786,8 @@ const router = createBrowserRouter(
     <>
       {/* Rota Pública */}
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       {/* Rotas Protegidas (Sobe o PrivateRoute encobrindo o Layout inteiro) */}
       <Route element={<PrivateRoute />}>
         {/* Alterar senha: protegida, porém fora do MainLayout para
@@ -3010,6 +3085,7 @@ export const ClienteFormSection = memo(
 ClienteFormSection.displayName = "ClienteFormSection";
 
 
+--- FILE: client\src\components\clientes\Forms\EquipamentoFormSection.tsx ---
 /**
  * EquipamentoFormSection
  * 
@@ -3215,6 +3291,11 @@ import {
 import type { IFuncionario } from "../../../types/backend";
 import { formatCpf, formatCnpj, formatRg, formatCep, formatPhone, unmask } from "../../../utils/normalize";
 import { Button, Input, Select, TextArea, ConfirmModal } from "../../ui";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 interface FuncionarioFormProps {
   initialData?: IFuncionario | null;
   onSuccess: () => void;
@@ -3258,7 +3339,7 @@ export const FuncionarioForm = ({
     // Operacional
     cargo: "",
     ativo: "S",
-    dt_admissao: new Date().toISOString().split("T")[0],
+    dt_admissao: dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"),
     especialidade: "",
     tipo_pagamento: "", // HORA / FIXO
     valor_pagamento: "",
@@ -3951,9 +4032,13 @@ const getRangeForPeriod = (
   if (period === "TODAY") return { startDate: todayStr, endDate: todayStr };
   if (isFutureProjection) {
     if (period === "7D") {
+      // Dashboard "7 Dias" excludes "Hoje" (day 1) and "Amanhã" (day 2).
+      // So we start on Day 3 and end on Day 8.
+      const start = new Date(today);
+      start.setDate(start.getDate() + 2);
       const end = new Date(today);
-      end.setDate(end.getDate() + 6);
-      return { startDate: todayStr, endDate: localDateStr(end) };
+      end.setDate(end.getDate() + 8);
+      return { startDate: localDateStr(start), endDate: localDateStr(end) };
     }
     if (period === "30D") {
       const end = new Date(today);
@@ -4530,10 +4615,10 @@ export const DashboardMetrics = ({ stats }: DashboardMetricsProps) => {
           <div className="flex justify-between items-center w-full px-2 mb-2">
             <div className="flex flex-col items-center">
               <h3 className="text-lg text-neutral-600">
-                {stats.contasPagarPending}
+                {stats.contasPagarFimMesCount ?? 0}
               </h3>
-              <p className="text-[10px] text-neutral-400 uppercase mt-0.5">
-                Total
+              <p className="text-[10px] text-neutral-400 uppercase mt-0.5 whitespace-nowrap">
+                FINAL DO MÊS
               </p>
             </div>
             <div className="flex flex-col items-center">
@@ -5474,7 +5559,6 @@ export const EdicaoPecaModal = ({
 };
 
 
---- FILE: client\src\components\estoque\EntradaFornecedorForm.tsx ---
 import { Plus, Calendar, FileText } from "lucide-react";
 import { Card, Button, Input, Select } from "../ui";
 import type { IFornecedor } from "../../types/backend";
@@ -7319,6 +7403,11 @@ import { FornecedorService } from "../../services/fornecedor.service";
 import { Upload, Plus } from "lucide-react";
 import type { IContasPagar, IRecurrenceInfo } from "../../types/backend";
 import type { IFornecedor } from "../../types/backend";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 interface ContaPagarModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -7577,7 +7666,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             formData.status === "PAGO"
               ? formData.dt_pagamento
                 ? formatDateForPayload(formData.dt_pagamento)
-                : getSyncedDate().toISOString().split("T")[0]
+                : dayjs(getSyncedDate()).tz("America/Sao_Paulo").format("YYYY-MM-DD")
               : null,
           dt_vencimento: formatDateForPayload(vencStr),
           dt_emissao: formData.dt_emissao
@@ -7619,7 +7708,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
               formData.status === "PAGO"
                 ? formData.dt_pagamento
                   ? formatDateForPayload(formData.dt_pagamento)
-                  : getSyncedDate().toISOString().split("T")[0]
+                  : dayjs(getSyncedDate()).tz("America/Sao_Paulo").format("YYYY-MM-DD")
                 : null,
             dt_vencimento: formatDateForPayload(b.vencimento),
             dt_emissao: formData.dt_emissao
@@ -9298,6 +9387,11 @@ import React, { useState, useEffect } from "react";
 import { Modal, Button, Input, Select } from "../ui";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { DollarSign, Calendar, Percent, Landmark, Save, X } from "lucide-react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 interface ModalPagamentoUnificadoProps {
   isOpen: boolean;
   onClose: () => void;
@@ -9325,7 +9419,7 @@ export const ModalPagamentoUnificado: React.FC<
   isLoading = false,
 }) => {
   const [accountId, setAccountId] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"));
   // Discount States
   const [discountType, setDiscountType] = useState<"VALUE" | "PERCENT">(
     "VALUE",
@@ -11007,6 +11101,11 @@ import { UniversalFilters } from "../common/UniversalFilters";
 import type { UniversalFiltersState } from "../common/UniversalFilters";
 import { useUniversalFilter } from "../../hooks/useUniversalFilter";
 import type {
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
   IPagamentoColaborador,
   IPendenciaColaborador,
   IFinanceiroStatusMsg,
@@ -11050,7 +11149,7 @@ export const PagamentoColaboradoresTab = ({
   const [payMethod, setPayMethod] = useState("DINHEIRO");
   const [payValorAdiantamento, setPayValorAdiantamento] = useState("");
   const [payDataAdiantamento, setPayDataAdiantamento] = useState(
-    new Date().toISOString().split("T")[0],
+    dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"),
   );
   // Date Filters for Commission Selection inside Modal
   // const [payMsg, setPayMsg] = useState("");
@@ -12087,6 +12186,11 @@ import type { UniversalFiltersState } from "../common/UniversalFilters";
 import { useUniversalFilter } from "../../hooks/useUniversalFilter";
 import type { IPagamentoPeca, IFornecedor } from "../../types/backend";
 import type { IFinanceiroStatusMsg } from "../../types/financeiro.types";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 interface PagamentoPecasTabProps {
   payments: IPagamentoPeca[];
   fornecedores: IFornecedor[];
@@ -12154,7 +12258,7 @@ export const PagamentoPecasTab = ({
       await FinanceiroService.updatePagamentoPeca(paymentId, {
         pago_ao_fornecedor: !currentStatus,
         data_pagamento_fornecedor: !currentStatus
-          ? new Date().toISOString()
+          ? dayjs().tz("America/Sao_Paulo").format()
           : null,
       });
       setStatusMsg({
@@ -12587,6 +12691,11 @@ import { toast } from "react-toastify";
 import { UniversalFilters } from "../common/UniversalFilters";
 import type { UniversalFiltersState } from "../common/UniversalFilters";
 import { useUniversalFilter } from "../../hooks/useUniversalFilter";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 export const RecebiveisTab = () => {
   const [recebiveis, setRecebiveis] = useState<IRecebivelCartao[]>([]);
   const [operadoras, setOperadoras] = useState<any[]>([]);
@@ -12670,13 +12779,20 @@ export const RecebiveisTab = () => {
     try {
       const requiresContaBancaria = filteredData
         .filter((r) => selectedIds.includes(r.id_recebivel))
-        .some((r) => r.id_operadora === null && (r as any).tipo_parcelamento?.toUpperCase() !== 'DINHEIRO');
+        .some((r) => {
+          if (r.id_operadora !== null) return false;
+          if ((r as any).tipo_parcelamento?.toUpperCase() === 'DINHEIRO') return false;
+          // Verifica se já existe um pagamento PIX na OS que possua conta_bancaria registrada
+          const pagamentos = (r as any).ordem_de_servico?.pagamentos_cliente || [];
+          const hasPixWithAccount = pagamentos.some((p: any) => p.metodo_pagamento === 'PIX' && p.id_conta_bancaria);
+          return !hasPixWithAccount;
+        });
       if (requiresContaBancaria && selectedContaBancaria === "") {
         toast.error("Selecione a Conta Bancária de destino para o PIX/Transferência.");
         return;
       }
       const accountId = selectedContaBancaria === "" ? null : Number(selectedContaBancaria);
-      await FinanceiroService.confirmarRecebiveis(selectedIds, new Date().toISOString(), accountId);
+      await FinanceiroService.confirmarRecebiveis(selectedIds, dayjs().tz("America/Sao_Paulo").format(), accountId);
       toast.success("Recebimentos confirmados e conciliados!");
       setSelectedIds([]);
       loadData(universalFilters.startDate, universalFilters.endDate);
@@ -12704,7 +12820,13 @@ export const RecebiveisTab = () => {
   );
   const requiresContaBancaria = filteredData
     .filter((r) => selectedIds.includes(r.id_recebivel))
-    .some((r) => r.id_operadora === null && (r as any).tipo_parcelamento?.toUpperCase() !== 'DINHEIRO');
+    .some((r) => {
+      if (r.id_operadora !== null) return false;
+      if ((r as any).tipo_parcelamento?.toUpperCase() === 'DINHEIRO') return false;
+      const pagamentos = (r as any).ordem_de_servico?.pagamentos_cliente || [];
+      const hasPixWithAccount = pagamentos.some((p: any) => p.metodo_pagamento === 'PIX' && p.id_conta_bancaria);
+      return !hasPixWithAccount;
+    });
   const getModalityBadge = (r: IRecebivelCartao) => {
     const modality = (r as any).modalidade_snapshot 
       ? (r as any).modalidade_snapshot.toUpperCase()
@@ -13094,6 +13216,11 @@ import { PagamentoClienteForm } from "./PagamentoClienteForm";
 import { FornecedorForm } from "../../fornecedores/Forms/FornecedorForm";
 import { LaborManager } from "../../os/LaborManager";
 import {
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
   Button,
   Input,
   Select,
@@ -13255,7 +13382,7 @@ export const FechamentoFinanceiroForm = ({
         id_item_os: id_iten,
         id_fornecedor: Number(partialState.id_fornecedor),
         custo_real: Number(partialState.custo_real),
-        data_compra: new Date().toISOString(),
+        data_compra: dayjs().tz("America/Sao_Paulo").format(),
         pago_ao_fornecedor: partialState.pago_fornecedor,
       };
       if (partialState.id_pagamento_peca) {
@@ -13396,22 +13523,24 @@ export const FechamentoFinanceiroForm = ({
       const itemsPecas = osData.itens_os
         .map((item: IItemOsDetalhado) => {
           const st = itemsState[item.id_iten];
+          const isCustoDefined = st && String(st.custo_real).trim() !== '' && !isNaN(Number(st.custo_real));
           // Validação de preenchimento dos custos (Ignorar se for peça de estoque)
           if (
             (!st ||
               !st.id_fornecedor ||
-              !st.custo_real ||
-              Number(st.custo_real) <= 0) &&
+              !isCustoDefined ||
+              Number(st.custo_real) < 0) &&
             !item.pecas_estoque
           ) {
             throw new Error(
-              `Item "${item.descricao}" está sem Fornecedor ou Custo Real definido.`,
+              `Item "${item.descricao}" está sem Fornecedor ou Custo Real válido definido.`,
             );
           }
           if (
             st &&
             st.id_fornecedor &&
-            Number(st.custo_real) > 0 &&
+            isCustoDefined &&
+            Number(st.custo_real) >= 0 &&
             !item.pecas_estoque
           ) {
             return {
@@ -14239,6 +14368,11 @@ import {
 } from "lucide-react";
 import type { IOperadoraCartao, ITaxaCartao } from "../../../types/backend";
 import { Button, Input, Select } from "../../ui";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 interface PagamentoClienteFormProps {
   osId: number;
   valorTotal: number;
@@ -14426,7 +14560,7 @@ export const PagamentoClienteForm = ({
         id_os: osId,
         metodo_pagamento: metodo,
         valor: cleanValorNum,
-        data_pagamento: initialData?.data_pagamento || new Date().toISOString(),
+        data_pagamento: initialData?.data_pagamento || dayjs().tz("America/Sao_Paulo").format(),
         bandeira_cartao: metodo === "CREDITO" || metodo === "DEBITO" ? bandeira : null,
         codigo_transacao: codigoTransacao || null,
         qtd_parcelas: metodo === "CREDITO" && subtipoCredito === "PARCELADO" ? Number(parcelas) : 1,
@@ -15560,8 +15694,6 @@ export const FornecedorForm = ({
     </div>
   );
 };
-
-
 --- FILE: client\src\components\os\LaborManager.tsx ---
 import React, { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
@@ -16218,6 +16350,11 @@ import { api } from "../../services/api";
 import { Modal, Button, Input, Select } from "../ui";
 import { UnifiedOsForm } from "./Forms/UnifiedOsForm";
 import { VeiculoForm } from "../veiculos/Forms/VeiculoForm";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 interface OrdemDeServicoNovaProps {
   employees: any[];
   onSuccess: (osId: number) => void;
@@ -16316,7 +16453,7 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
         km_entrada: Number(quickStartData.km),
         defeito_relatado: quickStartData.defect,
         status: "ABERTA",
-        dt_abertura: new Date().toISOString(),
+        dt_abertura: dayjs().tz("America/Sao_Paulo").format(),
         valor_total_cliente: 0,
         valor_mao_de_obra: 0,
         parcelas: 1,
@@ -19341,6 +19478,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
     ano: new Date().getFullYear().toString(),
     ano_fabricacao: new Date().getFullYear().toString(),
     combustivel: "FLEX",
+    chassi: "",
     isNew: true,
   });
   const [osMode, setOsMode] = useState<"OFICINA" | "AVULSO">("OFICINA");
@@ -19445,6 +19583,7 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
           ano_modelo: vehicleData.ano,
           ano_fabricacao: vehicleData.ano_fabricacao,
           combustivel: vehicleData.combustivel,
+          chassi: vehicleData.chassi || null,
         } : null,
         // Send equipment if AVULSO mode or if provided
         equipamento: (osMode === "AVULSO" || equipData.nome_peca) ? {
@@ -19679,8 +19818,38 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
                     }
                     className="font-bold text-neutral-800"
                     placeholder="Ex: Gol"
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <Select
+                  label="Combustível"
+                  value={vehicleData.combustivel}
+                  onChange={(e) =>
+                    setVehicleData({ ...vehicleData, combustivel: e.target.value })
+                  }
+                  className="font-bold text-neutral-800"
+                >
+                  <option value="FLEX">FLEX</option>
+                  <option value="GASOLINA">GASOLINA</option>
+                  <option value="ALCOOL">ÁLCOOL</option>
+                  <option value="DIESEL">DIESEL</option>
+                  <option value="GNV">GNV</option>
+                  <option value="ELETRICO">ELÉTRICO</option>
+                  <option value="HIBRIDO">HÍBRIDO</option>
+                </Select>
+              </div>
+              <div>
+                <Input
+                  label="Chassi (Opcional)"
+                  value={vehicleData.chassi}
+                  onChange={(e) =>
+                    setVehicleData({ ...vehicleData, chassi: e.target.value.toUpperCase() })
+                  }
+                  className="font-bold text-neutral-800 uppercase"
+                  placeholder="17 Dígitos"
+                  maxLength={17}
                 />
-                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -21669,7 +21838,6 @@ export const Header = () => {
 };
 
 
---- FILE: client\src\components\ui\Navigation\Sidebar.tsx ---
 import { useState, useEffect } from "react";
 import {
   ConfiguracaoService,
@@ -22867,7 +23035,7 @@ export const useAlerts = () => {
 
 
 --- FILE: client\src\contexts\AuthContext.tsx ---
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 interface User {
   id_usuario: number;
   nome: string;
@@ -22929,6 +23097,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("@CentroAutomotivo:user");
     localStorage.removeItem("@CentroAutomotivo:mustChangePassword");
   };
+  // Escuta o evento de "unauthorized" despachado pelo Axios
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+    };
+    window.addEventListener("unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("unauthorized", handleUnauthorized);
+  }, []);
   return (
     <AuthContext.Provider
       value={{
@@ -23543,6 +23719,10 @@ function resolveItemDate<T extends object>(
 ): Date | null {
   const raw = (item as any)[field];
   if (raw === null || raw === undefined) return null;
+  if (typeof raw === "string" && raw.includes("T")) {
+    const [datePart] = raw.split("T");
+    return parseLocalDate(datePart, 12, 0, 0);
+  }
   const d = raw instanceof Date ? raw : new Date(raw as string);
   return isNaN(d.getTime()) ? null : d;
 }
@@ -25736,6 +25916,11 @@ import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { FinanceiroService } from "../services/financeiro.service";
 import { api } from "../services/api";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import {
   ActionButton,
   Button,
@@ -25854,7 +26039,7 @@ export const ContasAPagarPage = () => {
       await FinanceiroService.updateContaPagar(selectedConta.id_conta_pagar, {
         status: "PAGO",
         valor: valorFinal,
-        dt_pagamento: new Date(data.date).toISOString(),
+        dt_pagamento: data.date, // Send the exact "YYYY-MM-DD" string from the picker
         id_conta_bancaria: data.accountId || null,
       });
       toast.success("Conta marcada como PAGA.");
@@ -25985,14 +26170,12 @@ export const ContasAPagarPage = () => {
               filteredContas.map((conta) => {
                 const getStatusInfo = () => {
                   if (conta.status === "PAGO") return { label: "PAGO", color: "bg-emerald-100 text-emerald-700" };
-                  const venc = new Date(conta.dt_vencimento);
-                  const today = new Date();
-                  // Extract the day using UTC since dt_vencimento is saved in UTC noon/midnight
-                  const vencDay = new Date(venc.getUTCFullYear(), venc.getUTCMonth(), venc.getUTCDate()).getTime();
-                  const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-                  if (vencDay === todayDay) {
+                  // Using dayjs with specific timezone to ignore browser local offsets
+                  const vencDayStr = dayjs.utc(conta.dt_vencimento).format('YYYY-MM-DD');
+                  const todayDayStr = dayjs().tz("America/Sao_Paulo").format('YYYY-MM-DD');
+                  if (vencDayStr === todayDayStr) {
                     return { label: "PAGAR HOJE", color: "bg-blue-100 text-blue-700" };
-                  } else if (vencDay < todayDay) {
+                  } else if (vencDayStr < todayDayStr) {
                     return { label: "ATRASADO", color: "bg-red-100 text-red-600" };
                   }
                   return { label: "PENDENTE", color: "bg-orange-100 text-orange-700" };
@@ -26185,6 +26368,524 @@ export const ContasBancariasPage = () => {
       subtitle="Gerencie as contas bancárias e caixas físicos do seu negócio."
     >
       <ContasTab />
+    </PageLayout>
+  );
+};
+
+
+--- FILE: client\src\pages\DashboardPage.tsx ---
+import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/Button";
+import { PageLayout } from "../components/ui/PageLayout";
+import { OsStatus } from "../types/os.types";
+import { OsCreationFlowModal } from "../components/os/OsCreationFlowModal";
+import { OsCreationModal } from "../components/os/OsCreationModal";
+import { LoosePartOsModal } from "../components/os/LoosePartOsModal";
+import { DashboardCalendar } from "../components/dashboard/DashboardCalendar";
+import { UnifiedSearch, type SearchResult } from "../components/dashboard/UnifiedSearch";
+import { DashboardService } from "../services/dashboard.service";
+import { OsService } from "../services/os.service";
+import { DashboardMetrics } from "../components/dashboard/DashboardMetrics";
+import { RecentOsWidget } from "../components/dashboard/RecentOsWidget";
+import type { IDashboardStats } from "../types/dashboard.types";
+import { toast } from "react-toastify";
+interface OsTarget {
+  clientId: number;
+  vehicleId?: number;
+  equipamentoId?: number;
+}
+export function DashboardPage() {
+  const navigate = useNavigate();
+  // ── Modais ──
+  const [isOsFlowOpen, setIsOsFlowOpen] = useState(false);
+  const [isOsCreationModalOpen, setIsOsCreationModalOpen] = useState(false);
+  const [isLoosePartModalOpen, setIsLoosePartModalOpen] = useState(false);
+  const [isCreatingOs, setIsCreatingOs] = useState(false);
+  // Armazena o alvo (cliente + veículo/equipamento) para repassar ao OsCreationModal
+  const [osTarget, setOsTarget] = useState<OsTarget | null>(null);
+  // ── Dashboard data ──
+  const [recentOss, setRecentOss] = useState<any[]>([]);
+  const [stats, setStats] = useState<IDashboardStats>({
+    osAberta: 0,
+    contasPagarPending: 0,
+    contasPagarOverdue: 0,
+    livroCaixaEntries: 0,
+    livroCaixaExits: 0,
+    autoPecasPendentes: 0,
+    consolidacao: 0,
+    alertaEstoque: 0,
+  });
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+  useEffect(() => {
+    fetchData();
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const fetchData = async () => {
+    try {
+      const data = await DashboardService.getDashboardData();
+      setStats(data.stats);
+      setRecentOss(data.recentOss);
+    } catch (error) {
+      console.error("Erro ao carregar dados do dashboard", error);
+    }
+  };
+  // ── Recebe o retorno do OsCreationFlowModal e abre o OsCreationModal padrão ──
+  const handleOpenOs = (
+    clientId: number,
+    vehicleId?: number,
+    equipamentoId?: number
+  ) => {
+    setOsTarget({ clientId, vehicleId, equipamentoId });
+    setIsOsFlowOpen(false);
+    setIsOsCreationModalOpen(true);
+  };
+  // ── Resultado selecionado no UnifiedSearch → abre fluxo de OS ──
+  const handleSearchSelect = (result: SearchResult) => {
+    if (result.id_os) {
+      navigate(`/ordem-de-servico/${result.id_os}`);
+    } else {
+      handleOpenOs(
+        result.id_cliente,
+        result.id_veiculo,
+        result.id_equipamento
+      );
+    }
+  };
+  // ── Recebe a seleção de status, cria a OS via API e navega para o detalhe ──
+  const handleOsSelect = async (status: OsStatus, km?: number) => {
+    if (!osTarget) return;
+    setIsCreatingOs(true);
+    try {
+      const novaOs = await OsService.create({
+        id_cliente: osTarget.clientId,
+        id_veiculo: osTarget.vehicleId ?? undefined,
+        id_equipamento: osTarget.equipamentoId ?? undefined,
+        status,
+        km_entrada: km !== undefined ? Number(km) : undefined,
+        parcelas: 1,
+        valor_total_cliente: 0,
+        valor_mao_de_obra: 0,
+      });
+      setIsOsCreationModalOpen(false);
+      setOsTarget(null);
+      // Navega direto para o detalhe da OS recém-criada (permanece no contexto do Monitor)
+      navigate(`/ordem-de-servico/${novaOs.id_os}`);
+      toast.success("OS criada com sucesso!");
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Erro ao criar a OS. Tente novamente.";
+      toast.error(msg);
+    } finally {
+      setIsCreatingOs(false);
+    }
+  };
+  return (
+    <PageLayout
+      title="Monitor"
+      subtitle={
+        <div className="flex items-center text-neutral-500 font-medium">
+          {currentDateTime.toLocaleDateString("pt-BR", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}{" "}
+          •{" "}
+          {currentDateTime.toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}
+        </div>
+      }
+      actions={
+        <div className="flex items-center gap-3">
+          {/* Busca rápida ao lado dos botões */}
+          <div className="w-[432px] max-w-full">
+            <UnifiedSearch
+              onSelect={handleSearchSelect}
+              onNewRecord={() => navigate("/novo-cadastro")}
+            />
+          </div>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={Plus}
+            className="h-[42px] px-5 shadow-lg shadow-primary-500/20 whitespace-nowrap"
+            onClick={() => setIsOsFlowOpen(true)}
+          >
+            Nova OS
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsLoosePartModalOpen(true)}
+            className="h-[42px] px-4 border-neutral-200 text-neutral-600 hover:text-primary-600 whitespace-nowrap font-bold"
+          >
+            🔧 Peça Avulsa
+          </Button>
+        </div>
+      }
+    >
+      {/* Container sem altura fixa nem overflow interno — scroll natural do documento */}
+      <div className="flex flex-col space-y-4">
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-top-4 duration-700">
+          <DashboardMetrics stats={stats} />
+        </div>
+        <main className="space-y-4">
+          <DashboardCalendar
+            items={recentOss
+              .filter(
+                (o: any) =>
+                  o.status === OsStatus.ORCAMENTO ||
+                  o.status === OsStatus.AGENDAMENTO,
+              )
+              .map((o: any) => ({
+                id_os: o.id_os,
+                date: o.dt_abertura
+                  ? new Date(o.dt_abertura)
+                  : o.created_at
+                    ? new Date(o.created_at)
+                    : new Date(),
+                clientName:
+                  o.cliente?.pessoa_fisica?.pessoa?.nome ||
+                  o.cliente?.pessoa_juridica?.nome_fantasia ||
+                  "Cliente",
+                vehicleModel: `${o.veiculo?.modelo || "N/I"} ${o.veiculo?.cor ? `- ${o.veiculo.cor}` : ""}`,
+                status: o.status,
+              }))}
+          />
+          {/* Recent Services - FULL WIDTH */}
+          <RecentOsWidget recentOss={recentOss} />
+        </main>
+      </div>
+      {/* ── Modais ── */}
+      <OsCreationFlowModal
+        isOpen={isOsFlowOpen}
+        onClose={() => setIsOsFlowOpen(false)}
+        onOpenOs={handleOpenOs}
+      />
+      <OsCreationModal
+        isOpen={isOsCreationModalOpen}
+        onClose={() => {
+          if (isCreatingOs) return; // não fecha durante a criação
+          setIsOsCreationModalOpen(false);
+          setOsTarget(null);
+        }}
+        onSelect={handleOsSelect}
+        isLoading={isCreatingOs}
+        clientName={undefined}
+        vehicleName={undefined}
+        hasVehicle={!!osTarget?.vehicleId}
+      />
+      <LoosePartOsModal
+        isOpen={isLoosePartModalOpen}
+        onClose={() => setIsLoosePartModalOpen(false)}
+      />
+    </PageLayout>
+  );
+}
+
+
+--- FILE: client\src\pages\EntradaEstoquePage.tsx ---
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { PageLayout, Modal, Button, ConfirmModal } from "../components/ui";
+import { FornecedorForm } from "../components/fornecedores/Forms/FornecedorForm";
+import { EntradaFornecedorForm } from "../components/estoque/EntradaFornecedorForm";
+import { EntradaItensForm } from "../components/estoque/EntradaItensForm";
+import { api } from "../services/api";
+import { EstoqueService } from "../services/estoque.service";
+import { FinanceiroService } from "../services/financeiro.service";
+import type {
+  IItemEntrada,
+  IEntradaEstoquePayload,
+} from "../types/estoque.types";
+import { Edit, Trash2 } from "lucide-react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
+export const EntradaEstoquePage = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("editId")
+    ? Number(searchParams.get("editId"))
+    : null;
+  const isEditMode = !!editId;
+  // Header State
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [invoice, setInvoice] = useState("");
+  const [date, setDate] = useState(dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"));
+  const [obs, setObs] = useState("");
+  const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
+  const [nfsPendentes, setNfsPendentes] = useState<any[]>([]);
+  const [nfNumero, setNfNumero] = useState("");
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  // Items State
+  const [items, setItems] = useState<IItemEntrada[]>([]);
+  // Load Suppliers & Pending NFs
+  useEffect(() => {
+    loadSuppliers();
+    loadNfsPendentes();
+  }, []);
+  // Load entry data if in edit mode
+  useEffect(() => {
+    if (editId) {
+      loadEntryForEdit(editId);
+    }
+  }, [editId]);
+  const loadSuppliers = () => {
+    api
+      .get("/fornecedor")
+      .then((res) => setSuppliers(Array.isArray(res.data) ? res.data : []))
+      .catch(console.error);
+  };
+  const loadNfsPendentes = async () => {
+    try {
+      const response = await FinanceiroService.getNfsPendentes();
+      // Backend retorna { data: [], total: N } — extrair o array interno
+      const list = Array.isArray(response) ? response : (response?.data ?? []);
+      setNfsPendentes(list);
+    } catch (e) {
+      console.error("Erro ao carregar NFs pendentes:", e);
+    }
+  };
+  const loadEntryForEdit = async (id: number) => {
+    setLoadingEdit(true);
+    try {
+      const entry = await EstoqueService.getEntry(id);
+      // Preencher cabeçalho
+      setSelectedSupplierId(String(entry.id_pessoa));
+      setInvoice(entry.nota_fiscal || "");
+      setDate(
+        entry.data_compra
+          ? entry.data_compra.split("T")[0]
+          : dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"),
+      );
+      setObs(entry.obs || "");
+      setNfNumero(entry.nf_numero || "");
+      // Preencher itens com dados do banco
+      const loadedItems: IItemEntrada[] = (entry.itens || []).map((i: any) => ({
+        tempId: i.id_item_entrada, // usa o id real como tempId para identificação
+        id_item_entrada: i.id_item_entrada,
+        id_pecas_estoque: i.id_pecas_estoque,
+        new_part_data: null,
+        displayName: i.peca?.nome || `Peça #${i.id_pecas_estoque}`,
+        quantidade: i.quantidade,
+        valor_custo: Number(i.valor_custo),
+        margem_lucro: i.margem_lucro ? Number(i.margem_lucro) : 0,
+        valor_venda: Number(i.valor_venda),
+        ref_cod: i.ref_cod || "",
+        condicao: i.condicao || "",
+        aplicacao: i.aplicacao || "",
+        obs: i.obs || "",
+        _delete: false,
+      }));
+      setItems(loadedItems);
+    } catch (e: any) {
+      toast.error(
+        "Erro ao carregar entrada para edição: " +
+          (e.response?.data?.error || e.message),
+      );
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+  // Calcula total apenas sobre itens não marcados para exclusão
+  const totalValue = items
+    .filter((i) => !(i as any)._delete)
+    .reduce((acc, i) => acc + i.quantidade * i.valor_custo, 0);
+  const handleSubmit = async () => {
+    if (!selectedSupplierId) {
+      toast.error("Selecione um Fornecedor.");
+      return;
+    }
+    if (items.filter((i) => !(i as any)._delete).length === 0) {
+      toast.error("Adicione pelo menos um item.");
+      return;
+    }
+    try {
+      if (isEditMode && editId) {
+        // --- MODO EDIÇÃO: PUT ---
+        const payload = {
+          id_pessoa: Number(selectedSupplierId),
+          nota_fiscal: invoice,
+          data_compra: new Date(date),
+          obs: obs,
+          nf_numero: nfNumero.trim() || null,
+          itens: items.map((i) => ({
+            id_item_entrada: (i as any).id_item_entrada || undefined,
+            id_pecas_estoque: i.id_pecas_estoque || undefined,
+            new_part_data: i.new_part_data || undefined,
+            quantidade: i.quantidade,
+            valor_custo: i.valor_custo,
+            valor_venda: i.valor_venda,
+            margem_lucro: i.margem_lucro,
+            ref_cod: i.ref_cod,
+            condicao: i.condicao,
+            aplicacao: i.aplicacao,
+            obs: i.obs,
+            _delete: (i as any)._delete || false,
+          })),
+        };
+        await EstoqueService.updateEntry(editId, payload);
+        toast.success("Entrada atualizada com sucesso!");
+      } else {
+        // --- MODO CRIAÇÃO: POST (sem campo financeiro) ---
+        const payload: IEntradaEstoquePayload = {
+          id_fornecedor: Number(selectedSupplierId),
+          nota_fiscal: invoice,
+          data_compra: new Date(date),
+          obs: obs,
+          itens: items,
+          nf_numero: nfNumero.trim() || null,
+        };
+        await EstoqueService.createEntry(payload);
+        toast.success("Entrada Registrada com Sucesso!");
+        // Limpar formulário apenas no modo criação
+        setItems([]);
+        setInvoice("");
+        setObs("");
+        setNfNumero("");
+        loadNfsPendentes();
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(
+        "Erro ao processar entrada: " + (e.response?.data?.error || e.message),
+      );
+    }
+  };
+  const handleDeleteEntry = async () => {
+    if (!editId) return;
+    try {
+      await EstoqueService.deleteEntry(editId);
+      toast.success("Entrada de estoque e itens removidos com sucesso!");
+      navigate("/notas-fiscais");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(
+        "Erro ao excluir entrada: " + (e.response?.data?.error || e.message),
+      );
+    } finally {
+      setShowConfirmDelete(false);
+    }
+  };
+  if (loadingEdit) {
+    return (
+      <PageLayout
+        title="Carregando Entrada..."
+        subtitle="Aguarde enquanto os dados da entrada são carregados."
+      >
+        <div className="flex items-center justify-center h-40 text-neutral-400">
+          Carregando dados da entrada #{editId}...
+        </div>
+      </PageLayout>
+    );
+  }
+  return (
+    <PageLayout
+      title={
+        isEditMode
+          ? `Editando Entrada #${editId}`
+          : "Nova Compra / Entrada de Estoque"
+      }
+      subtitle={
+        isEditMode
+          ? "Adicione ou remova itens desta entrada. Itens em uso em Ordens de Serviço ativas não podem ser removidos."
+          : "Registre novas aquisições de peças e atualize o estoque automaticamente."
+      }
+      actions={
+        isEditMode ? (
+          <Button
+            variant="danger"
+            icon={Trash2}
+            onClick={() => setShowConfirmDelete(true)}
+            className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+          >
+            Excluir Entrada
+          </Button>
+        ) : undefined
+      }
+    >
+      <div className="space-y-6">
+        {/* Banner de modo edição */}
+        {isEditMode && (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <Edit size={18} className="text-amber-600 shrink-0" />
+            <p className="text-sm text-amber-800 font-medium">
+              Você está <strong>editando</strong> uma entrada de estoque
+              existente. Os itens marcados como{" "}
+              <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-xs font-bold uppercase">
+                SERÁ REMOVIDO
+              </span>{" "}
+              serão excluídos permanentemente ao salvar.
+            </p>
+          </div>
+        )}
+        <EntradaFornecedorForm
+          suppliers={suppliers}
+          selectedSupplierId={selectedSupplierId}
+          setSelectedSupplierId={setSelectedSupplierId}
+          invoice={invoice}
+          setInvoice={setInvoice}
+          date={date}
+          setDate={setDate}
+          onNewSupplier={() => setShowNewSupplierModal(true)}
+          nfsPendentes={nfsPendentes}
+          nfNumero={nfNumero}
+          setNfNumero={setNfNumero}
+        />
+        <EntradaItensForm
+          items={items}
+          setItems={setItems}
+          onSubmit={handleSubmit}
+          totalValue={totalValue}
+          isEditMode={isEditMode}
+        />
+        {/* NEW SUPPLIER MODAL */}
+        {showNewSupplierModal && (
+          <Modal
+            title="Novo Fornecedor"
+            onClose={() => setShowNewSupplierModal(false)}
+            className="max-w-4xl"
+          >
+            <FornecedorForm
+              onSuccess={(newSupplier: any) => {
+                if (newSupplier) {
+                  setSuppliers((prev) => [...prev, newSupplier]);
+                  setSelectedSupplierId(String(newSupplier.id_fornecedor));
+                  toast.success("Fornecedor Cadastrado e Selecionado!");
+                }
+                setShowNewSupplierModal(false);
+              }}
+              onCancel={() => setShowNewSupplierModal(false)}
+            />
+          </Modal>
+        )}
+      </div>
+      {showConfirmDelete && (
+        <ConfirmModal
+          isOpen={showConfirmDelete}
+          onClose={() => setShowConfirmDelete(false)}
+          onConfirm={handleDeleteEntry}
+          title="Excluir Entrada de Estoque"
+          description="Tem a certeza que deseja excluir esta entrada de estoque e todos os seus itens? Esta ação não pode ser desfeita e reverterá a quantidade no estoque. Peças já utilizadas em OS ativas bloquearão a exclusão."
+          variant="danger"
+        />
+      )}
     </PageLayout>
   );
 };
@@ -26721,6 +27422,11 @@ import { OsItemsService } from "../services/osItems.service";
 import { FinanceiroService } from "../services/financeiro.service";
 import { Modal, Button, ActionButton, Card, Input, Select, TextArea } from "../components/ui";
 import { toast } from "react-toastify";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 interface ItemOS {
   id_iten: number;
   id_pecas_estoque?: number;
@@ -27286,6 +27992,8 @@ export const FechamentoFinanceiroDetalhePage = () => {
     if (!osData) return;
     try {
       const pagamentoPromises = osData.itens_os.map(async (item) => {
+        // Trava de Isolamento: Estoque vs. Auto Peças
+        if (item.id_pecas_estoque) return null;
         const st = itemsState[item.id_iten];
         if (!st) return null;
         const hasFornecedor = st.id_fornecedor && st.id_fornecedor.trim() !== "";
@@ -27297,7 +28005,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             id_fornecedor: hasFornecedor ? Number(st.id_fornecedor) : undefined,
             id_pessoa: hasFornecedor ? Number(st.id_fornecedor) : undefined,
             custo_real: Number(st.custo_real),
-            data_compra: new Date().toISOString(),
+            data_compra: dayjs().tz("America/Sao_Paulo").format(),
             pago_ao_fornecedor: Boolean(st.pago_fornecedor),
           };
           if (st.id_pagamento_peca) {
@@ -28907,10 +29615,10 @@ export const FechamentoFinanceiroPage = () => {
                         const totalPago = (os?.pagamentos_cliente || []).reduce((acc: number, p: any) => acc + Number(p.valor), 0);
                         const valorOs = Number(os?.valor_total_cliente || 0);
                         const isCli = valorOs === 0 || totalPago >= valorOs;
-                        // CON: todos os itens externos têm ao menos 1 pagamentos_peca com custo_real > 0
-                        const itensExternos = (os?.itens_os || []);
+                        // CON: todos os itens externos têm ao menos 1 pagamentos_peca com custo_real >= 0
+                        const itensExternos = (os?.itens_os || []).filter((i: any) => !i.id_pecas_estoque);
                         const isCon = itensExternos.length === 0 || itensExternos.every((item: any) =>
-                          item.pagamentos_peca?.some((pp: any) => Number(pp.custo_real) > 0)
+                          item.pagamentos_peca?.some((pp: any) => pp.custo_real !== null && pp.custo_real !== undefined && Number(pp.custo_real) >= 0)
                         );
                         // PEC: todos os itens externos com pago_ao_fornecedor = true OU nf_numero preenchido
                         const isPec = itensExternos.length === 0 || itensExternos.every((item: any) =>
@@ -29576,7 +30284,7 @@ export const LivroCaixaPage = () => {
 
 --- FILE: client\src\pages\Login.tsx ---
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { API_BASE } from "../services/api";
 import { Input, Button, Card } from "../components/ui";
@@ -29656,6 +30364,11 @@ export const Login: React.FC = () => {
             placeholder="Sua senha de acesso"
             required
           />
+          <div className="flex justify-end pt-1">
+            <Link to="/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
+              Esqueceu a senha?
+            </Link>
+          </div>
           <div className="pt-2">
             <Button
               type="submit"
@@ -30180,6 +30893,11 @@ import {
 } from "../components/ui";
 import { toast } from "react-toastify";
 import { ModalPagamentoUnificado } from "../components/financeiro/ModalPagamentoUnificado";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 export const NovoPagamentoPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -30204,7 +30922,7 @@ export const NovoPagamentoPage = () => {
   // Simple Adiantamento Inputs
   const [valorAdiantamento, setValorAdiantamento] = useState("");
   const [dataAdiantamento, setDataAdiantamento] = useState(
-    new Date().toISOString().split("T")[0],
+    dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"),
   );
   // Date Filters (Comissões)
   const [filterStart, setFilterStart] = useState("");
@@ -31123,6 +31841,11 @@ import { OsItemsSection } from "../components/os/OsItemsSection";
 import { OsTotalsSection } from "../components/os/OsTotalsSection";
 // Icons
 import { Wrench } from "lucide-react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 export const OrdemDeServicoDetalhePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -31197,7 +31920,7 @@ export const OrdemDeServicoDetalhePage = () => {
           valor_total_cliente: totals.general,
           dt_entrega: os?.dt_entrega
             ? new Date(os.dt_entrega).toISOString()
-            : new Date().toISOString(),
+            : dayjs().tz("America/Sao_Paulo").format(),
         });
         if (success) {
           closeConfirm();
@@ -33096,6 +33819,11 @@ import { UniversalFilters } from "../components/common/UniversalFilters";
 import type { UniversalFiltersState } from "../components/common/UniversalFilters";
 import { useUniversalFilter } from "../hooks/useUniversalFilter";
 import { NfSyncBadge } from "../components/financeiro/NfSyncBadge";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 export const PagamentoPecaPage = () => {
   const [loading, setLoading] = useState(false);
   // --- DATA STATES ---
@@ -33117,7 +33845,7 @@ export const PagamentoPecaPage = () => {
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
     accountId: "",
-    date: new Date().toISOString().split("T")[0],
+    date: dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"),
   });
   const [undoModal, setUndoModal] = useState<{
     isOpen: boolean;
@@ -36588,6 +37316,184 @@ export const VeiculoPage = () => {
 };
 
 
+--- FILE: client\src\pages\auth\ForgotPasswordPage.tsx ---
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { useAlerts } from "../../contexts/AlertsContext";
+import { api } from "../../services/api";
+export const ForgotPasswordPage: React.FC = () => {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const { addAlert } = useAlerts();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      addAlert("error", "Informe o e-mail.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.post("/auth/forgot-password", { email });
+      // Sempre exibiremos a mesma mensagem genérica, mas aqui podemos sinalizar sucesso
+      setSuccess(true);
+    } catch (error: any) {
+      addAlert("error", "Erro ao solicitar recuperação. Tente novamente mais tarde.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-neutral-900 px-4">
+      <div className="max-w-md w-full bg-neutral-800 rounded-xl shadow-lg p-8 border border-neutral-700">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-white mb-2">Recuperar Senha</h2>
+          <p className="text-neutral-400">Enviaremos um link de recuperação para o seu e-mail.</p>
+        </div>
+        {success ? (
+          <div className="bg-emerald-500/20 text-emerald-300 p-4 rounded-lg border border-emerald-500/50 mb-6 text-center">
+            Se o e-mail estiver cadastrado, um link de recuperação foi enviado.
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-neutral-300 mb-2">
+                E-mail
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="seu@email.com"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex justify-center items-center"
+            >
+              {loading ? (
+                <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
+              ) : (
+                "Enviar link de recuperação"
+              )}
+            </button>
+          </form>
+        )}
+        <div className="mt-8 text-center">
+          <Link to="/login" className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors">
+            Voltar para o Login
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+--- FILE: client\src\pages\auth\ResetPasswordPage.tsx ---
+import React, { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { useAlerts } from "../../contexts/AlertsContext";
+import { api } from "../../services/api";
+export const ResetPasswordPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { addAlert } = useAlerts();
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const email = searchParams.get("email");
+  const token = searchParams.get("token");
+  useEffect(() => {
+    if (!email || !token) {
+      addAlert("error", "Link de recuperação inválido ou incompleto.");
+      navigate("/login");
+    }
+  }, [email, token, navigate, addAlert]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 8) {
+      addAlert("error", "A senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      addAlert("error", "As senhas não coincidem.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.post("/auth/reset-password", {
+        email,
+        token,
+        password,
+      });
+      addAlert("success", "Senha redefinida com sucesso! Faça login com a nova senha.");
+      navigate("/login");
+    } catch (error: any) {
+      addAlert("error", error.response?.data?.error || "Erro ao redefinir a senha.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-neutral-900 px-4">
+      <div className="max-w-md w-full bg-neutral-800 rounded-xl shadow-lg p-8 border border-neutral-700">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-white mb-2">Nova Senha</h2>
+          <p className="text-neutral-400">Crie uma nova senha segura para sua conta.</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="pass" className="block text-sm font-medium text-neutral-300 mb-2">
+              Nova Senha
+            </label>
+            <input
+              id="pass"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="Mínimo 8 caracteres"
+              required
+              minLength={8}
+            />
+          </div>
+          <div>
+            <label htmlFor="confirmPass" className="block text-sm font-medium text-neutral-300 mb-2">
+              Confirmar Nova Senha
+            </label>
+            <input
+              id="confirmPass"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="Digite a senha novamente"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex justify-center items-center"
+          >
+            {loading ? (
+              <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
+            ) : (
+              "Redefinir Senha"
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+
 --- FILE: client\src\providers\AppProvider.tsx ---
 import type { ReactNode } from "react";
 import { MessagesContainer } from "../components/ui/MessagesContainer";
@@ -36615,6 +37521,29 @@ export const STATIC_BASE = API_BASE.replace(/\/api$/, "");
 export const api = axios.create({
   baseURL: API_BASE,
 });
+// Interceptor para injetar o token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("@CentroAutomotivo:token");
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+// Interceptor para forçar logout no erro 401
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Limpar os dados do usuário
+      localStorage.removeItem("@CentroAutomotivo:token");
+      localStorage.removeItem("@CentroAutomotivo:user");
+      localStorage.removeItem("@CentroAutomotivo:mustChangePassword");
+      // Emitir evento global para que o frontend/App.tsx capture e recarregue
+      window.dispatchEvent(new Event("unauthorized"));
+    }
+    return Promise.reject(error);
+  }
+);
 
 
 --- FILE: client\src\services\cliente.service.ts ---
@@ -36819,81 +37748,15 @@ export const DashboardService = {
 };
 
 
---- FILE: client\src\services\equipamento.service.ts ---
-import { api } from "./api";
-import type { IEquipamentoCliente } from "../types/backend";
-export const EquipamentoService = {
-  getAllByCliente: async (clientId: number) => {
-    const response = await api.get<IEquipamentoCliente[]>(`/cliente/${clientId}/equipamento`);
-    return response.data;
-  },
-  getById: async (id: number) => {
-    const response = await api.get<IEquipamentoCliente>(`/equipamento/${id}`);
-    return response.data;
-  },
-  create: async (data: Partial<IEquipamentoCliente>) => {
-    const response = await api.post<IEquipamentoCliente>("/equipamento", data);
-    return response.data;
-  },
-  update: async (id: number, data: Partial<IEquipamentoCliente>) => {
-    const response = await api.put<IEquipamentoCliente>(`/equipamento/${id}`, data);
-    return response.data;
-  },
-  delete: async (id: number) => {
-    await api.delete(`/equipamento/${id}`);
-  },
-};
 
 
---- FILE: client\src\services\estoque.service.ts ---
-import { api } from "./api";
-import type {
-  IPecasEstoque,
-  IEstoqueUpdatePayload,
-  IEntradaEstoquePayload,
-} from "../types/estoque.types";
-export const EstoqueService = {
-  getAll: async () => {
-    const response = await api.get<IPecasEstoque[]>("/pecas-estoque");
-    return response.data;
-  },
-  update: async (id: number, data: IEstoqueUpdatePayload) => {
-    const response = await api.put<IPecasEstoque>(`/pecas-estoque/${id}`, data);
-    return response.data;
-  },
-  delete: async (id: number) => {
-    await api.delete(`/pecas-estoque/${id}`);
-  },
-  searchParts: async (query: string) => {
-    const response = await api.get<IPecasEstoque[]>(
-      `/pecas-estoque/search?q=${query}`,
-    );
-    return response.data;
-  },
-  createEntry: async (data: IEntradaEstoquePayload) => {
-    const response = await api.post("/pecas-estoque/entry", data);
-    return response.data;
-  },
-  getEntry: async (id: number) => {
-    const response = await api.get(`/pecas-estoque/entry/${id}`);
-    return response.data;
-  },
-  updateEntry: async (id: number, data: any) => {
-    const response = await api.put(`/pecas-estoque/entry/${id}`, data);
-    return response.data;
-  },
-  deleteEntry: async (id: number) => {
-    await api.delete(`/pecas-estoque/entry/${id}`);
-  },
-  create: async (data: any) => {
-    const response = await api.post<IPecasEstoque>("/pecas-estoque", data);
-    return response.data;
-  },
-};
 
 
 --- FILE: client\src\services\financeiro.service.ts ---
 import { api } from "./api";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import type {
   IPagamentoPeca,
   IPagamentoCliente,
@@ -36903,6 +37766,8 @@ import type {
   IPagamentoColaborador,
   IPendenciaColaborador,
 } from "../types/financeiro.types";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 export class FinanceiroService {
   // --- PEÇAS (Pagamentos a Fornecedores) ---
   static async getPagamentosPeca(): Promise<IPagamentoPeca[]> {
@@ -37004,7 +37869,7 @@ export class FinanceiroService {
   static async confirmarRecebiveis(ids: number[], data_recebimento?: string, idContaBancaria?: number | null): Promise<void> {
     await api.post("/recebivel-cartao/confirmar", { 
       ids, 
-      data_recebimento: data_recebimento || new Date().toISOString(),
+      data_recebimento: data_recebimento || dayjs().tz("America/Sao_Paulo").format(),
       idContaBancaria 
     });
   }
@@ -37679,7 +38544,8 @@ export interface IPessoaFisicaCreatePayload {
 --- FILE: client\src\types\dashboard.types.ts ---
 export interface IDashboardStats {
   osAberta: number;
-  contasPagarPending: number;
+  contasPagarFimMesCount?: number;
+  contasPagarFimMesValor?: number;
   contasPagarOverdue: number;
   contasPagarHojeCount?: number;
   contasPagarHojeValor?: number;
@@ -37698,217 +38564,6 @@ export interface IDashboardData {
   recentOss: any[]; // Using any[] for now as IOs might be complex, but ideally IOs
 }
 export type FilterPeriod = "HOJE" | "SEMANA" | "MES" | "STATUS";
-
-
---- FILE: client\src\types\estoque.types.ts ---
-import type { IPecasEstoque } from "./backend";
-export type { IPecasEstoque };
-export interface IEstoqueUpdatePayload {
-  nome: string;
-  fabricante: string;
-  descricao: string;
-  unidade_medida: string;
-  valor_custo: number;
-  valor_venda: number;
-  estoque_atual: number;
-  estoque_minimo: number;
-}
-export interface IItemEntrada {
-  tempId: number;
-  /** ID real do ItemEntrada no banco (presente apenas no modo edição) */
-  id_item_entrada?: number;
-  id_pecas_estoque?: number | null;
-  new_part_data?: {
-    nome: string;
-    descricao: string;
-    fabricante: string;
-    localizacao?: string;
-    unidade_medida: string;
-    estoque_minimo: number;
-  } | null;
-  displayName: string;
-  quantidade: number;
-  valor_custo: number;
-  margem_lucro: number;
-  valor_venda: number;
-  ref_cod?: string;
-  condicao?: string;
-  aplicacao?: string;
-  obs?: string;
-  /** Marcado como true no modo edição quando o usuário quer remover o item */
-  _delete?: boolean;
-}
-export interface IEntradaEstoquePayload {
-  id_fornecedor: number;
-  nota_fiscal: string;
-  data_compra: Date;
-  obs: string;
-  itens: IItemEntrada[];
-  nf_numero?: string | null;
-}
-
-
---- FILE: client\src\types\financeiro.types.ts ---
-export type FinanceiroTab =
-  | "AUTO_PECAS"
-  | "LIVRO_CAIXA"
-  | "CONTAS_PAGAR"
-  | "COLABORADORES";
-export type PaymentStatusFilter = "PENDING" | "PAID" | "ALL";
-export interface IFinanceiroStatusMsg {
-  type: "success" | "error" | null;
-  text: string;
-}
-export type CashBookEntryType = "IN" | "OUT";
-export interface ICashBookEntry {
-  id: string;
-  date: string;
-  description: string;
-  type: CashBookEntryType;
-  value: number;
-  details: string;
-  categoria: string; // derivado da natureza do lançamento em financeiroUtils.ts
-}
-export interface IPaymentFilters {
-  status: PaymentStatusFilter;
-  supplier: string;
-  plate: string;
-  startDate: string;
-  endDate: string;
-}
-export interface ICashBookFilters {
-  startDate: string;
-  endDate: string;
-  search: string;
-}
-// --- COLLABORATORS (Pagamento Colaborador) ---
-export interface IPendenciaColaborador {
-  type: "COMISSAO" | "VALE" | "PREMIO" | "SALARIO";
-  id: string | number;
-  date: string;
-  description?: string;
-  value: number;
-  // Specifics
-  ver_os?: number;
-  os?: any;
-  commissionValue?: number;
-  percentage?: number;
-  paymentId?: number;
-  paymentMethod?: string;
-}
-export interface IPagamentoColaborador {
-  id_pagamento_equipe: number;
-  id_funcionario: number;
-  dt_pagamento: string;
-  valor_total: number;
-  obs?: string;
-  forma_pagamento?: string;
-  tipo_lancamento: "COMISSAO" | "VALE" | "SALARIO" | "PREMIO";
-  servicos_pagos?: any[];
-  premio_valor?: number;
-  premio_descricao?: string;
-}
-// --- ACCOUNTS PAYABLE (Contas a Pagar) ---
-export interface IContaPagar {
-  id_conta_pagar: number;
-  descricao: string;
-  credor?: string;
-  categoria?: string;
-  id_categoria?: number;
-  valor: number;
-  dt_emissao?: string;
-  dt_vencimento: string;
-  dt_pagamento?: string | null;
-  num_documento?: string;
-  status: "PENDENTE" | "PAGO" | "ATRASADO";
-  url_anexo?: string;
-  obs?: string;
-  dt_cadastro?: string;
-  id_recorrencia?: number;
-  parcela_atual?: number;
-  total_parcelas?: number;
-  // Novos campos de Nota Fiscal (FASE 2)
-  nf_numero?: string | null;
-  nf_parcela?: number | null;
-  nf_total_parcelas?: number | null;
-  nf_boleto?: string | null;
-}
-
-
---- FILE: client\src\types\fornecedor.types.ts ---
-import type { IFornecedor } from "./backend";
-export type { IFornecedor };
-export interface IFornecedorPayload {
-  tipo_pessoa: "FISICA" | "JURIDICA";
-  nome: string;
-  nome_fantasia?: string;
-  documento?: string; // CPF or CNPJ
-  inscricao_estadual?: string;
-  inscricao_municipal?: string;
-  // Contact
-  contato?: string;
-  telefone?: string;
-  whatsapp?: string;
-  email?: string;
-  // Address
-  cep?: string;
-  logradouro?: string;
-  numero?: string;
-  complemento?: string;
-  bairro?: string;
-  cidade?: string;
-  uf?: string;
-  // Finance
-  banco?: string;
-  agencia?: string;
-  conta?: string;
-  chave_pix?: string;
-  condicoes_pagamento?: string;
-  categoria_produto?: string;
-  // Extra
-  obs?: string;
-}
-
-
---- FILE: client\src\types\os.types.ts ---
-import type { IOrdemDeServico, IItensOs, IPagamentoPeca } from "./backend";
-export const OsStatus = {
-  AGENDAMENTO: "AGENDAMENTO",
-  ORCAMENTO: "ORCAMENTO",
-  ABERTA: "ABERTA",
-  FINANCEIRO: "FINANCEIRO",
-  FINALIZADA: "FINALIZADA",
-  CANCELADA: "CANCELADA",
-} as const;
-export type OsStatus = (typeof OsStatus)[keyof typeof OsStatus];
-export interface IItemOsDetalhado extends IItensOs {
-  pecas_estoque?: {
-    valor_custo: number;
-    nome: string;
-  };
-  pagamentos_peca?: IPagamentoPeca[];
-}
-export interface IOrdemDeServicoDetalhada extends IOrdemDeServico {
-  itens_os: IItemOsDetalhado[]; // Override with detailed items
-  // Add other specific relations used in frontend if not present in generic IOrdemDeServico
-}
-export interface ILaborService {
-  id_servico_mao_de_obra?: number;
-  id_temporary?: string; // Para modo draft
-  id_funcionario: number | string;
-  valor: number | string;
-  descricao?: string | null;
-  categoria?: string; // 'MECANICA' | 'ELETRICA'
-  funcionario?: {
-    pessoa_fisica?: {
-      pessoa?: {
-        nome: string;
-      };
-    };
-  };
-}
-
-
 --- FILE: client\src\types\relatorios.types.ts ---
 export interface Periodo {
   start: string;
@@ -38398,6 +39053,7 @@ Antes de entregar qualquer alteração de frontend, verificar:
 > O objetivo visual é sempre **premium e moderno**. Se o resultado parecer "genérico" ou "básico", houve uma falha.
 
 
+--- FILE: nginx\nginx.conf ---
 user  nginx;
 worker_processes  auto;
 events {
@@ -39125,6 +39781,7 @@ model Usuario {
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
+    "dayjs": "^1.11.21",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
@@ -39151,25 +39808,6 @@ model Usuario {
     "seed": "tsx prisma/seed.ts"
   }
 }
-
-
-const { PrismaClient } = require("@prisma/client"); const prisma = new PrismaClient(); async function main() { const p = await prisma.pagamentoPeca.findMany({ where: { item_os: { id_os: 50 } }, include: { item_os: { include: { ordem_de_servico: true } }, fornecedor: true } }); console.log(JSON.stringify(p, null, 2)); } main().catch(console.error).finally(() => prisma.$disconnect());
-
-
---- FILE: server\test.ts ---
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-async function main() {
-  const p = await prisma.pagamentoPeca.findMany({
-    where: { item_os: { id_os: 50 } },
-    include: {
-      item_os: { include: { ordem_de_servico: true } },
-      fornecedor: true
-    }
-  });
-  console.log(JSON.stringify(p, null, 2));
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
 
 
 --- FILE: server\test_query.ts ---
@@ -39493,7 +40131,19 @@ model Funcionario {
   ordens_de_servico       OrdemDeServico[]
   pagamentos              PagamentoEquipe[]
   servicos_mao_de_obra    ServicoMaoDeObra[]
+  registros_diarias       RegistroDiaria[]
   @@map("funcionario")
+}
+model RegistroDiaria {
+  id_registro    Int         @id @default(autoincrement())
+  id_funcionario Int
+  data_trabalho  DateTime    @db.Date
+  presente       Boolean     @default(true) // False indica falta justificada/injustificada
+  pago           Boolean     @default(false)
+  valor_diaria   Decimal     @db.Decimal(10, 2)
+  funcionario    Funcionario @relation(fields: [id_funcionario], references: [id_funcionario])
+  @@unique([id_funcionario, data_trabalho])
+  @@map("registro_diaria")
 }
 model PecasEstoque {
   id_pecas_estoque      Int           @id @default(autoincrement())
@@ -39890,6 +40540,8 @@ model Usuario {
   must_change_password  Boolean      @default(false)
   created_at            DateTime     @default(now())
   updated_at            DateTime     @updatedAt
+  reset_password_token  String?      @db.VarChar(255)
+  reset_password_expires DateTime?
 }
 
 
@@ -40860,7 +41512,9 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { UsuarioRepository } from "../repositories/UsuarioRepository.js";
+import { AuthService } from "../services/AuthService.js";
 const usuarioRepository = new UsuarioRepository();
+const authService = new AuthService();
 export class AuthController {
   async setupAdmin(req: Request, res: Response): Promise<Response | any> {
     try {
@@ -40897,36 +41551,19 @@ export class AuthController {
   }
   async login(req: Request, res: Response): Promise<Response | any> {
     try {
-      const { email, senha } = req.body;
-      if (!email || !senha) {
+      const { email, password } = req.body;
+      const senhaFornecida = password || req.body.senha;
+      if (!email || !senhaFornecida) {
         return res
           .status(400)
           .json({ error: "E-mail e senha são obrigatórios." });
       }
-      const usuario = await usuarioRepository.findByEmail(email);
-      if (!usuario) {
-        return res.status(401).json({ error: "Credenciais inválidas." });
-      }
-      const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
-      if (!senhaValida) {
-        return res.status(401).json({ error: "Credenciais inválidas." });
-      }
-      // Separa a senha do restante dos dados para não retornar no JSON
-      const { senha_hash, ...usuarioSemSenha } = usuario;
-      const token = jwt.sign(
-        { id_usuario: usuario.id_usuario, perfil: usuario.perfil },
-        (process.env.JWT_SECRET as string) ||
-          "insira_uma_chave_aleatoria_super_segura_aqui",
-        { expiresIn: "1d" },
-      );
-      return res.status(200).json({
-        usuario: usuarioSemSenha,
-        token,
-        must_change_password: usuario.must_change_password,
-      });
-    } catch (error) {
+      const result = await authService.login(email, senhaFornecida);
+      return res.status(200).json(result);
+    } catch (error: any) {
       console.error("Erro no login:", error);
-      return res.status(500).json({ error: "Erro interno do servidor." });
+      // Retornar genérico
+      return res.status(401).json({ error: "Credenciais inválidas." });
     }
   }
   async changePassword(req: Request, res: Response): Promise<Response | any> {
@@ -40973,6 +41610,34 @@ export class AuthController {
   }
   async getServerTime(req: Request, res: Response): Promise<Response> {
     return res.status(200).json({ serverTime: new Date().toISOString() });
+  }
+  async forgotPassword(req: Request, res: Response): Promise<Response | any> {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: "E-mail é obrigatório." });
+      }
+      await authService.forgotPassword(email);
+      // Privacy Lock: Sempre retornar 200 genérico para evitar enumeração de usuário.
+      return res.status(200).json({ 
+        message: "Se o e-mail estiver cadastrado, um link de recuperação foi enviado." 
+      });
+    } catch (error) {
+      console.error("[AuthController] forgotPassword error:", error);
+      return res.status(500).json({ error: "Erro interno ao processar a solicitação." });
+    }
+  }
+  async resetPassword(req: Request, res: Response): Promise<Response | any> {
+    try {
+      const { email, token, password } = req.body;
+      if (!email || !token || !password) {
+        return res.status(400).json({ error: "E-mail, token e nova senha são obrigatórios." });
+      }
+      await authService.resetPassword(email, token, password);
+      return res.status(200).json({ message: "Senha redefinida com sucesso." });
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message || "Erro ao redefinir a senha." });
+    }
   }
 }
 
@@ -41305,171 +41970,6 @@ export class ClienteController {
 }
 
 
---- FILE: server\src\controllers\configuracao.controller.ts ---
-import { Request, Response } from "express";
-import { ConfiguracaoRepository } from "../repositories/configuracao.repository.js";
-import fs from "fs";
-import path from "path";
-// Garantia secundária de que o diretório uploads existe (complementa multer.ts)
-const uploadsDir = path.resolve(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log(`[Configuracao] Created uploads directory: ${uploadsDir}`);
-}
-interface AuthenticatedRequest extends Request {
-  file?: Express.Multer.File;
-}
-export const ConfiguracaoController = {
-  get: async (req: Request, res: Response) => {
-    try {
-      const config = await ConfiguracaoRepository.get();
-      // Retorna config ou objeto neutro — NUNCA deixa o frontend sem dados
-      return res.json(
-        config ?? {
-          id: null,
-          nomeFantasia: "Oficina",
-          razaoSocial: "",
-          cnpj: "",
-          inscricaoEstadual: "",
-          endereco: "",
-          telefone: "",
-          telefone2: "",
-          email: "",
-          logoUrl: null,
-          logoImpressaoUrl: null,
-        },
-      );
-    } catch (error) {
-      // Coluna inexistente no banco ou qualquer erro de runtime → retorna dados
-      // neutros para não quebrar a Sidebar / tela de Configurações
-      console.error(
-        "Error fetching configuracao (retornando fallback):",
-        error,
-      );
-      return res.status(200).json({
-        id: null,
-        nomeFantasia: "Oficina",
-        razaoSocial: "",
-        cnpj: "",
-        inscricaoEstadual: "",
-        endereco: "",
-        telefone: "",
-        telefone2: "",
-        email: "",
-        logoUrl: null,
-        logoImpressaoUrl: null,
-      });
-    }
-  },
-  upsert: async (req: Request, res: Response) => {
-    try {
-      const {
-        nomeFantasia,
-        razaoSocial,
-        cnpj,
-        inscricaoEstadual,
-        endereco,
-        telefone,
-        telefone2,
-        email,
-        smtpHost,
-        smtpPort,
-        smtpUser,
-        smtpPass,
-      } = req.body;
-      let logoUrl = undefined;
-      const request = req as AuthenticatedRequest;
-      // Get current config to check for existing logo
-      const currentConfig = await ConfiguracaoRepository.get();
-      if (request.file) {
-        // Construct the URL path for the uploaded file
-        logoUrl = `/uploads/${request.file.filename}`;
-        // Delete old logo file if it exists
-        if (currentConfig?.logoUrl) {
-          const oldLogoPath = path.join(
-            process.cwd(),
-            "uploads",
-            path.basename(currentConfig.logoUrl),
-          );
-          if (fs.existsSync(oldLogoPath)) {
-            fs.unlinkSync(oldLogoPath);
-          }
-        }
-      } else if (req.body.logoUrl === "" && currentConfig?.logoUrl) {
-        // Logo is being removed, delete the file
-        const oldLogoPath = path.join(
-          process.cwd(),
-          "uploads",
-          path.basename(currentConfig.logoUrl),
-        );
-        if (fs.existsSync(oldLogoPath)) {
-          fs.unlinkSync(oldLogoPath);
-        }
-        logoUrl = "";
-      }
-      const data: any = {
-        nomeFantasia: nomeFantasia || "Oficina", // NOT NULL guard
-        razaoSocial,
-        cnpj,
-        inscricaoEstadual,
-        endereco,
-        telefone,
-        telefone2,
-        email,
-        smtpHost,
-        smtpPort: smtpPort ? Number(smtpPort) : null,
-        smtpUser,
-        smtpPass,
-      };
-      if (logoUrl !== undefined) {
-        data.logoUrl = logoUrl;
-      }
-      const config = await ConfiguracaoRepository.upsert(data);
-      return res.json(config);
-    } catch (error) {
-      console.error("[CRÍTICO] Falha ao salvar configuração:", error);
-      const details = error instanceof Error ? error.message : String(error);
-      return res.status(500).json({ error: "Erro ao salvar configurações", details });
-    }
-  },
-  uploadLogoImpressao: async (req: Request, res: Response) => {
-    try {
-      const request = req as AuthenticatedRequest;
-      if (!request.file) {
-        return res.status(400).json({ error: "Nenhum arquivo enviado." });
-      }
-      const logoImpressaoUrl = `/uploads/${request.file.filename}`;
-      // Get current config to check for existing logo impressao to delete
-      const currentConfig = await ConfiguracaoRepository.get();
-      if (currentConfig?.logoImpressaoUrl) {
-        const oldLogoPath = path.join(
-          process.cwd(),
-          "uploads",
-          path.basename(currentConfig.logoImpressaoUrl)
-        );
-        if (fs.existsSync(oldLogoPath)) {
-          fs.unlinkSync(oldLogoPath);
-        }
-      }
-      const data: any = {
-        logoImpressaoUrl,
-      };
-      if (!currentConfig) {
-        // Se por algum motivo for a primeira inserção da tabela inteira,
-        // precisamos de um nome fantasia padrão obrigatório para não violar a restrição de NOT NULL
-        data.nomeFantasia = "Oficina";
-      }
-      const config = await ConfiguracaoRepository.upsert(data);
-      return res.json(config);
-    } catch (error) {
-      console.error("[CRÍTICO] Falha ao salvar configuração (logo impressão):", error);
-      const details = error instanceof Error ? error.message : String(error);
-      return res.status(500).json({ error: "Erro ao fazer upload da logo de impressão", details });
-    }
-  },
-};
-
-
 --- FILE: server\src\controllers\contaBancaria.controller.ts ---
 import { Request, Response } from 'express';
 import { prisma } from '../prisma.js';
@@ -41533,8 +42033,8 @@ export const createConta = async (req: Request, res: Response) => {
   try {
     const conta = await repository.create(req.body);
     res.status(201).json(conta);
-  } catch (error) {
-    res.status(400).json({ error: "Erro ao criar conta a pagar" });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || "Erro ao criar conta a pagar" });
   }
 };
 export const getContas = async (req: Request, res: Response) => {
@@ -41543,11 +42043,11 @@ export const getContas = async (req: Request, res: Response) => {
     let start: Date | undefined;
     let end: Date | undefined;
     if (startDate && typeof startDate === "string") {
-      const parsedStart = parseISO(startDate.split('T')[0]);
+      const parsedStart = parseISO((startDate.split('T')[0]) || "");
       start = startOfDay(parsedStart);
     }
     if (endDate && typeof endDate === "string") {
-      const parsedEnd = parseISO(endDate.split('T')[0]);
+      const parsedEnd = parseISO((endDate.split('T')[0]) || "");
       end = endOfDay(parsedEnd);
     }
     const contas = await repository.findAll(start, end);
@@ -41615,8 +42115,8 @@ export const updateConta = async (req: Request, res: Response) => {
       applyToAllRecurrences === true,
     );
     res.json(conta);
-  } catch (error) {
-    res.status(400).json({ error: "Erro ao atualizar conta" });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || "Erro ao atualizar conta" });
   }
 };
 export const deleteConta = async (req: Request, res: Response) => {
@@ -41640,12 +42140,11 @@ export const getNfsPendentes = async (req: Request, res: Response) => {
     const limit = hasExplicitLimit ? parseInt(req.query.limit as string) : undefined;
     const page = hasExplicitLimit ? (parseInt(req.query.page as string) || 1) : undefined;
     const skip = (hasExplicitLimit && page) ? (page - 1) * limit! : undefined;
-    const nfs = await repository.findNfsPendentes({
-      search,
-      id_fornecedor,
-      skip,
-      take: limit,
-    });
+    const params: any = { search };
+    if (id_fornecedor !== undefined) params.id_fornecedor = id_fornecedor;
+    if (skip !== undefined) params.skip = skip;
+    if (limit !== undefined) params.take = limit;
+    const nfs = await repository.findNfsPendentes(params);
     // BLINDAGEM DE CONTRATO (Defesa em profundidade para garantir o formato { data, total })
     if (Array.isArray(nfs)) {
       return res.json({ data: nfs, total: nfs.length });
@@ -41683,133 +42182,60 @@ export const getNotasFiscaisCentral = async (req: Request, res: Response) => {
 
 --- FILE: server\src\controllers\dashboard.controller.ts ---
 import { Request, Response } from "express";
-import { prisma } from "../prisma.js";
 import { OrdemDeServicoRepository } from "../repositories/ordemDeServico.repository.js";
+import { DashboardRepository } from "../repositories/dashboard.repository.js";
+import { dayjs, TIMEZONE, getDayBoundsSP, getMonthBoundsSP } from "../utils/date.js";
 const osRepository = new OrdemDeServicoRepository();
+const dashboardRepository = new DashboardRepository();
 export class DashboardController {
   async getDashboardData(req: Request, res: Response) {
     try {
-      const now = new Date();
-      const todayStr = now.toISOString().split("T")[0];
-      // Use UTC range for "Today" to match how the frontend was doing it (startsWith todayLocal)
-      // or better, use local time range.
-      const year = now.getFullYear();
-      const month = now.getMonth();
-      const date = now.getDate();
-      const startOfDay = new Date(Date.UTC(year, month, date, 0, 0, 0, 0));
-      const endOfDay = new Date(Date.UTC(year, month, date, 23, 59, 59, 999));
+      const now = dayjs().tz(TIMEZONE);
+      // For exact timestamp based fields (LivroCaixa, PagamentoCliente) we use SP bounds:
+      const startOfDaySP = now.startOf("day").toDate();
+      const endOfDaySP = now.endOf("day").toDate();
+      // For ContasPagar, the dates are stored strictly as UTC midnight (e.g., 2026-06-18T00:00:00Z)
+      // So we must compare them using UTC boundaries matching the YYYY-MM-DD string exactly!
+      const todayStr = now.format("YYYY-MM-DD");
+      const tomorrowStr = now.add(1, 'day').format("YYYY-MM-DD");
+      const startOfDayUTC = dayjs.utc(todayStr).startOf("day").toDate();
+      const endOfDayUTC = dayjs.utc(todayStr).endOf("day").toDate();
+      const tomorrowStartUTC = dayjs.utc(tomorrowStr).startOf('day').toDate();
+      const tomorrowEndUTC = dayjs.utc(tomorrowStr).endOf('day').toDate();
+      const next7DaysStartUTC = dayjs.utc(now.add(2, 'day').format("YYYY-MM-DD")).startOf('day').toDate();
+      const next7DaysEndUTC = dayjs.utc(now.add(8, 'day').format("YYYY-MM-DD")).endOf('day').toDate();
+      const endOfMonthUTC = dayjs.utc(now.endOf('month').format("YYYY-MM-DD")).endOf('day').toDate();
       // --- AGGREGATIONS / COUNTS ---
       // 1. Serviços em Aberto
-      const osAberta = await prisma.ordemDeServico.count({
-        where: {
-          status: { in: ["ABERTA", "EM_ANDAMENTO"] },
-          deleted_at: null,
-        },
-      });
-      // 2. Contas a Pagar (Split)
-      // Pending: status PENDENTE (Total)
-      const contasPagarPending = await prisma.contasPagar.count({
-        where: {
-          status: "PENDENTE",
-          deleted_at: null,
-        },
-      });
-      // Overdue: status PENDENTE and date < today
-      const contasPagarOverdue = await prisma.contasPagar.count({
-        where: {
-          status: "PENDENTE",
-          dt_vencimento: { lt: startOfDay },
-          deleted_at: null,
-        },
-      });
-      const tomorrowStart = new Date(startOfDay);
-      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-      const tomorrowEnd = new Date(endOfDay);
-      tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
-      const next7DaysStart = new Date(startOfDay);
-      const next7DaysEnd = new Date(endOfDay);
-      next7DaysEnd.setDate(next7DaysEnd.getDate() + 7);
-      const contasPagarHojeList = await prisma.contasPagar.findMany({
-        where: { status: "PENDENTE", dt_vencimento: { gte: startOfDay, lte: endOfDay }, deleted_at: null },
-      });
+      const osAberta = await dashboardRepository.getOsAbertas();
+      // Overdue: status PENDENTE and date < today (startOfDayUTC)
+      const contasPagarOverdue = await dashboardRepository.getContasPagarOverdue(startOfDayUTC);
+      // Hoje
+      const contasPagarHojeList = await dashboardRepository.getContasPagarPorPeriodo(startOfDayUTC, endOfDayUTC);
       const contasPagarHojeCount = contasPagarHojeList.length;
       const contasPagarHojeValor = contasPagarHojeList.reduce((sum, c) => sum + Number(c.valor), 0);
-      const contasPagarAmanhaList = await prisma.contasPagar.findMany({
-        where: { status: "PENDENTE", dt_vencimento: { gte: tomorrowStart, lte: tomorrowEnd }, deleted_at: null },
-      });
+      // Amanhã
+      const contasPagarAmanhaList = await dashboardRepository.getContasPagarPorPeriodo(tomorrowStartUTC, tomorrowEndUTC);
       const contasPagarAmanhaCount = contasPagarAmanhaList.length;
       const contasPagarAmanhaValor = contasPagarAmanhaList.reduce((sum, c) => sum + Number(c.valor), 0);
-      const contasPagar7DiasList = await prisma.contasPagar.findMany({
-        where: { status: "PENDENTE", dt_vencimento: { gte: next7DaysStart, lte: next7DaysEnd }, deleted_at: null },
-      });
+      // Próximos 7 Dias (Sem Hoje e Amanhã)
+      const contasPagar7DiasList = await dashboardRepository.getContasPagarPorPeriodo(next7DaysStartUTC, next7DaysEndUTC);
       const contasPagar7DiasCount = contasPagar7DiasList.length;
       const contasPagar7DiasValor = contasPagar7DiasList.reduce((sum, c) => sum + Number(c.valor), 0);
+      // Fim do Mês
+      const contasPagarFimMesList = await dashboardRepository.getContasPagarPorPeriodo(startOfDayUTC, endOfMonthUTC);
+      const contasPagarFimMesCount = contasPagarFimMesList.length;
+      const contasPagarFimMesValor = contasPagarFimMesList.reduce((sum, c) => sum + Number(c.valor), 0);
       // 3. Livro Caixa Entries (Today)
-      // Matches manual + auto entries
-      // Entries = PagamentoCliente (Auto) + LivroCaixa ENTRADA (Manual)
-      const autoInflows = await prisma.pagamentoCliente.count({
-        where: {
-          data_pagamento: { gte: startOfDay, lte: endOfDay },
-          deleted_at: null,
-        },
-      });
-      const manualInflows = await prisma.livroCaixa.count({
-        where: {
-          dt_movimentacao: { gte: startOfDay, lte: endOfDay },
-          tipo_movimentacao: "ENTRADA",
-          origem: "MANUAL",
-          deleted_at: null,
-          categoria: { not: "CONCILIACAO_CARTAO" },
-        },
-      });
-      const libroCaixaEntries = autoInflows + manualInflows;
+      const libroCaixaEntries = await dashboardRepository.getLivroCaixaEntries(startOfDaySP, endOfDaySP);
       // 4. Livro Caixa Exits (Today)
-      // Exits = PagamentoPeca (Auto) + LivroCaixa SAIDA (Manual/Bills)
-      const autoOutflows = await prisma.pagamentoPeca.count({
-        where: {
-          pago_ao_fornecedor: true, // Only real exits
-          data_pagamento_fornecedor: { gte: startOfDay, lte: endOfDay },
-          deleted_at: null,
-        },
-      });
-      const manualOutflows = await prisma.livroCaixa.count({
-        where: {
-          dt_movimentacao: { gte: startOfDay, lte: endOfDay },
-          tipo_movimentacao: "SAIDA",
-          deleted_at: null,
-          categoria: { not: "CONCILIACAO_CARTAO" },
-          NOT: {
-            AND: [{ origem: "AUTOMATICA" }, { categoria: "Auto Peças" }],
-          },
-        },
-      });
-      const libroCaixaExits = autoOutflows + manualOutflows;
+      const libroCaixaExits = await dashboardRepository.getLivroCaixaExits(startOfDaySP, endOfDaySP);
       // 5. Auto Peças Pendentes
-      const autoPecasPendentes = await prisma.pagamentoPeca.count({
-        where: {
-          pago_ao_fornecedor: false,
-          deleted_at: null,
-        },
-      });
-      // 6. Consolidação (OS Pronta para Financeiro / Financeiro E SEM Fechamento)
-      const consolidacao = await prisma.ordemDeServico.count({
-        where: {
-          status: { in: ["PRONTO PARA FINANCEIRO", "FINANCEIRO"] },
-          fechamento_financeiro: { none: {} },
-          deleted_at: null,
-        },
-      });
+      const autoPecasPendentes = await dashboardRepository.getAutoPecasPendentes();
+      // 6. Consolidação
+      const consolidacao = await dashboardRepository.getConsolidacao();
       // 7. Alerta de Estoque
-      // Efficiency: We only need the count.
-      // prisma.pecasEstoque.findMany is okay if table is small, but let's stick to it for now
-      // or use a better way if possible.
-      const pecasComAlerta = await prisma.pecasEstoque.findMany({
-        select: {
-          id_pecas_estoque: true,
-          estoque_atual: true,
-          estoque_minimo: true,
-        },
-      });
+      const pecasComAlerta = await dashboardRepository.getPecasComAlerta();
       const alertaEstoque = pecasComAlerta.filter(
         (p) => Number(p.estoque_atual) <= Number(p.estoque_minimo || 0),
       ).length;
@@ -41818,7 +42244,8 @@ export class DashboardController {
       res.json({
         stats: {
           osAberta,
-          contasPagarPending,
+          contasPagarFimMesCount,
+          contasPagarFimMesValor,
           contasPagarOverdue,
           contasPagarHojeCount,
           contasPagarHojeValor,
@@ -42525,6 +42952,46 @@ export class FuncionarioController {
       res.status(400).json({ error: 'Failed to delete Funcionario' });
     }
   }
+  // --- DIÁRIAS ---
+  async registrarDiarias(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const lote = req.body.lote; // Array<{ data_trabalho, presente, valor_diaria }>
+      if (!lote || !Array.isArray(lote)) {
+        return res.status(400).json({ error: 'Formato de lote inválido' });
+      }
+      const resultados = await repository.registrarDiarias(id, lote);
+      res.json(resultados);
+    } catch (error) {
+      res.status(400).json({ error: 'Falha ao registrar diárias', details: error });
+    }
+  }
+  async listarDiarias(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const { inicio, fim } = req.query;
+      if (!inicio || !fim) {
+        return res.status(400).json({ error: 'Período (inicio e fim) é obrigatório' });
+      }
+      const diarias = await repository.listarDiarias(id, inicio as string, fim as string);
+      res.json(diarias);
+    } catch (error) {
+      res.status(500).json({ error: 'Falha ao buscar diárias', details: error });
+    }
+  }
+  async marcarDiariasComoPagas(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const ids = req.body.ids; // Array<number>
+      if (!ids || !Array.isArray(ids)) {
+        return res.status(400).json({ error: 'Formato de ids inválido' });
+      }
+      const result = await repository.marcarDiariasComoPagas(id, ids);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: 'Falha ao marcar diárias como pagas', details: error });
+    }
+  }
 }
 
 
@@ -42876,203 +43343,6 @@ export const toggleStatus = async (req: Request, res: Response) => {
 };
 
 
---- FILE: server\src\controllers\ordemDeServico.controller.ts ---
-import { Request, Response } from "express";
-import { OrdemDeServicoService } from "../services/OrdemDeServicoService.js";
-import { MensageriaService } from "../services/MensageriaService.js";
-import { EmailService } from "../services/email.service.js";
-const service = new OrdemDeServicoService();
-const mensageria = new MensageriaService();
-export class OrdemDeServicoController {
-  async create(req: Request, res: Response) {
-    try {
-      const os = await service.create(req.body);
-      res.status(201).json(os);
-    } catch (error) {
-      res.status(400).json({
-        error: "Failed to create OS",
-        details: error instanceof Error ? error.message : error,
-      });
-    }
-  }
-  async createUnified(req: Request, res: Response) {
-    try {
-      const result = await service.create(req.body);
-      res.status(201).json(result);
-    } catch (error) {
-      console.error("Unified Create Error:", error);
-      res.status(400).json({
-        error: "Failed to create OS Unified",
-        details: error instanceof Error ? error.message : error,
-      });
-    }
-  }
-  async findAll(req: Request, res: Response) {
-    try {
-      console.error("OrdemDeServicoController.findAll called");
-      const oss = await service.findAll(req.query);
-      res.json(oss);
-    } catch (error) {
-      console.error("OrdemDeServicoController.findAll Error:", error);
-      res.status(500).json({ error: "Failed to fetch OSs" });
-    }
-  }
-  async findById(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const includeInternal = req.query.includeInternal === "true";
-      const os = await service.findById(id, includeInternal);
-      if (!os) {
-        return res.status(404).json({ error: "OS not found" });
-      }
-      res.json(os);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch OS" });
-    }
-  }
-  async findByVehicleId(req: Request, res: Response) {
-    try {
-      const vehicleId = Number(req.params.vehicleId);
-      if (isNaN(vehicleId)) {
-        return res.status(400).json({ error: "Invalid Vehicle ID" });
-      }
-      const oss = await service.findByVehicleId(vehicleId);
-      res.json(oss);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch OSs for vehicle" });
-    }
-  }
-  async update(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const os = await service.update(id, req.body);
-      res.json(os);
-    } catch (error) {
-      console.error("Update OS Error:", error);
-      res.status(400).json({
-        error: "Failed to update OS",
-        details: error instanceof Error ? error.message : error,
-      });
-    }
-  }
-  async delete(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      await service.delete(id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(400).json({
-        error: "Failed to delete OS",
-        details: error instanceof Error ? error.message : error,
-      });
-    }
-  }
-  async reabrir(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const os = await service.reabrirOS(id);
-      res.json({ success: true, message: "OS reaberta com sucesso", os });
-    } catch (error) {
-      console.error("Reopen OS Error:", error);
-      res.status(400).json({
-        error: "Failed to reopen OS",
-        details: error instanceof Error ? error.message : error,
-      });
-    }
-  }
-  async getPdf(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const os = await service.findById(id);
-      if (!os) {
-        return res.status(404).json({ error: "OS not found" });
-      }
-      const pdfBuffer = await mensageria.gerarPdfOs(os);
-      // Filename construction
-      const clientNameRaw = os.cliente?.pessoa_fisica?.pessoa?.nome || os.cliente?.pessoa_juridica?.nome_fantasia || os.cliente?.pessoa_juridica?.razao_social || "Cliente";
-      let itemDesc = "Documento";
-      if (os.veiculo) {
-        const marca = os.veiculo.marca || "";
-        const modelo = os.veiculo.modelo || "";
-        const cor = os.veiculo.cor || "";
-        const placa = os.veiculo.placa || "";
-        itemDesc = `${marca} ${modelo} ${cor} ${placa}`.trim();
-      } else if (os.equipamento) {
-        const peca = os.equipamento.nome_peca || "";
-        const fabricante = os.equipamento.fabricante || "";
-        const numeracao = os.equipamento.numeracao || "";
-        itemDesc = `${peca} ${fabricante} ${numeracao}`.trim();
-      }
-      const isOrcamento = os.status !== "FINALIZADA" && os.status !== "PAGA_CLIENTE";
-      const docType = isOrcamento ? "Orcamento" : "OS";
-      const rawFilename = `${docType}_${os.id_os} - ${itemDesc} - ${clientNameRaw}`;
-      const filename = rawFilename.replace(/[/\\?%*:|"<>\s]+/g, " ").trim() + ".pdf";
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      res.send(pdfBuffer);
-    } catch (error) {
-      console.error("PDF Generation Error:", error);
-      res.status(500).json({ error: "Failed to generate PDF" });
-    }
-  }
-  async send(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const { method, target } = req.body; // method: "EMAIL" | "TELEGRAM"
-      if (!method || !target) {
-        return res
-          .status(400)
-          .json({ error: "Method and target are required" });
-      }
-      const os = await service.findById(id);
-      if (!os) {
-        return res.status(404).json({ error: "OS not found" });
-      }
-      const pdfBuffer = await mensageria.gerarPdfOs(os);
-      if (method === "EMAIL") {
-        try {
-          await mensageria.enviarEmail(target, os, pdfBuffer);
-        } catch (e: any) {
-          return res.status(500).json({ error: e.message || e });
-        }
-      } else if (method === "TELEGRAM") {
-        await mensageria.enviarTelegram(target, os, pdfBuffer);
-      } else {
-        return res.status(400).json({ error: "Invalid method" });
-      }
-      res.json({ success: true, message: `Sent via ${method}` });
-    } catch (error: any) {
-      console.error("Send Error:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Failed to send document" });
-    }
-  }
-  async enviarEmail(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const { remetenteEmail } = req.body;
-      const os = await service.findById(id);
-      if (!os) {
-        return res.status(404).json({ error: "OS not found" });
-      }
-      const emailInfo = await EmailService.sendOsEmail(os, remetenteEmail);
-      res.json({
-        success: true,
-        message: "Email enviado com sucesso",
-        info: emailInfo,
-      });
-    } catch (error: any) {
-      console.error("Erro ao enviar email da OS:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Falha ao enviar o email" });
-    }
-  }
-}
-
-
---- FILE: server\src\controllers\pagamentoCliente.controller.ts ---
 import { Request, Response } from "express";
 import { PagamentoClienteRepository } from "../repositories/pagamentoCliente.repository.js";
 import { prisma } from "../prisma.js";
@@ -44133,18 +44403,22 @@ export class RecebivelCartaoController {
 --- FILE: server\src\controllers\RelatorioController.ts ---
 import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
+import { dayjs, TIMEZONE, getDayBoundsSP, getMonthBoundsSP } from "../utils/date.js";
 export class RelatorioController {
   async getRelatorioCompleto(req: Request, res: Response) {
     try {
       const { startDate, endDate } = req.query;
       // Definição de datas (padrão: mês atual se não informado)
-      const now = new Date();
-      const start = startDate
-        ? new Date(startDate as string)
-        : new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = endDate
-        ? new Date(endDate as string)
-        : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      let start: Date;
+      let end: Date;
+      if (startDate && endDate) {
+        start = getDayBoundsSP(startDate as string).start;
+        end = getDayBoundsSP(endDate as string).end;
+      } else {
+        const bounds = getMonthBoundsSP(dayjs().tz(TIMEZONE));
+        start = bounds.start;
+        end = bounds.end;
+      }
       // --- KPIs PRINCIPAIS ---
       const osFinalizadas = await prisma.ordemDeServico.findMany({
         where: {
@@ -44211,7 +44485,8 @@ export class RelatorioController {
           porCategoria[cat] = (porCategoria[cat] || 0) + valorServ;
         }
         // Evolução Mensal
-        const mesKey = os.updated_at.toISOString().slice(0, 7);
+        const localDate = dayjs(os.updated_at).tz(TIMEZONE);
+        const mesKey = localDate.format('YYYY-MM');
         if (!evolucaoMensal[mesKey]) {
           evolucaoMensal[mesKey] = {
             maoDeObra: 0,
@@ -44223,7 +44498,7 @@ export class RelatorioController {
         evolucaoMensal[mesKey].lucroEstoque += lucroEstoqueOs;
         evolucaoMensal[mesKey].lucroPecasExternas += lucroPecasExternasOs;
         // Evolução Diária
-        const diaKey = os.updated_at.toISOString().slice(0, 10);
+        const diaKey = localDate.format('YYYY-MM-DD');
         evolucaoDiaria[diaKey] =
           (evolucaoDiaria[diaKey] || 0) + Number(os.valor_final || 0);
       }
@@ -44622,13 +44897,15 @@ export class RelatorioController {
 --- FILE: server\src\controllers\RelatorioFinanceiroController.ts ---
 import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
+import { dayjs, TIMEZONE, getDayBoundsSP } from "../utils/date.js";
 export class RelatorioFinanceiroController {
   async getDashboard(req: Request, res: Response) {
     try {
       // 1. Definição de datas (Default: Últimos 30 dias se não vier na query)
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - 30);
+      // 1. Definição de datas (Default: Últimos 30 dias se não vier na query)
+      const now = dayjs().tz(TIMEZONE);
+      const endDate = getDayBoundsSP(now).end;
+      const startDate = getDayBoundsSP(now.subtract(30, 'day')).start;
       // --- A. KPIS GERAIS ---
       // Receita: Apenas LivroCaixa (Fonte Única da Verdade)
       // Excluir transferências internas e conciliações para evitar duplicidade
@@ -44795,7 +45072,7 @@ export class RelatoriosController {
       const data = await relatoriosService.getEvolucaoMensal(
         start,
         end,
-        (groupBy as "day" | "week" | "month" | "quarter" | "semester" | "year") || "month",
+        (groupBy as "month" | "quarter" | "semester" | "year") || "month",
       );
       return res.json(data);
     } catch (error) {
@@ -45179,32 +45456,26 @@ export class OsStateMachine {
 --- FILE: server\src\middlewares\authMiddleware.ts ---
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-export function authMiddleware(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Response | void {
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key_change_in_production";
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ error: "Token não fornecido." });
   }
   const parts = authHeader.split(" ");
   if (parts.length !== 2 || parts[0] !== "Bearer") {
-    return res.status(401).json({ error: "Formato de token inválido." });
+    return res.status(401).json({ error: "Token mal formatado." });
   }
   const token = parts[1] as string;
   try {
-    const decoded = jwt.verify(
-      token,
-      (process.env.JWT_SECRET || "insira_uma_chave_aleatoria_super_segura_aqui") as string,
-    );
-    // Injeta os dados do usuário na requisição para uso posterior nas rotas protegidas
-    (req as any).usuario = decoded;
+    const decoded = jwt.verify(token, JWT_SECRET as string);
+    // Anexar payload minimalista à requisição
+    (req as any).user = decoded;
     return next();
-  } catch (error) {
+  } catch (err) {
     return res.status(401).json({ error: "Token inválido ou expirado." });
   }
-}
+};
 
 
 --- FILE: server\src\repositories\auditLog.repository.ts ---
@@ -45547,21 +45818,15 @@ export const ConfiguracaoRepository = {
 --- FILE: server\src\repositories\contasPagar.repository.ts ---
 import { prisma } from "../prisma.js";
 import crypto from "crypto";
+import { dayjs, TIMEZONE } from "../utils/date.js";
 const normalizeDate = (dateInfo: any): Date | null => {
   if (!dateInfo) return null;
-  if (typeof dateInfo === "string") {
-    const trimmed = dateInfo.trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-      return new Date(`${trimmed}T12:00:00.000Z`);
-    }
-    if (trimmed.includes("T")) {
-      const [datePart] = trimmed.split("T");
-      return new Date(`${datePart}T12:00:00.000Z`);
-    }
+  const dj = dayjs(dateInfo);
+  if (!dj.isValid()) {
+    throw new Error(`Data inválida submetida: ${dateInfo}`);
   }
-  const dt = new Date(dateInfo);
-  dt.setUTCHours(12, 0, 0, 0);
-  return dt;
+  const dataLocal = dj.tz(TIMEZONE).format("YYYY-MM-DD");
+  return dayjs.tz(`${dataLocal} 00:00:00`, TIMEZONE).toDate();
 };
 export class ContasPagarRepository {
   async create(data: any) {
@@ -45595,6 +45860,11 @@ export class ContasPagarRepository {
       console.log("[ContasPagarRepo] Created Status:", created.status);
       // Se já nascer PAGO, lança no caixa
       if (created.status === "PAGO") {
+        const today = dayjs().tz(TIMEZONE).startOf("day");
+        const paymentDate = dayjs(created.dt_pagamento || new Date()).tz(TIMEZONE).startOf("day");
+        if (paymentDate.isAfter(today)) {
+          throw new Error("Não é permitido registrar pagamentos no futuro. Use agendamentos/vencimentos para contas pendentes.");
+        }
         console.log("[ContasPagarRepo] Auto-launching Livro Caixa for Create");
         // Usa a data de pagamento informada pelo usuário; fallback para now()
         const movimentoDate = created.dt_pagamento ? new Date(created.dt_pagamento) : new Date();
@@ -45732,6 +46002,13 @@ export class ContasPagarRepository {
     const isPayingNow =
       current?.status !== "PAGO" && updateData.status === "PAGO";
     console.log("[ContasPagarRepo] Is Paying Now?", isPayingNow);
+    if (updateData.status === "PAGO") {
+      const today = dayjs().tz(TIMEZONE).startOf("day");
+      const paymentDate = dayjs(updateData.dt_pagamento || current?.dt_pagamento || new Date()).tz(TIMEZONE).startOf("day");
+      if (paymentDate.isAfter(today)) {
+        throw new Error("Não é permitido registrar pagamentos no futuro. Use agendamentos/vencimentos para contas pendentes.");
+      }
+    }
     return prisma.$transaction(async (tx) => {
       const updated = await tx.contasPagar.update({
         where: { id_conta_pagar: id },
@@ -46277,6 +46554,101 @@ export class ContasPagarRepository {
 }
 
 
+--- FILE: server\src\repositories\dashboard.repository.ts ---
+import { prisma } from "../prisma.js";
+export class DashboardRepository {
+  async getOsAbertas(): Promise<number> {
+    return prisma.ordemDeServico.count({
+      where: {
+        status: { in: ["ABERTA", "EM_ANDAMENTO"] },
+        deleted_at: null,
+      },
+    });
+  }
+  async getContasPagarOverdue(startOfDay: Date): Promise<number> {
+    return prisma.contasPagar.count({
+      where: {
+        status: "PENDENTE",
+        dt_vencimento: { lt: startOfDay },
+        deleted_at: null,
+      },
+    });
+  }
+  async getContasPagarPorPeriodo(start: Date, end: Date) {
+    return prisma.contasPagar.findMany({
+      where: {
+        status: "PENDENTE",
+        dt_vencimento: { gte: start, lte: end },
+        deleted_at: null,
+      },
+    });
+  }
+  async getPagamentoClienteEntries(start: Date, end: Date): Promise<number> {
+    return prisma.pagamentoCliente.count({
+      where: {
+        data_pagamento: { gte: start, lte: end },
+        deleted_at: null,
+      },
+    });
+  }
+  async getLivroCaixaEntries(start: Date, end: Date): Promise<number> {
+    return prisma.livroCaixa.count({
+      where: {
+        dt_movimentacao: { gte: start, lte: end },
+        tipo_movimentacao: "ENTRADA",
+        deleted_at: null,
+        categoria: { not: "CONCILIACAO_CARTAO" },
+      },
+    });
+  }
+  async getPagamentoPecaExits(start: Date, end: Date): Promise<number> {
+    return prisma.pagamentoPeca.count({
+      where: {
+        pago_ao_fornecedor: true,
+        data_pagamento_fornecedor: { gte: start, lte: end },
+        deleted_at: null,
+      },
+    });
+  }
+  async getLivroCaixaExits(start: Date, end: Date): Promise<number> {
+    return prisma.livroCaixa.count({
+      where: {
+        dt_movimentacao: { gte: start, lte: end },
+        tipo_movimentacao: "SAIDA",
+        deleted_at: null,
+        categoria: { not: "CONCILIACAO_CARTAO" },
+      },
+    });
+  }
+  async getAutoPecasPendentes(): Promise<number> {
+    return prisma.pagamentoPeca.count({
+      where: {
+        pago_ao_fornecedor: false,
+        deleted_at: null,
+      },
+    });
+  }
+  async getConsolidacao(): Promise<number> {
+    return prisma.ordemDeServico.count({
+      where: {
+        status: { in: ["PRONTO PARA FINANCEIRO", "FINANCEIRO"] },
+        fechamento_financeiro: { none: {} },
+        deleted_at: null,
+      },
+    });
+  }
+  async getPecasComAlerta() {
+    return prisma.pecasEstoque.findMany({
+      select: {
+        id_pecas_estoque: true,
+        estoque_atual: true,
+        estoque_minimo: true,
+      },
+    });
+  }
+}
+
+
 --- FILE: server\src\repositories\equipamentoCliente.repository.ts ---
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
@@ -46326,6 +46698,7 @@ export class EquipamentoClienteRepository {
 --- FILE: server\src\repositories\fechamentoFinanceiro.repository.ts ---
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { nowSP } from "../utils/date.js";
 export class FechamentoFinanceiroRepository {
   async create(data: Prisma.FechamentoFinanceiroCreateInput) {
     return await prisma.fechamentoFinanceiro.create({
@@ -46571,20 +46944,34 @@ export class FechamentoFinanceiroRepository {
             pago_ao_fornecedor,
             nf_numero,
           } = itemPeca;
+          const idItemOsNum = Number(id_item_os);
+          const osItem = os.itens_os.find((i) => i.id_iten === idItemOsNum);
+          // Trava de Isolamento: Estoque vs. Auto Peças
+          if (osItem?.id_pecas_estoque) {
+            console.log(`[AVISO] Tentativa de criar PagamentoPeca para item de estoque bloqueada (Item OS #${id_item_os}).`);
+            continue;
+          }
           if (id_pagamento_peca) {
+            const updateData: any = {
+              id_pessoa: Number(id_fornecedor),
+              pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
+              nf_numero: nf_numero || null,
+            };
+            if (custo_real !== undefined && custo_real !== null && custo_real !== "") {
+              updateData.custo_real = Number(custo_real);
+            }
             await tx.pagamentoPeca.update({
               where: { id_pagamento_peca },
-              data: {
-                id_pessoa: Number(id_fornecedor),
-                custo_real: Number(custo_real),
-                pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
-                nf_numero: nf_numero || null,
-              },
+              data: updateData,
             });
           } else {
+            const isCustoDefined = custo_real !== undefined && custo_real !== null && String(custo_real).trim() !== "";
+            if (!isCustoDefined || isNaN(Number(custo_real)) || Number(custo_real) < 0) {
+                throw new Error("O custo_real é obrigatório e não pode ser negativo para gerar o Pagamento da Peça Externa.");
+            }
             await tx.pagamentoPeca.create({
               data: {
-                id_item_os: Number(id_item_os),
+                id_item_os: idItemOsNum,
                 id_pessoa: Number(id_fornecedor),
                 custo_real: Number(custo_real),
                 pago_ao_fornecedor: Boolean(pago_ao_fornecedor),
@@ -46674,7 +47061,7 @@ export class FechamentoFinanceiroRepository {
             lucro_pecas: lucroPecas,
             lucro_mao_de_obra: lucroMaoDeObra,
             lucro_total: lucroTotal,
-            data_fechamento_financeiro: new Date(),
+            data_fechamento_financeiro: nowSP(),
             deleted_at: null,
           },
         });
@@ -46686,7 +47073,7 @@ export class FechamentoFinanceiroRepository {
             lucro_pecas: lucroPecas,
             lucro_mao_de_obra: lucroMaoDeObra,
             lucro_total: lucroTotal,
-            data_fechamento_financeiro: new Date(),
+            data_fechamento_financeiro: nowSP(),
           },
         });
       }
@@ -46776,7 +47163,7 @@ export class FechamentoFinanceiroRepository {
                 tipo_movimentacao: "ENTRADA",
                 categoria: nomeCategoriaServicos, // Fallback string
                 id_categoria: idCategoriaServicos || null,
-                dt_movimentacao: new Date(),
+                dt_movimentacao: nowSP(),
                 origem: "AUTOMATICA",
                 id_conta_bancaria: idContaBancaria,
               },
@@ -46811,7 +47198,7 @@ export class FechamentoFinanceiroRepository {
                 tipo_movimentacao: "ENTRADA",
                 categoria: nomeCategoriaServicos,
                 id_categoria: idCategoriaServicos || null,
-                dt_movimentacao: new Date(),
+                dt_movimentacao: nowSP(),
                 origem: "AUTOMATICA",
                 id_conta_bancaria: null,
               },
@@ -46854,7 +47241,7 @@ export class FechamentoFinanceiroRepository {
                 tipo_movimentacao: "ENTRADA",
                 categoria: nomeCategoriaServicos,
                 id_categoria: idCategoriaServicos || null,
-                dt_movimentacao: new Date(),
+                dt_movimentacao: nowSP(),
                 origem: "AUTOMATICA",
                 id_conta_bancaria: null,
               },
@@ -46938,7 +47325,7 @@ export class FechamentoFinanceiroRepository {
                     taxaJuros,
                     tipoParcelamento
                 );
-                const dataPrevistaBase = new Date();
+                const dataPrevistaBase = nowSP();
                 if (operadora.antecipacao_auto) {
                   dataPrevistaBase.setDate(dataPrevistaBase.getDate() + 1);
                 } else {
@@ -46968,7 +47355,7 @@ export class FechamentoFinanceiroRepository {
                       valor_liquido: valorLiquidoPorParcela,
                       taxa_aplicada: taxaPorParcela,
                       tipo_parcelamento: tipoParcelamento,
-                      data_venda: new Date(),
+                      data_venda: nowSP(),
                       data_prevista: dataPrevistaParcela,
                       status: "PENDENTE",
                     },
@@ -47300,231 +47687,6 @@ export class FornecedorRepository {
 }
 
 
---- FILE: server\src\repositories\funcionario.repository.ts ---
-import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma.js';
-export class FuncionarioRepository {
-  async create(data: Prisma.FuncionarioCreateInput) {
-    if (data.cnpj_mei) {
-      const existing = await prisma.funcionario.findFirst({
-        where: { cnpj_mei: data.cnpj_mei }
-      });
-      if (existing) {
-        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-      }
-    }
-    let idPessoaFisica: number | undefined;
-    if (data.pessoa_fisica?.connect?.id_pessoa_fisica) {
-      idPessoaFisica = data.pessoa_fisica.connect.id_pessoa_fisica;
-    } else if ((data as any).id_pessoa_fisica) {
-      idPessoaFisica = (data as any).id_pessoa_fisica;
-    }
-    if (idPessoaFisica) {
-      const currentPf = await prisma.pessoaFisica.findUnique({
-        where: { id_pessoa_fisica: idPessoaFisica }
-      });
-      if (currentPf && currentPf.cpf) {
-        const duplicateCpf = await prisma.pessoaFisica.findFirst({
-          where: {
-            cpf: currentPf.cpf,
-            id_pessoa_fisica: { not: currentPf.id_pessoa_fisica }
-          }
-        });
-        if (duplicateCpf) {
-          throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-        }
-      }
-    }
-    return await prisma.funcionario.create({
-      data,
-    });
-  }
-  async findAll() {
-    return await prisma.funcionario.findMany({
-        include: { pessoa_fisica: { include: { pessoa: true } } }
-    });
-  }
-  async findById(id: number) {
-    return await prisma.funcionario.findUnique({
-      where: { id_funcionario: id },
-      include: { pessoa_fisica: { include: { pessoa: true } } }
-    });
-  }
-  async update(id: number, data: Prisma.FuncionarioUpdateInput) {
-    if (data.cnpj_mei) {
-      const cnpjValue = typeof data.cnpj_mei === "string" ? data.cnpj_mei : (data.cnpj_mei as any).set;
-      if (cnpjValue) {
-        const existing = await prisma.funcionario.findFirst({
-          where: {
-            cnpj_mei: cnpjValue,
-            id_funcionario: { not: id }
-          }
-        });
-        if (existing) {
-          throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
-        }
-      }
-    }
-    return await prisma.funcionario.update({
-      where: { id_funcionario: id },
-      data,
-    });
-  }
-  async delete(id: number) {
-    return await prisma.funcionario.delete({
-      where: { id_funcionario: id },
-    });
-  }
-}
-
-
---- FILE: server\src\repositories\itensOs.repository.ts ---
-import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma.js';
-import { AuditLogRepository } from './auditLog.repository.js';
-import { OrdemDeServicoRepository } from './ordemDeServico.repository.js';
-const auditRepo = new AuditLogRepository();
-const osRepo = new OrdemDeServicoRepository();
-export class ItensOsRepository {
-  async create(data: Prisma.ItensOsCreateInput, extraData?: { id_fornecedor?: number | null, custo_real?: number }) {
-    return await prisma.$transaction(async (tx) => {
-      const created = await tx.itensOs.create({
-        data,
-      });
-      await auditRepo.create({
-          tabela: 'itens_os',
-          registro_id: created.id_iten,
-          acao: 'CREATE',
-          valor_novo: created
-      });
-      // Se for uma peça externa (não vinda do estoque e não interna), cria registro de PagamentoPeca imediatamente
-      const isFromStock = !!data.pecas_estoque?.connect;
-      if (!isFromStock && !data.is_interno) {
-        await tx.pagamentoPeca.create({
-          data: {
-            id_item_os: created.id_iten,
-            id_pessoa: extraData?.id_fornecedor || null,
-            custo_real: extraData?.custo_real || 0,
-            data_compra: new Date(),
-            pago_ao_fornecedor: false,
-          }
-        });
-      }
-      // Recalculate OS totals
-      await osRepo.recalculateTotals(created.id_os, tx);
-      return created;
-    });
-  }
-  async findAll(includeInternal: boolean = false) {
-    return await prisma.itensOs.findMany({
-        where: { 
-          deleted_at: null,
-          ...(includeInternal ? {} : { is_interno: false })
-        },
-        include: { ordem_de_servico: true, pecas_estoque: true, pagamentos_peca: true }
-    });
-  }
-  async findById(id: number) {
-    return await prisma.itensOs.findUnique({
-      where: { id_iten: id },
-        include: { ordem_de_servico: true, pecas_estoque: true, pagamentos_peca: true }
-    });
-  }
-  async findByOsId(idOs: number, includeInternal: boolean = false) {
-    return await prisma.itensOs.findMany({
-      where: { 
-        id_os: idOs, 
-        deleted_at: null,
-        ...(includeInternal ? {} : { is_interno: false })
-      },
-      include: { pecas_estoque: true, pagamentos_peca: true }
-    });
-  }
-  async update(id: number, data: Prisma.ItensOsUpdateInput, extraData?: { id_fornecedor?: number | null, custo_real?: number }) {
-    return await prisma.$transaction(async (tx) => {
-      const current = await this.findById(id); // Using global prisma for find is ok here since it's just reading
-      const updated = await tx.itensOs.update({
-        where: { id_iten: id },
-        data,
-      });
-      await auditRepo.create({
-          tabela: 'itens_os',
-          registro_id: id,
-          acao: 'UPDATE',
-          valor_antigo: current,
-          valor_novo: updated
-      });
-      if (extraData && extraData.id_fornecedor !== undefined) {
-          const existingPayments = await tx.pagamentoPeca.findMany({ where: { id_item_os: id } });
-          if (existingPayments && existingPayments.length > 0) {
-              if (extraData.id_fornecedor) {
-                  const updateData: any = { id_pessoa: extraData.id_fornecedor };
-                  if (extraData.custo_real !== undefined) updateData.custo_real = extraData.custo_real;
-                  await tx.pagamentoPeca.update({
-                      where: { id_pagamento_peca: existingPayments[0]!.id_pagamento_peca },
-                      data: updateData
-                  });
-              } else {
-                  await tx.pagamentoPeca.update({
-                      where: { id_pagamento_peca: existingPayments[0]!.id_pagamento_peca },
-                      data: { id_pessoa: null }
-                  });
-              }
-          } else if (extraData.id_fornecedor) {
-              await tx.pagamentoPeca.create({
-                data: {
-                  id_item_os: id,
-                  id_pessoa: extraData.id_fornecedor,
-                  custo_real: extraData.custo_real || 0,
-                  data_compra: new Date(),
-                  pago_ao_fornecedor: false,
-                }
-              });
-          }
-      }
-      // Recalculate OS totals
-      await osRepo.recalculateTotals(updated.id_os, tx);
-      return updated;
-    });
-  }
-  async delete(id: number) {
-    const current = await this.findById(id);
-    if (!current) throw new Error('Item not found');
-    const hasPaidPayment = current.pagamentos_peca?.some((p) => p.pago_ao_fornecedor && !p.deleted_at);
-    if (hasPaidPayment) {
-      throw new Error("A peça já foi paga ao fornecedor. Estorne o pagamento antes de removê-la da OS.");
-    }
-    // Soft-delete unpaid payments associated with this item to prevent orphans
-    await prisma.pagamentoPeca.updateMany({
-      where: { id_item_os: id, pago_ao_fornecedor: false, deleted_at: null },
-      data: { deleted_at: new Date() }
-    });
-    const updated = await prisma.itensOs.update({
-      where: { id_iten: id },
-      data: { deleted_at: new Date() }
-    });
-    await auditRepo.create({
-        tabela: 'itens_os',
-        registro_id: id,
-        acao: 'SOFT_DELETE',
-        valor_antigo: current
-    });
-    // Recalculate OS totals
-    await osRepo.recalculateTotals(current.id_os);
-    return updated;
-  }
-  async search(query: string) {
-    // Busca descrições únicas na tabela de itens já usados
-    return await prisma.itensOs.findMany({
-      where: {
-        descricao: { contains: query, mode: 'insensitive' },
-        deleted_at: null
-      },
-      distinct: ['descricao'],
-      take: 10
-    });
-  }
-}
 
 
 --- FILE: server\src\repositories\livroCaixa.repository.ts ---
@@ -47648,9 +47810,13 @@ export default new LivroCaixaRepository();
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { AuditLogRepository } from './auditLog.repository.js';
+import { nowSP } from '../utils/date.js';
 const auditRepo = new AuditLogRepository();
 export class OrdemDeServicoRepository {
   async create(data: Prisma.OrdemDeServicoCreateInput) {
+    if (!data.dt_abertura) {
+      data.dt_abertura = nowSP();
+    }
     const created = await prisma.ordemDeServico.create({
       data,
     });
@@ -47788,6 +47954,7 @@ export class OrdemDeServicoRepository {
                 km_entrada: data.os.km_entrada ? Number(data.os.km_entrada) : null,
                 defeito_relatado: data.os.defeito_relatado,
                 status: data.os.status || 'ABERTA',
+                dt_abertura: nowSP(),
                 valor_total_cliente: 0,
                 valor_mao_de_obra: 0,
                 parcelas: data.os.parcelas || 1 
@@ -47987,9 +48154,13 @@ export class OrdemDeServicoRepository {
     // This is best enforced in Controller or Service, but Repo is the last line of defense.
     // However, sometimes we need to update status FROM Finalizada TO Something else (Reopen).
     // So assume the Caller handles logic, or we check if data DOES NOT contain status change.
+    const updatedData = { ...data, updated_at: nowSP() };
+    if (data.status === 'FINALIZADA' && !data.dt_entrega) {
+      updatedData.dt_entrega = nowSP();
+    }
     const updated = await prisma.ordemDeServico.update({
       where: { id_os: id },
-      data,
+      data: updatedData,
     });
     await auditRepo.create({
         tabela: 'ordem_de_servico',
@@ -49377,6 +49548,7 @@ export class PessoaJuridicaRepository {
 --- FILE: server\src\repositories\recebivelCartao.repository.ts ---
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { nowSP } from "../utils/date.js";
 export class RecebivelCartaoRepository {
   async create(data: Prisma.RecebivelCartaoCreateInput) {
     return await prisma.recebivelCartao.create({
@@ -49606,11 +49778,29 @@ export class RecebivelCartaoRepository {
       }
       const isCard = recebivel.id_operadora != null;
       const isDinheiro = recebivel.tipo_parcelamento?.toUpperCase() === "DINHEIRO";
-      let targetAccountId = null;
+      let targetAccountId: number | null | undefined = null;
       if (isCard) {
         targetAccountId = recebivel.operadora?.id_conta_destino;
       } else if (!isDinheiro) {
         targetAccountId = idContaBancaria;
+        // Regra de Fallback: buscar conta bancária no pagamento original
+        if (!targetAccountId) {
+          if (!recebivel.id_os) {
+            throw new Error("Recebível sem OS informada não pode buscar pagamento original PIX.");
+          }
+          const pagamentoOriginal = await tx.pagamentoCliente.findFirst({
+            where: {
+              id_os: recebivel.id_os,
+              metodo_pagamento: "PIX",
+              id_conta_bancaria: { gt: 0 },
+            },
+          });
+          if (pagamentoOriginal && pagamentoOriginal.id_conta_bancaria) {
+            targetAccountId = pagamentoOriginal.id_conta_bancaria;
+          } else {
+            throw new Error(`O recebimento da OS #${recebivel.id_os} não possui conta bancária de destino informada. Por favor, selecione a conta manualmente antes de confirmar.`);
+          }
+        }
       }
       // 2. Atualizar saldo da conta bancária se houver (PIX, Transf, Cartão)
       if (targetAccountId) {
@@ -49618,49 +49808,20 @@ export class RecebivelCartaoRepository {
           where: { id_conta: targetAccountId },
           data: {
             saldo_atual: {
-              increment: Number(recebivel.valor_liquido),
+              increment: new Prisma.Decimal(recebivel.valor_liquido as any),
             },
           },
         });
-        const nomeBanco = isCard && recebivel.operadora?.conta_destino
-          ? (recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome)
-          : `Conta #${targetAccountId}`; 
-        await tx.livroCaixa.create({
-          data: {
-            descricao: isCard 
-              ? `${recebivel.operadora?.nome} / ${nomeBanco} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`
-              : `Recebimento OS #${recebivel.id_os} - Conciliação Bancária`,
-            valor: recebivel.valor_liquido,
-            tipo_movimentacao: "ENTRADA",
-            categoria: isCard ? "CONCILIACAO_CARTAO" : "CONCILIACAO",
-            dt_movimentacao: new Date(),
-            origem: "AUTOMATICA",
-            id_conta_bancaria: targetAccountId,
-            obs: `[REC_ID:${id}]`,
-          },
-        });
-      } else {
-        // Dinheiro (Caixa físico, sem conta vinculada)
-        await tx.livroCaixa.create({
-          data: {
-            descricao: `Recebimento OS #${recebivel.id_os} - Conciliação em Dinheiro`,
-            valor: recebivel.valor_liquido,
-            tipo_movimentacao: "ENTRADA",
-            categoria: "CONCILIACAO_DINHEIRO",
-            dt_movimentacao: new Date(),
-            origem: "AUTOMATICA",
-            id_conta_bancaria: null,
-            obs: `[REC_ID:${id}]`,
-          },
-        });
+        // A criação do Livro Caixa de conciliação foi removida para evitar duplicidade 
+        // e arredondamentos fantasmas (centavos), conforme Fase 3.
       }
       // 4. Atualizar status do recebível
       return await tx.recebivelCartao.update({
         where: { id_recebivel: id },
         data: {
           status: "RECEBIDO",
-          data_recebimento: new Date(),
-          confirmado_em: new Date(),
+          data_recebimento: nowSP(),
+          confirmado_em: nowSP(),
           confirmado_por: confirmadoPor,
         } as any,
       });
@@ -49902,6 +50063,24 @@ export class RecebivelCartaoRepository {
           targetAccountId = recebivel.operadora?.id_conta_destino;
         } else if (!isDinheiro) {
           targetAccountId = idContaBancaria;
+          // Regra de Fallback: buscar conta bancária no pagamento original
+          if (!targetAccountId) {
+            if (!recebivel.id_os) {
+              throw new Error("Recebível sem OS informada não pode buscar pagamento original PIX.");
+            }
+            const pagamentoOriginal = await tx.pagamentoCliente.findFirst({
+              where: {
+                id_os: recebivel.id_os,
+                metodo_pagamento: "PIX",
+                id_conta_bancaria: { gt: 0 },
+              },
+            });
+            if (pagamentoOriginal && pagamentoOriginal.id_conta_bancaria) {
+              targetAccountId = pagamentoOriginal.id_conta_bancaria;
+            } else {
+              throw new Error(`O recebimento da OS #${recebivel.id_os} não possui conta bancária de destino informada. Por favor, selecione a conta manualmente antes de confirmar.`);
+            }
+          }
         }
         if (targetAccountId) {
           // Atualizar saldo da conta bancária
@@ -49909,50 +50088,20 @@ export class RecebivelCartaoRepository {
             where: { id_conta: targetAccountId },
             data: {
               saldo_atual: {
-                increment: Number(recebivel.valor_liquido),
+                increment: new Prisma.Decimal(recebivel.valor_liquido as any),
               },
             },
           });
-          const nomeBanco = isCard && recebivel.operadora?.conta_destino
-            ? (recebivel.operadora.conta_destino.banco || recebivel.operadora.conta_destino.nome)
-            : `Conta #${targetAccountId}`;
-          // Registrar no extrato (LivroCaixa com conta vinculada)
-          await tx.livroCaixa.create({
-            data: {
-              descricao: isCard
-                ? `${recebivel.operadora?.nome} / ${nomeBanco} (OS #${recebivel.id_os}) Parc ${recebivel.num_parcela}/${recebivel.total_parcelas}`
-                : `Recebimento Lote OS #${recebivel.id_os} - Conciliação Bancária`,
-              valor: recebivel.valor_liquido,
-              tipo_movimentacao: "ENTRADA",
-              categoria: isCard ? "CONCILIACAO_CARTAO" : "CONCILIACAO",
-              dt_movimentacao: new Date(),
-              origem: "AUTOMATICA",
-              id_conta_bancaria: targetAccountId,
-              obs: `[REC_ID:${id}]`,
-            },
-          });
-        } else {
-          // Dinheiro
-          await tx.livroCaixa.create({
-            data: {
-              descricao: `Recebimento Lote OS #${recebivel.id_os} - Conciliação Dinheiro`,
-              valor: recebivel.valor_liquido,
-              tipo_movimentacao: "ENTRADA",
-              categoria: "CONCILIACAO_DINHEIRO",
-              dt_movimentacao: new Date(),
-              origem: "AUTOMATICA",
-              id_conta_bancaria: null,
-              obs: `[REC_ID:${id}]`,
-            },
-          });
+          // A criação do Livro Caixa de conciliação foi removida para evitar duplicidade 
+          // e arredondamentos fantasmas (centavos), conforme Fase 3.
         }
         // Atualizar status do recebível
         const updated = await tx.recebivelCartao.update({
           where: { id_recebivel: id },
           data: {
             status: "RECEBIDO",
-            data_recebimento: new Date(),
-            confirmado_em: new Date(),
+            data_recebimento: nowSP(),
+            confirmado_em: nowSP(),
             confirmado_por: confirmadoPor,
           } as any,
         });
@@ -50856,6 +51005,17 @@ export class UsuarioRepository {
       data: {
         senha_hash,
         must_change_password: false,
+        reset_password_token: null,
+        reset_password_expires: null,
+      },
+    });
+  }
+  async updateResetToken(id_usuario: number, tokenHash: string | null, expires: Date | null): Promise<Usuario> {
+    return prisma.usuario.update({
+      where: { id_usuario },
+      data: {
+        reset_password_token: tokenHash,
+        reset_password_expires: expires,
       },
     });
   }
@@ -51016,6 +51176,9 @@ export class VeiculoRepository {
         }
       }
     }
+    // REGRA DE NEGÓCIO: A alteração do id_cliente neste veículo NÃO se propaga para as 
+    // Ordens de Serviço antigas (OrdemDeServico). O Prisma naturalmente isola essa 
+    // chave estrangeira (a OS possui seu próprio id_cliente). O histórico fica blindado.
     return await prisma.veiculo.update({
       where: { id_veiculo: id },
       data,
@@ -51053,6 +51216,9 @@ authRoutes.post(
   authMiddleware,
   authController.changePassword,
 );
+// Recovery routes
+authRoutes.post("/forgot-password", authController.forgotPassword);
+authRoutes.post("/reset-password", authController.resetPassword);
 export { authRoutes };
 
 
@@ -51216,6 +51382,10 @@ funcionarioRoutes.get('/', controller.findAll);
 funcionarioRoutes.get('/:id', controller.findById);
 funcionarioRoutes.put('/:id', controller.update);
 funcionarioRoutes.delete('/:id', controller.delete);
+// --- DIÁRIAS ---
+funcionarioRoutes.post('/:id/diarias', controller.registrarDiarias);
+funcionarioRoutes.get('/:id/diarias', controller.listarDiarias);
+funcionarioRoutes.put('/:id/diarias/pagas', controller.marcarDiariasComoPagas);
 export { funcionarioRoutes };
 
 
@@ -52396,6 +52566,107 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+
+--- FILE: server\src\services\AuthService.ts ---
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
+import { UsuarioRepository } from "../repositories/UsuarioRepository.js";
+const repository = new UsuarioRepository();
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key_change_in_production";
+const JWT_EXPIRES_IN = "8h";
+// Configure nodemailer transporter
+// O usuário pode sobrescrever via variáveis de ambiente
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.ethereal.email",
+  port: Number(process.env.SMTP_PORT) || 587,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+export class AuthService {
+  async login(email: string, senha_plana: string) {
+    const usuario = await repository.findByEmail(email);
+    if (!usuario) {
+      throw new Error("Credenciais inválidas");
+    }
+    const senhaValida = await bcrypt.compare(senha_plana, usuario.senha_hash);
+    if (!senhaValida) {
+      throw new Error("Credenciais inválidas");
+    }
+    // JWT Payload Minimalista (Sem PII)
+    const payload = {
+      sub: usuario.id_usuario,
+      role: usuario.perfil,
+    };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    return {
+      token,
+      must_change_password: usuario.must_change_password,
+      usuario: {
+        id_usuario: usuario.id_usuario,
+        nome: usuario.nome,
+        email: usuario.email,
+        perfil: usuario.perfil,
+      },
+    };
+  }
+  async forgotPassword(email: string) {
+    const usuario = await repository.findByEmail(email);
+    // Privacy Lock: Sempre retorna sucesso sem erro, se não encontrar, retorna vazio.
+    if (!usuario) {
+      return; 
+    }
+    // Gerar token puro
+    const token = crypto.randomBytes(32).toString("hex");
+    // Hash do token
+    const hashedToken = await bcrypt.hash(token, 10);
+    // Expiração (15 minutos)
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
+    // Salvar o HASH no banco
+    await repository.updateResetToken(usuario.id_usuario, hashedToken, expires);
+    // Enviar token PURO por e-mail
+    // A URL seria configurável no Frontend, ex: https://app.com/reset-password?token=XXX&email=YYY
+    const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    try {
+      await transporter.sendMail({
+        from: '"Centro Automotivo" <no-reply@centroautomotivo.com>',
+        to: email,
+        subject: "Recuperação de Senha",
+        text: `Você solicitou a recuperação de senha. Acesse o link a seguir para redefinir sua senha: ${resetUrl}\n\nEste link expira em 15 minutos.`,
+        html: `<p>Você solicitou a recuperação de senha.</p><p>Acesse o <a href="${resetUrl}">link</a> a seguir para redefinir sua senha.</p><p>Este link expira em <strong>15 minutos</strong>.</p>`,
+      });
+    } catch (err) {
+      console.error("[AuthService] Falha ao enviar email de reset:", err);
+      // Não propagar o erro ao usuário
+    }
+  }
+  async resetPassword(email: string, token: string, nova_senha_plana: string) {
+    const usuario = await repository.findByEmail(email);
+    if (!usuario) {
+      throw new Error("Token inválido ou expirado.");
+    }
+    // Verificar se existe um token no banco e se não expirou
+    if (!usuario.reset_password_token || !usuario.reset_password_expires) {
+      throw new Error("Token inválido ou expirado.");
+    }
+    if (new Date() > usuario.reset_password_expires) {
+      throw new Error("Token expirado.");
+    }
+    // Validar o token recebido com o hash salvo
+    const isValid = await bcrypt.compare(token, usuario.reset_password_token);
+    if (!isValid) {
+      throw new Error("Token inválido ou expirado.");
+    }
+    // Gerar novo hash de senha
+    const newPasswordHash = await bcrypt.hash(nova_senha_plana, 10);
+    // Atualizar no banco, e limpar os campos de reset
+    await repository.updatePassword(usuario.id_usuario, newPasswordHash);
+  }
+}
 
 
 --- FILE: server\src\services\CalculadoraPagamentoService.ts ---
@@ -53631,7 +53902,14 @@ export class OrdemDeServicoService {
     return this.repository.update(id, data);
   }
   async findAll(filters: any) {
-    const statusArray = filters?.status ? filters.status.split(',') : undefined;
+    let statusArray: string[] | undefined = undefined;
+    if (filters?.status) {
+      if (Array.isArray(filters.status)) {
+        statusArray = filters.status as string[];
+      } else if (typeof filters.status === 'string') {
+        statusArray = filters.status.split(',');
+      }
+    }
     const take = filters?.take ? parseInt(filters.take, 10) : undefined;
     return this.repository.findAll(filters?.search, statusArray, take);
   }
@@ -53968,5 +54246,49 @@ export class RelatoriosService {
   }
 }
 export const relatoriosService = new RelatoriosService();
+
+
+--- FILE: server\src\utils\date.ts ---
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc.js';
+import timezone from 'dayjs/plugin/timezone.js';
+dayjs.extend(utc);
+dayjs.extend(timezone);
+const TIMEZONE = 'America/Sao_Paulo';
+/**
+ * Retorna o Date object representando o exato momento atual 
+ * instanciado sob a ótica do fuso horário de São Paulo.
+ * Isso garante que ao salvar no Prisma (UTC), o momento original
+ * em UTC-3 esteja perfeitamente mapeado.
+ */
+export const nowSP = (): Date => {
+  return dayjs().tz(TIMEZONE).toDate();
+};
+/**
+ * Retorna o Início e o Fim de um dia sob a ótica de São Paulo.
+ * O resultado é convertido para UTC, pronto para ser usado no Prisma em limites de (gte, lte).
+ * 
+ * @param date Data de referência (string ISO ou Date)
+ */
+export const getDayBoundsSP = (date: string | Date | dayjs.Dayjs) => {
+  const localDate = dayjs(date).tz(TIMEZONE);
+  return {
+    start: localDate.startOf('day').utc().toDate(),
+    end: localDate.endOf('day').utc().toDate()
+  };
+};
+/**
+ * Retorna o Início e o Fim de um mês sob a ótica de São Paulo.
+ * 
+ * @param date Data de referência (string ISO ou Date)
+ */
+export const getMonthBoundsSP = (date: string | Date | dayjs.Dayjs) => {
+  const localDate = dayjs(date).tz(TIMEZONE);
+  return {
+    start: localDate.startOf('month').utc().toDate(),
+    end: localDate.endOf('month').utc().toDate()
+  };
+};
+export { dayjs, TIMEZONE };
 
 

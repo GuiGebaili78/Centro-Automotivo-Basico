@@ -16,6 +16,7 @@
     "@types/lodash.debounce": "^4.0.9",
     "axios": "^1.13.2",
     "date-fns": "^4.1.0",
+    "dayjs": "^1.11.21",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.561.0",
     "react": "18.3.1",

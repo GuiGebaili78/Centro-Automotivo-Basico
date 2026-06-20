@@ -23,6 +23,11 @@ import {
 } from "../components/ui";
 import { toast } from "react-toastify";
 import { ModalPagamentoUnificado } from "../components/financeiro/ModalPagamentoUnificado";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export const NovoPagamentoPage = () => {
   const navigate = useNavigate();
@@ -55,7 +60,7 @@ export const NovoPagamentoPage = () => {
   // Simple Adiantamento Inputs
   const [valorAdiantamento, setValorAdiantamento] = useState("");
   const [dataAdiantamento, setDataAdiantamento] = useState(
-    new Date().toISOString().split("T")[0],
+    dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"),
   );
 
   // Date Filters (Comissões)

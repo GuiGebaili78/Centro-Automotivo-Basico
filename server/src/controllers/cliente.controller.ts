@@ -24,10 +24,35 @@ export class ClienteController {
 
   async findAll(req: Request, res: Response) {
     try {
-      const clientes = await repository.findAll();
-      res.json(clientes);
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.max(1, Number(req.query.limit) || 20);
+      const search = req.query.search ? String(req.query.search) : undefined;
+      const skip = (page - 1) * limit;
+
+      const result = await repository.findAll(skip, limit, search);
+      res.json({
+        data: result.data,
+        total: result.total,
+        page,
+        limit
+      });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Failed to fetch Clientes" });
+    }
+  }
+
+  async findAtivos(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const ativos = await repository.findAtivos(id);
+      if (!ativos) {
+        return res.status(404).json({ error: "Cliente not found" });
+      }
+      res.json(ativos);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to fetch ativos" });
     }
   }
 
@@ -49,7 +74,10 @@ export class ClienteController {
       const id = Number(req.params.id);
       const cliente = await repository.update(id, req.body);
       res.json(cliente);
-    } catch (error) {
+    } catch (error: any) {
+      if (error && error.code === 'P2002') {
+        return res.status(400).json({ error: 'Este CPF ou CNPJ já está cadastrado no sistema.' });
+      }
       res.status(400).json({ error: "Failed to update Cliente" });
     }
   }
@@ -121,18 +149,5 @@ export class ClienteController {
     }
   }
 
-  async searchByName(req: Request, res: Response) {
-    try {
-      const { name } = req.query;
-      if (!name || typeof name !== "string") {
-        return res
-          .status(400)
-          .json({ error: "Name query parameter is required" });
-      }
-      const clientes = await repository.searchByName(name);
-      res.json(clientes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to search Clientes" });
-    }
-  }
+
 }

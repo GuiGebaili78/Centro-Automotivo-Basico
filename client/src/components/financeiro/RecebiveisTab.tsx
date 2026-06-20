@@ -14,6 +14,11 @@ import { toast } from "react-toastify";
 import { UniversalFilters } from "../common/UniversalFilters";
 import type { UniversalFiltersState } from "../common/UniversalFilters";
 import { useUniversalFilter } from "../../hooks/useUniversalFilter";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export const RecebiveisTab = () => {
   const [recebiveis, setRecebiveis] = useState<IRecebivelCartao[]>([]);
@@ -130,7 +135,7 @@ export const RecebiveisTab = () => {
 
       const accountId = selectedContaBancaria === "" ? null : Number(selectedContaBancaria);
 
-      await FinanceiroService.confirmarRecebiveis(selectedIds, new Date().toISOString(), accountId);
+      await FinanceiroService.confirmarRecebiveis(selectedIds, dayjs().tz("America/Sao_Paulo").format(), accountId);
       toast.success("Recebimentos confirmados e conciliados!");
       setSelectedIds([]);
       loadData(universalFilters.startDate, universalFilters.endDate);

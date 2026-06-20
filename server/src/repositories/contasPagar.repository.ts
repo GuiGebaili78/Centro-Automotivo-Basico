@@ -1,21 +1,15 @@
 import { prisma } from "../prisma.js";
 import crypto from "crypto";
+import { dayjs, TIMEZONE } from "../utils/date.js";
 
 const normalizeDate = (dateInfo: any): Date | null => {
   if (!dateInfo) return null;
-  if (typeof dateInfo === "string") {
-    const trimmed = dateInfo.trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-      return new Date(`${trimmed}T12:00:00.000Z`);
-    }
-    if (trimmed.includes("T")) {
-      const [datePart] = trimmed.split("T");
-      return new Date(`${datePart}T12:00:00.000Z`);
-    }
+  const dj = dayjs(dateInfo);
+  if (!dj.isValid()) {
+    throw new Error(`Data inválida submetida: ${dateInfo}`);
   }
-  const dt = new Date(dateInfo);
-  dt.setUTCHours(12, 0, 0, 0);
-  return dt;
+  const dataLocal = dj.tz(TIMEZONE).format("YYYY-MM-DD");
+  return dayjs.tz(`${dataLocal} 00:00:00`, TIMEZONE).toDate();
 };
 
 export class ContasPagarRepository {
@@ -57,6 +51,12 @@ export class ContasPagarRepository {
 
       // Se já nascer PAGO, lança no caixa
       if (created.status === "PAGO") {
+        const today = dayjs().tz(TIMEZONE).startOf("day");
+        const paymentDate = dayjs(created.dt_pagamento || new Date()).tz(TIMEZONE).startOf("day");
+        if (paymentDate.isAfter(today)) {
+          throw new Error("Não é permitido registrar pagamentos no futuro. Use agendamentos/vencimentos para contas pendentes.");
+        }
+
         console.log("[ContasPagarRepo] Auto-launching Livro Caixa for Create");
 
         // Usa a data de pagamento informada pelo usuário; fallback para now()
@@ -215,6 +215,14 @@ export class ContasPagarRepository {
     const isPayingNow =
       current?.status !== "PAGO" && updateData.status === "PAGO";
     console.log("[ContasPagarRepo] Is Paying Now?", isPayingNow);
+
+    if (updateData.status === "PAGO") {
+      const today = dayjs().tz(TIMEZONE).startOf("day");
+      const paymentDate = dayjs(updateData.dt_pagamento || current?.dt_pagamento || new Date()).tz(TIMEZONE).startOf("day");
+      if (paymentDate.isAfter(today)) {
+        throw new Error("Não é permitido registrar pagamentos no futuro. Use agendamentos/vencimentos para contas pendentes.");
+      }
+    }
 
     return prisma.$transaction(async (tx) => {
       const updated = await tx.contasPagar.update({

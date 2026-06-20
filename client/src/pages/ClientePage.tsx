@@ -15,8 +15,12 @@ import type { ICliente } from "../types/cliente.types";
 export const ClientePage = () => {
   const navigate = useNavigate();
   const [clientes, setClientes] = useState<ICliente[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // OS Modal State
@@ -27,15 +31,27 @@ export const ClientePage = () => {
   } | null>(null);
 
   useEffect(() => {
-    loadClientes();
     if (searchInputRef.current) searchInputRef.current.focus();
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1); // Reset page on new search
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    loadClientes();
+  }, [debouncedSearch, page, limit]);
 
   const loadClientes = async () => {
     try {
       setLoading(true);
-      const data = await ClienteService.getAll();
-      setClientes(data);
+      const res = await ClienteService.getAll({ page, limit, search: debouncedSearch });
+      setClientes(res.data);
+      setTotal(res.total);
     } catch (error) {
       toast.error("Erro ao carregar clientes.");
     } finally {
@@ -57,29 +73,7 @@ export const ClientePage = () => {
     }
   };
 
-  const getNome = (c: any) =>
-    c.pessoa_fisica?.pessoa.nome ||
-    c.pessoa_juridica?.razao_social ||
-    "Nome Indisponível";
 
-  const filteredClientes = clientes.filter((c) => {
-    const s = searchTerm.toLowerCase();
-    const nome = getNome(c).toLowerCase();
-    const email = (c.email || "").toLowerCase();
-    const cidade = (c.cidade || "").toLowerCase();
-    const estado = (c.estado || "").toLowerCase();
-    const telefone1 = (c.telefone_1 || "").toLowerCase();
-    const tipo = c.id_pessoa_juridica ? "juridica jurídica" : "fisica física";
-
-    return (
-      nome.includes(s) ||
-      email.includes(s) ||
-      cidade.includes(s) ||
-      estado.includes(s) ||
-      telefone1.includes(s) ||
-      tipo.includes(s)
-    );
-  });
 
   return (
     <PageLayout
@@ -108,7 +102,7 @@ export const ClientePage = () => {
       <Card className="p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <ClientesTable
-            clientes={filteredClientes}
+            clientes={clientes}
             loading={loading}
             onDelete={handleDeleteClient}
             onOpenOsModal={(clientId, vehicleId) => {
@@ -117,6 +111,29 @@ export const ClientePage = () => {
             }}
           />
         </div>
+        {!loading && total > limit && (
+          <div className="p-4 border-t border-neutral-100 flex items-center justify-between bg-white">
+            <span className="text-sm text-neutral-500">
+              Mostrando {(page - 1) * limit + 1} a {Math.min(page * limit, total)} de {total} clientes
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="neutral"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Anterior
+              </Button>
+              <Button
+                variant="neutral"
+                onClick={() => setPage(p => p + 1)}
+                disabled={page * limit >= total}
+              >
+                Próxima
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Modal de Criação de OS */}

@@ -12,6 +12,11 @@ import { api } from "../../services/api";
 import { Modal, Button, Input, Select } from "../ui";
 import { UnifiedOsForm } from "./Forms/UnifiedOsForm";
 import { VeiculoForm } from "../veiculos/Forms/VeiculoForm";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface OrdemDeServicoNovaProps {
   employees: any[];
@@ -121,7 +126,7 @@ export const OrdemDeServicoNova: React.FC<OrdemDeServicoNovaProps> = ({
         km_entrada: Number(quickStartData.km),
         defeito_relatado: quickStartData.defect,
         status: "ABERTA",
-        dt_abertura: new Date().toISOString(),
+        dt_abertura: dayjs().tz("America/Sao_Paulo").format(),
         valor_total_cliente: 0,
         valor_mao_de_obra: 0,
         parcelas: 1,

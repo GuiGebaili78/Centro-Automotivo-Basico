@@ -155,6 +155,20 @@ export const CadastroUnificadoPage = () => {
     e.preventDefault();
     setLoading(true);
 
+    if (clienteRef.current && !clienteRef.current.isValid()) {
+      toast.error("Verifique os campos obrigatórios ou inválidos (ex: CPF/CNPJ) na seção do Cliente.");
+      setLoading(false);
+      return;
+    }
+
+    if (!isEditMode && assetType === 'VEICULO' && veiculoRef.current) {
+      if (!(veiculoRef.current as any).isValid()) {
+        toast.error("Verifique os campos obrigatórios na seção do Veículo.");
+        setLoading(false);
+        return;
+      }
+    }
+
     // "Pull" dos dados dos filhos — única chamada, sem estado duplicado
     const clienteData = clienteRef.current?.getData();
 
@@ -249,6 +263,9 @@ export const CadastroUnificadoPage = () => {
 
       // Pós-criação: abre modal de decisão
       if (!isEditMode && finalClientId) {
+        if (finalVehicleId || finalEquipId) {
+          window.dispatchEvent(new CustomEvent("invalidate-ativos-cache", { detail: { clientId: finalClientId } }));
+        }
         toast.success("Cadastro realizado! O que deseja fazer?");
         
         // Se for equipamento, podemos passar o nome da peça para o modal de decisão
@@ -296,6 +313,11 @@ export const CadastroUnificadoPage = () => {
         await EquipamentoService.delete(confirmDeleteAsset.id);
         setEquipamentos((prev) => prev.filter((e) => e.id_equipamento !== confirmDeleteAsset.id));
       }
+      
+      if (clienteId) {
+        window.dispatchEvent(new CustomEvent("invalidate-ativos-cache", { detail: { clientId: Number(clienteId) } }));
+      }
+      
       setConfirmDeleteAsset(null);
       toast.success(`${confirmDeleteAsset.type === 'VEICULO' ? 'Veículo' : 'Peça'} removido(a) com sucesso!`);
     } catch (error: any) {
@@ -307,8 +329,11 @@ export const CadastroUnificadoPage = () => {
   const handleAssetSuccess = useCallback(() => {
     setShowAssetModal(false);
     loadClienteData();
+    if (clienteId) {
+      window.dispatchEvent(new CustomEvent("invalidate-ativos-cache", { detail: { clientId: Number(clienteId) } }));
+    }
     toast.success("Salvo com sucesso!");
-  }, [loadClienteData]);
+  }, [loadClienteData, clienteId]);
 
 
   // ─── OS navigation ─────────────────────────────────────────────────────────

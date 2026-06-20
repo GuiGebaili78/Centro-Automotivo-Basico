@@ -123,15 +123,74 @@ export class ClienteRepository {
     }
   }
 
-  async findAll() {
-    return await prisma.cliente.findMany({
-      include: {
-        pessoa_fisica: { include: { pessoa: true } },
-        pessoa_juridica: { include: { pessoa: true } },
-        tipo: true,
+  async findAll(skip?: number, take?: number, search?: string) {
+    const where: Prisma.ClienteWhereInput = search ? {
+      OR: [
+        // Cliente (Nomes e Razão Social)
+        { pessoa_fisica: { pessoa: { nome: { contains: search, mode: 'insensitive' } } } },
+        { pessoa_juridica: { razao_social: { contains: search, mode: 'insensitive' } } },
+        { pessoa_juridica: { nome_fantasia: { contains: search, mode: 'insensitive' } } },
+        
+        // Documentos
+        { pessoa_fisica: { cpf: { contains: search } } },
+        { pessoa_juridica: { cnpj: { contains: search } } },
+        
+        // Telefones
+        { telefone_1: { contains: search } },
+        { telefone_2: { contains: search } },
+        { telefone_3: { contains: search } },
+        
+        // Ativos: Veículos
+        { 
+          veiculos: { 
+            some: { 
+              OR: [ 
+                { placa: { contains: search, mode: 'insensitive' } }, 
+                { modelo: { contains: search, mode: 'insensitive' } }
+              ] 
+            } 
+          } 
+        },
+        
+        // Ativos: Peças Avulsas
+        { 
+          equipamentos: { 
+            some: { 
+              OR: [ 
+                { nome_peca: { contains: search, mode: 'insensitive' } }, 
+                { fabricante: { contains: search, mode: 'insensitive' } }, 
+                { numeracao: { contains: search, mode: 'insensitive' } }
+              ] 
+            } 
+          } 
+        }
+      ]
+    } : {};
+
+    const [total, data] = await prisma.$transaction([
+      prisma.cliente.count({ where }),
+      prisma.cliente.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          pessoa_fisica: { include: { pessoa: true } },
+          pessoa_juridica: { include: { pessoa: true } },
+          tipo: true,
+        },
+      })
+    ]);
+
+    return { data, total };
+  }
+
+  async findAtivos(id: number) {
+    return await prisma.cliente.findUnique({
+      where: { id_cliente: id },
+      select: {
         veiculos: true,
         equipamentos: true,
-      },
+      }
     });
   }
 
@@ -267,39 +326,5 @@ export class ClienteRepository {
     });
   }
 
-  // Case-insensitive & accent-insensitive search by name
-  async searchByName(searchTerm: string) {
-    const searchPattern = `%${searchTerm}%`;
 
-    const ids = await prisma.$queryRaw<{ id_cliente: number }[]>`
-      SELECT c.id_cliente
-      FROM "cliente" c
-      LEFT JOIN "pessoa_fisica" pf ON c.id_pessoa_fisica = pf.id_pessoa_fisica
-      LEFT JOIN "pessoa" p1 ON pf.id_pessoa = p1.id_pessoa
-      LEFT JOIN "pessoa_juridica" pj ON c.id_pessoa_juridica = pj.id_pessoa_juridica
-      LEFT JOIN "pessoa" p2 ON pj.id_pessoa = p2.id_pessoa
-      WHERE unaccent(p1.nome) ILIKE unaccent(${searchPattern})
-         OR unaccent(p2.nome) ILIKE unaccent(${searchPattern})
-         OR (pj.nome_fantasia IS NOT NULL AND unaccent(pj.nome_fantasia) ILIKE unaccent(${searchPattern}))
-      LIMIT 20
-    `;
-
-    const idList = ids.map((item) => item.id_cliente);
-
-    if (idList.length === 0) {
-      return [];
-    }
-
-    return await prisma.cliente.findMany({
-      where: {
-        id_cliente: { in: idList },
-      },
-      include: {
-        pessoa_fisica: { include: { pessoa: true } },
-        pessoa_juridica: { include: { pessoa: true } },
-        tipo: true,
-        veiculos: true,
-      },
-    });
-  }
 }

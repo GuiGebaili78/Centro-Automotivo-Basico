@@ -157,6 +157,12 @@ function resolveItemDate<T extends object>(
 ): Date | null {
   const raw = (item as any)[field];
   if (raw === null || raw === undefined) return null;
+  
+  if (typeof raw === "string" && raw.includes("T")) {
+    const [datePart] = raw.split("T");
+    return parseLocalDate(datePart, 12, 0, 0);
+  }
+
   const d = raw instanceof Date ? raw : new Date(raw as string);
   return isNaN(d.getTime()) ? null : d;
 }

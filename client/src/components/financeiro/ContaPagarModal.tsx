@@ -16,6 +16,11 @@ import { FornecedorService } from "../../services/fornecedor.service";
 import { Upload, Plus } from "lucide-react";
 import type { IContasPagar, IRecurrenceInfo } from "../../types/backend";
 import type { IFornecedor } from "../../types/backend";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface ContaPagarModalProps {
   isOpen: boolean;
@@ -304,7 +309,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
             formData.status === "PAGO"
               ? formData.dt_pagamento
                 ? formatDateForPayload(formData.dt_pagamento)
-                : getSyncedDate().toISOString().split("T")[0]
+                : dayjs(getSyncedDate()).tz("America/Sao_Paulo").format("YYYY-MM-DD")
               : null,
           dt_vencimento: formatDateForPayload(vencStr),
           dt_emissao: formData.dt_emissao
@@ -347,7 +352,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
               formData.status === "PAGO"
                 ? formData.dt_pagamento
                   ? formatDateForPayload(formData.dt_pagamento)
-                  : getSyncedDate().toISOString().split("T")[0]
+                  : dayjs(getSyncedDate()).tz("America/Sao_Paulo").format("YYYY-MM-DD")
                 : null,
             dt_vencimento: formatDateForPayload(b.vencimento),
             dt_emissao: formData.dt_emissao

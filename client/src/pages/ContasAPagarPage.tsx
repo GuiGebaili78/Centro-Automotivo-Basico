@@ -2,6 +2,12 @@ import { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { FinanceiroService } from "../services/financeiro.service";
 import { api } from "../services/api";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import {
   ActionButton,
   Button,
@@ -135,7 +141,7 @@ export const ContasAPagarPage = () => {
       await FinanceiroService.updateContaPagar(selectedConta.id_conta_pagar, {
         status: "PAGO",
         valor: valorFinal,
-        dt_pagamento: new Date(data.date).toISOString(),
+        dt_pagamento: data.date, // Send the exact "YYYY-MM-DD" string from the picker
         id_conta_bancaria: data.accountId || null,
       });
       toast.success("Conta marcada como PAGA.");
@@ -278,16 +284,13 @@ export const ContasAPagarPage = () => {
                 const getStatusInfo = () => {
                   if (conta.status === "PAGO") return { label: "PAGO", color: "bg-emerald-100 text-emerald-700" };
                   
-                  const venc = new Date(conta.dt_vencimento);
-                  const today = new Date();
-                  
-                  // Extract the day using UTC since dt_vencimento is saved in UTC noon/midnight
-                  const vencDay = new Date(venc.getUTCFullYear(), venc.getUTCMonth(), venc.getUTCDate()).getTime();
-                  const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+                  // Using dayjs with specific timezone to ignore browser local offsets
+                  const vencDayStr = dayjs.utc(conta.dt_vencimento).format('YYYY-MM-DD');
+                  const todayDayStr = dayjs().tz("America/Sao_Paulo").format('YYYY-MM-DD');
 
-                  if (vencDay === todayDay) {
+                  if (vencDayStr === todayDayStr) {
                     return { label: "PAGAR HOJE", color: "bg-blue-100 text-blue-700" };
-                  } else if (vencDay < todayDay) {
+                  } else if (vencDayStr < todayDayStr) {
                     return { label: "ATRASADO", color: "bg-red-100 text-red-600" };
                   }
                   

@@ -24,7 +24,6 @@ const menuItems = [
     path: "/buscar",
     subItems: [
       { path: "/cliente", label: "Clientes" },
-      { path: "/veiculo", label: "Veículos" },
       { path: "/fornecedor", label: "Fornecedores" },
       { path: "/funcionario", label: "Colaboradores" },
     ],

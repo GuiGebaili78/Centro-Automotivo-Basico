@@ -8,8 +8,11 @@ export class PessoaFisicaController {
     try {
       const pessoaFisica = await repository.create(req.body);
       res.status(201).json(pessoaFisica);
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to create PessoaFisica', details: error });
+    } catch (error: any) {
+      if (error && error.code === 'P2002') {
+        return res.status(400).json({ error: 'Este CPF já está cadastrado no sistema.' });
+      }
+      res.status(400).json({ error: 'Failed to create PessoaFisica', details: error.message || error });
     }
   }
 
@@ -40,8 +43,11 @@ export class PessoaFisicaController {
       const id = Number(req.params.id);
       const pessoaFisica = await repository.update(id, req.body);
       res.json(pessoaFisica);
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to update PessoaFisica' });
+    } catch (error: any) {
+      if (error && error.code === 'P2002') {
+        return res.status(400).json({ error: 'Este CPF já está cadastrado no sistema.' });
+      }
+      res.status(400).json({ error: 'Failed to update PessoaFisica', details: error.message || error });
     }
   }
 

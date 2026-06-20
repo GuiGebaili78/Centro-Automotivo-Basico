@@ -13,6 +13,11 @@ import type {
   IEntradaEstoquePayload,
 } from "../types/estoque.types";
 import { Edit, Trash2 } from "lucide-react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export const EntradaEstoquePage = () => {
   const navigate = useNavigate();
@@ -26,7 +31,7 @@ export const EntradaEstoquePage = () => {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [invoice, setInvoice] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"));
   const [obs, setObs] = useState("");
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [nfsPendentes, setNfsPendentes] = useState<any[]>([]);
@@ -79,7 +84,7 @@ export const EntradaEstoquePage = () => {
       setDate(
         entry.data_compra
           ? entry.data_compra.split("T")[0]
-          : new Date().toISOString().split("T")[0],
+          : dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"),
       );
       setObs(entry.obs || "");
       setNfNumero(entry.nf_numero || "");

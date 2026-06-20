@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Input } from "../../ui/Input";
 import { formatCpf, formatCnpj, formatCep, formatPhone, unmask, formatIE } from "../../../utils/normalize";
+import { toast } from "react-toastify";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ export interface ClienteFormData {
 
 export interface ClienteFormSectionRef {
   getData: () => ClienteFormData;
+  isValid: () => boolean;
 }
 
 interface ClienteFormSectionProps {
@@ -98,6 +100,7 @@ export const ClienteFormSection = memo(
       const [bairro, setBairro] = useState(initialData?.bairro ?? "");
       const [cidade, setCidade] = useState(initialData?.cidade ?? "São Paulo");
       const [estado, setEstado] = useState(initialData?.estado ?? "SP");
+      const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
       // Sincroniza quando os dados iniciais chegam (modo edição assíncrono)
       useEffect(() => {
@@ -152,6 +155,20 @@ export const ClienteFormSection = memo(
             cidade,
             estado,
           }),
+          isValid: () => {
+            setHasAttemptedSubmit(true);
+            const tNome = tipoPessoa === "PF" ? nome.trim() : razaoSocial.trim();
+            if (!tNome) return false;
+            if (!telefone.replace(/\D/g, "")) return false;
+            
+            if (tipoPessoa === "PF" && cpf) {
+               if (cpf.replace(/\D/g, "").length !== 11) return false;
+            }
+            if (tipoPessoa === "PJ" && cnpj) {
+               if (cnpj.replace(/\D/g, "").length !== 14) return false;
+            }
+            return true;
+          }
         }),
         [
           tipoPessoa,
@@ -178,19 +195,28 @@ export const ClienteFormSection = memo(
       const handleCepBlur = useCallback(async () => {
         const cepRaw = cep.replace(/\D/g, "");
         if (cepRaw.length !== 8) return;
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
         try {
-          const res = await fetch(`https://viacep.com.br/ws/${cepRaw}/json/`);
+          const res = await fetch(`https://viacep.com.br/ws/${cepRaw}/json/`, {
+            signal: controller.signal
+          });
           const data = await res.json();
           if (!data.erro) {
             setLogradouro(data.logradouro ?? "");
             setBairro(data.bairro ?? "");
             setCidade(data.localidade ?? "");
             setEstado(data.uf ?? "");
-            // Foca no campo "Número" após autocomplete
             document.getElementById("nr_logradouro")?.focus();
+          } else {
+            toast.warning("CEP não localizado, preencha manualmente.");
           }
         } catch {
-          // silently fail — user can fill manually
+          toast.warning("CEP não localizado, preencha manualmente.");
+        } finally {
+          clearTimeout(timeoutId);
         }
       }, [cep]);
 
@@ -238,6 +264,7 @@ export const ClienteFormSection = memo(
                   onChange={(e) => setNome(e.target.value)}
                   placeholder="Nome do cliente"
                   required
+                  className={hasAttemptedSubmit && !nome.trim() ? 'border-red-500' : ''}
                 />
                 <Input
                   label="CPF"
@@ -246,6 +273,7 @@ export const ClienteFormSection = memo(
                   onChange={(e) => setCpf(formatCpf(e.target.value))}
                   placeholder="000.000.000-00"
                   disabled={isEditMode}
+                  className={hasAttemptedSubmit && cpf && cpf.replace(/\D/g, '').length !== 11 ? 'border-red-500' : ''}
                 />
               </>
             ) : (
@@ -258,6 +286,7 @@ export const ClienteFormSection = memo(
                   onChange={(e) => setRazaoSocial(e.target.value)}
                   placeholder="Nome da Empresa"
                   required
+                  className={hasAttemptedSubmit && !razaoSocial.trim() ? 'border-red-500' : ''}
                 />
                 <Input
                   label="Nome Fantasia"
@@ -271,6 +300,7 @@ export const ClienteFormSection = memo(
                     value={cnpj}
                     onChange={(e) => setCnpj(formatCnpj(e.target.value))}
                     placeholder="00.000.000/0000-00"
+                    className={hasAttemptedSubmit && cnpj && cnpj.replace(/\D/g, '').length !== 14 ? 'border-red-500' : ''}
                   />
                   <Input
                     label="IE"
@@ -292,6 +322,7 @@ export const ClienteFormSection = memo(
               onChange={(e) => setTelefone(formatPhone(e.target.value))}
               placeholder="(00) 00000-0000"
               required
+              className={hasAttemptedSubmit && !telefone.replace(/\D/g, '') ? 'border-red-500' : ''}
             />
             <Input
               label="Telefone 2"

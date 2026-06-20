@@ -23,6 +23,11 @@ import { OsTotalsSection } from "../components/os/OsTotalsSection";
 
 // Icons
 import { Wrench } from "lucide-react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export const OrdemDeServicoDetalhePage = () => {
   const { id } = useParams();
@@ -105,7 +110,7 @@ export const OrdemDeServicoDetalhePage = () => {
           valor_total_cliente: totals.general,
           dt_entrega: os?.dt_entrega
             ? new Date(os.dt_entrega).toISOString()
-            : new Date().toISOString(),
+            : dayjs().tz("America/Sao_Paulo").format(),
         });
         if (success) {
           closeConfirm();
