@@ -377,6 +377,7 @@ export const CadastroUnificadoPage = () => {
 
       <form
         onSubmit={handleSave}
+        noValidate
         className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start"
       >
         {/* ─── COL ESQUERDA: Formulário do Cliente ─── */}

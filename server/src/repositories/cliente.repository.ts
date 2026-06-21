@@ -171,8 +171,8 @@ export class ClienteRepository {
       prisma.cliente.count({ where }),
       prisma.cliente.findMany({
         where,
-        skip,
-        take,
+        ...(skip !== undefined ? { skip } : {}),
+        ...(take !== undefined ? { take } : {}),
         include: {
           pessoa_fisica: { include: { pessoa: true } },
           pessoa_juridica: { include: { pessoa: true } },

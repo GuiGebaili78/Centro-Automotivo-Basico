@@ -104,7 +104,7 @@ export const VeiculoFormSection = memo(
 
       // ─── Render ───────────────────────────────────────────────────────────
       return (
-        <div className="space-y-4">
+        <div data-testid="veiculo-form" className="space-y-4">
           {/* Info tip */}
           <div className="p-3 bg-primary-50 rounded-xl border border-primary-100 text-xs text-primary-800 font-medium">
             Preencha os dados do veículo agora para agilizar a abertura da OS.

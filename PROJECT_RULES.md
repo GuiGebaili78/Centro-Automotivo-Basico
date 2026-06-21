@@ -2,6 +2,8 @@
 
 > [!IMPORTANT]
 > Este documento serve como **Fonte da Verdade** para o desenvolvimento do projeto. Qualquer alteração futura deve respeitar estritamente as regras de negócio, a arquitetura e as diretrizes de design definidas aqui para evitar quebras de funcionalidade ou regressões visuais.
+> 
+> **DIRETRIZ OBRIGATÓRIA DA IA**: Sempre que a tarefa envolver modificações no módulo de clientes, veículos ou peças, é obrigatório ler o arquivo `docs/regras-clientes.md` e validar o plano de ação contra essas diretrizes antes de escrever qualquer código.
 
 ---
 
