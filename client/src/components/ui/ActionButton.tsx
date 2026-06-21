@@ -38,6 +38,8 @@ export const ActionButton = ({
         type="button"
         variant="ghost"
         disabled={isBtnDisabled}
+        title={label}
+        aria-label={label}
         onClick={(e) => {
           e.stopPropagation();
           onClick(e);

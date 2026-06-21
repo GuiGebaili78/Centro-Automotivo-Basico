@@ -15,6 +15,7 @@ export class ClienteRepository {
           where: { cnpj: data.cnpj }
         });
         if (existingCnpj) {
+          if (!existingCnpj.ativo) throw new Error("CPF/CNPJ já cadastrado, porém encontra-se inativo.");
           throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
         }
       }
@@ -23,6 +24,7 @@ export class ClienteRepository {
           where: { inscricao_estadual: data.inscricao_estadual }
         });
         if (existingIe) {
+          if (!existingIe.ativo) throw new Error("Inscrição Estadual já cadastrada, porém encontra-se inativa.");
           throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
         }
       }
@@ -32,6 +34,7 @@ export class ClienteRepository {
           where: { cpf: data.cpf }
         });
         if (existingCpf) {
+          if (!existingCpf.ativo) throw new Error("CPF/CNPJ já cadastrado, porém encontra-se inativo.");
           throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
         }
       }
@@ -125,6 +128,7 @@ export class ClienteRepository {
 
   async findAll(skip?: number, take?: number, search?: string) {
     const where: Prisma.ClienteWhereInput = search ? {
+      ativo: true,
       OR: [
         // Cliente (Nomes e Razão Social)
         { pessoa_fisica: { pessoa: { nome: { contains: search, mode: 'insensitive' } } } },
@@ -165,7 +169,7 @@ export class ClienteRepository {
           } 
         }
       ]
-    } : {};
+    } : { ativo: true };
 
     const [total, data] = await prisma.$transaction([
       prisma.cliente.count({ where }),
@@ -178,6 +182,7 @@ export class ClienteRepository {
           pessoa_juridica: { include: { pessoa: true } },
           tipo: true,
         },
+        orderBy: { id_cliente: 'desc' },
       })
     ]);
 
@@ -230,7 +235,10 @@ export class ClienteRepository {
       const existing = await prisma.pessoaFisica.findFirst({
         where: pfWhere
       });
-      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      if (existing) {
+        if (!existing.ativo) throw new Error("CPF/CNPJ já cadastrado, porém encontra-se inativo.");
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
     }
     if (data.cnpj) {
       const pjWhere: any = { cnpj: data.cnpj };
@@ -240,7 +248,10 @@ export class ClienteRepository {
       const existing = await prisma.pessoaJuridica.findFirst({
         where: pjWhere
       });
-      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      if (existing) {
+        if (!existing.ativo) throw new Error("CPF/CNPJ já cadastrado, porém encontra-se inativo.");
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
     }
     if (data.inscricao_estadual) {
       const pjWhere: any = { inscricao_estadual: data.inscricao_estadual };
@@ -250,7 +261,10 @@ export class ClienteRepository {
       const existing = await prisma.pessoaJuridica.findFirst({
         where: pjWhere
       });
-      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      if (existing) {
+        if (!existing.ativo) throw new Error("Inscrição Estadual já cadastrada, porém encontra-se inativa.");
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
     }
 
     return await prisma.$transaction(async (tx) => {
@@ -321,8 +335,23 @@ export class ClienteRepository {
       throw new Error("Não é possível excluir o cliente pois há uma Ordem de Serviço ativa vinculada (OS: " + activeOs.id_os + ").");
     }
 
-    return await prisma.cliente.delete({
-      where: { id_cliente: id },
+    return await prisma.$transaction(async (tx) => {
+      const cliente = await tx.cliente.update({
+        where: { id_cliente: id },
+        data: { ativo: false },
+      });
+
+      await tx.veiculo.updateMany({
+        where: { id_cliente: id },
+        data: { ativo: false },
+      });
+
+      await tx.equipamentoCliente.updateMany({
+        where: { id_cliente: id },
+        data: { ativo: false },
+      });
+
+      return cliente;
     });
   }
 

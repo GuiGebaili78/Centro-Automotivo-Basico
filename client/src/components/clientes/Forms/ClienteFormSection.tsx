@@ -77,19 +77,19 @@ export const ClienteFormSection = memo(
         initialData?.tipoPessoa ?? "PF",
       );
       const [nome, setNome] = useState(initialData?.nome ?? "");
-      const [cpf, setCpf] = useState(initialData?.cpf ?? "");
+      const [cpf, setCpf] = useState(initialData?.cpf ? formatCpf(initialData.cpf) : "");
       const [razaoSocial, setRazaoSocial] = useState(
         initialData?.razaoSocial ?? "",
       );
       const [nomeFantasia, setNomeFantasia] = useState(
         initialData?.nomeFantasia ?? "",
       );
-      const [cnpj, setCnpj] = useState(initialData?.cnpj ?? "");
+      const [cnpj, setCnpj] = useState(initialData?.cnpj ? formatCnpj(initialData.cnpj) : "");
       const [ie, setIe] = useState(initialData?.ie ?? "");
-      const [telefone, setTelefone] = useState(initialData?.telefone ?? "");
-      const [telefone2, setTelefone2] = useState(initialData?.telefone2 ?? "");
+      const [telefone, setTelefone] = useState(initialData?.telefone ? formatPhone(initialData.telefone) : "");
+      const [telefone2, setTelefone2] = useState(initialData?.telefone2 ? formatPhone(initialData.telefone2) : "");
       const [email, setEmail] = useState(initialData?.email ?? "");
-      const [cep, setCep] = useState(initialData?.cep ?? "");
+      const [cep, setCep] = useState(initialData?.cep ? formatCep(initialData.cep) : "");
       const [logradouro, setLogradouro] = useState(
         initialData?.logradouro ?? "",
       );
@@ -107,19 +107,19 @@ export const ClienteFormSection = memo(
         if (!initialData) return;
         if (initialData.tipoPessoa) setTipoPessoa(initialData.tipoPessoa);
         if (initialData.nome !== undefined) setNome(initialData.nome);
-        if (initialData.cpf !== undefined) setCpf(initialData.cpf);
+        if (initialData.cpf !== undefined) setCpf(formatCpf(initialData.cpf));
         if (initialData.razaoSocial !== undefined)
           setRazaoSocial(initialData.razaoSocial);
         if (initialData.nomeFantasia !== undefined)
           setNomeFantasia(initialData.nomeFantasia);
-        if (initialData.cnpj !== undefined) setCnpj(initialData.cnpj);
+        if (initialData.cnpj !== undefined) setCnpj(formatCnpj(initialData.cnpj));
         if (initialData.ie !== undefined) setIe(initialData.ie);
         if (initialData.telefone !== undefined)
-          setTelefone(initialData.telefone);
+          setTelefone(formatPhone(initialData.telefone));
         if (initialData.telefone2 !== undefined)
-          setTelefone2(initialData.telefone2);
+          setTelefone2(formatPhone(initialData.telefone2));
         if (initialData.email !== undefined) setEmail(initialData.email);
-        if (initialData.cep !== undefined) setCep(initialData.cep);
+        if (initialData.cep !== undefined) setCep(formatCep(initialData.cep));
         if (initialData.logradouro !== undefined)
           setLogradouro(initialData.logradouro);
         if (initialData.numero !== undefined) setNumero(initialData.numero);

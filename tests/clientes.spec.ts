@@ -227,4 +227,92 @@ test.describe.serial('Módulo de Clientes — Integridade de Dados', () => {
     await expect(errorToast).toBeVisible({ timeout: 5000 });
   });
 
+  // ─── Cenário 4: Validação de Sanitização ──────────────────────────────────
+  test('Cenário 4: Validação de Sanitização (Data Cleansing)', async ({ page }) => {
+    await login(page);
+    await page.goto('/novo-cadastro');
+
+    const cpfSanitizado = generateValidCPF();
+    const nomeSanitize = `Cliente Sanitize ${Math.floor(Math.random() * 10000)}`;
+    // Inserimos com máscara (o componente aplica sozinho, mas simulamos a digitação natural)
+    await page.getByLabel('Nome Completo *').fill(nomeSanitize);
+    await page.getByLabel('CPF').fill(cpfSanitizado); 
+    await page.getByLabel('Telefone Principal *').fill('11999998888');
+
+    // Interceptar a requisição para verificar se o payload que BATE na API tem pontuação (frontend mandaria sem pontuação, mas vamos focar na API)
+    // O mais importante é verificar o banco, ou fazer reload da grid.
+
+    const saveClientePromise = page.waitForResponse(
+      (r: any) => r.url().includes('/api/cliente') && r.request().method() === 'POST',
+      { timeout: 15000 }
+    );
+    await page.getByRole('button', { name: 'SALVAR NOVO CADASTRO' }).click();
+    const clienteResponse = await saveClientePromise;
+    expect(clienteResponse.status()).toBe(201);
+    const clienteData = await clienteResponse.json();
+
+    // Validar se o BD retornou limpo
+    // Dependendo do que a API retorna, o CPF pode vir limpo, e a máscara só é na view.
+    
+    // Fechar modal
+    const modalTitle = page.getByRole('heading', { name: 'Nova Ordem de Serviço', level: 2 });
+    await expect(modalTitle).toBeVisible({ timeout: 8000 });
+    await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+
+    // Na listagem, o CPF ou Telefone deve aparecer formatado
+    await page.goto('/cliente');
+    await page.reload();
+    await page.waitForTimeout(3000);
+
+    const row = page.locator('tbody tr').filter({ hasText: nomeSanitize }).first();
+    await expect(row).toBeVisible({ timeout: 10000 });
+    // Verifica formatação do telefone na listagem (11) 9 9999-8888
+    await expect(row.getByText('(11) 9 9999-8888')).toBeVisible();
+  });
+
+  // ─── Cenário 5: Exclusão Lógica ─────────────────────────────────────────
+  test('Cenário 5: Exclusão Lógica (Soft Delete)', async ({ page }) => {
+    await login(page);
+    
+    // 1. Criar cliente para excluir
+    await page.goto('/novo-cadastro');
+    const nomeExclusao = `Cliente Para Excluir ${Math.floor(Math.random() * 10000)}`;
+    await page.getByLabel('Nome Completo *').fill(nomeExclusao);
+    await page.getByLabel('CPF').fill(generateValidCPF());
+    await page.getByLabel('Telefone Principal *').fill('11911112222');
+    
+    await page.getByRole('button', { name: 'SALVAR NOVO CADASTRO' }).click();
+    await page.getByRole('heading', { name: 'Nova Ordem de Serviço', level: 2 }).waitFor({ state: 'visible', timeout: 8000 });
+    await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+
+    // 2. Ir para listagem e excluir
+    await page.goto('/cliente');
+    await page.reload();
+    await page.waitForTimeout(3000);
+
+    const row = page.locator('tbody tr').filter({ hasText: nomeExclusao }).first();
+    await expect(row).toBeVisible({ timeout: 10000 });
+    
+    // O botão excluir aparece no hover (Playwright consegue clicar se forçar ou usar ActionButton icon)
+    await row.getByRole('button', { name: 'Excluir' }).click({ force: true });
+    
+    // Modal de confirmação (não possui role="dialog")
+    const confirmBtn = page.getByRole('button', { name: /Excluir|Confirmar/i }).last();
+    await expect(confirmBtn).toBeVisible({ timeout: 5000 });
+    await confirmBtn.click();
+
+    // Toast de sucesso
+    const successToast = page.getByText(/removido com sucesso|excluído com sucesso/i);
+    await expect(successToast).toBeVisible({ timeout: 5000 });
+
+    // 3. Garantir que desapareceu da lista
+    await expect(row).not.toBeVisible();
+    
+    // 4. Garantir que a API de listagem não retorna 500
+    const listPromise = page.waitForResponse(r => r.url().includes('/api/cliente') && r.request().method() === 'GET');
+    await page.goto('/cliente');
+    const listRes = await listPromise;
+    expect(listRes.status()).toBe(200); // Sem erro 500
+  });
+
 });

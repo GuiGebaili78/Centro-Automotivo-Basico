@@ -1,6 +1,16 @@
 import { Request, Response } from "express";
 import { ClienteRepository } from "../repositories/cliente.repository.js";
 
+// Função auxiliar de sanitização
+function sanitizePayload(body: any) {
+  if (body.cpf) body.cpf = body.cpf.replace(/\D/g, '');
+  if (body.cnpj) body.cnpj = body.cnpj.replace(/\D/g, '');
+  if (body.telefone_1) body.telefone_1 = body.telefone_1.replace(/\D/g, '');
+  if (body.telefone_2) body.telefone_2 = body.telefone_2.replace(/\D/g, '');
+  if (body.telefone_3) body.telefone_3 = body.telefone_3.replace(/\D/g, '');
+  if (body.cep) body.cep = body.cep.replace(/\D/g, '');
+}
+
 const repository = new ClienteRepository();
 
 export class ClienteController {
@@ -9,6 +19,7 @@ export class ClienteController {
     console.log("📦 Request body:", JSON.stringify(req.body, null, 2));
 
     try {
+      sanitizePayload(req.body);
       const cliente = await repository.create(req.body);
       console.log("✅ ClienteController.create - Success:", cliente.id_cliente);
       res.status(201).json(cliente);
@@ -72,9 +83,13 @@ export class ClienteController {
   async update(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
+      sanitizePayload(req.body);
       const cliente = await repository.update(id, req.body);
       res.json(cliente);
     } catch (error: any) {
+      if (error && error.message && error.message.includes('já cadastrado')) {
+        return res.status(400).json({ error: error.message });
+      }
       if (error && error.code === 'P2002') {
         return res.status(400).json({ error: 'Este CPF ou CNPJ já está cadastrado no sistema.' });
       }

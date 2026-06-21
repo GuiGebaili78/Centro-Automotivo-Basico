@@ -17,6 +17,7 @@ model Pessoa {
   is_cliente      Boolean         @default(false)
   is_fornecedor   Boolean         @default(false)
   is_colaborador  Boolean         @default(false)
+  ativo           Boolean         @default(true)
   dt_cadastro     DateTime        @default(now()) @db.Timestamp(6)
   pessoa_fisica   PessoaFisica?
   pessoa_juridica PessoaJuridica?
@@ -28,6 +29,7 @@ model PessoaFisica {
   id_pessoa_fisica Int          @id @default(autoincrement())
   id_pessoa        Int          @unique
   cpf              String?      @db.VarChar(11)
+  ativo            Boolean      @default(true)
   dt_cadastro      DateTime     @default(now()) @db.Timestamp(6)
   clientes         Cliente[]
   funcionario      Funcionario?
@@ -43,6 +45,7 @@ model PessoaJuridica {
   nome_fantasia      String?   @db.VarChar(100)
   cnpj               String?   @db.VarChar(14)
   inscricao_estadual String?   @db.VarChar(50)
+  ativo              Boolean   @default(true)
   dt_cadastro        DateTime  @default(now()) @db.Timestamp(6)
   clientes           Cliente[]
   pessoa             Pessoa    @relation(fields: [id_pessoa], references: [id_pessoa])
@@ -74,6 +77,7 @@ model Cliente {
   bairro             String?          @db.VarChar(100)
   cidade             String?          @db.VarChar(100)
   estado             String?          @db.Char(2)
+  ativo              Boolean          @default(true)
   dt_cadastro        DateTime         @default(now()) @db.Timestamp(6)
   cep                String?          @db.VarChar(10)
   pessoa_fisica      PessoaFisica?    @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
@@ -133,6 +137,7 @@ model EquipamentoCliente {
   fabricante        String?          @db.VarChar(50)
   numeracao         String?          @db.VarChar(50)
   observacoes       String?          @db.VarChar(500)
+  ativo             Boolean          @default(true)
   created_at        DateTime         @default(now()) @db.Timestamp(6)
   updated_at        DateTime         @default(now()) @updatedAt @db.Timestamp(6)
   cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
@@ -237,6 +242,7 @@ model Veiculo {
   cor               String           @db.VarChar(30)
   combustivel       String           @db.VarChar(20)
   obs               String?          @db.VarChar(500)
+  ativo             Boolean          @default(true)
   dt_cadastro       DateTime         @default(now()) @db.Timestamp(6)
   ordens_de_servico OrdemDeServico[]
   cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
