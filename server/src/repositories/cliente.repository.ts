@@ -181,6 +181,8 @@ export class ClienteRepository {
           pessoa_fisica: { include: { pessoa: true } },
           pessoa_juridica: { include: { pessoa: true } },
           tipo: true,
+          veiculos: true,
+          equipamentos: true,
         },
         orderBy: { id_cliente: 'desc' },
       })

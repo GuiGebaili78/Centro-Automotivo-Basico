@@ -26,10 +26,16 @@ import {
   MapPin,
   Building2,
   Hash,
+  Loader2,
+  ChevronLeft,
 } from "lucide-react";
 import { Input } from "../../ui/Input";
 import { formatCpf, formatCnpj, formatCep, formatPhone, unmask, formatIE } from "../../../utils/normalize";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import { ClienteService } from "../../../services/cliente.service";
+import type { ICliente } from "../../../types/backend";
+import { useRef } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -101,6 +107,112 @@ export const ClienteFormSection = memo(
       const [cidade, setCidade] = useState(initialData?.cidade ?? "São Paulo");
       const [estado, setEstado] = useState(initialData?.estado ?? "SP");
       const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+
+      const navigate = useNavigate();
+      const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+      const [searchResults, setSearchResults] = useState<ICliente[]>([]);
+      const [isSearching, setIsSearching] = useState(false);
+      const [showDropdown, setShowDropdown] = useState(false);
+      const searchWrapperRef = useRef<HTMLDivElement>(null);
+
+      // Fecha dropdown ao clicar fora
+      useEffect(() => {
+        const handler = (e: MouseEvent) => {
+          if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) {
+            setShowDropdown(false);
+          }
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+      }, []);
+
+      const handleSearch = (val: string, setter: (v: string) => void) => {
+        setter(val);
+        if (isEditMode) return;
+        
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        
+        if (val.trim().length < 2) {
+           setSearchResults([]);
+           setShowDropdown(false);
+           return;
+        }
+
+        setIsSearching(true);
+        setShowDropdown(true);
+
+        debounceRef.current = setTimeout(async () => {
+          try {
+            const results = await ClienteService.search(val.trim());
+            setSearchResults(results as unknown as ICliente[]);
+          } catch {
+            setSearchResults([]);
+          } finally {
+            setIsSearching(false);
+          }
+        }, 500);
+      };
+
+      const handleSelectSuggestion = (clienteId: number) => {
+        setShowDropdown(false);
+        navigate(`/cadastro/${clienteId}`);
+      };
+
+      // Helper para renderizar a lista
+      const renderDropdown = () => {
+        if (!showDropdown || isEditMode) return null;
+        return (
+          <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-neutral-200 rounded-xl shadow-xl max-h-[300px] overflow-y-auto">
+            {isSearching ? (
+              <div className="p-4 text-center text-neutral-500 flex justify-center items-center gap-2">
+                <Loader2 size={16} className="animate-spin text-primary-500" />
+                <span className="text-sm">Buscando clientes...</span>
+              </div>
+            ) : searchResults.length > 0 ? (
+              <ul role="listbox">
+                {searchResults.map((c) => {
+                  const name = c.pessoa_fisica?.pessoa?.nome || c.pessoa_juridica?.razao_social || c.pessoa_juridica?.nome_fantasia || "Cliente";
+                  const tel = c.telefone_1 ? formatPhone(c.telefone_1) : "";
+                  const assets = [
+                    ...(c.veiculos || []).map(v => `${v.modelo || "Modelo N/I"} (${v.cor || "Cor N/I"}) - ${v.placa}`),
+                    ...(c.equipamentos || []).map(e => e.nome_peca)
+                  ];
+                  const assetsStr = assets.length > 0 ? assets.join(" | ") : "Sem Veículo/Peça";
+                  return (
+                    <li
+                      key={c.id_cliente}
+                      role="option"
+                      aria-selected={false}
+                      className="p-3 border-b border-neutral-100 last:border-0 hover:bg-primary-50 cursor-pointer transition-colors"
+                      onMouseDown={(e) => {
+                         // Prevent onBlur of the input from firing before click
+                         e.preventDefault();
+                      }}
+                      onClick={() => handleSelectSuggestion(c.id_cliente)}
+                    >
+                      <div className="flex justify-between items-center gap-2">
+                         <div className="min-w-0">
+                           <p className="font-bold text-sm text-neutral-800 truncate">{name}</p>
+                           <p className="text-xs text-neutral-500 truncate">{tel ? `${tel} • ` : ''}{assetsStr}</p>
+                         </div>
+                         <div className="text-[10px] shrink-0 uppercase font-bold tracking-widest text-primary-600 bg-primary-100 px-2 py-1 rounded flex items-center gap-1">
+                           <span>Editar</span>
+                           <ChevronLeft size={12} className="rotate-180" />
+                         </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+               <div className="p-4 text-center text-neutral-500 text-sm">
+                 Nenhum cliente encontrado. <br/> Continue preenchendo para cadastrar.
+               </div>
+            )}
+          </div>
+        );
+      };
+
 
       // Sincroniza quando os dados iniciais chegam (modo edição assíncrono)
       useEffect(() => {
@@ -253,48 +365,54 @@ export const ClienteFormSection = memo(
           </div>
 
           {/* Campos de identificação (PF / PJ) */}
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4" ref={searchWrapperRef}>
             {tipoPessoa === "PF" ? (
-              <>
+              <div className="relative">
                 <Input
                   label="Nome Completo *"
                   icon={User}
                   ref={nameInputRef as React.Ref<HTMLInputElement>}
                   value={nome}
-                  onChange={(e) => setNome(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value, setNome)}
                   placeholder="Nome do cliente"
                   required
                   className={hasAttemptedSubmit && !nome.trim() ? 'border-red-500' : ''}
                 />
-                <Input
-                  label="CPF"
-                  icon={Hash}
-                  value={cpf}
-                  onChange={(e) => setCpf(formatCpf(e.target.value))}
-                  placeholder="000.000.000-00"
-                  disabled={isEditMode}
-                  className={hasAttemptedSubmit && cpf && cpf.replace(/\D/g, '').length !== 11 ? 'border-red-500' : ''}
-                />
-              </>
+                {tipoPessoa === "PF" && renderDropdown()}
+                <div className="mt-4">
+                  <Input
+                    label="CPF"
+                    icon={Hash}
+                    value={cpf}
+                    onChange={(e) => setCpf(formatCpf(e.target.value))}
+                    placeholder="000.000.000-00"
+                    disabled={isEditMode}
+                    className={hasAttemptedSubmit && cpf && cpf.replace(/\D/g, '').length !== 11 ? 'border-red-500' : ''}
+                  />
+                </div>
+              </div>
             ) : (
-              <>
+              <div className="relative">
                 <Input
                   label="Razão Social *"
                   icon={Building2}
                   ref={nameInputRef as React.Ref<HTMLInputElement>}
                   value={razaoSocial}
-                  onChange={(e) => setRazaoSocial(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value, setRazaoSocial)}
                   placeholder="Nome da Empresa"
                   required
                   className={hasAttemptedSubmit && !razaoSocial.trim() ? 'border-red-500' : ''}
                 />
-                <Input
-                  label="Nome Fantasia"
-                  value={nomeFantasia}
-                  onChange={(e) => setNomeFantasia(e.target.value)}
-                  placeholder="Nome Comercial"
-                />
-                <div className="grid grid-cols-2 gap-4">
+                {tipoPessoa === "PJ" && renderDropdown()}
+                <div className="mt-4">
+                  <Input
+                    label="Nome Fantasia"
+                    value={nomeFantasia}
+                    onChange={(e) => setNomeFantasia(e.target.value)}
+                    placeholder="Nome Comercial"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
                   <Input
                     label="CNPJ"
                     value={cnpj}
@@ -309,7 +427,7 @@ export const ClienteFormSection = memo(
                     placeholder="IE Isento ou Número (ex: 123.456.789)"
                   />
                 </div>
-              </>
+              </div>
             )}
           </div>
 

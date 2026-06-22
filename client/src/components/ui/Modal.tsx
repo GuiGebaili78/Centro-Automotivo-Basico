@@ -33,6 +33,8 @@ export const Modal = ({
       style={{ zIndex }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
         className={`bg-white rounded-xl shadow-2xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 ${className}`}
       >
         {/* Header */}
