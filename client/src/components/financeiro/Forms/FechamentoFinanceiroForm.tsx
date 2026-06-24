@@ -28,11 +28,6 @@ import { PagamentoClienteForm } from "./PagamentoClienteForm";
 import { FornecedorForm } from "../../fornecedores/Forms/FornecedorForm";
 import { LaborManager } from "../../os/LaborManager";
 import {
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-dayjs.extend(utc);
-dayjs.extend(timezone);
   Button,
   Input,
   Select,
@@ -40,6 +35,11 @@ dayjs.extend(timezone);
   Modal,
   StatusBanner,
 } from "../../ui";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface FechamentoFinanceiroFormProps {
   preSelectedOsId?: number | null;

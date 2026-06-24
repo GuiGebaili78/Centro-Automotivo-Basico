@@ -404,14 +404,16 @@ export const UnifiedOsForm: React.FC<UnifiedOsFormProps> = ({
                 />
                 </div>
                 <div>
-                <Input
+                  <Input
                     label={`Modelo ${osMode === "OFICINA" ? "*" : ""}`}
                     value={vehicleData.modelo}
                     onChange={(e) =>
-                    setVehicleData({ ...vehicleData, modelo: e.target.value })
+                      setVehicleData({ ...vehicleData, modelo: e.target.value })
                     }
                     className="font-bold text-neutral-800"
                     placeholder="Ex: Gol"
+                  />
+                </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div>

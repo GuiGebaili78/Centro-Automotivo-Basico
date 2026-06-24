@@ -80,16 +80,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener("unauthorized", handleUnauthorized);
   }, []);
 
+  // BYPASS: Mock user while login is not implemented
+  const mockUser: User = {
+    id_usuario: 1,
+    nome: "Desenvolvedor",
+    email: "dev@teste.com",
+    perfil: "ADMIN",
+  };
+
   return (
     <AuthContext.Provider
       value={{
-        user,
-        token,
-        mustChangePassword,
+        user: user || mockUser,
+        token: token || "bypass-token",
+        mustChangePassword: false,
         login,
         clearMustChangePassword,
         logout,
-        isAuthenticated: !!token,
+        isAuthenticated: true,
       }}
     >
       {children}

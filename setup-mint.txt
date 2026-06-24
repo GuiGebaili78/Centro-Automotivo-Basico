@@ -1,0 +1,10 @@
+2. Como usar:
+Abra o terminal na raiz do seu projeto e rode:
+
+Bash
+chmod +x setup-mint.sh
+./setup-mint.sh
+
+depois rode 
+
+start-nativo.sh

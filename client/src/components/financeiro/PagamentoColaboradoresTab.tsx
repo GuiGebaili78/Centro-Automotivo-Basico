@@ -20,15 +20,15 @@ import { UniversalFilters } from "../common/UniversalFilters";
 import type { UniversalFiltersState } from "../common/UniversalFilters";
 import { useUniversalFilter } from "../../hooks/useUniversalFilter";
 import type {
+  IPagamentoColaborador,
+  IPendenciaColaborador,
+  IFinanceiroStatusMsg,
+} from "../../types/financeiro.types";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 dayjs.extend(utc);
 dayjs.extend(timezone);
-  IPagamentoColaborador,
-  IPendenciaColaborador,
-  IFinanceiroStatusMsg,
-} from "../../types/financeiro.types";
 
 interface PagamentoColaboradoresTabProps {
   onUpdate: () => void;
@@ -54,7 +54,6 @@ export const PagamentoColaboradoresTab = ({
   // Novo Pagamento Modal State
   const [showNewPaymentModal, setShowNewPaymentModal] = useState(false);
 
-
   // Filters (History) — replaced by UniversalFilters
   const [universalFilters, setUniversalFilters] = useState<UniversalFiltersState>({
     search: "", osId: "", status: "ALL", operadora: "", fornecedor: "",
@@ -77,8 +76,6 @@ export const PagamentoColaboradoresTab = ({
   const [payDataAdiantamento, setPayDataAdiantamento] = useState(
     dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"),
   );
-  // Date Filters for Commission Selection inside Modal
-  // const [payMsg, setPayMsg] = useState("");
 
   // --- EFFECTS ---
   useEffect(() => {

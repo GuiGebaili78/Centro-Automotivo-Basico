@@ -428,7 +428,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             [id_item_os]: {
               ...itemState,
               custo_zero: !checked,
-              custo_real: custo_real_prev,
+              custo_real: String(custo_real_prev),
             },
           };
         });

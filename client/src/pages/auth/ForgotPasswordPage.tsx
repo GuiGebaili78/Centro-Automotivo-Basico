@@ -1,18 +1,17 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAlerts } from "../../contexts/AlertsContext";
+import { toast } from "react-toastify";
 import { api } from "../../services/api";
 
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const { addAlert } = useAlerts();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      addAlert("error", "Informe o e-mail.");
+      toast.error("Informe o e-mail.");
       return;
     }
 
@@ -22,7 +21,7 @@ export const ForgotPasswordPage: React.FC = () => {
       // Sempre exibiremos a mesma mensagem genérica, mas aqui podemos sinalizar sucesso
       setSuccess(true);
     } catch (error: any) {
-      addAlert("error", "Erro ao solicitar recuperação. Tente novamente mais tarde.");
+      toast.error("Erro ao solicitar recuperação. Tente novamente mais tarde.");
     } finally {
       setLoading(false);
     }

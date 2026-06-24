@@ -16,6 +16,7 @@ import { OsPrintView } from "./pages/OsPrintView";
 import { RelatoriosPage } from "./pages/RelatoriosPage";
 
 import { PecasEstoquePage } from "./pages/PecasEstoquePage";
+import { PecasEstoqueDetalhePage } from "./pages/PecasEstoqueDetalhePage";
 import { EntradaEstoquePage } from "./pages/EntradaEstoquePage";
 import { FuncionarioPage } from "./pages/ColaboradoresPage";
 import { PessoaPage } from "./pages/PessoaPage";
@@ -81,6 +82,7 @@ const router = createBrowserRouter(
             element={<CadastroUnificadoPage />}
           />
           <Route path="/pecas-estoque" element={<PecasEstoquePage />} />
+          <Route path="/pecas-estoque/:id" element={<PecasEstoqueDetalhePage />} />
           <Route path="/entrada-estoque" element={<EntradaEstoquePage />} />
           <Route path="/funcionario" element={<FuncionarioPage />} />
           <Route path="/pessoa" element={<PessoaPage />} />

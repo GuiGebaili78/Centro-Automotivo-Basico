@@ -67,12 +67,12 @@ export const OsItemForm = ({
 
   const handleSelectPart = async (p: any) => {
     // Basic update
-    setNewItem((prev) => ({
-      ...prev,
+    setNewItem({
+      ...newItem,
       id_pecas_estoque: p.id_pecas_estoque ? String(p.id_pecas_estoque) : "",
       valor_venda: p.valor_venda ? String(p.valor_venda) : "",
       descricao: p.nome,
-    }));
+    });
 
     // Clear search results
     setSearchResults([]);
@@ -84,12 +84,12 @@ export const OsItemForm = ({
         const partDetails = await checkAvailability(p.id_pecas_estoque);
 
         if (partDetails) {
-          setNewItem((prev) => ({
-            ...prev,
+          setNewItem({
+            ...newItem,
             id_pecas_estoque: String(partDetails.id_pecas_estoque),
             valor_venda: Number(partDetails.valor_venda).toFixed(2),
             descricao: partDetails.nome,
-          }));
+          });
 
           const freeStock =
             (partDetails.estoque_atual || 0) - (partDetails.reserved || 0);

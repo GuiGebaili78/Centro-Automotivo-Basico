@@ -35,7 +35,6 @@ const menuItems = [
     path: "/estoque",
     subItems: [
       { path: "/pecas-estoque", label: "Visão Geral / Consulta" },
-      { path: "/entrada-estoque", label: "Nova Compra (Entrada)" },
     ],
   },
   {

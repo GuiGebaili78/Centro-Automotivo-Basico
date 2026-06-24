@@ -11,6 +11,8 @@ export interface IEstoqueUpdatePayload {
   valor_venda: number;
   estoque_atual: number;
   estoque_minimo: number;
+  modelo?: string;
+  id_categoria?: number | null;
 }
 
 export interface IItemEntrada {
@@ -25,6 +27,9 @@ export interface IItemEntrada {
     localizacao?: string;
     unidade_medida: string;
     estoque_minimo: number;
+    modelo?: string;
+    id_categoria?: number | null;
+    _update_master?: boolean;
   } | null;
 
   displayName: string;
@@ -38,6 +43,14 @@ export interface IItemEntrada {
   obs?: string;
   /** Marcado como true no modo edição quando o usuário quer remover o item */
   _delete?: boolean;
+  /** Marcado como true quando a linha do item foi editada com sucesso */
+  _edited?: boolean;
+  /** Marcado como true enquanto a linha está sendo editada */
+  _editing?: boolean;
+  /** Temporário: Armazena o modelo selecionado antes do envio */
+  modelo?: string;
+  /** Temporário: Armazena a categoria selecionada antes do envio */
+  id_categoria?: number | null;
 }
 
 export interface IEntradaEstoquePayload {

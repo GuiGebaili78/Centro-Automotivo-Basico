@@ -53,9 +53,9 @@ import {
 import { Select } from "../components/ui";
 
 // ─── Tipos locais ──────────────────────────────────────────────────────────────
-type GroupByOption = "month" | "quarter" | "semester" | "year";
+type GroupByOption = "day" | "week" | "month" | "quarter" | "semester" | "year";
 
-const GROUP_BY_LABELS: Record<GroupByOption, string> = {
+const GROUP_BY_LABELS: Partial<Record<GroupByOption, string>> = {
   month: "Mensal",
   quarter: "Trimestral",
   semester: "Semestral",
@@ -159,7 +159,7 @@ export const RelatoriosPage = () => {
         const data = await RelatoriosService.getEvolucaoMensal(
           yearStart,
           yearEnd,
-          evolGroupBy,
+          evolGroupBy as any,
         );
         setEvolucao(data);
       } catch (error) {

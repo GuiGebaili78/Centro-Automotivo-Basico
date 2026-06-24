@@ -508,7 +508,7 @@ export const FechamentoFinanceiroPage = () => {
                         );
 
                         // REC: nenhum recebível com status PENDENTE (sem recebíveis = OK)
-                        const recebiveis = os?.recebiveis_cartao || [];
+                        const recebiveis = (os as any)?.recebiveis_cartao || [];
                         const isRec = recebiveis.length === 0 || !recebiveis.some((r: any) => r.status === "PENDENTE");
 
                         const badges = [

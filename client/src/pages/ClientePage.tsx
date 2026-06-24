@@ -118,14 +118,14 @@ export const ClientePage = () => {
             </span>
             <div className="flex gap-2">
               <Button
-                variant="neutral"
+                variant="secondary"
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
               >
                 Anterior
               </Button>
               <Button
-                variant="neutral"
+                variant="secondary"
                 onClick={() => setPage(p => p + 1)}
                 disabled={page * limit >= total}
               >
