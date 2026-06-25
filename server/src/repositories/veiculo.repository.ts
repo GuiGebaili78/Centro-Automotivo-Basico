@@ -8,6 +8,7 @@ export class VeiculoRepository {
         where: { placa: data.placa }
       });
       if (existing) {
+        if (!existing.ativo) throw new Error("Placa já cadastrada, porém o veículo encontra-se inativo.");
         throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
       }
     }
@@ -26,6 +27,7 @@ export class VeiculoRepository {
 
   async findAll() {
     return await prisma.veiculo.findMany({
+      where: { ativo: true },
       include: {
         cliente: {
           include: {
@@ -58,7 +60,7 @@ export class VeiculoRepository {
     const normalizedPlaca = placa.replace(/-/g, "").toUpperCase();
 
     return await prisma.veiculo.findFirst({
-      where: { placa: normalizedPlaca },
+      where: { placa: normalizedPlaca, ativo: true },
       include: {
         cliente: {
           include: {
@@ -76,6 +78,7 @@ export class VeiculoRepository {
 
     return await prisma.veiculo.findMany({
       where: {
+        ativo: true,
         OR: [
           { placa: { contains: query, mode: "insensitive" } },
           { modelo: { contains: query, mode: "insensitive" } },
@@ -117,7 +120,7 @@ export class VeiculoRepository {
 
   async getDistinct(field: 'marca' | 'modelo' | 'cor', search: string) {
     return await prisma.veiculo.findMany({
-      where: { [field]: { contains: search, mode: "insensitive" } },
+      where: { [field]: { contains: search, mode: "insensitive" }, ativo: true },
       distinct: [field],
       select: { [field]: true },
       take: 10,
@@ -126,7 +129,7 @@ export class VeiculoRepository {
 
   async buscarMarcas(termo: string) {
     return await prisma.veiculo.findMany({
-      where: { marca: { contains: termo, mode: 'insensitive' } },
+      where: { marca: { contains: termo, mode: 'insensitive' }, ativo: true },
       distinct: ['marca'],
       select: { marca: true }
     });
@@ -134,7 +137,7 @@ export class VeiculoRepository {
 
   async buscarModelos(termo: string) {
     return await prisma.veiculo.findMany({
-      where: { modelo: { contains: termo, mode: 'insensitive' } },
+      where: { modelo: { contains: termo, mode: 'insensitive' }, ativo: true },
       distinct: ['modelo'],
       select: { modelo: true }
     });
@@ -142,7 +145,7 @@ export class VeiculoRepository {
 
   async buscarCores(termo: string) {
     return await prisma.veiculo.findMany({
-      where: { cor: { contains: termo, mode: 'insensitive' } },
+      where: { cor: { contains: termo, mode: 'insensitive' }, ativo: true },
       distinct: ['cor'],
       select: { cor: true }
     });
@@ -159,6 +162,7 @@ export class VeiculoRepository {
           }
         });
         if (existing) {
+          if (!existing.ativo) throw new Error("Placa já cadastrada, porém o veículo encontra-se inativo.");
           throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
         }
       }
@@ -186,8 +190,9 @@ export class VeiculoRepository {
       throw new Error("Não é possível excluir o veículo pois há uma Ordem de Serviço ativa vinculada (OS: " + activeOs.id_os + ").");
     }
 
-    return await prisma.veiculo.delete({
+    return await prisma.veiculo.update({
       where: { id_veiculo: id },
+      data: { ativo: false },
     });
   }
 }

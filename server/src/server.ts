@@ -22,7 +22,7 @@ app.use((req, res, next) => {
 
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 app.get("/", (req, res) => {
   res.send("Centro Automotivo API is running");

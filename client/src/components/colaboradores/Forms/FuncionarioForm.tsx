@@ -16,6 +16,11 @@ import type { IFuncionario } from "../../../types/backend";
 import { formatCpf, formatCnpj, formatRg, formatCep, formatPhone, unmask } from "../../../utils/normalize";
 
 import { Button, Input, Select, TextArea, ConfirmModal } from "../../ui";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface FuncionarioFormProps {
   initialData?: IFuncionario | null;
@@ -67,7 +72,7 @@ export const FuncionarioForm = ({
     // Operacional
     cargo: "",
     ativo: "S",
-    dt_admissao: new Date().toISOString().split("T")[0],
+    dt_admissao: dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"),
     especialidade: "",
     tipo_pagamento: "", // HORA / FIXO
     valor_pagamento: "",

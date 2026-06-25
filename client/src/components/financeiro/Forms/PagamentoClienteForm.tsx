@@ -11,6 +11,11 @@ import {
 } from "lucide-react";
 import type { IOperadoraCartao, ITaxaCartao } from "../../../types/backend";
 import { Button, Input, Select } from "../../ui";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface PagamentoClienteFormProps {
   osId: number;
@@ -217,7 +222,7 @@ export const PagamentoClienteForm = ({
         id_os: osId,
         metodo_pagamento: metodo,
         valor: cleanValorNum,
-        data_pagamento: initialData?.data_pagamento || new Date().toISOString(),
+        data_pagamento: initialData?.data_pagamento || dayjs().tz("America/Sao_Paulo").format(),
         bandeira_cartao: metodo === "CREDITO" || metodo === "DEBITO" ? bandeira : null,
         codigo_transacao: codigoTransacao || null,
         qtd_parcelas: metodo === "CREDITO" && subtipoCredito === "PARCELADO" ? Number(parcelas) : 1,

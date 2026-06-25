@@ -1,5 +1,6 @@
 export interface IDashboardStats {
   osAberta: number;
+  contasPagarPending?: number;
   contasPagarFimMesCount?: number;
   contasPagarFimMesValor?: number;
   contasPagarOverdue: number;

@@ -33,6 +33,11 @@ import { UniversalFilters } from "../components/common/UniversalFilters";
 import type { UniversalFiltersState } from "../components/common/UniversalFilters";
 import { useUniversalFilter } from "../hooks/useUniversalFilter";
 import { NfSyncBadge } from "../components/financeiro/NfSyncBadge";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export const PagamentoPecaPage = () => {
   const [loading, setLoading] = useState(false);
@@ -59,7 +64,7 @@ export const PagamentoPecaPage = () => {
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
     accountId: "",
-    date: new Date().toISOString().split("T")[0],
+    date: dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"),
   });
   const [undoModal, setUndoModal] = useState<{
     isOpen: boolean;

@@ -13,6 +13,11 @@ import type {
   IEntradaEstoquePayload,
 } from "../types/estoque.types";
 import { Edit, Trash2 } from "lucide-react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export const EntradaEstoquePage = () => {
   const navigate = useNavigate();
@@ -26,7 +31,9 @@ export const EntradaEstoquePage = () => {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [invoice, setInvoice] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(
+    dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD")
+  );
   const [obs, setObs] = useState("");
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [nfsPendentes, setNfsPendentes] = useState<any[]>([]);
@@ -60,7 +67,6 @@ export const EntradaEstoquePage = () => {
   const loadNfsPendentes = async () => {
     try {
       const response = await FinanceiroService.getNfsPendentes();
-      // Backend retorna { data: [], total: N } — extrair o array interno
       const list = Array.isArray(response) ? response : (response?.data ?? []);
       setNfsPendentes(list);
     } catch (e) {
@@ -73,40 +79,41 @@ export const EntradaEstoquePage = () => {
     try {
       const entry = await EstoqueService.getEntry(id);
 
-      // Preencher cabeçalho
       setSelectedSupplierId(String(entry.id_pessoa));
       setInvoice(entry.nota_fiscal || "");
       setDate(
         entry.data_compra
           ? entry.data_compra.split("T")[0]
-          : new Date().toISOString().split("T")[0],
+          : dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD")
       );
       setObs(entry.obs || "");
       setNfNumero(entry.nf_numero || "");
 
-      // Preencher itens com dados do banco
-      const loadedItems: IItemEntrada[] = (entry.itens || []).map((i: any) => ({
-        tempId: i.id_item_entrada, // usa o id real como tempId para identificação
-        id_item_entrada: i.id_item_entrada,
-        id_pecas_estoque: i.id_pecas_estoque,
-        new_part_data: null,
-        displayName: i.peca?.nome || `Peça #${i.id_pecas_estoque}`,
-        quantidade: i.quantidade,
-        valor_custo: Number(i.valor_custo),
-        margem_lucro: i.margem_lucro ? Number(i.margem_lucro) : 0,
-        valor_venda: Number(i.valor_venda),
-        ref_cod: i.ref_cod || "",
-        condicao: i.condicao || "",
-        aplicacao: i.aplicacao || "",
-        obs: i.obs || "",
-        _delete: false,
-      }));
+      const loadedItems: IItemEntrada[] = (entry.itens || []).map(
+        (i: any) => ({
+          tempId: i.id_item_entrada,
+          id_item_entrada: i.id_item_entrada,
+          id_pecas_estoque: i.id_pecas_estoque,
+          new_part_data: null,
+          displayName: i.peca?.nome || `Peça #${i.id_pecas_estoque}`,
+          quantidade: i.quantidade,
+          valor_custo: Number(i.valor_custo),
+          margem_lucro: i.margem_lucro ? Number(i.margem_lucro) : 0,
+          valor_venda: Number(i.valor_venda),
+          ref_cod: i.ref_cod || "",
+          condicao: i.condicao || "",
+          aplicacao: i.aplicacao || "",
+          obs: i.obs || "",
+          _delete: false,
+        })
+      );
       setItems(loadedItems);
     } catch (e: any) {
-      toast.error(
-        "Erro ao carregar entrada para edição: " +
-          (e.response?.data?.error || e.message),
-      );
+      const errMsg =
+        e.response?.data?.error ||
+        e.message ||
+        "Erro ao carregar entrada para edição.";
+      toast.error(errMsg);
     } finally {
       setLoadingEdit(false);
     }
@@ -155,7 +162,8 @@ export const EntradaEstoquePage = () => {
         await EstoqueService.updateEntry(editId, payload);
         toast.success("Entrada atualizada com sucesso!");
       } else {
-        // --- MODO CRIAÇÃO: POST (sem campo financeiro) ---
+        // --- MODO CRIAÇÃO: POST ---
+        // id_fornecedor é o campo validado pelo Controller
         const payload: IEntradaEstoquePayload = {
           id_fornecedor: Number(selectedSupplierId),
           nota_fiscal: invoice,
@@ -177,9 +185,10 @@ export const EntradaEstoquePage = () => {
       }
     } catch (e: any) {
       console.error(e);
-      toast.error(
-        "Erro ao processar entrada: " + (e.response?.data?.error || e.message),
-      );
+      // Exibe a mensagem exata do backend (HTTP 400) ou fallback
+      const errMsg =
+        e.response?.data?.error || e.message || "Erro ao processar entrada.";
+      toast.error(errMsg);
     }
   };
 
@@ -191,9 +200,10 @@ export const EntradaEstoquePage = () => {
       navigate("/notas-fiscais");
     } catch (e: any) {
       console.error(e);
-      toast.error(
-        "Erro ao excluir entrada: " + (e.response?.data?.error || e.message),
-      );
+      // Exibe a mensagem exata do backend (ex: peça vinculada a OS ativa)
+      const errMsg =
+        e.response?.data?.error || e.message || "Erro ao excluir entrada.";
+      toast.error(errMsg);
     } finally {
       setShowConfirmDelete(false);
     }

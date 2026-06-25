@@ -292,8 +292,9 @@ export class FechamentoFinanceiroRepository {
               data: updateData,
             });
           } else {
-            if (custo_real === undefined || custo_real === null || custo_real === "") {
-                throw new Error("O custo_real é obrigatório para gerar o Pagamento da Peça Externa.");
+            const isCustoDefined = custo_real !== undefined && custo_real !== null && String(custo_real).trim() !== "";
+            if (!isCustoDefined || isNaN(Number(custo_real)) || Number(custo_real) < 0) {
+                throw new Error("O custo_real é obrigatório e não pode ser negativo para gerar o Pagamento da Peça Externa.");
             }
             await tx.pagamentoPeca.create({
               data: {

@@ -7,9 +7,14 @@ import type {
 import { formatNameTitleCase } from "../utils/normalize";
 
 export const ClienteService = {
-  getAll: async () => {
-    const response = await api.get<ICliente[]>("/cliente");
+  getAll: async (params?: { page?: number; limit?: number; search?: string }) => {
+    const response = await api.get<any>("/cliente", { params });
     return response.data;
+  },
+
+  search: async (term: string) => {
+    const response = await api.get<any>("/cliente", { params: { search: term, limit: 20 } });
+    return response.data.data;
   },
 
   getById: async (id: number) => {
@@ -17,10 +22,8 @@ export const ClienteService = {
     return response.data;
   },
 
-  search: async (term: string) => {
-    const response = await api.get<IClientSearchResult[]>(
-      `/cliente/search?name=${term}`,
-    );
+  getAtivos: async (id: number) => {
+    const response = await api.get<any>(`/cliente/${id}/ativos`);
     return response.data;
   },
 

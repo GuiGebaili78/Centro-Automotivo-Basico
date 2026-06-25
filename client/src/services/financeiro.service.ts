@@ -1,4 +1,7 @@
 import { api } from "./api";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import type {
   IPagamentoPeca,
   IPagamentoCliente,
@@ -8,6 +11,9 @@ import type {
   IPagamentoColaborador,
   IPendenciaColaborador,
 } from "../types/financeiro.types";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export class FinanceiroService {
   // --- PEÇAS (Pagamentos a Fornecedores) ---
@@ -128,7 +134,7 @@ export class FinanceiroService {
   static async confirmarRecebiveis(ids: number[], data_recebimento?: string, idContaBancaria?: number | null): Promise<void> {
     await api.post("/recebivel-cartao/confirmar", { 
       ids, 
-      data_recebimento: data_recebimento || new Date().toISOString(),
+      data_recebimento: data_recebimento || dayjs().tz("America/Sao_Paulo").format(),
       idContaBancaria 
     });
   }

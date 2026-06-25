@@ -24,7 +24,6 @@ const menuItems = [
     path: "/buscar",
     subItems: [
       { path: "/cliente", label: "Clientes" },
-      { path: "/veiculo", label: "Veículos" },
       { path: "/fornecedor", label: "Fornecedores" },
       { path: "/funcionario", label: "Colaboradores" },
     ],
@@ -36,7 +35,6 @@ const menuItems = [
     path: "/estoque",
     subItems: [
       { path: "/pecas-estoque", label: "Visão Geral / Consulta" },
-      { path: "/entrada-estoque", label: "Nova Compra (Entrada)" },
     ],
   },
   {

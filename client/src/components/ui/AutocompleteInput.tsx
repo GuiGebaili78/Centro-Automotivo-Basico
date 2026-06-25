@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import type { FC, ChangeEvent, InputHTMLAttributes } from "react";
 import { Loader2 } from "lucide-react";
 import { Input } from "./Input";
@@ -20,12 +20,17 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   fetchSuggestions,
   uppercase = true,
   className,
+  id,
   ...props
 }) => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Create a unique ID for the input if one isn't provided
+  const generatedId = useId();
+  const inputId = id || generatedId;
 
   useEffect(() => {
     return () => {
@@ -77,11 +82,12 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
 
   return (
     <div className="relative group/search w-full">
-      <label className="text-sm font-medium text-gray-600 block mb-1">
+      <label htmlFor={inputId} className="text-sm font-medium text-gray-600 block mb-1">
         {label}
       </label>
       <div className="relative">
         <Input
+          id={inputId}
           value={value}
           onChange={handleChange}
           onKeyDown={(e) => {

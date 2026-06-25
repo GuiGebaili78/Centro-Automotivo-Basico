@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Search, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Button } from "../components/ui/Button";
@@ -8,20 +8,28 @@ import { PageLayout } from "../components/ui/PageLayout";
 import { Card } from "../components/ui/Card";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { EstoqueService } from "../services/estoque.service";
-import type { IPecasEstoque } from "../types/estoque.types";
+import type { IPecasEstoque } from "../types/backend";
 import { EstoqueTable } from "../components/estoque/EstoqueTable";
-import { EdicaoPecaModal } from "../components/estoque/EdicaoPecaModal";
+import {
+  CategoriaEstoqueService,
+  type ICategoriaEstoque,
+} from "../services/categoriaEstoque.service";
+
+const PAGE_LIMIT = 25;
 
 export const PecasEstoquePage = () => {
   const navigate = useNavigate();
   const [pecas, setPecas] = useState<IPecasEstoque[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [categorias, setCategorias] = useState<ICategoriaEstoque[]>([]);
+  const [selectedTipo, setSelectedTipo] = useState<number | "">("");
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Edit Modal State
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editData, setEditData] = useState<IPecasEstoque | null>(null);
+  // Paginação
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
 
-  // Confirm Modal State
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean;
     title: string;
@@ -31,75 +39,82 @@ export const PecasEstoquePage = () => {
   }>({ show: false, title: "", msg: "", onConfirm: () => {}, type: "info" });
 
   useEffect(() => {
-    loadPecas();
+    loadCategorias();
   }, []);
 
-  const loadPecas = async () => {
+  // Reset para página 1 quando filtros mudarem
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, selectedTipo]);
+
+  // Busca com debounce a cada mudança de filtros ou página
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadPecas(page);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, selectedTipo, page]);
+
+  const loadCategorias = async () => {
     try {
-      const data = await EstoqueService.getAll();
-      setPecas(data);
+      const data = await CategoriaEstoqueService.getAll();
+      setCategorias(data);
     } catch (error) {
-      toast.error("Erro ao carregar estoque.");
+      console.error("Erro ao carregar categorias", error);
     }
   };
 
-  const filteredPecas = useMemo(() => {
-    if (!searchTerm.trim()) return pecas;
-    const term = searchTerm.toLowerCase().trim();
+  const loadPecas = async (targetPage: number) => {
+    setIsSearching(true);
+    try {
+      const result = await EstoqueService.getAll(
+        targetPage,
+        PAGE_LIMIT,
+        searchTerm || undefined,
+        selectedTipo === "" ? undefined : Number(selectedTipo)
+      );
 
-    return pecas.filter((p) => {
-      const lastEntry = (p as any).itens_entrada?.[0]?.entrada;
-      const firstItem = (p as any).itens_entrada?.[0];
+      // Salto direto para a última página com dados (evita loop de requisições)
+      if (result.data.length === 0 && targetPage > 1) {
+        const lastValidPage = Math.max(1, Math.ceil(result.total / PAGE_LIMIT));
+        setPage(lastValidPage);
+        // Não chama loadPecas novamente aqui — o useEffect reage à mudança de page
+        return;
+      }
 
-      const fields: (string | number | null | undefined)[] = [
-        p.nome,
-        p.descricao,
-        p.fabricante,
-        p.id_pecas_estoque,
-        p.localizacao,
-        p.aplicacao ?? firstItem?.aplicacao,
-        firstItem?.ref_cod ?? p.ref_cod,
-        firstItem?.condicao,
-        lastEntry?.fornecedor?.nome_fantasia,
-        lastEntry?.fornecedor?.nome,
-        lastEntry?.nf_numero,
-        p.estoque_atual,
-        lastEntry?.data_compra
-          ? new Date(lastEntry.data_compra).toLocaleDateString('pt-BR')
-          : null,
-      ];
-
-      return fields.some(f => f != null && String(f).toLowerCase().includes(term));
-    });
-  }, [pecas, searchTerm]);
-
-  const handleOpenEdit = (p: IPecasEstoque) => {
-    setEditData(p);
-    setEditModalOpen(true);
+      setPecas(result.data);
+      setTotal(result.total);
+    } catch (error) {
+      toast.error("Erro ao carregar estoque.");
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  const executeDelete = async () => {
-    if (!editData) return;
+  const handleOpenEdit = (p: IPecasEstoque) => {
+    navigate(`/pecas-estoque/${p.id_pecas_estoque}`);
+  };
+
+  const executeDelete = async (p: IPecasEstoque) => {
     try {
-      await EstoqueService.delete(editData.id_pecas_estoque);
+      await EstoqueService.delete(p.id_pecas_estoque);
       toast.success("Peça removida do sistema.");
-      loadPecas();
-      setEditModalOpen(false);
-      setEditData(null);
-    } catch (error) {
-      toast.error("Erro ao deletar peça.");
+      // Recarregar a página atual — o salto automático trata o caso da página esvaziar
+      loadPecas(page);
+    } catch (error: any) {
+      const msg = error.response?.data?.error || "Erro ao deletar peça.";
+      toast.error(msg);
     }
     setConfirmModal((prev) => ({ ...prev, show: false }));
   };
 
   const handleDeleteClick = (p: IPecasEstoque) => {
-    setEditData(p); // Temporarily set editData for deletion context
     setConfirmModal({
       show: true,
       title: "Excluir Item",
       msg: "Tem certeza que deseja remover este item permanentemente?",
       type: "danger",
-      onConfirm: executeDelete,
+      onConfirm: () => executeDelete(p),
     });
   };
 
@@ -118,50 +133,109 @@ export const PecasEstoquePage = () => {
       }
     >
       <div className="space-y-6">
-        {/* BUSCA UNIFICADA */}
-        <div className="relative">
-          <Input
-            icon={Search}
-            placeholder="Buscar por nome, fabricante, descrição ou ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
-          />
+        {/* BUSCA E FILTROS */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <div className="w-full sm:w-1/4">
+            <select
+              className="w-full h-[46px] px-3 py-2 border border-neutral-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              value={selectedTipo}
+              onChange={(e) =>
+                setSelectedTipo(
+                  e.target.value === "" ? "" : Number(e.target.value)
+                )
+              }
+            >
+              <option value="">Todas as Categorias</option>
+              {categorias.map((c) => (
+                <option key={c.id_categoria} value={c.id_categoria}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="relative flex-1 w-full">
+            <Input
+              icon={Search}
+              placeholder="Buscar por nome, fabricante, modelo, descrição..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          {(searchTerm !== "" || selectedTipo !== "") && (
+            <div className="shrink-0">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSearchTerm("");
+                  setSelectedTipo("");
+                }}
+                className="text-neutral-500 hover:text-neutral-700 h-[46px]"
+              >
+                Limpar Filtros
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* TABELA */}
         <Card className="p-0 overflow-hidden border-neutral-200">
           <div className="overflow-x-auto">
             <EstoqueTable
-              pecas={filteredPecas}
+              pecas={pecas}
               onEdit={handleOpenEdit}
               onDelete={handleDeleteClick}
             />
           </div>
+
+          {/* PAGINAÇÃO */}
+          {total > 0 && (
+            <div className="p-4 border-t border-neutral-100 bg-neutral-50 flex items-center justify-between gap-4">
+              <span className="text-sm text-neutral-500">
+                {isSearching ? (
+                  "Carregando..."
+                ) : (
+                  <>
+                    Página <strong>{page}</strong> de{" "}
+                    <strong>{totalPages}</strong> —{" "}
+                    <strong>{total}</strong>{" "}
+                    {total === 1 ? "item" : "itens"}
+                  </>
+                )}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  icon={ChevronLeft}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1 || isSearching}
+                  className="h-9 px-3 text-sm"
+                >
+                  Anterior
+                </Button>
+
+                {/* Indicador de página atual */}
+                <span className="text-sm font-medium text-neutral-700 min-w-[60px] text-center">
+                  {page} / {totalPages}
+                </span>
+
+                <Button
+                  variant="ghost"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages || isSearching}
+                  className="h-9 px-3 text-sm flex-row-reverse"
+                  icon={ChevronRight}
+                >
+                  Próxima
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
-
-      {/* EDIT MODAL */}
-      <EdicaoPecaModal
-        isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        peca={editData}
-        onSuccess={(updated) => {
-          if (updated) {
-            setPecas((prev) =>
-              prev.map((p) =>
-                p.id_pecas_estoque === updated.id_pecas_estoque ? { ...p, ...updated } : p
-              )
-            );
-          } else {
-            loadPecas();
-          }
-        }}
-        onDeleteRequest={(p) => {
-          // Re-use logic for delete request confirm
-          handleDeleteClick(p);
-        }}
-      />
 
       {/* CONFIRM DELETE MODAL */}
       <ConfirmModal

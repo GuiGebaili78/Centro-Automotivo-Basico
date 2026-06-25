@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
-import { Package, Search, Plus, Trash2, Edit, Save, RotateCcw } from "lucide-react";
+import { Search, Plus, Trash2, Edit2, Package, X, RotateCcw, Save, Edit } from "lucide-react";
 import { toast } from "react-toastify";
-import { Card, Input, Select, Button, ActionButton } from "../ui";
-import { formatCurrency } from "../../utils/formatCurrency";
+import { Input, Button, Card, Select } from "../ui";
+import { ActionButton } from "../ui/ActionButton";
+import { CategoriaCombobox } from "./CategoriaCombobox";
+import { CategoriaEstoqueManagerModal } from "./CategoriaEstoqueManagerModal";
 import { EstoqueService } from "../../services/estoque.service";
+import { CategoriaEstoqueService, type ICategoriaEstoque } from "../../services/categoriaEstoque.service";
 import type { IItemEntrada, IPecasEstoque } from "../../types/estoque.types";
 import { normalizeStr } from "../../utils/normalize";
+import { formatCurrency } from "../../utils/formatCurrency";
 
 interface EntradaItensFormProps {
   items: IItemEntrada[];
@@ -35,11 +39,11 @@ export const EntradaItensForm = ({
   const [rowCost, setRowCost] = useState("");
   const [rowMargin, setRowMargin] = useState("");
   const [rowSale, setRowSale] = useState("");
-  const [rowRef, setRowRef] = useState("");
   const [rowCondicao, setRowCondicao] = useState("");
   const [rowAplicacao, setRowAplicacao] = useState("");
   const [rowObs, setRowObs] = useState("");
   const [rowMinStock, setRowMinStock] = useState("");
+  const [rowModelo, setRowModelo] = useState("");
   const [editingTempId, setEditingTempId] = useState<number | null>(null);
 
   // New Part Fields (if isNewPart)
@@ -48,6 +52,24 @@ export const EntradaItensForm = ({
   const [newPartFab, setNewPartFab] = useState("");
   const [newPartLoc, setNewPartLoc] = useState("");
   const [newPartUnit, setNewPartUnit] = useState("UN");
+  
+  // Categorias
+  const [categorias, setCategorias] = useState<ICategoriaEstoque[]>([]);
+  const [selectedCategoria, setSelectedCategoria] = useState<number | null>(null);
+  const [showCatModal, setShowCatModal] = useState(false);
+
+  useEffect(() => {
+    loadCategorias();
+  }, []);
+
+  const loadCategorias = async () => {
+    try {
+      const data = await CategoriaEstoqueService.getAll();
+      setCategorias(data);
+    } catch (error) {
+      console.error("Erro ao carregar categorias", error);
+    }
+  };
 
   const handleCostChange = (val: string) => {
     setRowCost(val);
@@ -126,16 +148,17 @@ export const EntradaItensForm = ({
       id_pecas_estoque: selectedStockPart
         ? selectedStockPart.id_pecas_estoque
         : null,
-      new_part_data: isNewPart
-        ? {
-            nome: newPartName || partSearch,
-            descricao: newPartDesc || newPartName || partSearch,
-            fabricante: newPartFab,
-            localizacao: newPartLoc,
-            unidade_medida: newPartUnit,
-            estoque_minimo: Number(rowMinStock) || 0,
-          }
-        : null,
+      new_part_data: {
+        nome: newPartName || partSearch || selectedStockPart?.nome || "",
+        descricao: newPartDesc || newPartName || partSearch,
+        fabricante: newPartFab,
+        localizacao: newPartLoc,
+        unidade_medida: newPartUnit,
+        estoque_minimo: Number(rowMinStock) || 0,
+        modelo: rowModelo,
+        id_categoria: selectedCategoria,
+        _update_master: editingTempId !== null && !isNewPart,
+      },
       displayName: isNewPart
         ? newPartName || partSearch
         : selectedStockPart?.nome || "",
@@ -143,22 +166,19 @@ export const EntradaItensForm = ({
       valor_custo: Number(rowCost),
       margem_lucro: Number(rowMargin),
       valor_venda: Number(rowSale),
-      ref_cod: rowRef,
       condicao: rowCondicao,
       aplicacao: rowAplicacao,
       obs: rowObs,
+      modelo: rowModelo,
+      id_categoria: selectedCategoria,
     };
 
     if (editingTempId !== null) {
       setItems(
-        items
-          .map((i) => {
-            if (i.tempId !== editingTempId) return i;
-            if ((i as any).id_item_entrada) return { ...i, _delete: true, _editing: false };
-            return { ...i, _markedForRemoval: true };
-          })
-          .filter((i) => !(i as any)._markedForRemoval)
-          .concat(newItem)
+        items.map((i) => {
+          if (i.tempId !== editingTempId) return i;
+          return { ...newItem, tempId: i.tempId, _edited: true, _editing: false, id_item_entrada: i.id_item_entrada };
+        })
       );
       setEditingTempId(null);
       toast.success("Item atualizado!");
@@ -171,11 +191,12 @@ export const EntradaItensForm = ({
     setRowCost("");
     setRowMargin("");
     setRowSale("");
-    setRowRef("");
     setRowCondicao("");
     setRowAplicacao("");
     setRowObs("");
     setRowMinStock("");
+    setRowModelo("");
+    setSelectedCategoria(null);
     setSelectedStockPart(null);
     setPartSearch("");
     setIsNewPart(false);
@@ -208,17 +229,6 @@ export const EntradaItensForm = ({
     );
   };
 
-  const handleDuplicateItem = (item: IItemEntrada) => {
-    const duplicate: IItemEntrada = {
-      ...item,
-      tempId: Date.now(),
-      id_item_entrada: undefined, // remove id para ser nova inserção
-      _delete: false,
-    };
-    setItems([...items, duplicate]);
-    toast.success("Item duplicado na lista!");
-  };
-
   const handleEditItem = (item: IItemEntrada) => {
     if (item.new_part_data) {
       setIsNewPart(true);
@@ -245,11 +255,12 @@ export const EntradaItensForm = ({
     setRowCost(String(item.valor_custo));
     setRowMargin(String(item.margem_lucro));
     setRowSale(String(item.valor_venda));
-    setRowRef(item.ref_cod || "");
     setRowCondicao(item.condicao || "");
     setRowAplicacao(item.aplicacao || "");
     setRowObs(item.obs || "");
     setRowMinStock(String(item.new_part_data?.estoque_minimo || 0));
+    setRowModelo(item.new_part_data?.modelo || item.modelo || "");
+    setSelectedCategoria(item.new_part_data?.id_categoria || item.id_categoria || null);
 
     // Marcar item como "em edição" sem soft-delete prematuro
     setEditingTempId(item.tempId);
@@ -264,11 +275,12 @@ export const EntradaItensForm = ({
     setRowCost("");
     setRowMargin("");
     setRowSale("");
-    setRowRef("");
     setRowCondicao("");
     setRowAplicacao("");
     setRowObs("");
     setRowMinStock("");
+    setRowModelo("");
+    setSelectedCategoria(null);
     setSelectedStockPart(null);
     setPartSearch("");
     setIsNewPart(false);
@@ -279,15 +291,22 @@ export const EntradaItensForm = ({
   };
 
   // Itens visíveis para contagem no cabeçalho (exclui novos removidos)
-  const activeItems = items.filter((i) => !(i as any)._delete);
+  const activeItems = items.filter((i) => !i._delete);
 
   return (
     <>
       {/* ITEM INPUT CARD */}
       <Card className="overflow-visible space-y-4">
         <h3 className="text-sm font-medium text-gray-600 uppercase border-b border-neutral-100 pb-2 flex items-center gap-2">
-          <Package size={16} className="text-primary-500" /> Adicionar Item
+          <Package size={16} className="text-primary-500" /> {editingTempId !== null ? "Editar Item da Transação" : "Adicionar Item"}
         </h3>
+
+        {selectedStockPart && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-lg text-xs font-medium flex items-center gap-3 shadow-sm">
+            <span className="font-bold uppercase tracking-wider bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] shrink-0">Modo Transação</span>
+            <span>Para alterar o nome, localização ou dados mestres desta peça, acesse o <strong>Perfil da Peça no Catálogo</strong>. Nesta tela, apenas os valores da nota fiscal podem ser ajustados.</span>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Part Search / New Part Toggle */}
@@ -295,6 +314,7 @@ export const EntradaItensForm = ({
             <Input
               label="Buscar Peça ou Cadastrar Nova"
               icon={Search}
+              disabled={editingTempId !== null && !!selectedStockPart}
               className={`${selectedStockPart ? "border-primary-500 bg-primary-50 text-primary-700 font-bold" : "border-neutral-200 bg-white font-medium"} !h-[46px] !py-3`}
               placeholder="Digite o nome da peça..."
               value={partSearch}
@@ -377,32 +397,44 @@ export const EntradaItensForm = ({
                 )}
           </div>
 
-          {/* New Part: Extra Fields Always Visible but Disabled if not new */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* New Part: Extra Fields Always Visible but Disabled if not new and not editing */}
+          <div className="grid grid-cols-4 gap-2">
+            {/* NOVO CAMPO: MODELO - Posicionado entre Busca e Fabricante */}
+            <div>
+              <Input
+                label="Modelo"
+                placeholder="Ex: Palio, Uno..."
+                value={rowModelo}
+                disabled={!!selectedStockPart}
+                onChange={(e) => setRowModelo(e.target.value)}
+              />
+            </div>
+            
             <div>
               <Input
                 label="Fabricante"
                 placeholder="Marca"
                 value={newPartFab}
+                disabled={!!selectedStockPart}
                 onChange={(e) => setNewPartFab(e.target.value)}
-                disabled={!isNewPart}
               />
             </div>
+
             <div>
               <Input
                 label="Localização"
                 placeholder="Ex: Prateleira A"
                 value={newPartLoc}
+                disabled={!!selectedStockPart}
                 onChange={(e) => setNewPartLoc(e.target.value)}
-                disabled={!isNewPart}
               />
             </div>
             <Select
               label="Unidade"
               className="!h-[46px] !p-3 bg-white"
               value={newPartUnit}
-              onChange={(e) => setNewPartUnit(e.target.value)}
-              disabled={!isNewPart}
+              disabled={!!selectedStockPart}
+              onChange={(e: any) => setNewPartUnit(e.target.value)}
             >
               <option value="UN">Unidade (UN)</option>
               <option value="L">Litro (L)</option>
@@ -451,14 +483,17 @@ export const EntradaItensForm = ({
               className="text-right border-emerald-200 bg-emerald-50 text-emerald-800 font-bold"
               placeholder="0.00"
               value={rowSale}
+              disabled={!!selectedStockPart}
               onChange={(e) => handleSaleChange(e.target.value)}
             />
           </div>
-          <div className="md:col-span-2">
-            <Input
-              label="Referência (Opc)"
-              value={rowRef}
-              onChange={(e) => setRowRef(e.target.value)}
+          <div className="md:col-span-4 relative z-10">
+            <CategoriaCombobox
+              categorias={categorias}
+              selectedId={selectedCategoria}
+              onChange={setSelectedCategoria}
+              onManageClick={() => setShowCatModal(true)}
+              disabled={!!selectedStockPart}
             />
           </div>
           <div className="md:col-span-2">
@@ -483,6 +518,7 @@ export const EntradaItensForm = ({
               type="number"
               className="text-center font-bold text-orange-600 border-orange-200"
               value={rowMinStock}
+              disabled={!!selectedStockPart}
               onChange={(e) => setRowMinStock(e.target.value)}
             />
           </div>
@@ -546,8 +582,8 @@ export const EntradaItensForm = ({
             </thead>
             <tbody>
               {items.map((i) => {
-                const isDeleted = (i as any)._delete === true;
-                const isSaved = !!(i as any).id_item_entrada;
+                const isDeleted = i._delete;
+                const isSaved = !!i.id_item_entrada;
 
                 return (
                   <tr
@@ -566,7 +602,7 @@ export const EntradaItensForm = ({
                           {i.displayName}
                         </span>
                         <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
-                          {i.ref_cod && <span>Ref: {i.ref_cod}</span>}
+                          {i.modelo && <span>Mod: {i.modelo}</span>}
                           {i.condicao && <span>Cond: {i.condicao}</span>}
                           {i.aplicacao && <span>Apli: {i.aplicacao}</span>}
                         </div>
@@ -576,17 +612,19 @@ export const EntradaItensForm = ({
                               NOVO CADASTRO
                             </span>
                           )}
-                          {isSaved && !isDeleted && (
+                          {isSaved && !isDeleted && !i._edited && (
                             <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase border border-emerald-200">
                               JÁ SALVO
                             </span>
                           )}
-                          {isDeleted && (
-                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold uppercase border border-red-200 animate-pulse">
-                              SERÁ REMOVIDO
+
+                          {i._edited && (
+                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold uppercase border border-purple-200">
+                              EDITADO
                             </span>
                           )}
-                          {(i as any)._editing && (
+
+                          {i._editing && (
                             <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold uppercase border border-amber-200 animate-pulse">
                               EM EDIÇÃO...
                             </span>
@@ -628,13 +666,7 @@ export const EntradaItensForm = ({
                               onClick={() => handleEditItem(i)}
                               disabled={(editingTempId !== null && i.tempId !== editingTempId) || (i as any)._delete}
                             />
-                            <ActionButton
-                              icon={Plus}
-                              label="Duplicar"
-                              variant="neutral"
-                              onClick={() => handleDuplicateItem(i)}
-                              disabled={editingTempId !== null || (i as any)._delete}
-                            />
+
                             <ActionButton
                               icon={Trash2}
                               label="Remover"
@@ -684,6 +716,12 @@ export const EntradaItensForm = ({
           </div>
         )}
       </Card>
+      {/* MODAL DE CATEGORIAS */}
+      <CategoriaEstoqueManagerModal
+        isOpen={showCatModal}
+        onClose={() => setShowCatModal(false)}
+        onUpdate={loadCategorias}
+      />
     </>
   );
 };

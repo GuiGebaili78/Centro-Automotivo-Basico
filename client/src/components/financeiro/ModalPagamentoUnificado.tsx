@@ -2,6 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Modal, Button, Input, Select } from "../ui";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { DollarSign, Calendar, Percent, Landmark, Save, X } from "lucide-react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface ModalPagamentoUnificadoProps {
   isOpen: boolean;
@@ -31,7 +37,7 @@ export const ModalPagamentoUnificado: React.FC<
   isLoading = false,
 }) => {
   const [accountId, setAccountId] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"));
 
   // Discount States
   const [discountType, setDiscountType] = useState<"VALUE" | "PERCENT">(

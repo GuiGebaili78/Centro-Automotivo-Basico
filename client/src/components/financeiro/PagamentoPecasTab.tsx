@@ -22,6 +22,11 @@ import type { UniversalFiltersState } from "../common/UniversalFilters";
 import { useUniversalFilter } from "../../hooks/useUniversalFilter";
 import type { IPagamentoPeca, IFornecedor } from "../../types/backend";
 import type { IFinanceiroStatusMsg } from "../../types/financeiro.types";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface PagamentoPecasTabProps {
   payments: IPagamentoPeca[];
@@ -97,7 +102,7 @@ export const PagamentoPecasTab = ({
       await FinanceiroService.updatePagamentoPeca(paymentId, {
         pago_ao_fornecedor: !currentStatus,
         data_pagamento_fornecedor: !currentStatus
-          ? new Date().toISOString()
+          ? dayjs().tz("America/Sao_Paulo").format()
           : null,
       });
       setStatusMsg({

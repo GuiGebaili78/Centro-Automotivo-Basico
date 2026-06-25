@@ -34,6 +34,7 @@ export interface VeiculoFormData {
 
 export interface VeiculoFormSectionRef {
   getData: () => VeiculoFormData;
+  isValid: () => boolean;
 }
 
 interface VeiculoFormSectionProps {
@@ -59,6 +60,7 @@ export const VeiculoFormSection = memo(
         initialData?.combustivel ?? "Flex",
       );
       const [chassi, setChassi] = useState(initialData?.chassi ?? "");
+      const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
       // Sincroniza quando initialData muda (carregamento assíncrono)
       useEffect(() => {
@@ -88,13 +90,21 @@ export const VeiculoFormSection = memo(
             combustivel,
             chassi,
           }),
+          isValid: () => {
+            setHasAttemptedSubmit(true);
+            const isFilled = placa || marca || modelo || cor || anoFabricacao || anoModelo || chassi;
+            if (isFilled) {
+              if (!placa || !marca || !modelo || !cor) return false;
+            }
+            return true;
+          }
         }),
         [placa, marca, modelo, cor, anoFabricacao, anoModelo, combustivel, chassi],
       );
 
       // ─── Render ───────────────────────────────────────────────────────────
       return (
-        <div className="space-y-4">
+        <div data-testid="veiculo-form" className="space-y-4">
           {/* Info tip */}
           <div className="p-3 bg-primary-50 rounded-xl border border-primary-100 text-xs text-primary-800 font-medium">
             Preencha os dados do veículo agora para agilizar a abertura da OS.
@@ -112,7 +122,7 @@ export const VeiculoFormSection = memo(
                 maxLength={7}
                 placeholder="ABC1234"
                 required
-                className="font-mono font-bold tracking-widest uppercase"
+                className={`font-mono font-bold tracking-widest uppercase ${hasAttemptedSubmit && !placa && (marca || modelo || cor) ? 'border-red-500' : ''}`}
               />
             </div>
 
@@ -124,16 +134,7 @@ export const VeiculoFormSection = memo(
                 onChange={setMarca}
                 fetchSuggestions={(q) => VeiculoService.buscarMarcas(q)}
                 required={!!placa}
-              />
-            </div>
-
-            {/* Chassi */}
-            <div className="col-span-2">
-              <Input
-                label="Chassi"
-                value={chassi}
-                onChange={(e) => setChassi(e.target.value)}
-                className="bg-neutral-25"
+                className={hasAttemptedSubmit && !marca && (placa || modelo || cor) ? 'border-red-500' : ''}
               />
             </div>
 
@@ -145,6 +146,7 @@ export const VeiculoFormSection = memo(
                 onChange={setModelo}
                 fetchSuggestions={(q) => VeiculoService.buscarModelos(q)}
                 required={!!placa}
+                className={hasAttemptedSubmit && !modelo && (placa || marca || cor) ? 'border-red-500' : ''}
               />
             </div>
 
@@ -157,6 +159,7 @@ export const VeiculoFormSection = memo(
                 fetchSuggestions={(q) => VeiculoService.buscarCores(q)}
                 required={!!placa}
                 placeholder="Ex: PRATA, BRANCO..."
+                className={hasAttemptedSubmit && !cor && (placa || marca || modelo) ? 'border-red-500' : ''}
               />
             </div>
 
@@ -197,6 +200,16 @@ export const VeiculoFormSection = memo(
                 <option value="GNV">GNV</option>
                 <option value="Elétrico">Elétrico</option>
               </Select>
+            </div>
+
+            {/* Chassi reposicionado */}
+            <div className="col-span-2">
+              <Input
+                label="Chassi"
+                value={chassi}
+                onChange={(e) => setChassi(e.target.value)}
+                className="bg-neutral-25"
+              />
             </div>
           </div>
         </div>

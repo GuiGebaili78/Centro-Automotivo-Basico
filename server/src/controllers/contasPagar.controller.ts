@@ -8,8 +8,8 @@ export const createConta = async (req: Request, res: Response) => {
   try {
     const conta = await repository.create(req.body);
     res.status(201).json(conta);
-  } catch (error) {
-    res.status(400).json({ error: "Erro ao criar conta a pagar" });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || "Erro ao criar conta a pagar" });
   }
 };
 
@@ -101,8 +101,8 @@ export const updateConta = async (req: Request, res: Response) => {
       applyToAllRecurrences === true,
     );
     res.json(conta);
-  } catch (error) {
-    res.status(400).json({ error: "Erro ao atualizar conta" });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || "Erro ao atualizar conta" });
   }
 };
 

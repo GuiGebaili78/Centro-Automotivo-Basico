@@ -35,6 +35,11 @@ import {
   Modal,
   StatusBanner,
 } from "../../ui";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface FechamentoFinanceiroFormProps {
   preSelectedOsId?: number | null;
@@ -210,7 +215,7 @@ export const FechamentoFinanceiroForm = ({
         id_item_os: id_iten,
         id_fornecedor: Number(partialState.id_fornecedor),
         custo_real: Number(partialState.custo_real),
-        data_compra: new Date().toISOString(),
+        data_compra: dayjs().tz("America/Sao_Paulo").format(),
         pago_ao_fornecedor: partialState.pago_fornecedor,
       };
 
@@ -369,24 +374,26 @@ export const FechamentoFinanceiroForm = ({
       const itemsPecas = osData.itens_os
         .map((item: IItemOsDetalhado) => {
           const st = itemsState[item.id_iten];
+          const isCustoDefined = st && String(st.custo_real).trim() !== '' && !isNaN(Number(st.custo_real));
 
           // Validação de preenchimento dos custos (Ignorar se for peça de estoque)
           if (
             (!st ||
               !st.id_fornecedor ||
-              !st.custo_real ||
-              Number(st.custo_real) <= 0) &&
+              !isCustoDefined ||
+              Number(st.custo_real) < 0) &&
             !item.pecas_estoque
           ) {
             throw new Error(
-              `Item "${item.descricao}" está sem Fornecedor ou Custo Real definido.`,
+              `Item "${item.descricao}" está sem Fornecedor ou Custo Real válido definido.`,
             );
           }
 
           if (
             st &&
             st.id_fornecedor &&
-            Number(st.custo_real) > 0 &&
+            isCustoDefined &&
+            Number(st.custo_real) >= 0 &&
             !item.pecas_estoque
           ) {
             return {

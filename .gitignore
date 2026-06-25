@@ -8,3 +8,10 @@ coverage
 nginx/certs/*.pem
 nginx/certs/*.key
 nginx/certs/*.crt
+project_context.txt
+playwright-report/
+test-results/
+backup_automotivo.sql
+backup_automotivo1.sql
+backup_automotivo2.sql
+backup_automotivo3.sql

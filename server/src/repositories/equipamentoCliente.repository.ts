@@ -10,13 +10,14 @@ export class EquipamentoClienteRepository {
 
   async findAll() {
     return await prisma.equipamentoCliente.findMany({
+      where: { ativo: true },
       include: { cliente: true }
     });
   }
 
   async findByClienteId(clienteId: number) {
     return await prisma.equipamentoCliente.findMany({
-      where: { id_cliente: clienteId }
+      where: { id_cliente: clienteId, ativo: true }
     });
   }
 
@@ -44,8 +45,9 @@ export class EquipamentoClienteRepository {
       throw new Error(`Não é possível excluir o equipamento pois ele está vinculado à OS ${linkedOs.id_os}.`);
     }
 
-    return await prisma.equipamentoCliente.delete({
+    return await prisma.equipamentoCliente.update({
       where: { id_equipamento: id },
+      data: { ativo: false },
     });
   }
 }

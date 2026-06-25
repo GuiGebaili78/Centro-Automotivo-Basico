@@ -15,6 +15,7 @@ export class ClienteRepository {
           where: { cnpj: data.cnpj }
         });
         if (existingCnpj) {
+          if (!existingCnpj.ativo) throw new Error("CPF/CNPJ já cadastrado, porém encontra-se inativo.");
           throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
         }
       }
@@ -23,6 +24,7 @@ export class ClienteRepository {
           where: { inscricao_estadual: data.inscricao_estadual }
         });
         if (existingIe) {
+          if (!existingIe.ativo) throw new Error("Inscrição Estadual já cadastrada, porém encontra-se inativa.");
           throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
         }
       }
@@ -32,6 +34,7 @@ export class ClienteRepository {
           where: { cpf: data.cpf }
         });
         if (existingCpf) {
+          if (!existingCpf.ativo) throw new Error("CPF/CNPJ já cadastrado, porém encontra-se inativo.");
           throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
         }
       }
@@ -123,15 +126,78 @@ export class ClienteRepository {
     }
   }
 
-  async findAll() {
-    return await prisma.cliente.findMany({
-      include: {
-        pessoa_fisica: { include: { pessoa: true } },
-        pessoa_juridica: { include: { pessoa: true } },
-        tipo: true,
+  async findAll(skip?: number, take?: number, search?: string) {
+    const where: Prisma.ClienteWhereInput = search ? {
+      ativo: true,
+      OR: [
+        // Cliente (Nomes e Razão Social)
+        { pessoa_fisica: { pessoa: { nome: { contains: search, mode: 'insensitive' } } } },
+        { pessoa_juridica: { razao_social: { contains: search, mode: 'insensitive' } } },
+        { pessoa_juridica: { nome_fantasia: { contains: search, mode: 'insensitive' } } },
+        
+        // Documentos
+        { pessoa_fisica: { cpf: { contains: search } } },
+        { pessoa_juridica: { cnpj: { contains: search } } },
+        
+        // Telefones
+        { telefone_1: { contains: search } },
+        { telefone_2: { contains: search } },
+        { telefone_3: { contains: search } },
+        
+        // Ativos: Veículos
+        { 
+          veiculos: { 
+            some: { 
+              OR: [ 
+                { placa: { contains: search, mode: 'insensitive' } }, 
+                { modelo: { contains: search, mode: 'insensitive' } }
+              ] 
+            } 
+          } 
+        },
+        
+        // Ativos: Peças Avulsas
+        { 
+          equipamentos: { 
+            some: { 
+              OR: [ 
+                { nome_peca: { contains: search, mode: 'insensitive' } }, 
+                { fabricante: { contains: search, mode: 'insensitive' } }, 
+                { numeracao: { contains: search, mode: 'insensitive' } }
+              ] 
+            } 
+          } 
+        }
+      ]
+    } : { ativo: true };
+
+    const [total, data] = await prisma.$transaction([
+      prisma.cliente.count({ where }),
+      prisma.cliente.findMany({
+        where,
+        ...(skip !== undefined ? { skip } : {}),
+        ...(take !== undefined ? { take } : {}),
+        include: {
+          pessoa_fisica: { include: { pessoa: true } },
+          pessoa_juridica: { include: { pessoa: true } },
+          tipo: true,
+          veiculos: true,
+          equipamentos: true,
+        },
+        orderBy: { id_cliente: 'desc' },
+      })
+    ]);
+
+    return { data, total };
+  }
+
+  async findAtivos(id: number) {
+    return await prisma.cliente.findUnique({
+      where: { id_cliente: id },
+      select: {
         veiculos: true,
         equipamentos: true,
-      },
+      }
     });
   }
 
@@ -171,7 +237,10 @@ export class ClienteRepository {
       const existing = await prisma.pessoaFisica.findFirst({
         where: pfWhere
       });
-      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      if (existing) {
+        if (!existing.ativo) throw new Error("CPF/CNPJ já cadastrado, porém encontra-se inativo.");
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
     }
     if (data.cnpj) {
       const pjWhere: any = { cnpj: data.cnpj };
@@ -181,7 +250,10 @@ export class ClienteRepository {
       const existing = await prisma.pessoaJuridica.findFirst({
         where: pjWhere
       });
-      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      if (existing) {
+        if (!existing.ativo) throw new Error("CPF/CNPJ já cadastrado, porém encontra-se inativo.");
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
     }
     if (data.inscricao_estadual) {
       const pjWhere: any = { inscricao_estadual: data.inscricao_estadual };
@@ -191,7 +263,10 @@ export class ClienteRepository {
       const existing = await prisma.pessoaJuridica.findFirst({
         where: pjWhere
       });
-      if (existing) throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      if (existing) {
+        if (!existing.ativo) throw new Error("Inscrição Estadual já cadastrada, porém encontra-se inativa.");
+        throw new Error("CPF/CNPJ/IE/Placa já cadastrado em outro registro.");
+      }
     }
 
     return await prisma.$transaction(async (tx) => {
@@ -262,44 +337,25 @@ export class ClienteRepository {
       throw new Error("Não é possível excluir o cliente pois há uma Ordem de Serviço ativa vinculada (OS: " + activeOs.id_os + ").");
     }
 
-    return await prisma.cliente.delete({
-      where: { id_cliente: id },
+    return await prisma.$transaction(async (tx) => {
+      const cliente = await tx.cliente.update({
+        where: { id_cliente: id },
+        data: { ativo: false },
+      });
+
+      await tx.veiculo.updateMany({
+        where: { id_cliente: id },
+        data: { ativo: false },
+      });
+
+      await tx.equipamentoCliente.updateMany({
+        where: { id_cliente: id },
+        data: { ativo: false },
+      });
+
+      return cliente;
     });
   }
 
-  // Case-insensitive & accent-insensitive search by name
-  async searchByName(searchTerm: string) {
-    const searchPattern = `%${searchTerm}%`;
 
-    const ids = await prisma.$queryRaw<{ id_cliente: number }[]>`
-      SELECT c.id_cliente
-      FROM "cliente" c
-      LEFT JOIN "pessoa_fisica" pf ON c.id_pessoa_fisica = pf.id_pessoa_fisica
-      LEFT JOIN "pessoa" p1 ON pf.id_pessoa = p1.id_pessoa
-      LEFT JOIN "pessoa_juridica" pj ON c.id_pessoa_juridica = pj.id_pessoa_juridica
-      LEFT JOIN "pessoa" p2 ON pj.id_pessoa = p2.id_pessoa
-      WHERE unaccent(p1.nome) ILIKE unaccent(${searchPattern})
-         OR unaccent(p2.nome) ILIKE unaccent(${searchPattern})
-         OR (pj.nome_fantasia IS NOT NULL AND unaccent(pj.nome_fantasia) ILIKE unaccent(${searchPattern}))
-      LIMIT 20
-    `;
-
-    const idList = ids.map((item) => item.id_cliente);
-
-    if (idList.length === 0) {
-      return [];
-    }
-
-    return await prisma.cliente.findMany({
-      where: {
-        id_cliente: { in: idList },
-      },
-      include: {
-        pessoa_fisica: { include: { pessoa: true } },
-        pessoa_juridica: { include: { pessoa: true } },
-        tipo: true,
-        veiculos: true,
-      },
-    });
-  }
 }

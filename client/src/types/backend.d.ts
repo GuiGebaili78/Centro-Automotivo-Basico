@@ -116,14 +116,73 @@ export interface IPecasEstoque {
   fabricante?: string | null;
   nome: string;
   descricao: string;
-  valor_custo: number; // Decimal
-  valor_venda: number; // Decimal
+  valor_custo: number;
+  valor_venda: number;
   estoque_atual: number;
   estoque_minimo: number;
   unidade_medida?: string | null;
-  custo_unitario_padrao: number; // Decimal
+  custo_unitario_padrao: number;
   dt_ultima_compra?: string | null;
   dt_cadastro: string;
+  ref_cod?: string | null;
+  localizacao?: string | null;
+  aplicacao?: string | null;
+  modelo?: string | null;
+  id_categoria?: number | null;
+  // Relações opcionais
+  categoria?: { id_categoria: number; nome: string } | null;
+  itens_entrada?: any[];
+}
+
+// Resposta paginada genérica — usada pelo findAll do estoque e histórico
+export interface IPaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// Registro de movimentação de estoque (histórico imutável)
+export interface IMovimentacaoEstoque {
+  id_movimentacao: number;
+  id_pecas_estoque: number;
+  id_usuario?: number | null;
+  nome_usuario_snapshot?: string | null;
+  tipo_movimento: 'ENTRADA' | 'SAIDA' | 'AJUSTE' | 'SALDO_INICIAL' | 'ESTORNO' | 'RETIFICAÇÃO';
+  quantidade: number;
+  saldo_anterior: number;
+  saldo_atual: number;
+  valor_unitario?: number | null;
+  origem?: string | null;
+  obs?: string | null;
+  dt_movimentacao: string;
+  id_os?: number | null;
+  id_item_entrada?: number | null;
+
+  ordem_de_servico?: {
+    id_os: number;
+    status: string;
+    cliente: {
+      pessoa_fisica?: { pessoa: { nome: string } } | null;
+      pessoa_juridica?: { razao_social: string } | null;
+    };
+    veiculo?: {
+      placa: string;
+      marca: string;
+      modelo: string;
+      cor: string;
+    } | null;
+  } | null;
+
+  item_entrada?: {
+    id_item_entrada: number;
+    entrada: {
+      id_entrada: number;
+      nf_numero?: string | null;
+      data_compra: string;
+      fornecedor?: { nome: string; nome_fantasia?: string | null } | null;
+    };
+  } | null;
 }
 
 export interface IVeiculo {

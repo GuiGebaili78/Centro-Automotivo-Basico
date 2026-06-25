@@ -17,6 +17,7 @@ model Pessoa {
   is_cliente      Boolean         @default(false)
   is_fornecedor   Boolean         @default(false)
   is_colaborador  Boolean         @default(false)
+  ativo           Boolean         @default(true)
   dt_cadastro     DateTime        @default(now()) @db.Timestamp(6)
   pessoa_fisica   PessoaFisica?
   pessoa_juridica PessoaJuridica?
@@ -28,6 +29,7 @@ model PessoaFisica {
   id_pessoa_fisica Int          @id @default(autoincrement())
   id_pessoa        Int          @unique
   cpf              String?      @db.VarChar(11)
+  ativo            Boolean      @default(true)
   dt_cadastro      DateTime     @default(now()) @db.Timestamp(6)
   clientes         Cliente[]
   funcionario      Funcionario?
@@ -43,6 +45,7 @@ model PessoaJuridica {
   nome_fantasia      String?   @db.VarChar(100)
   cnpj               String?   @db.VarChar(14)
   inscricao_estadual String?   @db.VarChar(50)
+  ativo              Boolean   @default(true)
   dt_cadastro        DateTime  @default(now()) @db.Timestamp(6)
   clientes           Cliente[]
   pessoa             Pessoa    @relation(fields: [id_pessoa], references: [id_pessoa])
@@ -74,6 +77,7 @@ model Cliente {
   bairro             String?          @db.VarChar(100)
   cidade             String?          @db.VarChar(100)
   estado             String?          @db.Char(2)
+  ativo              Boolean          @default(true)
   dt_cadastro        DateTime         @default(now()) @db.Timestamp(6)
   cep                String?          @db.VarChar(10)
   pessoa_fisica      PessoaFisica?    @relation(fields: [id_pessoa_fisica], references: [id_pessoa_fisica])
@@ -133,6 +137,7 @@ model EquipamentoCliente {
   fabricante        String?          @db.VarChar(50)
   numeracao         String?          @db.VarChar(50)
   observacoes       String?          @db.VarChar(500)
+  ativo             Boolean          @default(true)
   created_at        DateTime         @default(now()) @db.Timestamp(6)
   updated_at        DateTime         @default(now()) @updatedAt @db.Timestamp(6)
   cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
@@ -202,6 +207,16 @@ model RegistroDiaria {
   @@map("registro_diaria")
 }
 
+model CategoriaEstoque {
+  id_categoria Int            @id @default(autoincrement())
+  nome         String         @unique @db.VarChar(100)
+  ativo        Boolean        @default(true)
+  created_at   DateTime       @default(now()) @db.Timestamp(6)
+  pecas        PecasEstoque[]
+
+  @@map("categoria_estoque")
+}
+
 model PecasEstoque {
   id_pecas_estoque      Int           @id @default(autoincrement())
   fabricante            String?       @db.VarChar(50)
@@ -218,9 +233,15 @@ model PecasEstoque {
   aplicacao             String?       @db.Text
   ref_cod               String?       @db.Text
   localizacao           String?       @db.VarChar(255)
+  ativo                 Boolean       @default(true)
+  modelo                String?       @db.VarChar(100)
+  id_categoria          Int?
+  categoria             CategoriaEstoque?     @relation(fields: [id_categoria], references: [id_categoria])
   itens_entrada         ItemEntrada[]
   itens_os              ItensOs[]
+  movimentacoes         MovimentacaoEstoque[]
 
+  @@unique([nome, fabricante, ref_cod])
   @@map("pecas_estoque")
 }
 
@@ -237,6 +258,7 @@ model Veiculo {
   cor               String           @db.VarChar(30)
   combustivel       String           @db.VarChar(20)
   obs               String?          @db.VarChar(500)
+  ativo             Boolean          @default(true)
   dt_cadastro       DateTime         @default(now()) @db.Timestamp(6)
   ordens_de_servico OrdemDeServico[]
   cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
@@ -280,6 +302,7 @@ model OrdemDeServico {
   pagamentos_cliente    PagamentoCliente[]
   recebiveis_cartao     RecebivelCartao[]
   servicos_mao_de_obra  ServicoMaoDeObra[]
+  movimentacoes_estoque MovimentacaoEstoque[]
 
   @@index([id_cliente])
   @@index([id_veiculo])
@@ -523,6 +546,7 @@ model ItemEntrada {
   obs              String?        @db.Text
   entrada          EntradaEstoque @relation(fields: [id_entrada], references: [id_entrada])
   peca             PecasEstoque   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
+  movimentacoes    MovimentacaoEstoque[]
 
   @@map("item_entrada")
 }
@@ -636,6 +660,37 @@ enum PerfilAcesso {
   MECANICO
 }
 
+model MovimentacaoEstoque {
+  id_movimentacao       Int          @id @default(autoincrement())
+  id_pecas_estoque      Int
+  id_usuario            Int?         // NULL = operação do sistema (migrações, automações)
+  nome_usuario_snapshot String?      @db.VarChar(100) // Snapshot do nome: preserva auditoria mesmo após SetNull da FK
+  tipo_movimento        String       @db.VarChar(50)  // 'ENTRADA', 'SAIDA', 'AJUSTE', 'SALDO_INICIAL', 'ESTORNO', 'ATUALIZACAO_CADASTRAL'
+  quantidade            Int          // Positivo para entradas, negativo para saídas
+  saldo_anterior        Int          // Snapshot imutável do saldo ANTES da operação
+  saldo_atual           Int          // Snapshot imutável do saldo APÓS a operação
+  valor_unitario        Decimal?     @db.Decimal(10, 2)
+  origem                String?      @db.VarChar(150) // Ex: 'Entrada #123', 'OS #45', 'Estorno de Movimentação #7'
+  obs                   String?      @db.VarChar(500)
+  dt_movimentacao       DateTime     @default(now()) @db.Timestamp(6)
+  id_os                 Int?
+  id_item_entrada       Int?
+
+  peca             PecasEstoque    @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
+  // FK real com SetNull: ao deletar usuário, o histórico é preservado; id_usuario vira NULL mas nome_usuario_snapshot permanece
+  usuario          Usuario?        @relation(fields: [id_usuario], references: [id_usuario], onDelete: SetNull)
+  ordem_de_servico OrdemDeServico? @relation(fields: [id_os], references: [id_os], onDelete: SetNull)
+  item_entrada     ItemEntrada?    @relation(fields: [id_item_entrada], references: [id_item_entrada], onDelete: SetNull)
+
+  @@index([id_pecas_estoque])
+  @@index([id_usuario])
+  @@index([tipo_movimento])
+  @@index([dt_movimentacao])
+  @@index([id_os])
+  @@index([id_item_entrada])
+  @@map("movimentacao_estoque")
+}
+
 model Usuario {
   id_usuario            Int          @id @default(autoincrement())
   nome                  String
@@ -647,4 +702,5 @@ model Usuario {
   updated_at            DateTime     @updatedAt
   reset_password_token  String?      @db.VarChar(255)
   reset_password_expires DateTime?
+  movimentacoes_estoque MovimentacaoEstoque[]
 }

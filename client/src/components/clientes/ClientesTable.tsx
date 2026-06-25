@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useState, useEffect } from "react";
 import {
   Plus,
   Trash2,
@@ -14,6 +14,8 @@ import { useNavigate } from "react-router-dom";
 import { Badge, ActionButton, Button, ConfirmModal } from "../ui";
 import { formatPhone } from "../../utils/normalize";
 import type { ICliente } from "../../types/cliente.types";
+import { ClienteService } from "../../services/cliente.service";
+import { toast } from "react-toastify";
 
 interface ClientesTableProps {
   clientes: ICliente[];
@@ -31,11 +33,40 @@ export const ClientesTable = ({
   const navigate = useNavigate();
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [ativosCache, setAtivosCache] = useState<Record<number, { veiculos: any[], equipamentos: any[] }>>({});
+  const [loadingAtivos, setLoadingAtivos] = useState<Record<number, boolean>>({});
 
-  const toggleRow = (id: number) => {
+  useEffect(() => {
+    const handleInvalidate = (e: CustomEvent) => {
+      const clientId = e.detail.clientId;
+      setAtivosCache(prev => {
+        const newCache = { ...prev };
+        delete newCache[clientId];
+        return newCache;
+      });
+    };
+    window.addEventListener("invalidate-ativos-cache", handleInvalidate as EventListener);
+    return () => window.removeEventListener("invalidate-ativos-cache", handleInvalidate as EventListener);
+  }, []);
+
+  const toggleRow = async (id: number) => {
     const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(id)) newExpanded.delete(id);
-    else newExpanded.add(id);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+      if (!ativosCache[id] && !loadingAtivos[id]) {
+        try {
+          setLoadingAtivos(prev => ({ ...prev, [id]: true }));
+          const ativos = await ClienteService.getAtivos(id);
+          setAtivosCache(prev => ({ ...prev, [id]: ativos }));
+        } catch (error) {
+          toast.error("Erro ao carregar veículos/peças.");
+        } finally {
+          setLoadingAtivos(prev => ({ ...prev, [id]: false }));
+        }
+      }
+    }
     setExpandedRows(newExpanded);
   };
 
@@ -177,7 +208,7 @@ export const ClientesTable = ({
                         <div className="flex items-center gap-3">
                           <Car size={18} className="text-primary-600" />
                           <h4 className="text-sm font-bold uppercase text-neutral-500 tracking-widest">
-                            Veículos Cadastrados ({c.veiculos?.length || 0})
+                            Ativos Vinculados
                           </h4>
                         </div>
                         <Button
@@ -189,86 +220,90 @@ export const ClientesTable = ({
                         </Button>
                       </div>
 
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                        {/* Coluna de Veículos */}
-                        <div className="space-y-4">
-                          <h5 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                            <Car size={14} /> Veículos
-                          </h5>
-                          {!c.veiculos || c.veiculos.length === 0 ? (
-                            <p className="text-sm text-neutral-400 italic">Nenhum veículo vinculado.</p>
-                          ) : (
-                            <div className="grid grid-cols-1 gap-3">
-                              {c.veiculos.map((v: any) => (
-                                <div
-                                  key={v.id_veiculo}
-                                  className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-primary-200 transition-all group/card flex justify-between items-start"
-                                >
-                                  <div>
-                                    <div className="flex flex-col">
-                                      <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
-                                        {v.marca} {v.modelo} • {v.cor || "COR N/A"}
-                                      </span>
-                                      <span className="text-base text-primary-600 uppercase mt-0.5 font-bold">
-                                        {v.placa}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <ActionButton
-                                    icon={Wrench}
-                                    variant="primary"
-                                    label="Abrir OS"
-                                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                                    onClick={() => onOpenOsModal(c.id_cliente, v.id_veiculo)}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Coluna de Peças Avulsas */}
-                        <div className="space-y-4">
-                          <h5 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                            <Wrench size={14} /> Peças Avulsas
-                          </h5>
-                          {!c.equipamentos || c.equipamentos.length === 0 ? (
-                            <p className="text-sm text-neutral-400 italic">Nenhuma peça vinculada.</p>
-                          ) : (
-                            <div className="grid grid-cols-1 gap-3">
-                              {c.equipamentos.map((e: any) => (
-                                <div
-                                  key={e.id_equipamento}
-                                  className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group/card flex justify-between items-start"
-                                >
-                                  <div>
-                                    <div className="flex flex-col">
-                                      <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
-                                        {e.nome_peca}
-                                      </span>
-                                      <span className="text-sm text-blue-600 uppercase mt-0.5 font-bold">
-                                        {e.fabricante || "Fabricante N/I"}
-                                      </span>
-                                      {e.numeracao && (
-                                        <span className="text-xs text-neutral-400 mt-1 font-mono">
-                                          SN: {e.numeracao}
+                      {loadingAtivos[c.id_cliente] ? (
+                        <div className="text-sm text-neutral-500 py-4 italic">Carregando ativos...</div>
+                      ) : (
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                          {/* Coluna de Veículos */}
+                          <div className="space-y-4">
+                            <h5 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                              <Car size={14} /> Veículos
+                            </h5>
+                            {!ativosCache[c.id_cliente]?.veiculos || ativosCache[c.id_cliente].veiculos.length === 0 ? (
+                              <p className="text-sm text-neutral-400 italic">Nenhum veículo vinculado.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 gap-3">
+                                {ativosCache[c.id_cliente].veiculos.map((v: any) => (
+                                  <div
+                                    key={v.id_veiculo}
+                                    className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-primary-200 transition-all group/card flex justify-between items-start"
+                                  >
+                                    <div>
+                                      <div className="flex flex-col">
+                                        <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
+                                          {v.marca} {v.modelo} • {v.cor || "COR N/A"}
                                         </span>
-                                      )}
+                                        <span className="text-base text-primary-600 uppercase mt-0.5 font-bold">
+                                          {v.placa}
+                                        </span>
+                                      </div>
                                     </div>
+                                    <ActionButton
+                                      icon={Wrench}
+                                      variant="primary"
+                                      label="Abrir OS"
+                                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                      onClick={() => onOpenOsModal(c.id_cliente, v.id_veiculo)}
+                                    />
                                   </div>
-                                  <ActionButton
-                                    icon={ArrowRight}
-                                    variant="neutral"
-                                    label="Ver Histórico"
-                                    className="opacity-0 group-hover/card:opacity-100 transition-opacity"
-                                    onClick={() => navigate(`/cadastro/${c.id_cliente}`)}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Coluna de Peças Avulsas */}
+                          <div className="space-y-4">
+                            <h5 className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                              <Wrench size={14} /> Peças Avulsas
+                            </h5>
+                            {!ativosCache[c.id_cliente]?.equipamentos || ativosCache[c.id_cliente].equipamentos.length === 0 ? (
+                              <p className="text-sm text-neutral-400 italic">Nenhuma peça vinculada.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 gap-3">
+                                {ativosCache[c.id_cliente].equipamentos.map((e: any) => (
+                                  <div
+                                    key={e.id_equipamento}
+                                    className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group/card flex justify-between items-start"
+                                  >
+                                    <div>
+                                      <div className="flex flex-col">
+                                        <span className="text-neutral-600 text-base font-medium uppercase leading-tight">
+                                          {e.nome_peca}
+                                        </span>
+                                        <span className="text-sm text-blue-600 uppercase mt-0.5 font-bold">
+                                          {e.fabricante || "Fabricante N/I"}
+                                        </span>
+                                        {e.numeracao && (
+                                          <span className="text-xs text-neutral-400 mt-1 font-mono">
+                                            SN: {e.numeracao}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <ActionButton
+                                      icon={ArrowRight}
+                                      variant="neutral"
+                                      label="Ver Histórico"
+                                      className="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                      onClick={() => navigate(`/cadastro/${c.id_cliente}`)}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </td>
                 </tr>

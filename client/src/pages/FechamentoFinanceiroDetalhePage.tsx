@@ -23,6 +23,11 @@ import { OsItemsService } from "../services/osItems.service";
 import { FinanceiroService } from "../services/financeiro.service";
 import { Modal, Button, ActionButton, Card, Input, Select, TextArea } from "../components/ui";
 import { toast } from "react-toastify";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface ItemOS {
   id_iten: number;
@@ -423,7 +428,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             [id_item_os]: {
               ...itemState,
               custo_zero: !checked,
-              custo_real: custo_real_prev,
+              custo_real: String(custo_real_prev),
             },
           };
         });
@@ -661,7 +666,7 @@ export const FechamentoFinanceiroDetalhePage = () => {
             id_fornecedor: hasFornecedor ? Number(st.id_fornecedor) : undefined,
             id_pessoa: hasFornecedor ? Number(st.id_fornecedor) : undefined,
             custo_real: Number(st.custo_real),
-            data_compra: new Date().toISOString(),
+            data_compra: dayjs().tz("America/Sao_Paulo").format(),
             pago_ao_fornecedor: Boolean(st.pago_fornecedor),
           };
 

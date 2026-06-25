@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useAlerts } from "../../contexts/AlertsContext";
+import { toast } from "react-toastify";
 import { api } from "../../services/api";
 
 export const ResetPasswordPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { addAlert } = useAlerts();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -17,21 +16,21 @@ export const ResetPasswordPage: React.FC = () => {
 
   useEffect(() => {
     if (!email || !token) {
-      addAlert("error", "Link de recuperação inválido ou incompleto.");
+      toast.error("Link de recuperação inválido ou incompleto.");
       navigate("/login");
     }
-  }, [email, token, navigate, addAlert]);
+  }, [email, token, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password.length < 8) {
-      addAlert("error", "A senha deve ter pelo menos 8 caracteres.");
+      toast.error("A senha deve ter pelo menos 8 caracteres.");
       return;
     }
 
     if (password !== confirmPassword) {
-      addAlert("error", "As senhas não coincidem.");
+      toast.error("As senhas não coincidem.");
       return;
     }
 
@@ -43,10 +42,10 @@ export const ResetPasswordPage: React.FC = () => {
         password,
       });
 
-      addAlert("success", "Senha redefinida com sucesso! Faça login com a nova senha.");
+      toast.success("Senha redefinida com sucesso! Faça login com a nova senha.");
       navigate("/login");
     } catch (error: any) {
-      addAlert("error", error.response?.data?.error || "Erro ao redefinir a senha.");
+      toast.error(error.response?.data?.error || "Erro ao redefinir a senha.");
     } finally {
       setLoading(false);
     }

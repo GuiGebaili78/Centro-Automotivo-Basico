@@ -60,3 +60,10 @@ export interface IClientSearchResult {
     cnpj: string;
   };
 }
+
+export interface IClientePaginatedResponse {
+  data: ICliente[];
+  total: number;
+  page: number;
+  limit: number;
+}

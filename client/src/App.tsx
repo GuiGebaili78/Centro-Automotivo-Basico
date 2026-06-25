@@ -9,7 +9,6 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { ClientePage } from "./pages/ClientePage";
 
 // Importe suas páginas antigas aqui enquanto não refatora todas
-import { VeiculoPage } from "./pages/VeiculoPage";
 import { OrdemDeServicoPage } from "./pages/OrdemDeServicoPage";
 import { OrdemDeServicoDetalhePage } from "./pages/OrdemDeServicoDetalhePage";
 import { CadastroUnificadoPage } from "./pages/CadastroUnificadoPage";
@@ -17,6 +16,7 @@ import { OsPrintView } from "./pages/OsPrintView";
 import { RelatoriosPage } from "./pages/RelatoriosPage";
 
 import { PecasEstoquePage } from "./pages/PecasEstoquePage";
+import { PecasEstoqueDetalhePage } from "./pages/PecasEstoqueDetalhePage";
 import { EntradaEstoquePage } from "./pages/EntradaEstoquePage";
 import { FuncionarioPage } from "./pages/ColaboradoresPage";
 import { PessoaPage } from "./pages/PessoaPage";
@@ -30,7 +30,6 @@ import { LivroCaixaPage } from "./pages/LivroCaixaPage";
 import { ContasAPagarPage } from "./pages/ContasAPagarPage";
 import { NotasFiscaisPage } from "./pages/NotasFiscaisPage";
 import { SearchClientePage } from "./pages/SearchClientePage";
-import { SearchVeiculoPage } from "./pages/SearchVeiculoPage";
 import { NovoPagamentoPage } from "./pages/NovoPagamentoPage";
 import { PagamentoEquipePage } from "./pages/PagamentoEquipePage";
 import { ExtratoBancarioPage } from "./pages/ExtratoBancarioPage";
@@ -71,7 +70,6 @@ const router = createBrowserRouter(
           {/* Páginas Modernizadas */}
           <Route path="/cliente" element={<ClientePage />} />
           {/* Páginas Legadas (Ainda funcionam dentro do layout novo!) */}
-          <Route path="/veiculo" element={<VeiculoPage />} />
           <Route path="/ordem-de-servico" element={<OrdemDeServicoPage />} />
           <Route
             path="/ordem-de-servico/:id"
@@ -84,6 +82,7 @@ const router = createBrowserRouter(
             element={<CadastroUnificadoPage />}
           />
           <Route path="/pecas-estoque" element={<PecasEstoquePage />} />
+          <Route path="/pecas-estoque/:id" element={<PecasEstoqueDetalhePage />} />
           <Route path="/entrada-estoque" element={<EntradaEstoquePage />} />
           <Route path="/funcionario" element={<FuncionarioPage />} />
           <Route path="/pessoa" element={<PessoaPage />} />
@@ -145,7 +144,6 @@ const router = createBrowserRouter(
           />
           {/* Search Pages */}
           <Route path="/search-cliente" element={<SearchClientePage />} />
-          <Route path="/search-veiculo" element={<SearchVeiculoPage />} />
           {/* Rota 404 para qualquer coisa não definida */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
