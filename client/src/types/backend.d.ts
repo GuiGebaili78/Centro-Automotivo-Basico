@@ -148,7 +148,7 @@ export interface IMovimentacaoEstoque {
   id_pecas_estoque: number;
   id_usuario?: number | null;
   nome_usuario_snapshot?: string | null;
-  tipo_movimento: 'ENTRADA' | 'SAIDA' | 'AJUSTE' | 'SALDO_INICIAL' | 'ESTORNO' | 'RETIFICAÇÃO';
+  tipo_movimento: 'ENTRADA' | 'SAIDA' | 'AJUSTE' | 'SALDO_INICIAL' | 'ESTORNO' | 'RETIFICAÇÃO' | 'ATUALIZACAO_CADASTRAL';
   quantidade: number;
   saldo_anterior: number;
   saldo_atual: number;

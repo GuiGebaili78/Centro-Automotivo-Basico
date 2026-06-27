@@ -30,7 +30,8 @@ services:
       context: ./server
       dockerfile: Dockerfile
     image: automotivo-api
-    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm start"
+    restart: always
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npx prisma db push && npm start"
     expose:
       - "3000"
     environment:

@@ -124,8 +124,8 @@ model Fornecedor {
   deleted_at          DateTime?
 
   contas_pagar        ContasPagar[]
-  entradas_estoque    EntradaEstoque[]
   pagamentos_peca     PagamentoPeca[]
+  notas_fiscais       NotaFiscal[]
 
   @@map("fornecedor")
 }
@@ -208,41 +208,48 @@ model RegistroDiaria {
 }
 
 model CategoriaEstoque {
-  id_categoria Int            @id @default(autoincrement())
-  nome         String         @unique @db.VarChar(100)
-  ativo        Boolean        @default(true)
-  created_at   DateTime       @default(now()) @db.Timestamp(6)
-  pecas        PecasEstoque[]
+  id_categoria Int       @id @default(autoincrement())
+  nome         String    @unique @db.VarChar(100)
+  ativo        Boolean   @default(true)
+  created_at   DateTime  @default(now()) @db.Timestamp(6)
+  produtos     Produto[]
 
   @@map("categoria_estoque")
 }
 
-model PecasEstoque {
-  id_pecas_estoque      Int           @id @default(autoincrement())
-  fabricante            String?       @db.VarChar(50)
-  nome                  String        @db.VarChar(255)
-  descricao             String        @db.VarChar(255)
-  valor_custo           Decimal       @db.Decimal(10, 2)
-  valor_venda           Decimal       @db.Decimal(10, 2)
-  estoque_atual         Int
-  estoque_minimo        Int           @default(0)
-  unidade_medida        String?       @db.VarChar(20)
-  dt_ultima_compra      DateTime?     @db.Timestamp(6)
-  dt_cadastro           DateTime      @default(now()) @db.Timestamp(6)
-  custo_unitario_padrao Decimal       @default(0) @db.Decimal(10, 2)
-  aplicacao             String?       @db.Text
-  ref_cod               String?       @db.Text
-  localizacao           String?       @db.VarChar(255)
-  ativo                 Boolean       @default(true)
-  modelo                String?       @db.VarChar(100)
-  id_categoria          Int?
-  categoria             CategoriaEstoque?     @relation(fields: [id_categoria], references: [id_categoria])
-  itens_entrada         ItemEntrada[]
-  itens_os              ItensOs[]
-  movimentacoes         MovimentacaoEstoque[]
+model Produto {
+  id_produto Int @id @default(autoincrement())
 
-  @@unique([nome, fabricante, ref_cod])
-  @@map("pecas_estoque")
+  // ── Campos Imutáveis (Identidade única da peça) ──
+  nome       String @db.VarChar(255)
+  modelo     String @db.VarChar(100)
+  fabricante String @db.VarChar(100)
+
+  // ── Campos Mutáveis ──
+  aplicacao_equivalencia String?   @db.Text
+  localizacao            String?   @db.VarChar(255)
+  preco_custo_atual      Decimal   @default(0) @db.Decimal(10, 2)
+  preco_venda_atual      Decimal   @default(0) @db.Decimal(10, 2)
+  saldo_atual            Int       @default(0)
+  data_ultima_compra     DateTime? @db.Timestamp(6)
+
+  // ── Campos Complementares de Gestão do ERP ──
+  descricao             String?   @db.VarChar(255)
+  estoque_minimo        Int       @default(0)
+  unidade_medida        String?   @db.VarChar(20)
+  custo_unitario_padrao Decimal   @default(0) @db.Decimal(10, 2)
+  ref_cod               String?   @db.Text
+  ativo                 Boolean   @default(true)
+  dt_cadastro           DateTime  @default(now()) @db.Timestamp(6)
+
+  id_categoria Int?
+  categoria    CategoriaEstoque? @relation(fields: [id_categoria], references: [id_categoria])
+
+  itens_os      ItensOs[]
+  movimentacoes MovimentacaoEstoque[]
+
+  @@unique([nome, fabricante, modelo])
+  @@map("produto")
 }
 
 model Veiculo {
@@ -315,7 +322,7 @@ model OrdemDeServico {
 model ItensOs {
   id_iten           Int             @id @default(autoincrement())
   id_os             Int
-  id_pecas_estoque  Int?
+  id_produto        Int?
   descricao         String          @db.VarChar(500)
   valor_total       Decimal         @db.Decimal(12, 2)
   dt_cadastro       DateTime        @default(now()) @db.Timestamp(6)
@@ -325,13 +332,11 @@ model ItensOs {
   is_interno        Boolean         @default(false)
   deleted_at        DateTime?       @db.Timestamp(6)
   ordem_de_servico  OrdemDeServico  @relation(fields: [id_os], references: [id_os])
-  pecas_estoque     PecasEstoque?   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
+  produto           Produto?        @relation(fields: [id_produto], references: [id_produto])
   pagamentos_peca   PagamentoPeca[]
 
   @@map("itens_os")
 }
-
-
 
 model PagamentoPeca {
   id_pagamento_peca         Int         @id @default(autoincrement())
@@ -451,6 +456,12 @@ model ContasPagar {
   id_fornecedor        Int?
   fornecedor_rel       Fornecedor?          @relation(fields: [id_fornecedor], references: [id_fornecedor])
 
+  id_nota_fiscal       Int?
+  nota_fiscal          NotaFiscal?          @relation(fields: [id_nota_fiscal], references: [id_nota_fiscal])
+
+  id_movimentacao      Int?
+  movimentacao         MovimentacaoEstoque? @relation(fields: [id_movimentacao], references: [id_movimentacao])
+
   @@map("contas_pagar")
 }
 
@@ -515,42 +526,6 @@ model CategoriaFinanceira {
   @@map("categoria_financeira")
 }
 
-model EntradaEstoque {
-  id_entrada    Int           @id @default(autoincrement())
-  id_pessoa     Int
-  nota_fiscal   String?       @db.VarChar(50)
-  data_compra   DateTime      @default(now()) @db.Timestamp(6)
-  valor_total   Decimal       @db.Decimal(10, 2)
-  obs           String?       @db.VarChar(500)
-  created_at    DateTime      @default(now()) @db.Timestamp(6)
-  nf_numero                 String?       @db.VarChar(50)
-  pago_ao_fornecedor        Boolean       @default(false)
-  data_pagamento_fornecedor DateTime?     @db.Timestamp(6)
-  fornecedor                Fornecedor    @relation(fields: [id_pessoa], references: [id_fornecedor])
-  itens                     ItemEntrada[]
-
-  @@map("entrada_estoque")
-}
-
-model ItemEntrada {
-  id_item_entrada  Int            @id @default(autoincrement())
-  id_entrada       Int
-  id_pecas_estoque Int
-  quantidade       Int
-  valor_custo      Decimal        @db.Decimal(10, 2)
-  margem_lucro     Decimal?       @db.Decimal(10, 2)
-  valor_venda      Decimal        @db.Decimal(10, 2)
-  ref_cod          String?        @db.Text
-  condicao         String?        @db.VarChar(100)
-  aplicacao        String?        @db.Text
-  obs              String?        @db.Text
-  entrada          EntradaEstoque @relation(fields: [id_entrada], references: [id_entrada])
-  peca             PecasEstoque   @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
-  movimentacoes    MovimentacaoEstoque[]
-
-  @@map("item_entrada")
-}
-
 model ContaBancaria {
   id_conta           Int                @id @default(autoincrement())
   nome               String             @db.VarChar(50)
@@ -596,7 +571,7 @@ model TaxaOperadoraCartao {
   modalidade             String          @db.VarChar(20) // 'DEBITO', 'CREDITO', 'CREDITO_AVISTA', 'PIX'
   parcela                Int
   taxa_base_pct          Decimal         @default(0) @db.Decimal(5, 2) // Taxa máquina quando LOJA assume os juros
-  taxa_juros_pct         Decimal         @default(0) @db.Decimal(5, 2) // Juros do parcelamento (repassados ao cliente ou absorvidos pela loja)
+  taxa_juros_pct         Decimal         @default(0) @db.Decimal(5, 2) // Juros do parcelamento
   taxa_base_cliente_pct  Decimal?        @default(0) @db.Decimal(5, 2) // Taxa máquina quando CLIENTE assume os juros
   taxa_antecipacao       Decimal?        @default(0) @db.Decimal(5, 2)
   operadora              OperadoraCartao @relation(fields: [id_operadora], references: [id_operadora])
@@ -622,9 +597,8 @@ model RecebivelCartao {
   confirmado_em     DateTime?       @db.Timestamp(6)
   confirmado_por    String?         @db.VarChar(100)
 
-  // ── Snapshot Histórico (Congelamento de Taxa) ──
-  taxa_pct_snapshot   Decimal?      @db.Decimal(5, 2) // Taxa % total no instante da venda
-  modalidade_snapshot String?       @db.VarChar(20)    // 'DEBITO', 'CREDITO', 'CREDITO_AVISTA', 'PIX'
+  taxa_pct_snapshot   Decimal?      @db.Decimal(5, 2)
+  modalidade_snapshot String?       @db.VarChar(20)
 
   operadora         OperadoraCartao? @relation(fields: [id_operadora], references: [id_operadora])
   ordem_de_servico  OrdemDeServico?  @relation(fields: [id_os], references: [id_os])
@@ -642,7 +616,7 @@ model Configuracao {
   telefone          String?  @db.VarChar(20)
   telefone2         String?  @db.VarChar(20)
   email             String?  @db.VarChar(100)
-  logoUrl           String?  @db.VarChar(500) // URL/Path to the uploaded logo
+  logoUrl           String?  @db.VarChar(500)
   logoImpressaoUrl  String?  @db.VarChar(500)
   smtpHost          String?  @db.VarChar(100)
   smtpPort          Int?
@@ -660,47 +634,83 @@ enum PerfilAcesso {
   MECANICO
 }
 
-model MovimentacaoEstoque {
-  id_movimentacao       Int          @id @default(autoincrement())
-  id_pecas_estoque      Int
-  id_usuario            Int?         // NULL = operação do sistema (migrações, automações)
-  nome_usuario_snapshot String?      @db.VarChar(100) // Snapshot do nome: preserva auditoria mesmo após SetNull da FK
-  tipo_movimento        String       @db.VarChar(50)  // 'ENTRADA', 'SAIDA', 'AJUSTE', 'SALDO_INICIAL', 'ESTORNO', 'ATUALIZACAO_CADASTRAL'
-  quantidade            Int          // Positivo para entradas, negativo para saídas
-  saldo_anterior        Int          // Snapshot imutável do saldo ANTES da operação
-  saldo_atual           Int          // Snapshot imutável do saldo APÓS a operação
-  valor_unitario        Decimal?     @db.Decimal(10, 2)
-  origem                String?      @db.VarChar(150) // Ex: 'Entrada #123', 'OS #45', 'Estorno de Movimentação #7'
-  obs                   String?      @db.VarChar(500)
-  dt_movimentacao       DateTime     @default(now()) @db.Timestamp(6)
-  id_os                 Int?
-  id_item_entrada       Int?
+enum TipoMovimentacao {
+  ENTRADA
+  SAIDA
+  AJUSTE
+  DEVOLUCAO
+  ESTORNO
+}
 
-  peca             PecasEstoque    @relation(fields: [id_pecas_estoque], references: [id_pecas_estoque])
-  // FK real com SetNull: ao deletar usuário, o histórico é preservado; id_usuario vira NULL mas nome_usuario_snapshot permanece
+model NotaFiscal {
+  id_nota_fiscal Int       @id @default(autoincrement())
+  numero         String    @db.VarChar(50)
+  serie          String?   @db.VarChar(20)
+  chave_acesso   String?   @db.VarChar(100)
+  id_fornecedor  Int?
+  data_emissao   DateTime? @db.Date
+  data_entrada   DateTime  @default(now()) @db.Timestamp(6)
+  valor_total    Decimal   @db.Decimal(12, 2)
+  arquivo_xml    String?   @db.VarChar(500)
+  obs            String?   @db.VarChar(500)
+  created_at     DateTime  @default(now()) @db.Timestamp(6)
+  updated_at     DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+
+  fornecedor     Fornecedor?           @relation(fields: [id_fornecedor], references: [id_fornecedor])
+  movimentacoes  MovimentacaoEstoque[]
+  contas_pagar   ContasPagar[]
+
+  @@map("nota_fiscal")
+}
+
+model MovimentacaoEstoque {
+  id_movimentacao          Int              @id @default(autoincrement())
+  produto_id               Int
+  quantidade               Int              // Positivo para entradas, negativo para saídas
+  tipo                     TipoMovimentacao
+  custo_unitario_historico Decimal          @db.Decimal(10, 2)
+  preco_venda_historico    Decimal          @db.Decimal(10, 2)
+  data_movimentacao        DateTime         @default(now()) @db.Timestamp(6)
+
+  // ── Campos Opcionais (Regras de Negócio Críticas) ──
+  nota_fiscal_id          Int?              // A NF pode ser vinculada dias após a entrada
+  data_pagamento_previsto DateTime?         @db.Date // Para compras de fim de semana sem NF, permitindo agendar o pagamento
+
+  // ── Campos de Auditoria e Rastreabilidade do ERP ──
+  id_usuario            Int?              // NULL = operação do sistema (migrações, automações)
+  nome_usuario_snapshot String?           @db.VarChar(100) // Snapshot do nome: preserva auditoria mesmo após SetNull da FK
+  saldo_anterior        Int               @default(0) // Snapshot imutável do saldo ANTES da operação
+  saldo_atual           Int               @default(0) // Snapshot imutável do saldo APÓS a operação
+  origem                String?           @db.VarChar(150) // Ex: 'Entrada #123', 'OS #45', 'Estorno de Movimentação #7'
+  obs                   String?           @db.VarChar(500)
+  id_os                 Int?
+
+  // ── Relacionamentos ──
+  produto          Produto         @relation(fields: [produto_id], references: [id_produto])
+  nota_fiscal      NotaFiscal?     @relation(fields: [nota_fiscal_id], references: [id_nota_fiscal])
   usuario          Usuario?        @relation(fields: [id_usuario], references: [id_usuario], onDelete: SetNull)
   ordem_de_servico OrdemDeServico? @relation(fields: [id_os], references: [id_os], onDelete: SetNull)
-  item_entrada     ItemEntrada?    @relation(fields: [id_item_entrada], references: [id_item_entrada], onDelete: SetNull)
+  contas_pagar     ContasPagar[]
 
-  @@index([id_pecas_estoque])
+  @@index([produto_id])
+  @@index([tipo])
+  @@index([data_movimentacao])
+  @@index([nota_fiscal_id])
   @@index([id_usuario])
-  @@index([tipo_movimento])
-  @@index([dt_movimentacao])
   @@index([id_os])
-  @@index([id_item_entrada])
   @@map("movimentacao_estoque")
 }
 
 model Usuario {
-  id_usuario            Int          @id @default(autoincrement())
+  id_usuario            Int                   @id @default(autoincrement())
   nome                  String
-  email                 String       @unique
+  email                 String                @unique
   senha_hash            String
   perfil                PerfilAcesso
-  must_change_password  Boolean      @default(false)
-  created_at            DateTime     @default(now())
-  updated_at            DateTime     @updatedAt
-  reset_password_token  String?      @db.VarChar(255)
+  must_change_password  Boolean               @default(false)
+  created_at            DateTime              @default(now())
+  updated_at            DateTime              @updatedAt
+  reset_password_token  String?               @db.VarChar(255)
   reset_password_expires DateTime?
   movimentacoes_estoque MovimentacaoEstoque[]
 }

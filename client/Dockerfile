@@ -6,7 +6,7 @@
 # =========================================================================
 
 # ---------- DEV ----------
-FROM node:20-alpine AS dev
+FROM node:20-slim AS dev
 WORKDIR /app/client
 COPY package*.json ./
 RUN npm install
@@ -15,7 +15,7 @@ EXPOSE 5173 8080
 CMD ["npm", "run", "dev", "--", "--host"]
 
 # ---------- BUILD ----------
-FROM node:20-alpine AS build
+FROM node:20-slim AS build
 WORKDIR /app/client
 COPY package*.json ./
 RUN npm install

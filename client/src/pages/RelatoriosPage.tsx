@@ -138,7 +138,7 @@ export const RelatoriosPage = () => {
       setEquipe(equipeData);
       setEvolucaoDespesas(evolucaoDespesasData);
       setOperadorasStats(operadorasData);
-      setEstoqueGeral(estoqueData);
+      setEstoqueGeral(estoqueData.data);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar relatórios.");

@@ -18,17 +18,18 @@ services:
       context: ./client
       dockerfile: Dockerfile
       target: dev
+    command: sh -c "npm run dev"
     # Sobe pelas portas direto, sem passar pelo nginx
     ports:
       - "5173:5173"
+    shm_size: '1g'
     environment:
-      NODE_OPTIONS: --max_old_space_size=4096
+      NODE_OPTIONS: --max-old-space-size=2048
       VITE_API_URL: http://localhost:3000/api
       VITE_PORT: "5173"
       VITE_ALLOWED_HOSTS: ""
-      VITE_HMR_HOST: ""
-      VITE_HMR_PROTOCOL: ws
-      VITE_HMR_CLIENT_PORT: "5173"
+      VITE_HMR_HOST: "localhost"
+      VITE_HMR_PROTOCOL: "ws"
     # Em dev precisa do bind do código pra HMR funcionar
     volumes:
       - ./client:/app/client

@@ -61,20 +61,34 @@ export const PecasEstoqueDetalhePage = () => {
 
   // useEffect 1: Carrega dados da peça (Master)
   useEffect(() => {
+    let isMounted = true;
     loadCategorias();
     if (id) {
-      loadPeca(Number(id));
+      loadPeca(Number(id), () => isMounted);
     }
+    return () => {
+      isMounted = false;
+    };
   }, [id, refreshKey]);
 
   // useEffect 2: Carrega histórico de forma independente (Detail)
   useEffect(() => {
     if (!id) return;
+    let isMounted = true;
     setLoadingHistorico(true);
     EstoqueService.getHistorico(Number(id), historicoPage, 10)
-      .then((data) => setHistorico(data))
-      .catch(() => toast.error("Erro ao carregar histórico de movimentações."))
-      .finally(() => setLoadingHistorico(false));
+      .then((data) => {
+        if (isMounted) setHistorico(data);
+      })
+      .catch(() => {
+        if (isMounted) toast.error("Erro ao carregar histórico de movimentações.");
+      })
+      .finally(() => {
+        if (isMounted) setLoadingHistorico(false);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, [id, historicoPage, refreshKey]);
 
   const loadCategorias = async () => {
@@ -86,10 +100,11 @@ export const PecasEstoqueDetalhePage = () => {
     }
   };
 
-  const loadPeca = async (pecaId: number) => {
+  const loadPeca = async (pecaId: number, getIsMounted: () => boolean) => {
     try {
       setLoadingData(true);
       const found = await EstoqueService.getById(pecaId);
+      if (!getIsMounted()) return;
 
       if (!found) {
         toast.error("Peça não encontrada.");
@@ -122,11 +137,14 @@ export const PecasEstoqueDetalhePage = () => {
         id_categoria: found.id_categoria || null,
       });
     } catch (error: any) {
+      if (!getIsMounted()) return;
       const msg = error.response?.data?.error || "Erro ao carregar detalhes da peça.";
       toast.error(msg);
       navigate("/pecas-estoque");
     } finally {
-      setLoadingData(false);
+      if (getIsMounted()) {
+        setLoadingData(false);
+      }
     }
   };
 

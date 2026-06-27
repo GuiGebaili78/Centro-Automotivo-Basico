@@ -1,1 +1,4 @@
-ssh -p 22 root@191.252.110.96 "docker exec -t centro-automotivo-basico-centroautomotivo_db-1 pg_dump -U user -d automotivo_db" > backup_automotivo.sql
+# ssh -p 22 root@191.252.110.96 "docker exec -t centro-automotivo-basico-centroautomotivo_db-1 pg_dump -U user -d automotivo_db" > backup_automotivo.sql
+
+
+ssh -q -p 22 root@191.252.110.96 "docker exec centro-automotivo-basico-centroautomotivo_db-1 pg_dump -U user -d automotivo_db --clean --if-exists" > backup_automotivo.sql

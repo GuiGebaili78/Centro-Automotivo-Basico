@@ -91,12 +91,17 @@ export class DashboardRepository {
   }
 
   async getPecasComAlerta() {
-    return prisma.pecasEstoque.findMany({
+    const produtos = await prisma.produto.findMany({
       select: {
-        id_pecas_estoque: true,
-        estoque_atual: true,
+        id_produto: true,
+        saldo_atual: true,
         estoque_minimo: true,
       },
     });
+    return produtos.map((p) => ({
+      id_pecas_estoque: p.id_produto,
+      estoque_atual: p.saldo_atual,
+      estoque_minimo: p.estoque_minimo,
+    }));
   }
 }

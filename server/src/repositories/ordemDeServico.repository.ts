@@ -449,21 +449,21 @@ export class OrdemDeServicoRepository {
 
   async adjustStockForOS(id_os: number, action: 'DEDUCT' | 'RETURN') {
       const items = await prisma.itensOs.findMany({
-          where: { id_os, id_pecas_estoque: { not: null }, deleted_at: null }
+          where: { id_os, id_produto: { not: null }, deleted_at: null }
       });
 
       for (const item of items) {
-          if (!item.id_pecas_estoque) continue;
+          if (!item.id_produto) continue;
 
           if (action === 'DEDUCT') {
-              await prisma.pecasEstoque.update({
-                  where: { id_pecas_estoque: item.id_pecas_estoque },
-                  data: { estoque_atual: { decrement: item.quantidade } }
+              await prisma.produto.update({
+                  where: { id_produto: item.id_produto },
+                  data: { saldo_atual: { decrement: item.quantidade } }
               });
           } else {
-              await prisma.pecasEstoque.update({
-                  where: { id_pecas_estoque: item.id_pecas_estoque },
-                  data: { estoque_atual: { increment: item.quantidade } }
+              await prisma.produto.update({
+                  where: { id_produto: item.id_produto },
+                  data: { saldo_atual: { increment: item.quantidade } }
               });
           }
       }
