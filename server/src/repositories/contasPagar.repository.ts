@@ -96,16 +96,6 @@ export class ContasPagarRepository {
                 data_pagamento_fornecedor: created.dt_pagamento || new Date(),
               },
             });
-            await tx.entradaEstoque.updateMany({
-              where: {
-                nf_numero: created.nf_numero,
-                pago_ao_fornecedor: false,
-              },
-              data: {
-                pago_ao_fornecedor: true,
-                data_pagamento_fornecedor: created.dt_pagamento || new Date(),
-              },
-            });
           }
         }
       }
@@ -284,16 +274,6 @@ export class ContasPagarRepository {
                 data_pagamento_fornecedor: updated.dt_pagamento || new Date(),
               },
             });
-            await tx.entradaEstoque.updateMany({
-              where: {
-                nf_numero: updated.nf_numero,
-                pago_ao_fornecedor: false,
-              },
-              data: {
-                pago_ao_fornecedor: true,
-                data_pagamento_fornecedor: updated.dt_pagamento || new Date(),
-              },
-            });
           }
         }
       }
@@ -356,17 +336,6 @@ export class ContasPagarRepository {
                 deleted_at: null,
                 // Só reverte peças que foram pagas automaticamente (sem livro_caixa individual)
                 id_livro_caixa: null,
-              },
-              data: {
-                pago_ao_fornecedor: false,
-                data_pagamento_fornecedor: null,
-              },
-            });
-
-            await tx.entradaEstoque.updateMany({
-              where: {
-                nf_numero: current.nf_numero,
-                pago_ao_fornecedor: true,
               },
               data: {
                 pago_ao_fornecedor: false,
@@ -674,15 +643,14 @@ export class ContasPagarRepository {
     });
     const somaContas = contas.reduce((acc, c) => acc + Number(c.valor), 0);
 
-    // Na entradaEstoque a FK de fornecedor é id_pessoa
-    const whereEstoque: any = { nf_numero: nfNumero };
+    const whereEstoque: any = { nota_fiscal: { numero: nfNumero } };
     if (idFornecedor) {
-      whereEstoque.id_pessoa = Number(idFornecedor);
+      whereEstoque.nota_fiscal.id_fornecedor = Number(idFornecedor);
     }
-    const estoque = await prisma.entradaEstoque.findMany({
+    const estoque = await prisma.movimentacaoEstoque.findMany({
       where: whereEstoque
     });
-    const somaEstoque = estoque.reduce((acc, e) => acc + Number(e.valor_total), 0);
+    const somaEstoque = estoque.reduce((acc: any, e: any) => acc + (Number(e.quantidade) * Number(e.custo_unitario_historico)), 0);
 
     // Na pagamentoPeca a FK de fornecedor é id_pessoa
     const wherePecas: any = { nf_numero: nfNumero, deleted_at: null };
@@ -729,9 +697,9 @@ export class ContasPagarRepository {
         where: { nf_numero: { not: null }, deleted_at: null },
         orderBy: { dt_vencimento: "asc" }
       }),
-      prisma.entradaEstoque.findMany({
-        where: { nf_numero: { not: null } },
-        include: { fornecedor: true }
+      prisma.movimentacaoEstoque.findMany({
+        where: { nota_fiscal_id: { not: null } },
+        include: { nota_fiscal: { include: { fornecedor: true } } }
       }),
       prisma.pagamentoPeca.findMany({
         where: { nf_numero: { not: null }, deleted_at: null },
@@ -758,37 +726,37 @@ export class ContasPagarRepository {
 
     // 2. Agrupa em memória linear O(N)
     const uniqueNfs = new Set<string>();
-    contasPagarList.forEach((c) => c.nf_numero && uniqueNfs.add(c.nf_numero));
-    entradaEstoqueList.forEach((e) => e.nf_numero && uniqueNfs.add(e.nf_numero));
-    pagamentoPecaList.forEach((p) => p.nf_numero && uniqueNfs.add(p.nf_numero));
+    contasPagarList.forEach((c: any) => c.nf_numero && uniqueNfs.add(c.nf_numero));
+    entradaEstoqueList.forEach((e: any) => e.nota_fiscal?.numero && uniqueNfs.add(e.nota_fiscal.numero));
+    pagamentoPecaList.forEach((p: any) => p.nf_numero && uniqueNfs.add(p.nf_numero));
 
-    return Array.from(uniqueNfs).map((nf) => {
-      const contas = contasPagarList.filter((c) => c.nf_numero === nf);
-      const estoques = entradaEstoqueList.filter((e) => e.nf_numero === nf);
-      const pecas = pagamentoPecaList.filter((p) => p.nf_numero === nf);
+    return Array.from(uniqueNfs).map((nf: any) => {
+      const contas = contasPagarList.filter((c: any) => c.nf_numero === nf);
+      const estoques = entradaEstoqueList.filter((e: any) => e.nota_fiscal?.numero === nf);
+      const pecas = pagamentoPecaList.filter((p: any) => p.nf_numero === nf);
 
       // Determina o Fornecedor Principal (Credor)
       const credor =
         contas[0]?.credor ||
-        estoques[0]?.fornecedor?.nome ||
-        (estoques[0]?.fornecedor as any)?.nome_fantasia ||
+        estoques[0]?.nota_fiscal?.fornecedor?.nome ||
+        (estoques[0]?.nota_fiscal?.fornecedor as any)?.nome_fantasia ||
         pecas[0]?.fornecedor?.nome ||
         (pecas[0]?.fornecedor as any)?.nome_fantasia ||
         "FORNECEDOR NÃO INFORMADO";
 
       // Calcula o valor total planejado de Contas a Pagar
-      const valorTotal = contas.reduce((sum, c) => sum + Number(c.valor), 0);
+      const valorTotal = contas.reduce((sum: any, c: any) => sum + Number(c.valor), 0);
 
       // Status consolidado da NF: pago se todas as parcelas forem "PAGO"
       const statusConsolidado =
-        contas.length > 0 && contas.every((c) => c.status === "PAGO") ? "PAGO" : "PENDENTE";
+        contas.length > 0 && contas.every((c: any) => c.status === "PAGO") ? "PAGO" : "PENDENTE";
 
       return {
         nf_numero: nf,
         credor: credor.toUpperCase(),
         valor_total: Number(valorTotal.toFixed(2)),
         status: statusConsolidado,
-        boletos: contas.map((c) => ({
+        boletos: contas.map((c: any) => ({
           id_conta_pagar: c.id_conta_pagar,
           descricao: c.descricao,
           valor: Number(c.valor),
@@ -801,15 +769,15 @@ export class ContasPagarRepository {
           nf_total_parcelas: c.nf_total_parcelas,
           nf_boleto: c.nf_boleto,
         })),
-        pecas_estoque: estoques.map((e) => ({
-          id_entrada_estoque: e.id_entrada,
-          nota_fiscal: e.nota_fiscal,
-          data_compra: e.data_compra,
-          valor_total: Number(e.valor_total),
+        pecas_estoque: estoques.map((e: any) => ({
+          id_entrada_estoque: e.id_movimentacao,
+          nota_fiscal: e.nota_fiscal?.numero,
+          data_compra: e.data_movimentacao,
+          valor_total: Number(e.quantidade) * Number(e.custo_unitario_historico),
           obs: e.obs,
-          fornecedor: (e.fornecedor as any)?.nome_fantasia || e.fornecedor?.nome || "Desconhecido",
+          fornecedor: (e.nota_fiscal?.fornecedor as any)?.nome_fantasia || e.nota_fiscal?.fornecedor?.nome || "Desconhecido",
         })),
-        pecas_os: pecas.map((p) => {
+        pecas_os: pecas.map((p: any) => {
           const os = p.item_os?.ordem_de_servico;
           let clientName = "Cliente não cadastrado";
 

@@ -17,6 +17,7 @@ import {
   format,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { dayjs, TIMEZONE } from "../utils/date.js";
 
 const CATEGORIAS_FORNECEDOR = [
   "Fornecedor / Pg. Fornecedor",
@@ -78,11 +79,11 @@ export class RelatoriosRepository {
 
     const receitaMaoDeObra = Number(osAgg._sum?.valor_mao_de_obra || 0);
 
-    // Receita de Peças de Terceiros (Auto Peças) - is_interno = false, id_pecas_estoque = null
+    // Receita de Peças de Terceiros (Auto Peças) - is_interno = false, id_produto = null
     const itensExternos = await prisma.itensOs.findMany({
       where: {
         is_interno: false,
-        id_pecas_estoque: null,
+        id_produto: null,
         deleted_at: null,
         ordem_de_servico: {
           status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
@@ -92,11 +93,11 @@ export class RelatoriosRepository {
     });
     const receitaAutoPecas = itensExternos.reduce((acc, item) => acc + Number(item.valor_total || 0), 0);
 
-    // Receita de Peças de Estoque - is_interno = false, id_pecas_estoque != null
+    // Receita de Peças de Estoque - is_interno = false, id_produto != null
     const itensEstoque = await prisma.itensOs.findMany({
       where: {
         is_interno: false,
-        id_pecas_estoque: { not: null },
+        id_produto: { not: null },
         deleted_at: null,
         ordem_de_servico: {
           status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
@@ -114,7 +115,7 @@ export class RelatoriosRepository {
         deleted_at: null,
         item_os: {
           is_interno: false,
-          id_pecas_estoque: null,
+          id_produto: null,
           ordem_de_servico: {
             status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
             updated_at: { gte: start, lte: end },
@@ -129,17 +130,17 @@ export class RelatoriosRepository {
     const itensEstoqueComDetalhe = await prisma.itensOs.findMany({
       where: {
         is_interno: false,
-        id_pecas_estoque: { not: null },
+        id_produto: { not: null },
         deleted_at: null,
         ordem_de_servico: {
           status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
           updated_at: { gte: start, lte: end },
         },
       },
-      include: { pecas_estoque: true },
+      include: { produto: true },
     });
     const custoEstoque = itensEstoqueComDetalhe.reduce(
-      (acc, item) => acc + Number(item.quantidade) * Number(item.pecas_estoque?.valor_custo || 0),
+      (acc, item) => acc + Number(item.quantidade) * Number(item.produto?.preco_custo_atual || (item as any).pecas_estoque?.valor_custo || 0),
       0
     );
 
@@ -148,17 +149,17 @@ export class RelatoriosRepository {
     const itensInternosEstoque = await prisma.itensOs.findMany({
       where: {
         is_interno: true,
-        id_pecas_estoque: { not: null },
+        id_produto: { not: null },
         deleted_at: null,
         ordem_de_servico: {
           status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
           updated_at: { gte: start, lte: end },
         },
       },
-      include: { pecas_estoque: true },
+      include: { produto: true },
     });
     const prejuizoEstoque = itensInternosEstoque.reduce(
-      (acc, item) => acc + Number(item.quantidade) * Number(item.pecas_estoque?.valor_custo || 0),
+      (acc, item) => acc + Number(item.quantidade) * Number(item.produto?.preco_custo_atual || (item as any).pecas_estoque?.valor_custo || 0),
       0
     );
 
@@ -168,7 +169,7 @@ export class RelatoriosRepository {
         deleted_at: null,
         item_os: {
           is_interno: true,
-          id_pecas_estoque: null,
+          id_produto: null,
           ordem_de_servico: {
             status: { in: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
             updated_at: { gte: start, lte: end },
@@ -239,7 +240,7 @@ export class RelatoriosRepository {
     const itensExternosFinalizadas = await prisma.itensOs.findMany({
       where: {
         is_interno: false,
-        id_pecas_estoque: null,
+        id_produto: null,
         deleted_at: null,
         ordem_de_servico: {
           status: "FINALIZADA",
@@ -258,18 +259,18 @@ export class RelatoriosRepository {
     const itensEstoqueFinalizadas = await prisma.itensOs.findMany({
       where: {
         is_interno: false,
-        id_pecas_estoque: { not: null },
+        id_produto: { not: null },
         deleted_at: null,
         ordem_de_servico: {
           status: "FINALIZADA",
           updated_at: { gte: start, lte: end },
         },
       },
-      include: { pecas_estoque: true },
+      include: { produto: true },
     });
     const lucroEstoque = itensEstoqueFinalizadas.reduce((acc, item) => {
       const valorVenda = Number(item.valor_total || 0);
-      const custoReal = Number(item.quantidade) * Number(item.pecas_estoque?.valor_custo || 0);
+      const custoReal = Number(item.quantidade) * Number(item.produto?.preco_custo_atual || (item as any).pecas_estoque?.valor_custo || 0);
       return acc + (valorVenda - custoReal);
     }, 0);
 
@@ -287,17 +288,18 @@ export class RelatoriosRepository {
     // ─── 6. ESTOQUE ABSOLUTO E COMPRAS (DASHBOARD) ───
     interface SumResult { sum: number }
     const resultEstoqueImobilizado = await prisma.$queryRaw<SumResult[]>`
-      SELECT SUM(estoque_atual * valor_custo) as sum
-      FROM pecas_estoque
-      WHERE estoque_atual > 0
+      SELECT SUM(saldo_atual * preco_custo_atual) as sum
+      FROM produto
+      WHERE saldo_atual > 0
     `;
     const estoqueImobilizado = Number(resultEstoqueImobilizado[0]?.sum || 0);
 
-    const comprasEstoqueAgg = await prisma.entradaEstoque.aggregate({
-      where: { data_compra: { gte: start, lte: end } },
-      _sum: { valor_total: true }
-    });
-    const comprasPeriodoEstoque = Number(comprasEstoqueAgg._sum?.valor_total || 0);
+    const resultComprasEstoque = await prisma.$queryRaw<SumResult[]>`
+      SELECT SUM(quantidade * custo_unitario) as sum
+      FROM movimentacao_estoque
+      WHERE tipo = 'ENTRADA' AND data_movimentacao >= ${start} AND data_movimentacao <= ${end}
+    `;
+    const comprasPeriodoEstoque = Number(resultComprasEstoque[0]?.sum || 0);
 
     const dashboard = {
       receitaBruta: fluxoCaixaBruto,
@@ -378,7 +380,7 @@ export class RelatoriosRepository {
       include: {
         itens_os: {
           where: { deleted_at: null },
-          include: { pecas_estoque: true },
+          include: { produto: true },
         },
       },
     });
@@ -529,7 +531,7 @@ export class RelatoriosRepository {
         (acc, o) =>
           acc +
           o.itens_os
-            .filter((i) => !i.is_interno && !i.id_pecas_estoque)
+            .filter((i) => !i.is_interno && !i.id_produto && !(i as any).id_pecas_estoque)
             .reduce((sum, i) => sum + Number(i.valor_total || 0), 0),
         0
       );
@@ -537,7 +539,7 @@ export class RelatoriosRepository {
         (acc, o) =>
           acc +
           o.itens_os
-            .filter((i) => !i.is_interno && i.id_pecas_estoque)
+            .filter((i) => !i.is_interno && (i.id_produto || (i as any).id_pecas_estoque))
             .reduce((sum, i) => sum + Number(i.valor_total || 0), 0),
         0
       );
@@ -551,12 +553,12 @@ export class RelatoriosRepository {
         (acc, o) =>
           acc +
           o.itens_os
-            .filter((i) => !i.is_interno && i.id_pecas_estoque)
+            .filter((i) => !i.is_interno && (i.id_produto || (i as any).id_pecas_estoque))
             .reduce(
               (sum, i) =>
                 sum +
                 Number(i.quantidade || 0) *
-                  Number(i.pecas_estoque?.valor_custo || 0),
+                  Number(i.produto?.preco_custo_atual || (i as any).pecas_estoque?.valor_custo || 0),
               0
             ),
         0
@@ -567,12 +569,12 @@ export class RelatoriosRepository {
         (acc, o) =>
           acc +
           o.itens_os
-            .filter((i) => i.is_interno && i.id_pecas_estoque)
+            .filter((i) => i.is_interno && (i.id_produto || (i as any).id_pecas_estoque))
             .reduce(
               (sum, i) =>
                 sum +
                 Number(i.quantidade || 0) *
-                  Number(i.pecas_estoque?.valor_custo || 0),
+                  Number(i.produto?.preco_custo_atual || (i as any).pecas_estoque?.valor_custo || 0),
               0
             ),
         0
@@ -782,6 +784,576 @@ export class RelatoriosRepository {
     return {
       hasPending: pendentesCount > 0,
       count: pendentesCount
+    };
+  }
+
+  async getDashboardFinanceiro(startDate: Date, endDate: Date) {
+    const receitasCaixa = await prisma.livroCaixa.aggregate({
+      where: {
+        tipo_movimentacao: "ENTRADA",
+        dt_movimentacao: { gte: startDate, lte: endDate },
+        deleted_at: null,
+        NOT: {
+          categoria: {
+            in: ["CONCILIACAO_CARTAO", "TRANSFERENCIA", "AJUSTE_SALDO"],
+          },
+        },
+      },
+      _sum: { valor: true },
+    });
+
+    const despesasCaixa = await prisma.livroCaixa.aggregate({
+      where: {
+        tipo_movimentacao: "SAIDA",
+        dt_movimentacao: { gte: startDate, lte: endDate },
+      },
+      _sum: { valor: true },
+    });
+
+    const receitaTotal = Number(receitasCaixa._sum.valor) || 0;
+    const despesaTotal = Number(despesasCaixa._sum.valor) || 0;
+    const lucroLiquido = receitaTotal - despesaTotal;
+    const margemLucro = receitaTotal > 0 ? (lucroLiquido / receitaTotal) * 100 : 0;
+
+    const totalOS = await prisma.ordemDeServico.count({
+      where: {
+        dt_entrega: { gte: startDate, lte: endDate },
+        status: "FINALIZADO",
+      },
+    });
+    const ticketMedio = totalOS > 0 ? receitaTotal / totalOS : 0;
+
+    const fluxo_caixa: any[] = await prisma.$queryRaw`
+      SELECT 
+        TO_CHAR(dt_movimentacao, 'DD/MM') as date,
+        SUM(CASE WHEN tipo_movimentacao = 'ENTRADA' THEN valor ELSE 0 END)::FLOAT as "Receitas",
+        SUM(CASE WHEN tipo_movimentacao = 'SAIDA' THEN valor ELSE 0 END)::FLOAT as "Despesas"
+      FROM "livro_caixa"
+      WHERE dt_movimentacao BETWEEN ${startDate} AND ${endDate}
+        AND deleted_at IS NULL
+        AND NOT (categoria IN ('CONCILIACAO_CARTAO', 'TRANSFERENCIA', 'AJUSTE_SALDO'))
+      GROUP BY DATE_TRUNC('day', dt_movimentacao), TO_CHAR(dt_movimentacao, 'DD/MM')
+      ORDER BY DATE_TRUNC('day', dt_movimentacao) ASC
+    `;
+
+    const despesasPorCategoria = await prisma.livroCaixa.groupBy({
+      by: ["categoria"],
+      where: {
+        tipo_movimentacao: "SAIDA",
+        dt_movimentacao: { gte: startDate },
+      },
+      _sum: { valor: true },
+      orderBy: { _sum: { valor: "desc" } },
+      take: 5,
+    });
+
+    let categorias = despesasPorCategoria.map((d) => ({
+      name: d.categoria || "Geral",
+      value: Number(d._sum.valor),
+    }));
+
+    if (categorias.length === 0) {
+      categorias = [
+        { name: "Peças", value: 0 },
+        { name: "Pessoal", value: 0 },
+        { name: "Infraestrutura", value: 0 },
+      ];
+    }
+
+    return {
+      kpis: {
+        receita: receitaTotal,
+        despesa: despesaTotal,
+        lucro: lucroLiquido,
+        margem: margemLucro,
+        ticket: ticketMedio,
+      },
+      fluxo_caixa,
+      categorias,
+    };
+  }
+
+  async getRelatorioCompleto(start: Date, end: Date) {
+    const osFinalizadas = await prisma.ordemDeServico.findMany({
+      where: {
+        status: "FINALIZADA",
+        updated_at: { gte: start, lte: end },
+      },
+      include: {
+        itens_os: {
+          include: {
+            produto: true,
+            pagamentos_peca: true,
+          },
+        },
+        servicos_mao_de_obra: true,
+      },
+    });
+
+    let receitaBruta = 0;
+    let custoPecasTotal = 0;
+    let lucroEstoque = 0;
+    let lucroPecasExternas = 0;
+    let maoDeObraTotal = 0;
+
+    const evolucaoMensal: Record<
+      string,
+      { maoDeObra: number; lucroEstoque: number; lucroPecasExternas: number }
+    > = {};
+    const porCategoria: Record<string, number> = {};
+    const evolucaoDiaria: Record<string, number> = {};
+
+    for (const os of osFinalizadas) {
+      const valorOs = Number(os.valor_final || 0);
+      receitaBruta += valorOs;
+
+      let custoPecasOs = 0;
+      let lucroEstoqueOs = 0;
+      let lucroPecasExternasOs = 0;
+
+      for (const item of os.itens_os) {
+        const valorVenda = Number(item.valor_venda) * item.quantidade;
+
+        if (item.produto || (item as any).pecas_estoque) {
+          const custo =
+            Number(item.produto?.preco_custo_atual || (item as any).pecas_estoque?.valor_custo || 0) * item.quantidade;
+          custoPecasOs += custo;
+          lucroEstoqueOs += valorVenda - custo;
+        } else {
+          const pagPeca = item.pagamentos_peca[0];
+          if (pagPeca) {
+            const custoReal = Number(pagPeca.custo_real);
+            custoPecasOs += custoReal;
+            lucroPecasExternasOs += valorVenda - custoReal;
+          } else {
+            custoPecasOs += valorVenda;
+          }
+        }
+      }
+
+      custoPecasTotal += custoPecasOs;
+      lucroEstoque += lucroEstoqueOs;
+      lucroPecasExternas += lucroPecasExternasOs;
+
+      for (const servico of os.servicos_mao_de_obra) {
+        const valorServ = Number(servico.valor);
+        maoDeObraTotal += valorServ;
+        const cat = servico.categoria || "OUTROS";
+        porCategoria[cat] = (porCategoria[cat] || 0) + valorServ;
+      }
+
+      const localDate = dayjs(os.updated_at).tz(TIMEZONE);
+      const mesKey = localDate.format('YYYY-MM');
+      if (!evolucaoMensal[mesKey]) {
+        evolucaoMensal[mesKey] = {
+          maoDeObra: 0,
+          lucroEstoque: 0,
+          lucroPecasExternas: 0,
+        };
+      }
+      evolucaoMensal[mesKey].maoDeObra += Number(os.valor_mao_de_obra || 0);
+      evolucaoMensal[mesKey].lucroEstoque += lucroEstoqueOs;
+      evolucaoMensal[mesKey].lucroPecasExternas += lucroPecasExternasOs;
+
+      const diaKey = localDate.format('YYYY-MM-DD');
+      evolucaoDiaria[diaKey] =
+        (evolucaoDiaria[diaKey] || 0) + Number(os.valor_final || 0);
+    }
+
+    const idsOs = osFinalizadas.map((o) => o.id_os);
+    const recebiveis = await prisma.recebivelCartao.findMany({
+      where: { id_os: { in: idsOs } },
+    });
+    const taxasCartaoTotal = recebiveis.reduce(
+      (acc, curr) => acc + Number(curr.taxa_aplicada || 0),
+      0,
+    );
+
+    const receitaLiquida = receitaBruta - custoPecasTotal - taxasCartaoTotal;
+    const margem = receitaBruta > 0 ? (receitaLiquida / receitaBruta) * 100 : 0;
+    const ticketMedio = osFinalizadas.length > 0 ? receitaBruta / osFinalizadas.length : 0;
+
+    const osOrcamentos = await prisma.ordemDeServico.count({
+      where: {
+        status: "ORCAMENTO",
+        dt_abertura: { gte: start, lte: end },
+      },
+    });
+    const taxaConversao = osOrcamentos > 0 ? (osFinalizadas.length / osOrcamentos) * 100 : 0;
+
+    const dataLimiteChurn = new Date();
+    dataLimiteChurn.setDate(dataLimiteChurn.getDate() - 180);
+
+    const clientesAtivos = await prisma.cliente.findMany({
+      include: {
+        ordens_de_servico: {
+          orderBy: { dt_abertura: "desc" },
+          take: 1,
+        },
+      },
+    });
+
+    const churn = clientesAtivos.filter((cliente) => {
+      if (cliente.ordens_de_servico.length === 0) return true;
+      const ultimaOS = cliente.ordens_de_servico[0]!;
+      return new Date(ultimaOS.dt_abertura) < dataLimiteChurn;
+    }).length;
+
+    const despesasFixas = await prisma.contasPagar.aggregate({
+      where: {
+        dt_vencimento: { gte: start, lte: end },
+        categoria: {
+          in: ["Ocupação", "Água", "Luz", "Internet", "Telefone"],
+        },
+      },
+      _sum: { valor: true },
+    });
+    const breakEven = Number(despesasFixas._sum.valor || 0);
+
+    const servicosPorFuncionario = await prisma.servicoMaoDeObra.groupBy({
+      by: ["id_funcionario"],
+      where: {
+        ordem_de_servico: {
+          status: "FINALIZADA",
+          updated_at: { gte: start, lte: end },
+        },
+      },
+      _sum: { valor: true },
+    });
+
+    const funcionarios = await prisma.funcionario.findMany({
+      where: {
+        id_funcionario: {
+          in: servicosPorFuncionario.map((s) => s.id_funcionario),
+        },
+      },
+      include: { pessoa_fisica: { include: { pessoa: true } } },
+    });
+
+    const rankingEquipe = await Promise.all(
+      servicosPorFuncionario.map(async (servico) => {
+        const func = funcionarios.find(
+          (f) => f.id_funcionario === servico.id_funcionario,
+        );
+
+        const osDoFuncionario = await prisma.ordemDeServico.findMany({
+          where: {
+            id_funcionario: servico.id_funcionario,
+            status: "FINALIZADA",
+            updated_at: { gte: start, lte: end },
+          },
+          include: {
+            itens_os: {
+              include: {
+                produto: true,
+                pagamentos_peca: true,
+              },
+            },
+          },
+        });
+
+        let pecasVendidas = 0;
+        let lucroPecas = 0;
+
+        for (const os of osDoFuncionario) {
+          for (const item of os.itens_os) {
+            pecasVendidas += item.quantidade;
+            const valorVenda = Number(item.valor_venda) * item.quantidade;
+
+            if (item.produto || (item as any).pecas_estoque) {
+              const custo =
+                Number(item.produto?.preco_custo_atual || (item as any).pecas_estoque?.valor_custo || 0) * item.quantidade;
+              lucroPecas += valorVenda - custo;
+            } else {
+              const pagPeca = item.pagamentos_peca[0];
+              if (pagPeca) {
+                lucroPecas += valorVenda - Number(pagPeca.custo_real);
+              }
+            }
+          }
+        }
+
+        return {
+          nome: func?.pessoa_fisica?.pessoa.nome || "Desconhecido",
+          totalMaoDeObra: Number(servico._sum.valor || 0),
+          pecasVendidas,
+          lucroPecas,
+          totalContribuicao: Number(servico._sum.valor || 0) + lucroPecas,
+        };
+      }),
+    );
+
+    rankingEquipe.sort((a, b) => b.totalContribuicao - a.totalContribuicao);
+
+    interface FornecedorResult {
+      id_pessoa: number | null;
+      sum: number;
+      cnt: number;
+    }
+    const entradasPorFornecedor = await prisma.$queryRaw<FornecedorResult[]>`
+      SELECT id_pessoa, SUM(quantidade * custo_unitario) as sum, COUNT(id_movimentacao) as cnt
+      FROM movimentacao_estoque
+      WHERE tipo = 'ENTRADA' AND data_movimentacao >= ${start} AND data_movimentacao <= ${end} AND id_pessoa IS NOT NULL
+      GROUP BY id_pessoa
+    `;
+
+    const fornecedores = await prisma.pessoa.findMany({
+      where: {
+        is_fornecedor: true,
+        id_pessoa: {
+          in: entradasPorFornecedor.map((e: any) => Number(e.id_pessoa)).filter((id: number) => !isNaN(id)),
+        },
+      },
+    });
+
+    const rankingFornecedores = entradasPorFornecedor
+      .map((entrada: any) => {
+        const forn = fornecedores.find(
+          (f: any) => f.id_pessoa === Number(entrada.id_pessoa),
+        );
+        return {
+          nome: forn?.nome || "Desconhecido",
+          totalCompras: Number(entrada.sum || 0),
+          quantidadeCompras: Number(entrada.cnt || 0),
+        };
+      })
+      .sort((a: any, b: any) => b.totalCompras - a.totalCompras)
+      .slice(0, 10);
+
+    const recebiveisPorOperadora = await prisma.recebivelCartao.groupBy({
+      by: ["id_operadora", "status"],
+      where: {
+        data_venda: { gte: start, lte: end },
+      },
+      _sum: {
+        valor_liquido: true,
+        taxa_aplicada: true,
+      },
+    });
+
+    const operadoras = await prisma.operadoraCartao.findMany({
+      where: {
+        id_operadora: {
+          in: recebiveisPorOperadora.map((r) => r.id_operadora).filter((id): id is number => id !== null),
+        },
+      },
+    });
+
+    const analiseOperadoras = operadoras.map((op) => {
+      const recebido = recebiveisPorOperadora
+        .filter(
+          (r) =>
+            r.id_operadora === op.id_operadora && r.status === "RECEBIDO",
+        )
+        .reduce((acc, curr) => acc + Number(curr._sum.valor_liquido || 0), 0);
+
+      const aReceber = recebiveisPorOperadora
+        .filter(
+          (r) =>
+            r.id_operadora === op.id_operadora && r.status === "PENDENTE",
+        )
+        .reduce((acc, curr) => acc + Number(curr._sum.valor_liquido || 0), 0);
+
+      const taxasDescontadas = recebiveisPorOperadora
+        .filter(
+          (r) =>
+            r.id_operadora === op.id_operadora && r.status === "RECEBIDO",
+        )
+        .reduce((acc, curr) => acc + Number(curr._sum.taxa_aplicada || 0), 0);
+
+      return {
+        nome: op.nome,
+        recebido,
+        aReceber,
+        taxasDescontadas,
+      };
+    });
+
+    const despesasPorCategoriaRaw = await prisma.contasPagar.groupBy({
+      by: ["categoria"],
+      where: {
+        status: "PAGO",
+        dt_pagamento: { gte: start, lte: end },
+      },
+      _sum: { valor: true },
+    });
+
+    const despesasPorCategoria = despesasPorCategoriaRaw.map((d) => ({
+      name: d.categoria || "Sem Categoria",
+      value: Number(d._sum.valor || 0),
+      percentualFaturamento:
+        receitaBruta > 0
+          ? (Number(d._sum.valor || 0) / receitaBruta) * 100
+          : 0,
+    }));
+
+    const livroCaixa = await prisma.livroCaixa.findMany({
+      where: {
+        dt_movimentacao: { gte: start, lte: end },
+        deleted_at: null,
+      },
+      orderBy: { dt_movimentacao: "desc" },
+      take: 100,
+    });
+
+    return {
+      kpis: {
+        receitaBruta,
+        receitaLiquida,
+        margem,
+        ticketMedio,
+        taxaConversao,
+        churn,
+        breakEven,
+        countOs: osFinalizadas.length,
+      },
+      charts: {
+        evolucaoMensal: Object.entries(evolucaoMensal).map(([mes, vals]) => ({
+          mes,
+          ...vals,
+        })),
+        porCategoria: Object.entries(porCategoria).map(([name, value]) => ({
+          name,
+          value,
+        })),
+        despesasPorCategoria,
+        evolucaoDiaria: Object.entries(evolucaoDiaria)
+          .map(([dia, valor]) => ({
+            dia,
+            valor,
+          }))
+          .sort((a, b) => a.dia.localeCompare(b.dia)),
+      },
+      ranking: {
+        equipe: rankingEquipe,
+        fornecedores: rankingFornecedores,
+      },
+      operadoras: analiseOperadoras,
+      livroCaixa,
+    };
+  }
+
+  async getDashboardData(start: Date, end: Date) {
+    const osFinalizadas = await prisma.ordemDeServico.findMany({
+      where: {
+        status: "FINALIZADA",
+        updated_at: { gte: start, lte: end },
+      },
+      include: {
+        itens_os: {
+          include: {
+            produto: true,
+            pagamentos_peca: true,
+          },
+        },
+        servicos_mao_de_obra: {
+          include: {
+            funcionario: {
+              include: {
+                pessoa_fisica: {
+                  include: { pessoa: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const despesas = await prisma.livroCaixa.findMany({
+      where: {
+        tipo_movimentacao: "SAIDA",
+        dt_movimentacao: { gte: start, lte: end },
+      },
+    });
+
+    let receitaBruta = 0;
+    let receitaMaoDeObra = 0;
+    let receitaPecas = 0;
+    let custoPecas = 0;
+
+    const performanceMecanicos: Record<string, number> = {};
+    const servicosMaisVendidos: Record<string, number> = {};
+    const categoriasDespesa: Record<string, number> = {};
+
+    for (const os of osFinalizadas) {
+      receitaBruta += Number(os.valor_final || 0);
+
+      for (const item of os.itens_os) {
+        const vlrVenda = Number(item.valor_venda) * item.quantidade;
+        receitaPecas += vlrVenda;
+
+        if (item.produto || (item as any).pecas_estoque) {
+          custoPecas +=
+            Number(item.produto?.preco_custo_atual || (item as any).pecas_estoque?.valor_custo || 0) * item.quantidade;
+        } else if (item.pagamentos_peca?.[0]) {
+          custoPecas += Number(item.pagamentos_peca[0].custo_real);
+        } else {
+          custoPecas += vlrVenda * 0.7;
+        }
+      }
+
+      for (const serv of os.servicos_mao_de_obra) {
+        const vlrServ = Number(serv.valor);
+        receitaMaoDeObra += vlrServ;
+
+        let mecName = "Outros";
+        if (serv.funcionario) {
+          if (serv.funcionario.nome_fantasia)
+            mecName = serv.funcionario.nome_fantasia;
+          else if (serv.funcionario.pessoa_fisica?.pessoa?.nome)
+            mecName = serv.funcionario.pessoa_fisica.pessoa.nome;
+        }
+
+        performanceMecanicos[mecName] =
+          (performanceMecanicos[mecName] || 0) + vlrServ;
+
+        const servName = serv.descricao || "Serviço Geral";
+        servicosMaisVendidos[servName] =
+          (servicosMaisVendidos[servName] || 0) + 1;
+      }
+    }
+
+    let totalDespesas = 0;
+    for (const d of despesas) {
+      const val = Number(d.valor);
+      totalDespesas += val;
+      const cat = d.categoria || "Outros";
+      categoriasDespesa[cat] = (categoriasDespesa[cat] || 0) + val;
+    }
+
+    const lucroReal = receitaBruta - custoPecas - totalDespesas;
+    const pontoEquilibrio = totalDespesas;
+
+    const rankingMecanicos = Object.entries(performanceMecanicos)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const rankingServicos = Object.entries(servicosMaisVendidos)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const categoriasChart = Object.entries(categoriasDespesa)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    return {
+      kpis: {
+        faturamentoBruto: receitaBruta,
+        faturamentoMaoDeObra: receitaMaoDeObra,
+        faturamentoPecas: receitaPecas,
+        lucroReal,
+        pontoEquilibrio,
+        totalDespesas,
+        custoPecas,
+      },
+      charts: {
+        performanceMecanicos: rankingMecanicos,
+        servicosMaisVendidos: rankingServicos,
+        categoriasDespesa: categoriasChart,
+      },
     };
   }
 }

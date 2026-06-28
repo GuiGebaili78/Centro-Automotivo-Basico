@@ -11,8 +11,7 @@ async function main() {
   await prisma.pagamentoEquipe.deleteMany();
   await prisma.pagamentoPeca.deleteMany();
   await prisma.recebivelCartao.deleteMany();
-  await prisma.itemEntrada.deleteMany(); // Depende de Pecas e Entrada
-  await prisma.entradaEstoque.deleteMany();
+  await prisma.movimentacaoEstoque.deleteMany();
   await prisma.contasPagar.deleteMany();
   await prisma.livroCaixa.deleteMany();
   await prisma.operadoraCartao.deleteMany();
@@ -25,7 +24,7 @@ async function main() {
   await prisma.cliente.deleteMany();
   await prisma.tipo.deleteMany(); // Limpa Tipos de cliente
   await prisma.funcionario.deleteMany();
-  await prisma.pecasEstoque.deleteMany();
+  await prisma.produto.deleteMany();
 
   // Limpar Pessoas é delicado pois pode ter outros vinculos, mas vamos limpar os criados pelo seed
   await prisma.pessoaFisica.deleteMany();
@@ -82,14 +81,15 @@ async function main() {
   });
 
   // 2. Criar Peças no Estoque
-  const pecaOleo = await prisma.pecasEstoque.create({
+  const pecaOleo = await prisma.produto.create({
     data: {
       nome: "Óleo 5W30 Sintético",
       descricao: "Óleo Motor",
       fabricante: "Lubrax",
-      valor_custo: 25.0,
-      valor_venda: 60.0,
-      estoque_atual: 100, // Requerido no schema
+      modelo: "Geral",
+      preco_custo_atual: 25.0,
+      preco_venda_atual: 60.0,
+      saldo_atual: 100, // Requerido no schema
     },
   });
 
@@ -170,7 +170,7 @@ async function main() {
     const itemOs = await prisma.itensOs.create({
       data: {
         id_os: osMec.id_os, // Correto (não id_ordem_servico)
-        id_pecas_estoque: pecaOleo.id_pecas_estoque,
+        id_produto: pecaOleo.id_produto,
         descricao: "Óleo 5W30",
         quantidade: 4,
         valor_venda: 60.0,

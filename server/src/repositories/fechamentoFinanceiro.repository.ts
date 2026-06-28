@@ -230,7 +230,7 @@ export class FechamentoFinanceiroRepository {
           equipamento: true,
           itens_os: {
             where: { deleted_at: null },
-            include: { pecas_estoque: true },
+            include: { produto: true },
           },
           servicos_mao_de_obra: {
             where: { deleted_at: null },
@@ -273,7 +273,7 @@ export class FechamentoFinanceiroRepository {
           const osItem = os.itens_os.find((i) => i.id_iten === idItemOsNum);
           
           // Trava de Isolamento: Estoque vs. Auto Peças
-          if (osItem?.id_pecas_estoque) {
+          if (osItem?.id_produto) {
             console.log(`[AVISO] Tentativa de criar PagamentoPeca para item de estoque bloqueada (Item OS #${id_item_os}).`);
             continue;
           }
@@ -343,7 +343,7 @@ export class FechamentoFinanceiroRepository {
       // --- CÁLCULO DINÂMICO DE LUCRO ---
       let lucroPecas = 0;
       let lucroMaoDeObra = os.servicos_mao_de_obra.reduce(
-        (acc, s) => acc + Number(s.valor),
+        (acc: any, s: any) => acc + Number(s.valor),
         0,
       );
 
@@ -358,9 +358,9 @@ export class FechamentoFinanceiroRepository {
         const custoReal =
           pecaPayload?.custo_real !== undefined
             ? Number(pecaPayload.custo_real)
-            : Number(item.pecas_estoque?.valor_custo || 0); // No ItemOS não tem valor_custo nativo, é no estoque ou via payload.
+            : Number(item.produto?.preco_custo_atual || 0); // No ItemOS não tem valor_custo nativo, é no estoque ou via payload.
 
-        if (item.id_pecas_estoque) {
+        if (item.id_produto) {
           if (item.is_interno) {
             // Peça de Estoque para Uso Interno -> Impacto Neutro
             lucroPecas += 0;
@@ -747,13 +747,13 @@ export class FechamentoFinanceiroRepository {
       // Apenas peças não-estoque (id_pecas_estoque == null) geram saída imediata
       let custoPecasExternas = 0;
       for (const item of os.itens_os) {
-         if (!item.id_pecas_estoque) {
+         if (!item.id_produto) {
             const pecaPayload = itemsPecas?.find(
               (p: any) => Number(p.id_item_os) === item.id_iten,
             );
             const custoReal = pecaPayload?.custo_real !== undefined
                 ? Number(pecaPayload.custo_real)
-                : Number(item.pecas_estoque?.valor_custo || 0);
+                : Number(item.produto?.preco_custo_atual || 0);
 
             custoPecasExternas += custoReal;
          }

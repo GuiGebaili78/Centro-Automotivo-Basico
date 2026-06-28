@@ -8,25 +8,26 @@ async function main() {
     const ref_cod = 'REF123';
     
     // 1. Create a part
-    const part = await prisma.pecasEstoque.create({
+    const part = await prisma.produto.create({
       data: {
         nome,
         fabricante,
+        modelo: 'Geral',
         descricao: 'Teste',
         ref_cod,
-        valor_custo: 10,
-        valor_venda: 20,
-        estoque_atual: 1,
+        preco_custo_atual: 10,
+        preco_venda_atual: 20,
+        saldo_atual: 1,
         estoque_minimo: 0,
       }
     });
 
-    console.log('Created part', part.id_pecas_estoque);
+    console.log('Created part', part.id_produto);
 
     // 2. Update it with exactly the same unique fields but different value
     try {
-      const updated = await prisma.pecasEstoque.update({
-        where: { id_pecas_estoque: part.id_pecas_estoque },
+      const updated = await prisma.produto.update({
+        where: { id_produto: part.id_produto },
         data: {
           nome,
           fabricante,
@@ -40,7 +41,7 @@ async function main() {
     }
 
     // 3. Clean up
-    await prisma.pecasEstoque.delete({ where: { id_pecas_estoque: part.id_pecas_estoque } });
+    await prisma.produto.delete({ where: { id_produto: part.id_produto } });
 
   } catch (error) {
     console.error('ERROR:', error);

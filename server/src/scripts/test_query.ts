@@ -7,54 +7,47 @@ async function main() {
   console.log(`\nSimulating stock entry insert with id_pessoa: 34...`);
   try {
     const testEntrada = await prisma.$transaction(async (tx) => {
-      return await tx.entradaEstoque.create({
+      const p = await tx.produto.findFirst();
+      if (!p) throw new Error("No product found");
+      return await tx.movimentacaoEstoque.create({
         data: {
-          id_pessoa: 34,
-          nota_fiscal: "TEST-123",
-          data_compra: new Date(),
-          valor_total: 100.0,
+          produto_id: p.id_produto,
+          tipo: "ENTRADA",
+          nota_fiscal_id: 99999, // non-existent NF ID to simulate constraint failure
+          quantidade: 1,
+          custo_unitario_historico: 100.0,
+          preco_venda_historico: 100.0,
           obs: "Test transaction",
         }
       });
     });
     console.log("❌ Simulation succeeded! (Should have failed with constraint error)");
-    await prisma.entradaEstoque.delete({ where: { id_entrada: testEntrada.id_entrada } });
+    await prisma.movimentacaoEstoque.delete({ where: { id_movimentacao: testEntrada.id_movimentacao } });
   } catch (e: any) {
     console.log("Specific DB Error code for id_pessoa 34:", e.code);
     console.log("Error message:", e.message);
   }
 
-  // 2. Test simulating item entry insert with condicao and aplicacao
-  console.log(`\nSimulating item entry insert with condicao and aplicacao...`);
+  // 2. Test simulating item entry insert
+  console.log(`\nSimulating item entry insert...`);
   try {
-    const testEntrada = await prisma.entradaEstoque.create({
-      data: {
-        id_pessoa: 1, // Mecânico Padrão exists
-        nota_fiscal: "TEST-ITEM",
-        data_compra: new Date(),
-        valor_total: 100.0,
-      }
-    });
-
-    const peca = await prisma.pecasEstoque.findFirst();
+    const peca = await prisma.produto.findFirst();
     if (peca) {
-      const item = await prisma.itemEntrada.create({
+      const item = await prisma.movimentacaoEstoque.create({
         data: {
-          id_entrada: testEntrada.id_entrada,
-          id_pecas_estoque: peca.id_pecas_estoque,
+          produto_id: peca.id_produto,
+          tipo: "ENTRADA",
           quantidade: 10,
-          valor_custo: 5.0,
-          valor_venda: 10.0,
-          condicao: "NOVO",
-          aplicacao: "GERAL",
+          custo_unitario_historico: 5.0,
+          preco_venda_historico: 10.0,
+          obs: "TEST-ITEM",
         }
       });
-      console.log("❌ Simulation succeeded! ItemEntrada has condicao and aplicacao. Item ID:", item.id_item_entrada);
+      console.log("❌ Simulation succeeded! MovimentacaoEstoque created. Item ID:", item.id_movimentacao);
       
       // cleanup
-      await prisma.itemEntrada.delete({ where: { id_item_entrada: item.id_item_entrada } });
+      await prisma.movimentacaoEstoque.delete({ where: { id_movimentacao: item.id_movimentacao } });
     }
-    await prisma.entradaEstoque.delete({ where: { id_entrada: testEntrada.id_entrada } });
   } catch (e: any) {
     console.log("Specific DB Error for item insert:", e.code);
     console.log("Error message:", e.message);

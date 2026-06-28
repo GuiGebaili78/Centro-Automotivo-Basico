@@ -5,12 +5,13 @@
 services:
   api:
     # Sobrescreve o command de prod por hot-reload (tsx watch)
-    command: sh -c "npx prisma generate && npx prisma migrate deploy && npx prisma db seed && npm run dev"
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
     environment:
       NODE_ENV: development
       FRONTEND_URL: http://localhost:5173
+      NODE_OPTIONS: --max-old-space-size=512
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
   client:
     # Em dev usa o stage "dev" do Dockerfile (Vite dev server + HMR)
@@ -20,20 +21,16 @@ services:
       target: dev
     command: sh -c "npm run dev"
     # Sobe pelas portas direto, sem passar pelo nginx
+    # 127.0.0.1: força IPv4 para evitar conflito com wslrelay no Windows
     ports:
-      - "5173:5173"
-    shm_size: '1g'
+      - "127.0.0.1:5173:5173"
+    shm_size: '256m'
     environment:
-      NODE_OPTIONS: --max-old-space-size=2048
+      NODE_OPTIONS: --max-old-space-size=512
       VITE_API_URL: http://localhost:3000/api
       VITE_PORT: "5173"
       VITE_ALLOWED_HOSTS: ""
-      VITE_HMR_HOST: "localhost"
-      VITE_HMR_PROTOCOL: "ws"
-    # Em dev precisa do bind do código pra HMR funcionar
-    volumes:
-      - ./client:/app/client
-      - /app/client/node_modules
+      VITE_HMR_CLIENT_PORT: "5173"
 
   # Em dev não precisa do reverse proxy nginx (libera as 80/443 do host).
   nginx:

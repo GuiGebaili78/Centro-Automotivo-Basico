@@ -11,36 +11,23 @@ const allowedHostsList = (process.env.VITE_ALLOWED_HOSTS || "")
   .map((h) => h.trim())
   .filter(Boolean);
 
-const hmrHost = process.env.VITE_HMR_HOST || "localhost";
-const hmrProtocol =
-  (process.env.VITE_HMR_PROTOCOL as "ws" | "wss") || "ws";
-const hmrClientPort = Number(process.env.VITE_HMR_CLIENT_PORT || port);
-
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  cacheDir: "/tmp/.vite-cache",
-  optimizeDeps: {
-    entries: [],
-  },
   server: {
     host: "0.0.0.0",
     strictPort: true,
     port,
     allowedHosts: allowedHostsList.length > 0 ? allowedHostsList : true,
-    fs: {
-      allow: ["/app/client", "/tmp/.vite-cache"],
-    },
     watch: {
-      usePolling: false,
+      // Polling necessário no Docker/WSL2 para detectar mudanças de arquivo
+      usePolling: true,
+      interval: 1000,
       ignored: ["**/node_modules/**", "**/dist/**", "**/.git/**"],
     },
     hmr: {
-      host: hmrHost,
-      port,
-      protocol: hmrProtocol,
-      clientPort: hmrClientPort,
-      timeout: 30000,
+      // clientPort garante que o browser conecte na porta certa (host Windows)
+      clientPort: Number(process.env.VITE_HMR_CLIENT_PORT || port),
     },
   },
 });

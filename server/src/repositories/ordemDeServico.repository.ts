@@ -5,6 +5,54 @@ import { nowSP } from '../utils/date.js';
 
 const auditRepo = new AuditLogRepository();
 
+function mapProdutoToPecasEstoque(p: any): any {
+  if (!p) return null;
+  return {
+    id_pecas_estoque: p.id_produto,
+    nome: p.nome,
+    fabricante: p.fabricante || null,
+    descricao: p.descricao || p.nome,
+    valor_custo: p.preco_custo_atual,
+    valor_venda: p.preco_venda_atual,
+    estoque_atual: p.saldo_atual,
+    estoque_minimo: p.estoque_minimo,
+    unidade_medida: p.unidade_medida || null,
+    custo_unitario_padrao: p.custo_unitario_padrao,
+    dt_ultima_compra: p.data_ultima_compra || null,
+    dt_cadastro: p.dt_cadastro,
+    ref_cod: p.ref_cod || null,
+    localizacao: p.localizacao || null,
+    aplicacao: p.aplicacao_equivalencia || null,
+    modelo: p.modelo || null,
+    id_categoria: p.id_categoria || null,
+    categoria: p.categoria || null,
+    ativo: p.ativo,
+    itens_entrada: [],
+    _count: p._count,
+  };
+}
+
+function mapItemOsToLegacy(item: any): any {
+  if (!item) return item;
+  const mapped = { ...item };
+  if (mapped.id_produto !== undefined) {
+    mapped.id_pecas_estoque = mapped.id_produto;
+  }
+  if (mapped.produto !== undefined) {
+    mapped.pecas_estoque = mapProdutoToPecasEstoque(mapped.produto);
+  }
+  return mapped;
+}
+
+function mapOsToLegacy(os: any): any {
+  if (!os) return os;
+  const mapped = { ...os };
+  if (Array.isArray(mapped.itens_os)) {
+    mapped.itens_os = mapped.itens_os.map(mapItemOsToLegacy);
+  }
+  return mapped;
+}
+
 export class OrdemDeServicoRepository {
   async create(data: Prisma.OrdemDeServicoCreateInput) {
     if (!data.dt_abertura) {
@@ -21,7 +69,7 @@ export class OrdemDeServicoRepository {
         valor_novo: created
     });
     
-    return created;
+    return mapOsToLegacy(created);
   }
 
   async createUnified(data: any) {
@@ -177,7 +225,7 @@ export class OrdemDeServicoRepository {
             valor_novo: os
         });
 
-        return os;
+        return mapOsToLegacy(os);
     });
   }
 
@@ -210,7 +258,7 @@ export class OrdemDeServicoRepository {
             { obs_final: { contains: trimmedSearch, mode: 'insensitive' } },
             { itens_os: { some: { descricao: { contains: trimmedSearch, mode: 'insensitive' } } } },
             { itens_os: { some: { codigo_referencia: { contains: trimmedSearch, mode: 'insensitive' } } } },
-            { itens_os: { some: { pecas_estoque: { nome: { contains: trimmedSearch, mode: 'insensitive' } } } } },
+            { itens_os: { some: { produto: { nome: { contains: trimmedSearch, mode: 'insensitive' } } } } },
             { itens_os: { some: { pagamentos_peca: { some: { fornecedor: { nome: { contains: trimmedSearch, mode: 'insensitive' } } } } } } },
             { itens_os: { some: { pagamentos_peca: { some: { fornecedor: { nome_fantasia: { contains: trimmedSearch, mode: 'insensitive' } } } } } } },
             { servicos_mao_de_obra: { some: { descricao: { contains: trimmedSearch, mode: 'insensitive' } } } }
@@ -239,7 +287,7 @@ export class OrdemDeServicoRepository {
         }
     }
 
-    return await prisma.ordemDeServico.findMany({
+    const ordens = await prisma.ordemDeServico.findMany({
       where,
       ...(takeLimit !== undefined ? { take: takeLimit } : {}),
       include: {
@@ -273,10 +321,11 @@ export class OrdemDeServicoRepository {
       },
       orderBy: { dt_abertura: 'desc' }
     });
+    return ordens.map(mapOsToLegacy);
   }
 
   async findById(id: number, includeInternal: boolean = false) {
-    return await prisma.ordemDeServico.findUnique({
+    const os = await prisma.ordemDeServico.findUnique({
       where: { id_os: id },
       include: {
         cliente: {
@@ -297,7 +346,7 @@ export class OrdemDeServicoRepository {
           },
           include: {
             pagamentos_peca: true,
-            pecas_estoque: true
+            produto: true
           }
         },
         fechamento_financeiro: true,
@@ -314,10 +363,11 @@ export class OrdemDeServicoRepository {
         }
       }
     });
+    return mapOsToLegacy(os);
   }
 
   async findByVehicleId(vehicleId: number) {
-    return await prisma.ordemDeServico.findMany({
+    const ordens = await prisma.ordemDeServico.findMany({
       where: { id_veiculo: vehicleId, deleted_at: null },
       orderBy: { dt_abertura: 'desc' },
       select: {
@@ -363,19 +413,12 @@ export class OrdemDeServicoRepository {
         pagamentos_cliente: true
       }
     });
+    return ordens.map(mapOsToLegacy);
   }
 
   async update(id: number, data: Prisma.OrdemDeServicoUpdateInput) {
     const current = await this.findById(id);
     if (!current) throw new Error('OS not found');
-    
-    // Check lock if finalized or paid (unless it's a specific internal update we might allow, but user said disable for users)
-    // Assuming this repo usage is for general updates.
-    // If status is FINALIZADA or PAGA, prevent update?
-    // "Implementar uma trava onde, após a OS ser marcada como "Finalizada" ou "Paga", o salvamento automático e as edições sejam desabilitados"
-    // This is best enforced in Controller or Service, but Repo is the last line of defense.
-    // However, sometimes we need to update status FROM Finalizada TO Something else (Reopen).
-    // So assume the Caller handles logic, or we check if data DOES NOT contain status change.
     
     const updatedData = { ...data, updated_at: nowSP() };
     if (data.status === 'FINALIZADA' && !data.dt_entrega) {
@@ -395,7 +438,7 @@ export class OrdemDeServicoRepository {
         valor_novo: updated
     });
 
-    return updated;
+    return mapOsToLegacy(updated);
   }
 
   async delete(id: number) {
@@ -415,7 +458,7 @@ export class OrdemDeServicoRepository {
         valor_antigo: current
     });
     
-    return updated;
+    return mapOsToLegacy(updated);
   }
 
   async recalculateTotals(id_os: number, tx: any = prisma) {
@@ -473,7 +516,7 @@ export class OrdemDeServicoRepository {
     // Monitor operacional: retorna apenas OS ativas (ABERTA, AGENDAMENTO, ORCAMENTO).
     // FINANCEIRO e FINALIZADA são excluídas por decisão de UX.
     // O include de servicos_mao_de_obra foi removido por performance (3 níveis de JOIN).
-    return await prisma.ordemDeServico.findMany({
+    const ordens = await prisma.ordemDeServico.findMany({
       take,
       where: {
         deleted_at: null,
@@ -497,6 +540,7 @@ pessoa: true } }
         }
       }
     });
+    return ordens.map(mapOsToLegacy);
   }
 
   async reabrirOS(id: number) {
@@ -526,7 +570,7 @@ pessoa: true } }
         valor_novo: updated
       });
 
-      return updated;
+      return mapOsToLegacy(updated);
     });
   }
 }

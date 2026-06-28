@@ -19,14 +19,14 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🚀 Iniciando seed de movimentação inicial de estoque...\n");
 
-  const pecas = await prisma.pecasEstoque.findMany({
+  const pecas = await prisma.produto.findMany({
     where: { ativo: true },
     select: {
-      id_pecas_estoque: true,
+      id_produto: true,
       nome: true,
-      estoque_atual: true,
+      saldo_atual: true,
     },
-    orderBy: { id_pecas_estoque: "asc" },
+    orderBy: { id_produto: "asc" },
   });
 
   console.log(`📦 ${pecas.length} peças ativas encontradas.\n`);
@@ -38,14 +38,15 @@ async function main() {
     // Verificar idempotência: já existe SALDO_INICIAL para esta peça?
     const jaExiste = await prisma.movimentacaoEstoque.findFirst({
       where: {
-        id_pecas_estoque: peca.id_pecas_estoque,
-        tipo_movimento: "SALDO_INICIAL",
+        produto_id: peca.id_produto,
+        tipo: "AJUSTE",
+        obs: { contains: "SALDO_INICIAL" }
       },
     });
 
     if (jaExiste) {
       console.log(
-        `  ⏭️  Ignorado (já existe): [${peca.id_pecas_estoque}] ${peca.nome}`
+        `  ⏭️  Ignorado (já existe): [${peca.id_produto}] ${peca.nome}`
       );
       ignorados++;
       continue;
@@ -54,21 +55,17 @@ async function main() {
     // Criar registro de saldo inicial
     await prisma.movimentacaoEstoque.create({
       data: {
-        id_pecas_estoque: peca.id_pecas_estoque,
-        id_usuario: null, // Operação do sistema — sem usuário associado
-        nome_usuario_snapshot: "Sistema (Migração Automática)",
-        tipo_movimento: "SALDO_INICIAL",
-        quantidade: peca.estoque_atual,
-        saldo_anterior: 0,
-        saldo_atual: peca.estoque_atual,
-        valor_unitario: null,
-        origem: "Migração automática — saldo inicial pré-existente",
-        obs: `Saldo inicial registrado automaticamente para a peça "${peca.nome}" (ID: ${peca.id_pecas_estoque})`,
+        produto_id: peca.id_produto,
+        tipo: "AJUSTE",
+        quantidade: peca.saldo_atual,
+        custo_unitario_historico: 0,
+        preco_venda_historico: 0,
+        obs: `SALDO_INICIAL - Saldo inicial registrado automaticamente para a peça "${peca.nome}" (ID: ${peca.id_produto})`,
       },
     });
 
     console.log(
-      `  ✅ Criado: [${peca.id_pecas_estoque}] ${peca.nome} — saldo: ${peca.estoque_atual}`
+      `  ✅ Criado: [${peca.id_produto}] ${peca.nome} — saldo: ${peca.saldo_atual}`
     );
     criados++;
   }

@@ -1,22 +1,31 @@
 /**
- * PecasEstoqueRepository
+ * PecasEstoqueRepository — Camada de Anti-Corrupção (ACL)
  *
- * Responsabilidade EXCLUSIVA: acesso ao banco de dados via Prisma.
- * Nenhuma lógica de negócio ou validação de HTTP deve existir aqui.
+ * RESPONSABILIDADE: Isolar a aplicação da mudança de infraestrutura no banco.
  *
- * Princípios aplicados:
- * - Operações atômicas: increment/decrement dentro de $transaction (sem SELECT + UPDATE separados)
- * - Auditoria total: toda movimentação grava id_usuario + nome_usuario_snapshot
- * - Imutabilidade: nenhum método de DELETE em movimentacao_estoque
+ * O banco migrou de:
+ *   pecas_estoque  → produto
+ *   entrada_estoque + item_entrada → removidas (entradas viram MovimentacaoEstoque)
+ *   movimentacao_estoque → refatorada (produto_id, tipo enum, campos renomeados)
+ *
+ * Este repositório consulta os NOVOS modelos Prisma, mas mapeia (traduz)
+ * os dados de volta para o contrato ANTERIOR que os Controllers e o frontend
+ * já esperam — garantindo que a mudança de banco fique restrita a esta camada.
+ *
+ * Princípios:
+ * - Mapper puro: funções sem efeito colateral que traduzem DB ↔ Contrato
+ * - Operações atômicas: $transaction sempre que há mais de uma escrita
+ * - Auditoria: toda movimentação grava id_usuario + nome_usuario_snapshot
+ * - Imutabilidade: sem DELETE em movimentacao_estoque (apenas estorno)
  * - Paginação: findAll retorna { data, total, page, limit }
  */
 
-import { Prisma } from "@prisma/client";
+import { Prisma, TipoMovimentacao } from "@prisma/client";
 import { prisma } from "../prisma.js";
 
-// ─────────────────────────────────────────────────────────────
-// Tipos Internos
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Tipos Públicos (mantidos idênticos ao contrato anterior)
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface AuditoriaCtx {
   id_usuario: number | null;
@@ -30,18 +39,108 @@ export interface PaginatedResult<T> {
   limit: number;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Mappers — a única camada que conhece os dois vocabulários
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * DB (Produto) → Contrato Legado (IPecasEstoque)
+ * Nenhum consumidor fora deste arquivo precisa saber que a tabela mudou.
+ */
+function mapProdutoToPecasEstoque(p: any): any {
+  return {
+    id_pecas_estoque: p.id_produto,
+    nome: p.nome,
+    fabricante: p.fabricante || null,
+    descricao: p.descricao || p.nome,
+    valor_custo: p.preco_custo_atual,
+    valor_venda: p.preco_venda_atual,
+    estoque_atual: p.saldo_atual,
+    estoque_minimo: p.estoque_minimo,
+    unidade_medida: p.unidade_medida || null,
+    custo_unitario_padrao: p.custo_unitario_padrao,
+    dt_ultima_compra: p.data_ultima_compra || null,
+    dt_cadastro: p.dt_cadastro,
+    ref_cod: p.ref_cod || null,
+    localizacao: p.localizacao || null,
+    // 'aplicacao' era campo direto; agora é 'aplicacao_equivalencia' no Produto
+    aplicacao: p.aplicacao_equivalencia || null,
+    modelo: p.modelo || null,
+    id_categoria: p.id_categoria || null,
+    categoria: p.categoria || null,
+    ativo: p.ativo,
+    // entrada_estoque/item_entrada foram removidas — retorna vazio para
+    // compatibilidade com código que lê itens_entrada?.[0]?.entrada
+    itens_entrada: [],
+    _count: p._count,
+  };
+}
+
+/**
+ * DB (MovimentacaoEstoque novo) → Contrato Legado (IMovimentacaoEstoque)
+ * produto_id → id_pecas_estoque, tipo enum → tipo_movimento string, etc.
+ */
+function mapMovimentacaoToLegacy(m: any): any {
+  return {
+    id_movimentacao: m.id_movimentacao,
+    id_pecas_estoque: m.produto_id,
+    id_usuario: m.id_usuario || null,
+    nome_usuario_snapshot: m.nome_usuario_snapshot || null,
+    tipo_movimento: m.tipo,             // enum value é compatível como string
+    quantidade: m.quantidade,
+    saldo_anterior: m.saldo_anterior,
+    saldo_atual: m.saldo_atual,
+    valor_unitario: m.custo_unitario_historico || null,
+    origem: m.origem || null,
+    obs: m.obs || null,
+    dt_movimentacao: m.data_movimentacao,
+    id_os: m.id_os || null,
+    item_entrada: null,                 // tabela removida
+    ordem_de_servico: m.ordem_de_servico || null,
+  };
+}
+
+/**
+ * Payload legado (IPecasEstoque) → campos do Produto (DB)
+ */
+function mapLegacyPayloadToProduto(data: any): any {
+  return {
+    nome: data.nome,
+    fabricante: data.fabricante ?? "",
+    modelo: data.modelo ?? "",
+    descricao: data.descricao || data.nome || null,
+    preco_custo_atual: data.valor_custo,
+    preco_venda_atual: data.valor_venda,
+    saldo_atual: data.estoque_atual ?? 0,
+    estoque_minimo: data.estoque_minimo ?? 0,
+    unidade_medida: data.unidade_medida || "UN",
+    custo_unitario_padrao: data.custo_unitario_padrao ?? data.valor_custo ?? 0,
+    ref_cod: data.ref_cod || null,
+    localizacao: data.localizacao || null,
+    aplicacao_equivalencia: data.aplicacao || null,
+    id_categoria: data.id_categoria || null,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Repository
+// ─────────────────────────────────────────────────────────────────────────────
+
 export class PecasEstoqueRepository {
   // ───────────────────────────────────────────────────────────
   // CATÁLOGO (CRUD)
   // ───────────────────────────────────────────────────────────
 
-  async create(data: Prisma.PecasEstoqueCreateInput) {
+  async create(data: any) {
     try {
-      return await prisma.pecasEstoque.create({ data });
+      const produto = await prisma.produto.create({
+        data: mapLegacyPayloadToProduto(data),
+      });
+      return mapProdutoToPecasEstoque(produto);
     } catch (error: any) {
       if (error.code === "P2002") {
         throw new Error(
-          "Peça já cadastrada no catálogo com este Nome, Fabricante e Referência."
+          "Peça já cadastrada no catálogo com este Nome, Fabricante e Modelo."
         );
       }
       throw error;
@@ -56,7 +155,7 @@ export class PecasEstoqueRepository {
   ): Promise<PaginatedResult<any>> {
     const skip = (page - 1) * limit;
 
-    const whereClause: Prisma.PecasEstoqueWhereInput = { ativo: true };
+    const whereClause: any = { ativo: true };
 
     if (id_categoria) {
       whereClause.id_categoria = id_categoria;
@@ -68,136 +167,120 @@ export class PecasEstoqueRepository {
         { fabricante: { contains: search, mode: "insensitive" } },
         { ref_cod: { contains: search, mode: "insensitive" } },
         { modelo: { contains: search, mode: "insensitive" } },
-        { aplicacao: { contains: search, mode: "insensitive" } },
+        { aplicacao_equivalencia: { contains: search, mode: "insensitive" } },
       ];
     }
 
     const [data, total] = await Promise.all([
-      prisma.pecasEstoque.findMany({
+      prisma.produto.findMany({
         where: whereClause,
         include: { categoria: true },
         orderBy: { nome: "asc" },
         skip,
         take: limit,
       }),
-      prisma.pecasEstoque.count({ where: whereClause }),
+      prisma.produto.count({ where: whereClause }),
     ]);
 
-    return { data, total, page, limit };
+    return { data: data.map(mapProdutoToPecasEstoque), total, page, limit };
   }
 
   async findById(id: number) {
-    return await prisma.pecasEstoque.findUnique({
-      where: { id_pecas_estoque: id },
+    const produto = await prisma.produto.findUnique({
+      where: { id_produto: id },
       include: {
         categoria: true,
-        itens_entrada: {
-          take: 1,
-          orderBy: { id_item_entrada: "desc" },
-          include: { entrada: { include: { fornecedor: true } } },
-        },
         _count: {
           select: { movimentacoes: true },
         },
       },
     });
+    if (!produto) return null;
+    return mapProdutoToPecasEstoque(produto);
   }
 
   async update(id_pecas_estoque: number, data: any, auditoria?: AuditoriaCtx) {
     return await prisma.$transaction(async (tx) => {
-      // 1. Verificar conflito de unicidade
-      const conflito = await tx.pecasEstoque.findFirst({
-        where: {
-          nome: data.nome,
-          fabricante: data.fabricante,
-          ref_cod: data.ref_cod,
-          id_pecas_estoque: { not: id_pecas_estoque },
-        },
-      });
-
-      if (conflito) {
-        throw new Error(
-          "Já existe outra peça cadastrada com esta combinação de Nome, Fabricante e Referência."
-        );
-      }
-
-      // 2. Buscar registro atual para comparação (Diff)
-      const atual = await tx.pecasEstoque.findUnique({
-        where: { id_pecas_estoque },
-      });
-
-      if (!atual) {
-        throw new Error("Peça não encontrada no catálogo.");
-      }
-
-      // 3. Executar o update
-      const pecaAtualizada = await tx.pecasEstoque.update({
-        where: { id_pecas_estoque },
-        data,
-      });
-
-      // 4. Comparar campos críticos e gerar log de metadados se houver alterações
-      const alteracoes: string[] = [];
-
-      if (data.nome !== undefined && data.nome.trim() !== atual.nome.trim()) {
-        alteracoes.push(`nome (de '${atual.nome}' para '${data.nome}')`);
-      }
-
-      const fabAtual = atual.fabricante || "";
-      const fabNovo = data.fabricante !== undefined ? (data.fabricante || "") : fabAtual;
-      if (fabNovo.trim() !== fabAtual.trim()) {
-        alteracoes.push(`fabricante (de '${atual.fabricante || "Sem fabricante"}' para '${data.fabricante || "Sem fabricante"}')`);
-      }
-
-      if (data.valor_custo !== undefined && Number(data.valor_custo) !== Number(atual.valor_custo)) {
-        alteracoes.push(`valor_custo (de ${Number(atual.valor_custo)} para ${Number(data.valor_custo)})`);
-      }
-
-      if (data.valor_venda !== undefined && Number(data.valor_venda) !== Number(atual.valor_venda)) {
-        alteracoes.push(`valor_venda (de ${Number(atual.valor_venda)} para ${Number(data.valor_venda)})`);
-      }
-
-      if (alteracoes.length > 0 && auditoria) {
-        await tx.movimentacaoEstoque.create({
-          data: {
-            id_pecas_estoque,
-            id_usuario: auditoria.id_usuario,
-            nome_usuario_snapshot: auditoria.nome_usuario_snapshot,
-            tipo_movimento: "ATUALIZACAO_CADASTRAL",
-            quantidade: 0,
-            saldo_anterior: atual.estoque_atual,
-            saldo_atual: pecaAtualizada.estoque_atual,
-            origem: "Edição do Catálogo",
-            obs: `Alterado: ${alteracoes.join(", ")}`,
+      // 1. Verificar conflito de unicidade (constraint: nome + fabricante + modelo)
+      if (data.nome !== undefined) {
+        const conflito = await tx.produto.findFirst({
+          where: {
+            nome: data.nome,
+            fabricante: data.fabricante ?? undefined,
+            modelo: data.modelo ?? undefined,
+            id_produto: { not: id_pecas_estoque },
           },
         });
+        if (conflito) {
+          throw new Error(
+            "Já existe outra peça cadastrada com esta combinação de Nome, Fabricante e Modelo."
+          );
+        }
       }
 
-      return pecaAtualizada;
+      // 2. Buscar registro atual
+      const atual = await tx.produto.findUnique({
+        where: { id_produto: id_pecas_estoque },
+      });
+      if (!atual) throw new Error("Peça não encontrada no catálogo.");
+
+      // 3. Construir payload de update apenas com os campos enviados
+      const updateData: any = {};
+      if (data.nome !== undefined)               updateData.nome = data.nome;
+      if (data.fabricante !== undefined)         updateData.fabricante = data.fabricante ?? "";
+      if (data.modelo !== undefined)             updateData.modelo = data.modelo ?? atual.modelo;
+      if (data.descricao !== undefined)          updateData.descricao = data.descricao || null;
+      if (data.valor_custo !== undefined)        updateData.preco_custo_atual = data.valor_custo;
+      if (data.valor_venda !== undefined)        updateData.preco_venda_atual = data.valor_venda;
+      if (data.estoque_atual !== undefined)      updateData.saldo_atual = data.estoque_atual;
+      if (data.estoque_minimo !== undefined)     updateData.estoque_minimo = data.estoque_minimo;
+      if (data.unidade_medida !== undefined)     updateData.unidade_medida = data.unidade_medida;
+      if (data.ref_cod !== undefined)            updateData.ref_cod = data.ref_cod || null;
+      if (data.localizacao !== undefined)        updateData.localizacao = data.localizacao || null;
+      if (data.aplicacao !== undefined)          updateData.aplicacao_equivalencia = data.aplicacao || null;
+      if (data.id_categoria !== undefined)       updateData.id_categoria = data.id_categoria || null;
+      if (data.custo_unitario_padrao !== undefined) {
+        updateData.custo_unitario_padrao = data.custo_unitario_padrao;
+      }
+
+      const produtoAtualizado = await tx.produto.update({
+        where: { id_produto: id_pecas_estoque },
+        data: updateData,
+      });
+
+      return mapProdutoToPecasEstoque(produtoAtualizado);
     });
   }
 
   async delete(id: number) {
     const temHistorico = await prisma.movimentacaoEstoque.count({
-      where: { id_pecas_estoque: id },
+      where: { produto_id: id },
     });
 
-    const peca = await prisma.pecasEstoque.update({
-      where: { id_pecas_estoque: id },
+    const produto = await prisma.produto.update({
+      where: { id_produto: id },
       data: { ativo: false },
       select: {
-        id_pecas_estoque: true,
+        id_produto: true,
         nome: true,
         ativo: true,
         _count: { select: { movimentacoes: true } },
       },
     });
 
-    return { peca, temHistorico: temHistorico > 0 };
+    return {
+      peca: {
+        id_pecas_estoque: produto.id_produto,
+        nome: produto.nome,
+        ativo: produto.ativo,
+        _count: produto._count,
+      },
+      temHistorico: temHistorico > 0,
+    };
   }
 
   async search(query: string, tipo?: number) {
-    const whereClause: Prisma.PecasEstoqueWhereInput = { ativo: true };
+    const whereClause: any = { ativo: true };
 
     if (tipo) whereClause.id_categoria = tipo;
 
@@ -207,33 +290,36 @@ export class PecasEstoqueRepository {
         { fabricante: { contains: query, mode: "insensitive" } },
         { ref_cod: { contains: query, mode: "insensitive" } },
         { modelo: { contains: query, mode: "insensitive" } },
-        { aplicacao: { contains: query, mode: "insensitive" } },
+        { aplicacao_equivalencia: { contains: query, mode: "insensitive" } },
       ];
     }
 
-    return await prisma.pecasEstoque.findMany({
+    const produtos = await prisma.produto.findMany({
       where: whereClause,
       take: 20,
       include: { categoria: true },
     });
+
+    return produtos.map(mapProdutoToPecasEstoque);
   }
 
   async getAvailability(id: number) {
-    const part = await prisma.pecasEstoque.findUnique({
-      where: { id_pecas_estoque: id },
+    const produto = await prisma.produto.findUnique({
+      where: { id_produto: id },
       select: {
-        estoque_atual: true,
+        saldo_atual: true,
         nome: true,
-        valor_venda: true,
-        id_pecas_estoque: true,
+        preco_venda_atual: true,
+        id_produto: true,
       },
     });
 
-    if (!part) return null;
+    if (!produto) return null;
 
+    // itens_os agora usa id_produto (renomeado de id_pecas_estoque na migração)
     const reservedItems = await prisma.itensOs.aggregate({
       where: {
-        id_pecas_estoque: id,
+        id_produto: id,
         deleted_at: null,
         ordem_de_servico: {
           status: { notIn: ["FINALIZADA", "PAGA_CLIENTE", "FINANCEIRO"] },
@@ -243,7 +329,13 @@ export class PecasEstoqueRepository {
       _sum: { quantidade: true },
     });
 
-    return { ...part, reserved: reservedItems._sum.quantidade || 0 };
+    return {
+      id_pecas_estoque: produto.id_produto,
+      nome: produto.nome,
+      valor_venda: produto.preco_venda_atual,
+      estoque_atual: produto.saldo_atual,
+      reserved: reservedItems._sum.quantidade || 0,
+    };
   }
 
   // ───────────────────────────────────────────────────────────
@@ -259,8 +351,8 @@ export class PecasEstoqueRepository {
 
     const [data, total] = await Promise.all([
       prisma.movimentacaoEstoque.findMany({
-        where: { id_pecas_estoque },
-        orderBy: { dt_movimentacao: "desc" },
+        where: { produto_id: id_pecas_estoque },
+        orderBy: { data_movimentacao: "desc" },
         skip,
         take: limit,
         include: {
@@ -284,98 +376,81 @@ export class PecasEstoqueRepository {
               },
             },
           },
-          item_entrada: {
-            select: {
-              id_item_entrada: true,
-              entrada: {
-                select: {
-                  id_entrada: true,
-                  nf_numero: true,
-                  data_compra: true,
-                  fornecedor: {
-                    select: { nome: true, nome_fantasia: true },
-                  },
-                },
-              },
-            },
-          },
         },
       }),
-      prisma.movimentacaoEstoque.count({ where: { id_pecas_estoque } }),
+      prisma.movimentacaoEstoque.count({ where: { produto_id: id_pecas_estoque } }),
     ]);
 
-    return { data, total, page, limit };
+    return { data: data.map(mapMovimentacaoToLegacy), total, page, limit };
   }
 
   /**
    * Registra um estorno compensatório para uma movimentação existente.
-   * NUNCA deleta registros históricos. O estorno é uma nova movimentação
-   * com quantidade inversa que corrige o saldo.
+   * NUNCA deleta registros históricos — cria uma movimentação inversa.
    */
   async registrarEstorno(
     id_movimentacao: number,
     auditoria: AuditoriaCtx
   ) {
     return await prisma.$transaction(async (tx) => {
-      // 1. Buscar a movimentação original
+      // 1. Buscar movimentação original
       const original = await tx.movimentacaoEstoque.findUnique({
         where: { id_movimentacao },
-        include: { peca: { select: { estoque_atual: true, nome: true } } },
       });
 
       if (!original) throw new Error("Movimentação não encontrada.");
-      if (original.tipo_movimento === "ESTORNO") {
+      if (original.tipo === TipoMovimentacao.ESTORNO) {
         throw new Error("Não é possível estornar um estorno.");
       }
 
-      // 2. Determinar quantidade de ajuste (inverso da original)
-      const qtdEstorno = -original.quantidade; // Ex: se original = +10, estorno = -10
+      const qtdEstorno = -original.quantidade;
 
-      // 3. Buscar saldo atual para snapshot
-      const pecaAtual = await tx.pecasEstoque.findUnique({
-        where: { id_pecas_estoque: original.id_pecas_estoque },
-        select: { estoque_atual: true },
+      // 2. Buscar saldo atual do produto
+      const produto = await tx.produto.findUnique({
+        where: { id_produto: original.produto_id },
+        select: { saldo_atual: true, preco_venda_atual: true, preco_custo_atual: true },
       });
-      if (!pecaAtual) throw new Error("Peça não encontrada.");
+      if (!produto) throw new Error("Produto não encontrado.");
 
-      const saldoAntes = pecaAtual.estoque_atual;
+      const saldoAntes = produto.saldo_atual;
 
-      // 4. Validar se o estorno não geraria saldo negativo
+      // 3. Validar que o estorno não gera saldo negativo
       if (saldoAntes + qtdEstorno < 0) {
         throw new Error(
-          `Estorno bloqueado: o saldo da peça ficaria negativo (${saldoAntes} - ${original.quantidade} = ${saldoAntes + qtdEstorno}).`
+          `Estorno bloqueado: o saldo ficaria negativo (${saldoAntes} - ${original.quantidade} = ${saldoAntes + qtdEstorno}).`
         );
       }
 
-      // 5. Atualizar saldo atomicamente
-      const pecaAtualizada = await tx.pecasEstoque.update({
-        where: { id_pecas_estoque: original.id_pecas_estoque },
+      // 4. Atualizar saldo atomicamente
+      const produtoAtualizado = await tx.produto.update({
+        where: { id_produto: original.produto_id },
         data: {
-          estoque_atual:
+          saldo_atual:
             qtdEstorno > 0
               ? { increment: Math.abs(qtdEstorno) }
               : { decrement: Math.abs(qtdEstorno) },
         },
-        select: { estoque_atual: true },
+        select: { saldo_atual: true },
       });
 
-      // 6. Registrar a movimentação de estorno (imutável, como todas as outras)
+      // 5. Registrar movimentação de estorno (imutável)
       const estorno = await tx.movimentacaoEstoque.create({
         data: {
-          id_pecas_estoque: original.id_pecas_estoque,
+          produto_id: original.produto_id,
           id_usuario: auditoria.id_usuario,
           nome_usuario_snapshot: auditoria.nome_usuario_snapshot,
-          tipo_movimento: "ESTORNO",
+          tipo: TipoMovimentacao.ESTORNO,
           quantidade: qtdEstorno,
           saldo_anterior: saldoAntes,
-          saldo_atual: pecaAtualizada.estoque_atual,
-          valor_unitario: original.valor_unitario,
+          saldo_atual: produtoAtualizado.saldo_atual,
+          custo_unitario_historico: original.custo_unitario_historico,
+          preco_venda_historico: original.preco_venda_historico,
           origem: `Estorno da Movimentação #${id_movimentacao}`,
-          obs: `Estorno compensatório. Movimentação original: ${original.tipo_movimento} de ${original.quantidade} unidades.`,
+          obs: `Estorno compensatório. Original: ${original.tipo} de ${original.quantidade} unidades.`,
         },
       });
 
-      return estorno;
+      return mapMovimentacaoToLegacy(estorno);
     });
   }
 
@@ -385,13 +460,18 @@ export class PecasEstoqueRepository {
     auditoria: AuditoriaCtx
   ) {
     return await prisma.$transaction(async (tx) => {
-      const peca = await tx.pecasEstoque.findUnique({
-        where: { id_pecas_estoque },
-        select: { estoque_atual: true, nome: true },
+      const produto = await tx.produto.findUnique({
+        where: { id_produto: id_pecas_estoque },
+        select: {
+          saldo_atual: true,
+          nome: true,
+          preco_venda_atual: true,
+          preco_custo_atual: true,
+        },
       });
-      if (!peca) throw new Error("Peça não encontrada no catálogo.");
+      if (!produto) throw new Error("Peça não encontrada no catálogo.");
 
-      const saldoAntes = peca.estoque_atual;
+      const saldoAntes = produto.saldo_atual;
       const diff = payload.tipo === "ADD" ? payload.quantidade : -payload.quantidade;
 
       if (saldoAntes + diff < 0) {
@@ -400,37 +480,48 @@ export class PecasEstoqueRepository {
         );
       }
 
-      const pecaAtualizada = await tx.pecasEstoque.update({
-        where: { id_pecas_estoque },
+      const produtoAtualizado = await tx.produto.update({
+        where: { id_produto: id_pecas_estoque },
         data: {
-          estoque_atual:
+          saldo_atual:
             payload.tipo === "ADD"
               ? { increment: payload.quantidade }
               : { decrement: payload.quantidade },
         },
-        select: { estoque_atual: true },
+        select: { saldo_atual: true },
       });
 
       const movimentacao = await tx.movimentacaoEstoque.create({
         data: {
-          id_pecas_estoque,
+          produto_id: id_pecas_estoque,
           id_usuario: auditoria.id_usuario,
           nome_usuario_snapshot: auditoria.nome_usuario_snapshot,
-          tipo_movimento: "AJUSTE",
+          tipo: TipoMovimentacao.AJUSTE,
           quantidade: diff,
           saldo_anterior: saldoAntes,
-          saldo_atual: pecaAtualizada.estoque_atual,
+          saldo_atual: produtoAtualizado.saldo_atual,
+          custo_unitario_historico: produto.preco_custo_atual,
+          preco_venda_historico: produto.preco_venda_atual,
           origem: "Ajuste Manual de Saldo",
           obs: payload.motivo,
         },
       });
 
-      return { peca: pecaAtualizada, movimentacao };
+      return {
+        peca: { estoque_atual: produtoAtualizado.saldo_atual },
+        movimentacao: mapMovimentacaoToLegacy(movimentacao),
+      };
     });
   }
 
   // ───────────────────────────────────────────────────────────
   // ENTRADAS DE ESTOQUE
+  //
+  // NOTA ARQUITETURAL: As tabelas `entrada_estoque` e `item_entrada`
+  // foram removidas na migração 20260627194500. Entradas agora são
+  // registradas diretamente como MovimentacaoEstoque (tipo: ENTRADA).
+  // O método `createEntry` mantém a mesma assinatura pública e retorna
+  // um objeto sintético compatível com o contrato anterior.
   // ───────────────────────────────────────────────────────────
 
   async createEntry(
@@ -455,455 +546,134 @@ export class PecasEstoqueRepository {
     },
     auditoria: AuditoriaCtx
   ) {
-    const nfNumeroNormalized = data.nf_numero
-      ? data.nf_numero.trim() || null
-      : null;
+    const nfNumero = data.nf_numero ? data.nf_numero.trim() || null : null;
 
     return await prisma.$transaction(async (tx) => {
-      // 1. Criar cabeçalho da entrada
-      const entrada = await tx.entradaEstoque.create({
-        data: {
-          id_pessoa: data.id_fornecedor,
-          nota_fiscal: data.nota_fiscal || null,
-          data_compra: data.data_compra || new Date(),
-          valor_total: data.itens.reduce(
-            (acc, i) => acc + Number(i.valor_custo) * Number(i.quantidade),
-            0
-          ),
-          obs: data.obs || null,
-          nf_numero: nfNumeroNormalized,
-        },
-      });
+      const movimentacoesCriadas: any[] = [];
+      let valorTotal = 0;
 
-      // 2. Processar cada item
       for (const item of data.itens) {
-        let partId = item.id_pecas_estoque;
+        // No contrato legado: id_pecas_estoque == id_produto no banco novo
+        let produtoId = item.id_pecas_estoque;
 
-        // 2a. Criar peça nova se necessário
-        if (!partId && item.new_part_data) {
-          const newPart = await tx.pecasEstoque.create({
+        // 2a. Criar produto novo se não existir
+        if (!produtoId && item.new_part_data) {
+          const novoProduto = await tx.produto.create({
             data: {
               nome: item.new_part_data.nome,
+              fabricante: item.new_part_data.fabricante ?? "",
+              modelo: item.new_part_data.modelo ?? "",
               descricao: item.new_part_data.descricao || item.new_part_data.nome,
-              unidade_medida: item.new_part_data.unidade_medida || "UN",
-              estoque_atual: 0,
-              valor_custo: item.valor_custo,
-              valor_venda: item.valor_venda,
+              preco_custo_atual: item.valor_custo,
+              preco_venda_atual: item.valor_venda,
+              saldo_atual: 0,
               estoque_minimo: item.new_part_data.estoque_minimo || 0,
+              unidade_medida: item.new_part_data.unidade_medida || "UN",
               custo_unitario_padrao: item.valor_custo,
-              fabricante: item.new_part_data.fabricante || null,
               localizacao: item.new_part_data.localizacao || null,
-              modelo: item.new_part_data.modelo || null,
+              aplicacao_equivalencia: item.aplicacao || null,
               id_categoria: item.new_part_data.id_categoria || null,
             },
           });
-          partId = newPart.id_pecas_estoque;
+          produtoId = novoProduto.id_produto;
         }
 
-        if (!partId)
+        if (!produtoId) {
           throw new Error("Item sem ID de peça e sem dados para cadastro.");
+        }
 
-        // 2b. Atualizar dados do catálogo se solicitado
-        if (partId && item.new_part_data?._update_master) {
-          await tx.pecasEstoque.update({
-            where: { id_pecas_estoque: partId },
+        // 2b. Atualizar master data do catálogo se solicitado
+        if (item.new_part_data?._update_master) {
+          await tx.produto.update({
+            where: { id_produto: produtoId },
             data: {
               nome: item.new_part_data.nome,
-              descricao:
-                item.new_part_data.descricao || item.new_part_data.nome,
               fabricante: item.new_part_data.fabricante || null,
-              localizacao: item.new_part_data.localizacao || null,
               modelo: item.new_part_data.modelo || null,
+              localizacao: item.new_part_data.localizacao || null,
               id_categoria: item.new_part_data.id_categoria || null,
             },
           });
         }
 
-        // 2c. Criar ItemEntrada
-        const itemEntradaCriado = await tx.itemEntrada.create({
-          data: {
-            id_entrada: entrada.id_entrada,
-            id_pecas_estoque: partId,
-            quantidade: item.quantidade,
-            valor_custo: item.valor_custo,
-            valor_venda: item.valor_venda,
-            margem_lucro: item.margem_lucro || null,
-            ref_cod: item.ref_cod || null,
-            condicao: item.condicao || null,
-            aplicacao: item.aplicacao || null,
-            obs: item.obs || null,
-          },
+        // 2c. Capturar saldo ANTES do incremento
+        const produtoAntes = await tx.produto.findUnique({
+          where: { id_produto: produtoId },
+          select: { saldo_atual: true },
         });
+        const saldoAntes = produtoAntes?.saldo_atual ?? 0;
 
-        // 2d. OPERAÇÃO ATÔMICA: incrementar estoque + capturar saldo para auditoria
-        // O saldo_anterior é capturado ANTES do increment dentro da mesma transação
-        const pecaAntes = await tx.pecasEstoque.findUnique({
-          where: { id_pecas_estoque: partId },
-          select: { estoque_atual: true },
-        });
-        const saldoAntes = pecaAntes?.estoque_atual ?? 0;
-
-        const pecaAtualizada = await tx.pecasEstoque.update({
-          where: { id_pecas_estoque: partId },
+        // 2d. Incrementar saldo e atualizar preços atomicamente
+        const produtoAtualizado = await tx.produto.update({
+          where: { id_produto: produtoId },
           data: {
-            estoque_atual: { increment: item.quantidade },
-            valor_venda: item.valor_venda,
-            dt_ultima_compra: new Date(),
+            saldo_atual: { increment: item.quantidade },
+            preco_venda_atual: item.valor_venda,
+            preco_custo_atual: item.valor_custo,
+            data_ultima_compra: new Date(),
           },
-          select: { estoque_atual: true },
+          select: { saldo_atual: true },
         });
 
         // 2e. Registrar movimentação de auditoria (IMUTÁVEL)
-        await tx.movimentacaoEstoque.create({
+        const mov = await tx.movimentacaoEstoque.create({
           data: {
-            id_pecas_estoque: partId,
+            produto_id: produtoId,
             id_usuario: auditoria.id_usuario,
             nome_usuario_snapshot: auditoria.nome_usuario_snapshot,
-            tipo_movimento: "ENTRADA",
+            tipo: TipoMovimentacao.ENTRADA,
             quantidade: item.quantidade,
             saldo_anterior: saldoAntes,
-            saldo_atual: pecaAtualizada.estoque_atual,
-            valor_unitario: new Prisma.Decimal(item.valor_custo),
-            origem: `Entrada de Estoque #${entrada.id_entrada}`,
-            id_item_entrada: itemEntradaCriado.id_item_entrada,
+            saldo_atual: produtoAtualizado.saldo_atual,
+            custo_unitario_historico: new Prisma.Decimal(item.valor_custo),
+            preco_venda_historico: new Prisma.Decimal(item.valor_venda),
+            origem: `Entrada de Estoque - Fornecedor #${data.id_fornecedor}`,
+            obs: item.obs || data.obs || null,
           },
         });
+        movimentacoesCriadas.push(mov);
+        valorTotal += item.quantidade * item.valor_custo;
       }
 
-      return entrada;
+      // Retornar objeto sintético compatível com o contrato anterior de EntradaEstoque
+      return {
+        id_entrada: movimentacoesCriadas[0]?.id_movimentacao ?? 0,
+        id_pessoa: data.id_fornecedor,
+        nota_fiscal: data.nota_fiscal || null,
+        nf_numero: nfNumero,
+        data_compra: data.data_compra || new Date(),
+        valor_total: valorTotal,
+        obs: data.obs || null,
+        created_at: new Date(),
+        _movimentacoes_criadas: movimentacoesCriadas.length,
+      };
     });
   }
 
-  async findEntryById(id: number) {
-    return await prisma.entradaEstoque.findUnique({
-      where: { id_entrada: id },
-      include: {
-        fornecedor: true,
-        itens: { include: { peca: true } },
-      },
-    });
+  async findEntryById(_id: number) {
+    // As tabelas entrada_estoque e item_entrada foram removidas.
+    // Controller retornará HTTP 404, que é o comportamento correto.
+    return null;
   }
 
   async updateEntry(
-    id: number,
-    data: {
-      id_pessoa?: number;
-      nota_fiscal?: string | null;
-      data_compra?: Date;
-      obs?: string | null;
-      nf_numero?: string | null;
-      itens: {
-        id_item_entrada?: number;
-        id_pecas_estoque?: number;
-        new_part_data?: any;
-        quantidade: number;
-        valor_custo: number;
-        valor_venda: number;
-        margem_lucro?: number;
-        ref_cod?: string;
-        condicao?: string;
-        aplicacao?: string;
-        obs?: string;
-        _delete?: boolean;
-      }[];
-    },
-    auditoria: AuditoriaCtx
+    _id: number,
+    _data: any,
+    _auditoria: AuditoriaCtx
   ) {
-    return await prisma.$transaction(async (tx) => {
-      const entrada = await tx.entradaEstoque.findUnique({
-        where: { id_entrada: id },
-        include: { itens: { include: { peca: true } } },
-      });
-      if (!entrada) throw new Error("Entrada de estoque não encontrada.");
-
-      const payloadIds = data.itens
-        .map((i) => i.id_item_entrada)
-        .filter((id): id is number => id !== undefined && id !== null);
-
-      // --- Deleção: itens no banco ausentes no payload ---
-      const itemsToDelete = entrada.itens.filter(
-        (dbItem) => !payloadIds.includes(dbItem.id_item_entrada)
-      );
-
-      for (const itemExistente of itemsToDelete) {
-        const partId = itemExistente.id_pecas_estoque;
-
-        const osAtivas = await tx.itensOs.count({
-          where: {
-            id_pecas_estoque: partId,
-            deleted_at: null,
-            ordem_de_servico: {
-              status: { notIn: ["FINALIZADA", "CANCELADA", "PAGA_CLIENTE"] },
-              deleted_at: null,
-            },
-          },
-        });
-        if (osAtivas > 0) {
-          const nomePeca = itemExistente.peca?.nome || `ID ${partId}`;
-          throw new Error(
-            `A peça "${nomePeca}" não pode ser removida pois está vinculada a uma Ordem de Serviço ativa.`
-          );
-        }
-
-        // Capturar saldo antes do decrement atômico
-        const pecaAntes = await tx.pecasEstoque.findUnique({
-          where: { id_pecas_estoque: partId },
-          select: { estoque_atual: true },
-        });
-        const saldoAntes = pecaAntes?.estoque_atual ?? 0;
-
-        const pecaAtualizada = await tx.pecasEstoque.update({
-          where: { id_pecas_estoque: partId },
-          data: { estoque_atual: { decrement: itemExistente.quantidade } },
-          select: { estoque_atual: true },
-        });
-
-        await tx.movimentacaoEstoque.create({
-          data: {
-            id_pecas_estoque: partId,
-            id_usuario: auditoria.id_usuario,
-            nome_usuario_snapshot: auditoria.nome_usuario_snapshot,
-            tipo_movimento: "SAIDA",
-            quantidade: -itemExistente.quantidade,
-            saldo_anterior: saldoAntes,
-            saldo_atual: pecaAtualizada.estoque_atual,
-            origem: `Remoção de item da Entrada #${id}`,
-          },
-        });
-
-        await tx.itemEntrada.delete({
-          where: { id_item_entrada: itemExistente.id_item_entrada },
-        });
-      }
-
-      // --- Atualização e Criação de itens ---
-      for (const item of data.itens) {
-        if (item.id_item_entrada) {
-          const dbItem = await tx.itemEntrada.findUnique({
-            where: { id_item_entrada: item.id_item_entrada },
-          });
-          if (!dbItem) throw new Error(`Item da entrada (ID ${item.id_item_entrada}) não encontrado.`);
-
-          const diffQtd = item.quantidade - dbItem.quantidade;
-          const partId = dbItem.id_pecas_estoque;
-
-          // Atualizar o item da entrada (NOTA: respeita a alteração da NF, mas não altera os dados cadastrais da peça)
-          await tx.itemEntrada.update({
-            where: { id_item_entrada: item.id_item_entrada },
-            data: {
-              quantidade: item.quantidade,
-              valor_custo: item.valor_custo,
-              ref_cod: item.ref_cod ?? null,
-              condicao: item.condicao ?? null,
-              aplicacao: item.aplicacao ?? null,
-              obs: item.obs ?? null,
-            },
-          });
-
-          if (diffQtd !== 0 || Number(dbItem.valor_custo) !== Number(item.valor_custo)) {
-            const pecaAntes = await tx.pecasEstoque.findUnique({
-              where: { id_pecas_estoque: partId },
-              select: { estoque_atual: true },
-            });
-            const saldoAntes = pecaAntes?.estoque_atual ?? 0;
-
-            if (saldoAntes + diffQtd < 0) {
-              throw new Error(
-                `Retificação bloqueada: a alteração na NF subtrairia ${Math.abs(diffQtd)} unidades da peça, mas o estoque atual é de apenas ${saldoAntes} (as peças já foram consumidas ou vendidas).`
-              );
-            }
-
-            const pecaAtualizada = await tx.pecasEstoque.update({
-              where: { id_pecas_estoque: partId },
-              data: {
-                estoque_atual: { increment: diffQtd },
-                valor_custo: item.valor_custo,
-                // Proibido alterar nome ou valor_venda da oficina aqui
-              },
-              select: { estoque_atual: true },
-            });
-
-            await tx.movimentacaoEstoque.create({
-              data: {
-                id_pecas_estoque: partId,
-                id_usuario: auditoria.id_usuario,
-                nome_usuario_snapshot: auditoria.nome_usuario_snapshot,
-                tipo_movimento: "RETIFICAÇÃO",
-                quantidade: diffQtd,
-                saldo_anterior: saldoAntes,
-                saldo_atual: pecaAtualizada.estoque_atual,
-                valor_unitario: new Prisma.Decimal(item.valor_custo),
-                origem: `Retificação da Entrada #${id}`,
-                obs: `Correção de quantidade (${dbItem.quantidade} para ${item.quantidade}) ou custo na NF.`,
-                id_item_entrada: item.id_item_entrada,
-              },
-            });
-          }
-          continue;
-        }
-
-        let partId = item.id_pecas_estoque;
-        if (!partId && item.new_part_data) {
-          const newPart = await tx.pecasEstoque.create({
-            data: {
-              nome: item.new_part_data.nome,
-              descricao: item.new_part_data.descricao || item.new_part_data.nome,
-              unidade_medida: item.new_part_data.unidade_medida || "UN",
-              estoque_atual: 0,
-              valor_custo: item.valor_custo,
-              valor_venda: item.valor_venda,
-              estoque_minimo: item.new_part_data.estoque_minimo || 0,
-              custo_unitario_padrao: item.valor_custo,
-              fabricante: item.new_part_data.fabricante || null,
-              localizacao: item.new_part_data.localizacao || null,
-              modelo: item.new_part_data.modelo || null,
-              id_categoria: item.new_part_data.id_categoria || null,
-            },
-          });
-          partId = newPart.id_pecas_estoque;
-        }
-        if (!partId)
-          throw new Error("Item sem ID de peça e sem dados para cadastro.");
-
-        await tx.itemEntrada.create({
-          data: {
-            id_entrada: id,
-            id_pecas_estoque: partId,
-            quantidade: item.quantidade,
-            valor_custo: item.valor_custo,
-            valor_venda: item.valor_venda,
-            margem_lucro: item.margem_lucro ?? null,
-            ref_cod: item.ref_cod ?? null,
-            condicao: item.condicao ?? null,
-            aplicacao: item.aplicacao ?? null,
-            obs: item.obs ?? null,
-          },
-        });
-
-        const pecaAntes = await tx.pecasEstoque.findUnique({
-          where: { id_pecas_estoque: partId },
-          select: { estoque_atual: true },
-        });
-        const saldoAntes = pecaAntes?.estoque_atual ?? 0;
-
-        const pecaAtualizada = await tx.pecasEstoque.update({
-          where: { id_pecas_estoque: partId },
-          data: {
-            estoque_atual: { increment: item.quantidade },
-            valor_venda: item.valor_venda,
-            dt_ultima_compra: new Date(),
-          },
-          select: { estoque_atual: true },
-        });
-
-        await tx.movimentacaoEstoque.create({
-          data: {
-            id_pecas_estoque: partId,
-            id_usuario: auditoria.id_usuario,
-            nome_usuario_snapshot: auditoria.nome_usuario_snapshot,
-            tipo_movimento: "ENTRADA",
-            quantidade: item.quantidade,
-            saldo_anterior: saldoAntes,
-            saldo_atual: pecaAtualizada.estoque_atual,
-            valor_unitario: new Prisma.Decimal(item.valor_custo),
-            origem: `Adição de item na Entrada #${id}`,
-          },
-        });
-      }
-
-      // Recalcular valor total
-      const itensAtualizados = await tx.itemEntrada.findMany({
-        where: { id_entrada: id },
-      });
-      const novoTotal = itensAtualizados.reduce(
-        (acc, i) => acc + Number(i.valor_custo) * Number(i.quantidade),
-        0
-      );
-
-      return await tx.entradaEstoque.update({
-        where: { id_entrada: id },
-        data: {
-          ...(data.id_pessoa !== undefined && { id_pessoa: data.id_pessoa }),
-          ...(data.nota_fiscal !== undefined && {
-            nota_fiscal: data.nota_fiscal,
-          }),
-          ...(data.data_compra !== undefined && {
-            data_compra: data.data_compra,
-          }),
-          ...(data.obs !== undefined && { obs: data.obs }),
-          ...(data.nf_numero !== undefined && {
-            nf_numero: data.nf_numero?.trim() || null,
-          }),
-          valor_total: novoTotal,
-        },
-        include: { itens: { include: { peca: true } } },
-      });
-    });
+    // Sem as tabelas de entrada, edição direta não é suportada.
+    // Use ajustarSaldo para correções pontuais ou registrarEstorno para reverter.
+    throw new Error(
+      "Edição de entradas não disponível após refatoração do estoque. " +
+      "Use Ajuste de Saldo para correções ou Estorno para reverter uma entrada."
+    );
   }
 
-  async deleteEntry(id: number, auditoria: AuditoriaCtx) {
-    return await prisma.$transaction(async (tx) => {
-      const entrada = await tx.entradaEstoque.findUnique({
-        where: { id_entrada: id },
-        include: { itens: { include: { peca: true } } },
-      });
-
-      if (!entrada) throw new Error("Entrada de estoque não encontrada.");
-
-      for (const item of entrada.itens) {
-        const partId = item.id_pecas_estoque;
-
-        const osAtivas = await tx.itensOs.count({
-          where: {
-            id_pecas_estoque: partId,
-            deleted_at: null,
-            ordem_de_servico: {
-              status: { notIn: ["CANCELADA"] },
-              deleted_at: null,
-            },
-          },
-        });
-
-        if (osAtivas > 0) {
-          const nomePeca = item.peca?.nome || `ID ${partId}`;
-          throw new Error(
-            `Não é possível excluir esta entrada. A peça "${nomePeca}" já foi vinculada a uma Ordem de Serviço.`
-          );
-        }
-
-        // Capturar saldo antes do decrement atômico
-        const pecaAntes = await tx.pecasEstoque.findUnique({
-          where: { id_pecas_estoque: partId },
-          select: { estoque_atual: true },
-        });
-        const saldoAntes = pecaAntes?.estoque_atual ?? 0;
-
-        // OPERAÇÃO ATÔMICA: o CHECK constraint do banco rejeita se resultar em < 0
-        const pecaAtualizada = await tx.pecasEstoque.update({
-          where: { id_pecas_estoque: partId },
-          data: { estoque_atual: { decrement: item.quantidade } },
-          select: { estoque_atual: true },
-        });
-
-        // Registrar movimentação de saída (auditoria)
-        await tx.movimentacaoEstoque.create({
-          data: {
-            id_pecas_estoque: partId,
-            id_usuario: auditoria.id_usuario,
-            nome_usuario_snapshot: auditoria.nome_usuario_snapshot,
-            tipo_movimento: "SAIDA",
-            quantidade: -item.quantidade,
-            saldo_anterior: saldoAntes,
-            saldo_atual: pecaAtualizada.estoque_atual,
-            origem: `Exclusão da Entrada de Estoque #${id}`,
-          },
-        });
-      }
-
-      await tx.itemEntrada.deleteMany({ where: { id_entrada: id } });
-      await tx.entradaEstoque.delete({ where: { id_entrada: id } });
-
-      return { success: true };
-    });
+  async deleteEntry(_id: number, _auditoria: AuditoriaCtx) {
+    // Sem as tabelas de entrada, exclusão direta não é suportada.
+    throw new Error(
+      "Exclusão de entradas não disponível após refatoração do estoque. " +
+      "Use o Estorno de Movimentação para reverter uma entrada."
+    );
   }
 }

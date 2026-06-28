@@ -59,13 +59,13 @@ export class CategoriaEstoqueRepository {
   async delete(id: number, replacementId?: number) {
     // If replacementId is provided, we reassign all parts using this category
     if (replacementId) {
-      await prisma.pecasEstoque.updateMany({
+      await prisma.produto.updateMany({
         where: { id_categoria: id },
         data: { id_categoria: replacementId }
       });
     } else {
       // Check if there are parts using this category
-      const pecasVinculadas = await prisma.pecasEstoque.count({
+      const pecasVinculadas = await prisma.produto.count({
         where: { id_categoria: id }
       });
 

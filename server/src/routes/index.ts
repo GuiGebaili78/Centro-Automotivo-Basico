@@ -31,6 +31,7 @@ import configuracaoRoutes from "./configuracao.routes.js";
 import { documentoRoutes } from "./documento.routes.js";
 import { dashboardRoutes } from "./dashboard.routes.js";
 import { financeiroRoutes } from "./financeiro.routes.js";
+import { estoqueRoutes } from "./estoque.routes.js";
 
 const apiRouter = Router();
 
@@ -47,6 +48,7 @@ apiRouter.use("/cliente", clienteRoutes);
 apiRouter.use("/funcionario", funcionarioRoutes);
 apiRouter.use("/fornecedor", fornecedorRoutes);
 apiRouter.use("/pecas-estoque", pecasEstoqueRoutes);
+apiRouter.use("/estoque", estoqueRoutes);
 apiRouter.use("/categorias-estoque", categoriaEstoqueRoutes);
 apiRouter.use("/veiculo", veiculoRoutes);
 apiRouter.use("/equipamento", equipamentoClienteRoutes);

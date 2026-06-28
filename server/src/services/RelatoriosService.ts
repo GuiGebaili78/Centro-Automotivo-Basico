@@ -116,7 +116,7 @@ export class RelatoriosService {
         itens_os: {
           include: {
             pagamentos_peca: true,
-            pecas_estoque: true,
+            produto: true,
           },
         },
         servicos_mao_de_obra: true, // para saber quais mecânicos trabalharam nessa OS
@@ -133,7 +133,7 @@ export class RelatoriosService {
       const totalEstoqueOS = os.itens_os.reduce((acc: number, item: any) => {
         const ehEstoqueInterno =
           !item.pagamentos_peca || item.pagamentos_peca.length === 0;
-        if (ehEstoqueInterno && item.pecas_estoque) {
+        if (ehEstoqueInterno && (item.produto || item.pecas_estoque)) {
           return acc + Number(item.valor_total || 0);
         }
         return acc;
@@ -339,6 +339,18 @@ export class RelatoriosService {
    */
   async checkPendingConsolidations() {
     return await relatoriosRepository.checkPendingConsolidations();
+  }
+
+  async getDashboardFinanceiro(startDate: Date, endDate: Date) {
+    return await relatoriosRepository.getDashboardFinanceiro(startDate, endDate);
+  }
+
+  async getRelatorioCompleto(start: Date, end: Date) {
+    return await relatoriosRepository.getRelatorioCompleto(start, end);
+  }
+
+  async getDashboardData(start: Date, end: Date) {
+    return await relatoriosRepository.getDashboardData(start, end);
   }
 }
 

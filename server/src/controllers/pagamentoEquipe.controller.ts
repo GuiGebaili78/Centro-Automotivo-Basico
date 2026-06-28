@@ -25,7 +25,7 @@ export const getPendentesByFuncionario = async (
             itens_os: {
               where: { deleted_at: null },
               include: {
-                pecas_estoque: true,
+                produto: true,
                 pagamentos_peca: true,
               },
             },
@@ -60,8 +60,8 @@ export const getPendentesByFuncionario = async (
         const valorVenda = Number(item.valor_venda || 0) * (item.quantidade || 1);
         let lucroPeca = valorVenda;
 
-        if (item.pecas_estoque) {
-          const custo = Number(item.pecas_estoque.valor_custo || 0) * (item.quantidade || 1);
+        if (item.produto) {
+          const custo = Number(item.produto.preco_custo_atual || 0) * (item.quantidade || 1);
           lucroPeca = valorVenda - custo;
         } else if (item.pagamentos_peca?.[0]) {
           const custoReal = Number(item.pagamentos_peca[0].custo_real || 0);
@@ -246,7 +246,7 @@ export const getHistorico = async (req: Request, res: Response) => {
                 itens_os: {
                   where: { deleted_at: null },
                   include: {
-                    pecas_estoque: true,
+                    produto: true,
                     pagamentos_peca: { where: { deleted_at: null } },
                   },
                 },
@@ -272,8 +272,8 @@ export const getHistorico = async (req: Request, res: Response) => {
           const valorVenda = Number(item.valor_venda || 0) * (item.quantidade || 1);
           let lucroPeca = valorVenda;
 
-          if (item.pecas_estoque) {
-            const custo = Number(item.pecas_estoque.valor_custo || 0) * (item.quantidade || 1);
+          if (item.produto) {
+            const custo = Number(item.produto.preco_custo_atual || 0) * (item.quantidade || 1);
             lucroPeca = valorVenda - custo;
           } else if (item.pagamentos_peca?.[0]) {
             const custoReal = Number(item.pagamentos_peca[0].custo_real || 0);

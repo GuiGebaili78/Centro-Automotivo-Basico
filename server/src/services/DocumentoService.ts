@@ -113,7 +113,9 @@ export class DocumentoService {
           cliente: {
             include: {
               pessoa_fisica: { include: { pessoa: true } },
-              pessoa_juridica: true,
+              pessoa_juridica: { include: {
+// @ts-ignore
+pessoa: true } },
             },
           },
           veiculo: true,
@@ -157,14 +159,43 @@ export class DocumentoService {
 
       const config = await prisma.configuracao.findFirst();
 
-      // Prepare Data
-      const clienteNome =
-        os.cliente.pessoa_fisica?.pessoa.nome ||
+      // Prepare Data (Busca exaustiva em todas as tabelas/fontes de dados)
+      const rawClienteNome =
+        os.cliente.pessoa_fisica?.pessoa?.nome ||
         os.cliente.pessoa_juridica?.nome_fantasia ||
+        os.cliente.pessoa_juridica?.razao_social ||
+        // @ts-ignore
+        os.cliente.pessoa_juridica?.pessoa?.nome ||
         "Cliente não identificado";
-      const clienteDoc = maskDoc(
-        os.cliente.pessoa_fisica?.cpf || os.cliente.pessoa_juridica?.cnpj || "",
-      );
+
+      const rawClienteDoc =
+        os.cliente.pessoa_fisica?.cpf ||
+        os.cliente.pessoa_juridica?.cnpj ||
+        "";
+
+      const rawClienteTelefone =
+        os.cliente.telefone_1 ||
+        os.cliente.telefone_2 ||
+        // @ts-ignore
+        os.cliente.pessoa_fisica?.pessoa?.telefone_1 ||
+        // @ts-ignore
+        os.cliente.pessoa_juridica?.pessoa?.telefone_1 ||
+        "";
+
+      const rawClienteEmail =
+        os.cliente.email ||
+        // @ts-ignore
+        os.cliente.pessoa_fisica?.pessoa?.email ||
+        // @ts-ignore
+        os.cliente.pessoa_juridica?.pessoa?.email ||
+        "";
+
+      // Aplicação de máscara LGPD no último momento possível antes da renderização do PDF
+      const clienteNome = rawClienteNome;
+      const clienteDoc = maskDoc(rawClienteDoc);
+      const clienteTelefone = maskPhone(rawClienteTelefone);
+      const clienteEmail = maskEmail(rawClienteEmail);
+
       const veiculoDesc = os.veiculo ? `${os.veiculo.modelo} - ${os.veiculo.placa}` : (os.equipamento ? `${os.equipamento.nome_peca}` : "Veículo/Peça Diversa");
 
       const totalPecas = os.itens_os
@@ -207,10 +238,6 @@ export class DocumentoService {
       } else {
         console.log("[PDF] Nenhum logo configurado");
       }
-
-      // Applied Masking
-      const clienteTelefone = maskPhone(os.cliente.telefone_1 || "");
-      const clienteEmail = maskEmail(os.cliente.email || "");
 
       const docDefinition: any = {
         defaultStyle: {

@@ -43,9 +43,6 @@ services:
     depends_on:
       centroautomotivo_db:
         condition: service_healthy
-    volumes:
-      - ./server:/app/server
-      - /app/server/node_modules
     networks:
       - app-network
     logging:
