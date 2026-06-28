@@ -175,7 +175,8 @@ test.describe.serial('Suíte Completa de Clientes — Ciclo de Vida E2E', () => 
     await errPromise;
     
     // Duplicate Plate
-    await page.goto('/novo-cadastro');
+    await page.reload();
+    await page.waitForTimeout(1000);
     
     const nomeInp2 = page.getByLabel('Nome Completo *');
     await nomeInp2.fill('Outro Clone');

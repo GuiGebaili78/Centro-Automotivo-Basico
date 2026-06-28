@@ -369,6 +369,7 @@ export const ClienteFormSection = memo(
             {tipoPessoa === "PF" ? (
               <div className="relative">
                 <Input
+                  id="input-nome-pf"
                   label="Nome Completo *"
                   icon={User}
                   ref={nameInputRef as React.Ref<HTMLInputElement>}
@@ -381,6 +382,7 @@ export const ClienteFormSection = memo(
                 {tipoPessoa === "PF" && renderDropdown()}
                 <div className="mt-4">
                   <Input
+                    id="input-cpf"
                     label="CPF"
                     icon={Hash}
                     value={cpf}
@@ -394,6 +396,7 @@ export const ClienteFormSection = memo(
             ) : (
               <div className="relative">
                 <Input
+                  id="input-razao-social"
                   label="Razão Social *"
                   icon={Building2}
                   ref={nameInputRef as React.Ref<HTMLInputElement>}
@@ -406,6 +409,7 @@ export const ClienteFormSection = memo(
                 {tipoPessoa === "PJ" && renderDropdown()}
                 <div className="mt-4">
                   <Input
+                    id="input-nome-fantasia"
                     label="Nome Fantasia"
                     value={nomeFantasia}
                     onChange={(e) => setNomeFantasia(e.target.value)}
@@ -414,6 +418,7 @@ export const ClienteFormSection = memo(
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <Input
+                    id="input-cnpj"
                     label="CNPJ"
                     value={cnpj}
                     onChange={(e) => setCnpj(formatCnpj(e.target.value))}
@@ -421,6 +426,7 @@ export const ClienteFormSection = memo(
                     className={hasAttemptedSubmit && cnpj && cnpj.replace(/\D/g, '').length !== 14 ? 'border-red-500' : ''}
                   />
                   <Input
+                    id="input-ie"
                     label="IE"
                     value={ie}
                     onChange={(e) => setIe(formatIE(e.target.value))}
@@ -434,6 +440,7 @@ export const ClienteFormSection = memo(
           {/* Contato */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-100">
             <Input
+              id="input-telefone"
               label="Telefone Principal *"
               icon={Phone}
               value={telefone}
@@ -443,6 +450,7 @@ export const ClienteFormSection = memo(
               className={hasAttemptedSubmit && !telefone.replace(/\D/g, '') ? 'border-red-500' : ''}
             />
             <Input
+              id="input-telefone2"
               label="Telefone 2"
               icon={Phone}
               value={telefone2}
@@ -451,6 +459,7 @@ export const ClienteFormSection = memo(
             />
             <div className="sm:col-span-2">
               <Input
+                id="input-email"
                 label="Email"
                 icon={Mail}
                 type="email"
@@ -465,6 +474,7 @@ export const ClienteFormSection = memo(
           <div className="space-y-4 pt-4 border-t border-neutral-100">
             <div className="grid grid-cols-3 gap-4">
               <Input
+                id="input-cep"
                 label="CEP"
                 icon={Search}
                 value={cep}
@@ -474,6 +484,7 @@ export const ClienteFormSection = memo(
               />
               <div className="col-span-2">
                 <Input
+                  id="input-logradouro"
                   label="Logradouro"
                   icon={MapPin}
                   value={logradouro}
@@ -488,6 +499,7 @@ export const ClienteFormSection = memo(
               />
               <div className="col-span-2">
                 <Input
+                  id="input-complemento"
                   label="Complemento"
                   value={complLogradouro}
                   onChange={(e) => setComplLogradouro(e.target.value)}
@@ -496,11 +508,13 @@ export const ClienteFormSection = memo(
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Input
+                id="input-bairro"
                 label="Bairro"
                 value={bairro}
                 onChange={(e) => setBairro(e.target.value)}
               />
               <Input
+                id="input-cidade"
                 label="Cidade"
                 value={cidade}
                 onChange={(e) => setCidade(e.target.value)}

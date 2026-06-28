@@ -114,6 +114,7 @@ export const VeiculoFormSection = memo(
             {/* Placa */}
             <div className="relative">
               <Input
+                id="input-placa"
                 label="Placa *"
                 icon={Hash}
                 ref={placaInputRef as React.Ref<HTMLInputElement>}
@@ -129,6 +130,7 @@ export const VeiculoFormSection = memo(
             {/* Marca */}
             <div className="relative">
               <AutocompleteInput
+                id="input-marca"
                 label="Marca *"
                 value={marca}
                 onChange={setMarca}
@@ -141,6 +143,7 @@ export const VeiculoFormSection = memo(
             {/* Modelo */}
             <div className="col-span-2 relative">
               <AutocompleteInput
+                id="input-modelo"
                 label="Modelo *"
                 value={modelo}
                 onChange={setModelo}
@@ -153,6 +156,7 @@ export const VeiculoFormSection = memo(
             {/* Cor */}
             <div className="relative">
               <AutocompleteInput
+                id="input-cor"
                 label="Cor *"
                 value={cor}
                 onChange={setCor}
@@ -166,6 +170,7 @@ export const VeiculoFormSection = memo(
             {/* Ano Fabricação + Ano Modelo lado a lado */}
             <div className="grid grid-cols-2 gap-2">
               <Input
+                id="input-ano-fabricacao"
                 label="Ano Fabricação"
                 icon={Calendar}
                 type="number"
@@ -175,6 +180,7 @@ export const VeiculoFormSection = memo(
                 className="bg-neutral-25"
               />
               <Input
+                id="input-ano-modelo"
                 label="Ano Modelo"
                 icon={Calendar}
                 type="number"

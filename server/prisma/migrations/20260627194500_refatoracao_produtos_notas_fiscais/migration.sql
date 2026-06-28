@@ -3,6 +3,58 @@
 -- serem limpos. Continua do ponto que falhou (CREATE UNIQUE INDEX).
 -- =============================================================================
 
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'TipoMovimentacao') THEN
+        CREATE TYPE "TipoMovimentacao" AS ENUM ('ENTRADA', 'SAIDA', 'AJUSTE', 'DEVOLUCAO', 'ESTORNO');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'CondicaoPeca') THEN
+        CREATE TYPE "CondicaoPeca" AS ENUM ('NOVO', 'USADO', 'RECONDICIONADO');
+    END IF;
+END$$;
+
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "produto" (
+    "id_produto" SERIAL NOT NULL,
+    "nome" VARCHAR(255) NOT NULL,
+    "modelo" VARCHAR(100) NOT NULL,
+    "fabricante" VARCHAR(100) NOT NULL,
+    "aplicacao_equivalencia" TEXT,
+    "localizacao" VARCHAR(255),
+    "preco_custo_atual" DECIMAL(10,2) NOT NULL DEFAULT 0,
+    "preco_venda_atual" DECIMAL(10,2) NOT NULL DEFAULT 0,
+    "saldo_atual" INTEGER NOT NULL DEFAULT 0,
+    "data_ultima_compra" TIMESTAMP(6),
+    "descricao" VARCHAR(255),
+    "estoque_minimo" INTEGER NOT NULL DEFAULT 0,
+    "unidade_medida" VARCHAR(20),
+    "custo_unitario_padrao" DECIMAL(10,2) NOT NULL DEFAULT 0,
+    "ref_cod" TEXT,
+    "ativo" BOOLEAN NOT NULL DEFAULT true,
+    "dt_cadastro" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "id_categoria" INTEGER,
+
+    CONSTRAINT "produto_pkey" PRIMARY KEY ("id_produto")
+);
+
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "nota_fiscal" (
+    "id_nota_fiscal" SERIAL NOT NULL,
+    "numero" VARCHAR(50) NOT NULL,
+    "serie" VARCHAR(20),
+    "chave_acesso" VARCHAR(100),
+    "id_fornecedor" INTEGER,
+    "data_emissao" DATE,
+    "data_entrada" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "valor_total" DECIMAL(12,2) NOT NULL,
+    "arquivo_xml" VARCHAR(500),
+    "obs" VARCHAR(500),
+    "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "nota_fiscal_pkey" PRIMARY KEY ("id_nota_fiscal")
+);
+
 -- Índice único (agora sem duplicatas)
 CREATE UNIQUE INDEX IF NOT EXISTS "produto_nome_fabricante_modelo_key"
     ON "produto"("nome", "fabricante", "modelo");
@@ -52,7 +104,8 @@ ALTER TABLE "movimentacao_estoque"
     ADD COLUMN IF NOT EXISTS "data_movimentacao" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ADD COLUMN IF NOT EXISTS "data_pagamento_previsto" DATE,
     ADD COLUMN IF NOT EXISTS "nota_fiscal_id" INTEGER,
-    ADD COLUMN IF NOT EXISTS "tipo" "TipoMovimentacao";
+    ADD COLUMN IF NOT EXISTS "tipo" "TipoMovimentacao",
+    ADD COLUMN IF NOT EXISTS "condicao" "CondicaoPeca" NOT NULL DEFAULT 'NOVO';
 
 -- Define NOT NULL e defaults para produto_id após o TRUNCATE
 ALTER TABLE "movimentacao_estoque"
@@ -127,13 +180,3 @@ ALTER TABLE "movimentacao_estoque"
     FOREIGN KEY ("nota_fiscal_id") REFERENCES "nota_fiscal"("id_nota_fiscal")
     ON DELETE SET NULL ON UPDATE CASCADE;
 
--- ===========================================================================
--- Marcar migração como concluída no histórico do Prisma
--- ===========================================================================
-UPDATE _prisma_migrations
-SET
-    finished_at = NOW(),
-    rolled_back_at = NULL,
-    applied_steps_count = 1,
-    logs = NULL
-WHERE migration_name = '20260627194500_refatoracao_produtos_notas_fiscais';
