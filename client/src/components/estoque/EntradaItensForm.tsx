@@ -39,7 +39,7 @@ export const EntradaItensForm = ({
   const [rowCost, setRowCost] = useState("");
   const [rowMargin, setRowMargin] = useState("");
   const [rowSale, setRowSale] = useState("");
-  const [rowCondicao, setRowCondicao] = useState("");
+  const [rowCondicao, setRowCondicao] = useState("NOVO");
   const [rowAplicacao, setRowAplicacao] = useState("");
   const [rowObs, setRowObs] = useState("");
   const [rowMinStock, setRowMinStock] = useState("");
@@ -137,7 +137,8 @@ export const EntradaItensForm = ({
   };
 
   const handleAddItem = () => {
-    if (!selectedStockPart && !isNewPart) return;
+    const isActuallyNew = isNewPart || (!selectedStockPart && partSearch.trim().length > 0);
+    if (!selectedStockPart && !isActuallyNew) return;
     if (!rowQtd || !rowCost || !rowSale) {
       toast.error("Preencha quantidade, custo e venda.");
       return;
@@ -157,9 +158,9 @@ export const EntradaItensForm = ({
         estoque_minimo: Number(rowMinStock) || 0,
         modelo: rowModelo,
         id_categoria: selectedCategoria,
-        _update_master: editingTempId !== null && !isNewPart,
+        _update_master: editingTempId !== null && !isActuallyNew,
       },
-      displayName: isNewPart
+      displayName: isActuallyNew
         ? newPartName || partSearch
         : selectedStockPart?.nome || "",
       quantidade: Number(rowQtd),
@@ -191,7 +192,7 @@ export const EntradaItensForm = ({
     setRowCost("");
     setRowMargin("");
     setRowSale("");
-    setRowCondicao("");
+    setRowCondicao("NOVO");
     setRowAplicacao("");
     setRowObs("");
     setRowMinStock("");
@@ -255,7 +256,7 @@ export const EntradaItensForm = ({
     setRowCost(String(item.valor_custo));
     setRowMargin(String(item.margem_lucro));
     setRowSale(String(item.valor_venda));
-    setRowCondicao(item.condicao || "");
+    setRowCondicao(item.condicao || "NOVO");
     setRowAplicacao(item.aplicacao || "");
     setRowObs(item.obs || "");
     setRowMinStock(String(item.new_part_data?.estoque_minimo || 0));
@@ -275,7 +276,7 @@ export const EntradaItensForm = ({
     setRowCost("");
     setRowMargin("");
     setRowSale("");
-    setRowCondicao("");
+    setRowCondicao("NOVO");
     setRowAplicacao("");
     setRowObs("");
     setRowMinStock("");
@@ -316,7 +317,7 @@ export const EntradaItensForm = ({
               icon={Search}
               disabled={editingTempId !== null && !!selectedStockPart}
               className={`${selectedStockPart ? "border-primary-500 bg-primary-50 text-primary-700 font-bold" : "border-neutral-200 bg-white font-medium"} !h-[46px] !py-3`}
-              placeholder="Digite o nome da peça..."
+              placeholder="Digite o nome, referência ou localização (ex: Prateleira)..."
               value={partSearch}
               onChange={(e) => {
                 handleSearchPart(e.target.value);
@@ -483,7 +484,7 @@ export const EntradaItensForm = ({
               className="text-right border-emerald-200 bg-emerald-50 text-emerald-800 font-bold"
               placeholder="0.00"
               value={rowSale}
-              disabled={!!selectedStockPart}
+              disabled={!!selectedStockPart && editingTempId !== null}
               onChange={(e) => handleSaleChange(e.target.value)}
             />
           </div>
@@ -497,12 +498,16 @@ export const EntradaItensForm = ({
             />
           </div>
           <div className="md:col-span-2">
-            <Input
-              label="Condição (Opc)"
-              placeholder="Novo, Usado..."
+            <Select
+              label="Condição"
+              className="!h-[46px] !p-3 bg-white"
               value={rowCondicao}
-              onChange={(e) => setRowCondicao(e.target.value)}
-            />
+              onChange={(e: any) => setRowCondicao(e.target.value)}
+            >
+              <option value="NOVO">Novo</option>
+              <option value="USADO">Usado</option>
+              <option value="RECONDICIONADO">Recondicionado</option>
+            </Select>
           </div>
           <div className="md:col-span-2">
             <Input

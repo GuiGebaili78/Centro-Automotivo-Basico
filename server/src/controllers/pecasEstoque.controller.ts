@@ -283,6 +283,9 @@ export class PecasEstoqueController {
         if (item.valor_venda === undefined || item.valor_venda < 0) {
           return res.status(400).json({ error: `Item ${i + 1}: valor_venda é obrigatório.` });
         }
+        if (item.condicao && !["NOVO", "USADO", "RECONDICIONADO"].includes(item.condicao.toUpperCase())) {
+          return res.status(400).json({ error: `Item ${i + 1}: condicao deve ser 'NOVO', 'USADO' ou 'RECONDICIONADO'.` });
+        }
       }
 
       // Normalizar nf_numero

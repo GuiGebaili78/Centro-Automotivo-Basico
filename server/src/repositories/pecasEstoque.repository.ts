@@ -20,8 +20,11 @@
  * - Paginação: findAll retorna { data, total, page, limit }
  */
 
-import { Prisma, TipoMovimentacao } from "@prisma/client";
+import { Prisma, TipoMovimentacao, CondicaoPeca } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { PrecificacaoService } from "../services/precificacao.service.js";
+
+const precificacaoService = new PrecificacaoService();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos Públicos (mantidos idênticos ao contrato anterior)
@@ -168,6 +171,7 @@ export class PecasEstoqueRepository {
         { ref_cod: { contains: search, mode: "insensitive" } },
         { modelo: { contains: search, mode: "insensitive" } },
         { aplicacao_equivalencia: { contains: search, mode: "insensitive" } },
+        { localizacao: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -291,6 +295,7 @@ export class PecasEstoqueRepository {
         { ref_cod: { contains: query, mode: "insensitive" } },
         { modelo: { contains: query, mode: "insensitive" } },
         { aplicacao_equivalencia: { contains: query, mode: "insensitive" } },
+        { localizacao: { contains: query, mode: "insensitive" } },
       ];
     }
 
@@ -329,12 +334,32 @@ export class PecasEstoqueRepository {
       _sum: { quantidade: true },
     });
 
+    const reserved = reservedItems._sum.quantidade || 0;
+
+    // Buscar lotes de entrada (FIFO)
+    const lotes = await prisma.movimentacaoEstoque.findMany({
+      where: { produto_id: id, tipo: TipoMovimentacao.ENTRADA },
+      orderBy: { data_movimentacao: "asc" },
+    });
+
+    // Buscar total já consumido (saídas consolidadas)
+    const saidas = await prisma.movimentacaoEstoque.aggregate({
+      where: { produto_id: id, tipo: TipoMovimentacao.SAIDA },
+      _sum: { quantidade: true },
+    });
+
+    const consumidoTotal = Math.abs(saidas._sum.quantidade || 0) + reserved;
+    const loteSugerido = precificacaoService.selecionarLoteFIFO(lotes as any, consumidoTotal);
+
     return {
       id_pecas_estoque: produto.id_produto,
       nome: produto.nome,
-      valor_venda: produto.preco_venda_atual,
+      valor_venda: loteSugerido ? Number(loteSugerido.preco_venda_historico) : produto.preco_venda_atual,
+      valor_custo: loteSugerido ? Number(loteSugerido.custo_unitario_historico) : undefined,
+      condicao: loteSugerido ? loteSugerido.condicao : "NOVO",
+      lote_sugerido_id: loteSugerido ? loteSugerido.id_movimentacao : null,
       estoque_atual: produto.saldo_atual,
-      reserved: reservedItems._sum.quantidade || 0,
+      reserved: reserved,
     };
   }
 
@@ -615,6 +640,13 @@ export class PecasEstoqueRepository {
           select: { saldo_atual: true },
         });
 
+        let condicaoEnum = CondicaoPeca.NOVO;
+        if (item.condicao) {
+          const upper = item.condicao.toUpperCase();
+          if (upper === "USADO") condicaoEnum = CondicaoPeca.USADO;
+          else if (upper === "RECONDICIONADO") condicaoEnum = CondicaoPeca.RECONDICIONADO;
+        }
+
         // 2e. Registrar movimentação de auditoria (IMUTÁVEL)
         const mov = await tx.movimentacaoEstoque.create({
           data: {
@@ -627,6 +659,7 @@ export class PecasEstoqueRepository {
             saldo_atual: produtoAtualizado.saldo_atual,
             custo_unitario_historico: new Prisma.Decimal(item.valor_custo),
             preco_venda_historico: new Prisma.Decimal(item.valor_venda),
+            condicao: condicaoEnum,
             origem: `Entrada de Estoque - Fornecedor #${data.id_fornecedor}`,
             obs: item.obs || data.obs || null,
           },
@@ -650,30 +683,127 @@ export class PecasEstoqueRepository {
     });
   }
 
-  async findEntryById(_id: number) {
-    // As tabelas entrada_estoque e item_entrada foram removidas.
-    // Controller retornará HTTP 404, que é o comportamento correto.
-    return null;
+  async findEntryById(id: number) {
+    const mov = await prisma.movimentacaoEstoque.findUnique({
+      where: { id_movimentacao: id },
+      include: { produto: true },
+    });
+    if (!mov || mov.tipo !== TipoMovimentacao.ENTRADA) return null;
+
+    const custo = Number(mov.custo_unitario_historico);
+    const venda = Number(mov.preco_venda_historico);
+    const margem = custo > 0 ? ((venda - custo) / custo) * 100 : 0;
+
+    return {
+      id_entrada: mov.id_movimentacao,
+      id_pessoa: 1, // fallback id_fornecedor
+      nota_fiscal: mov.nota_fiscal_id ? String(mov.nota_fiscal_id) : "",
+      nf_numero: "",
+      data_compra: mov.data_movimentacao.toISOString(),
+      obs: mov.obs || "",
+      itens: [
+        {
+          id_item_entrada: mov.id_movimentacao,
+          id_pecas_estoque: mov.produto_id,
+          peca: { nome: mov.produto.nome },
+          quantidade: mov.quantidade,
+          valor_custo: custo,
+          valor_venda: venda,
+          margem_lucro: margem,
+          ref_cod: mov.produto.ref_cod || "",
+          condicao: mov.condicao,
+          aplicacao: mov.produto.aplicacao_equivalencia || "",
+          obs: mov.obs || "",
+        },
+      ],
+    };
   }
 
   async updateEntry(
-    _id: number,
-    _data: any,
+    id: number,
+    data: any,
     _auditoria: AuditoriaCtx
   ) {
-    // Sem as tabelas de entrada, edição direta não é suportada.
-    // Use ajustarSaldo para correções pontuais ou registrarEstorno para reverter.
-    throw new Error(
-      "Edição de entradas não disponível após refatoração do estoque. " +
-      "Use Ajuste de Saldo para correções ou Estorno para reverter uma entrada."
-    );
+    return await prisma.$transaction(async (tx) => {
+      const mov = await tx.movimentacaoEstoque.findUnique({
+        where: { id_movimentacao: id },
+        include: { produto: true },
+      });
+      if (!mov || mov.tipo !== TipoMovimentacao.ENTRADA) {
+        throw new Error("Movimentação de entrada não encontrada.");
+      }
+
+      for (const item of data.itens) {
+        if (item.id_item_entrada === id) {
+          const diff = item.quantidade - mov.quantidade;
+          let condicaoEnum = CondicaoPeca.NOVO;
+          if (item.condicao) {
+            const upper = item.condicao.toUpperCase();
+            if (upper === "USADO") condicaoEnum = CondicaoPeca.USADO;
+            else if (upper === "RECONDICIONADO") condicaoEnum = CondicaoPeca.RECONDICIONADO;
+          }
+
+          if (diff !== 0 || item.condicao) {
+            // Atualizar saldo do produto
+            if (diff !== 0) {
+              await tx.produto.update({
+                where: { id_produto: mov.produto_id },
+                data: {
+                  saldo_atual: diff > 0 ? { increment: diff } : { decrement: Math.abs(diff) },
+                },
+              });
+            }
+            // Atualizar movimentacao
+            await tx.movimentacaoEstoque.update({
+              where: { id_movimentacao: id },
+              data: {
+                quantidade: item.quantidade,
+                condicao: condicaoEnum,
+              },
+            });
+          }
+        }
+      }
+      return { success: true };
+    });
   }
 
-  async deleteEntry(_id: number, _auditoria: AuditoriaCtx) {
-    // Sem as tabelas de entrada, exclusão direta não é suportada.
-    throw new Error(
-      "Exclusão de entradas não disponível após refatoração do estoque. " +
-      "Use o Estorno de Movimentação para reverter uma entrada."
-    );
+  async deleteEntry(id: number, auditoria: AuditoriaCtx) {
+    return await prisma.$transaction(async (tx) => {
+      const mov = await tx.movimentacaoEstoque.findUnique({
+        where: { id_movimentacao: id },
+      });
+      if (!mov || mov.tipo !== TipoMovimentacao.ENTRADA) {
+        throw new Error("Movimentação de entrada não encontrada.");
+      }
+
+      // Decrementar saldo do produto
+      await tx.produto.update({
+        where: { id_produto: mov.produto_id },
+        data: {
+          saldo_atual: { decrement: mov.quantidade },
+        },
+      });
+
+      // Registrar estorno
+      await tx.movimentacaoEstoque.create({
+        data: {
+          produto_id: mov.produto_id,
+          id_usuario: auditoria.id_usuario,
+          nome_usuario_snapshot: auditoria.nome_usuario_snapshot,
+          tipo: TipoMovimentacao.ESTORNO,
+          quantidade: -mov.quantidade,
+          saldo_anterior: mov.saldo_atual,
+          saldo_atual: mov.saldo_atual - mov.quantidade,
+          custo_unitario_historico: mov.custo_unitario_historico,
+          preco_venda_historico: mov.preco_venda_historico,
+          condicao: mov.condicao,
+          origem: `Estorno da Entrada #${id}`,
+          obs: `Exclusão de entrada via modal de confirmação.`,
+        },
+      });
+
+      return { success: true };
+    });
   }
 }

@@ -13,7 +13,7 @@ export default defineConfig({
 
 
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: 'http://127.0.0.1:5174',
     trace: 'on-first-retry',
   },
 
@@ -30,7 +30,7 @@ export default defineConfig({
       cwd: './server',
       port: 3001,
       env: {
-        DATABASE_URL: 'postgresql://user:password@localhost:5434/automotivo_test_db',
+        DATABASE_URL: 'postgresql://user:password@127.0.0.1:5434/automotivo_test_db',
         PORT: '3001'
       },
       stdout: 'pipe',
@@ -39,11 +39,11 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
     },
     {
-      command: 'npx vite --port 5174',
+      command: 'npx vite --port 5174 --host 127.0.0.1',
       cwd: './client',
       port: 5174,
       env: {
-        VITE_API_URL: 'http://localhost:3001/api',
+        VITE_API_URL: 'http://127.0.0.1:3001/api',
         VITE_PORT: '5174'
       },
       stdout: 'pipe',

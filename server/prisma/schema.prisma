@@ -642,6 +642,12 @@ enum TipoMovimentacao {
   ESTORNO
 }
 
+enum CondicaoPeca {
+  NOVO
+  USADO
+  RECONDICIONADO
+}
+
 model NotaFiscal {
   id_nota_fiscal Int       @id @default(autoincrement())
   numero         String    @db.VarChar(50)
@@ -671,6 +677,7 @@ model MovimentacaoEstoque {
   custo_unitario_historico Decimal          @db.Decimal(10, 2)
   preco_venda_historico    Decimal          @db.Decimal(10, 2)
   data_movimentacao        DateTime         @default(now()) @db.Timestamp(6)
+  condicao                 CondicaoPeca     @default(NOVO)
 
   // ── Campos Opcionais (Regras de Negócio Críticas) ──
   nota_fiscal_id          Int?              // A NF pode ser vinculada dias após a entrada

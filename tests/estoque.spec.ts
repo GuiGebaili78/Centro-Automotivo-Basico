@@ -50,7 +50,7 @@ test.describe.serial('Suíte E2E — Módulo de Estoque (Catálogo, Transação,
     await page.getByLabel(/Qtd/i).fill(peca1.qtd);
     await page.getByLabel(/Custo/i).fill(peca1.valorCusto);
     await page.getByLabel(/Venda/i).fill(peca1.valorVenda);
-    await page.getByLabel(/Condição/i).fill('Novo');
+    await page.getByLabel(/Condição/i).selectOption('NOVO');
     await page.getByLabel(/Aplicação/i).fill('Geral');
     await page.getByLabel(/Aviso Est./i).fill('5');
     await page.getByRole('button', { name: 'ADICIONAR' }).click();
@@ -181,6 +181,49 @@ test.describe.serial('Suíte E2E — Módulo de Estoque (Catálogo, Transação,
     await page.getByPlaceholder(/Buscar por nome/i).fill(peca1.nome);
     await page.waitForTimeout(1000);
     await expect(page.locator('tr').filter({ hasText: peca1.nome })).toBeHidden();
+  });
+
+  test('Cenário 5: Verificação de Sincronia de Banco e Cadastro de Nova Peça com Condição (Clean Architecture)', async ({ page }) => {
+    await login(page);
+
+    // Ir para tela de entrada de estoque
+    await page.goto('/entrada-estoque');
+    await page.waitForTimeout(1000);
+
+    const randomSuffix = Math.floor(Math.random() * 100000);
+    const pecaNovaCondicao = `PECA NOVA CONDICAO ${randomSuffix}`;
+
+    // Cadastrar novo fornecedor
+    await page.getByRole('button', { name: 'Novo Fornecedor' }).click();
+    const fornecedorModal = page.getByRole('dialog');
+    await fornecedorModal.waitFor({ state: 'visible' });
+    await fornecedorModal.getByLabel('Razão Social / Nome Completo *').fill(`FORNECEDOR CONDICAO ${randomSuffix}`);
+    
+    const createFornecedorPromise = page.waitForResponse(
+      (r) => r.url().includes('/api/fornecedor') && r.request().method() === 'POST'
+    );
+    await fornecedorModal.getByRole('button', { name: 'SALVAR FORNECEDOR' }).click();
+    await createFornecedorPromise;
+    await fornecedorModal.waitFor({ state: 'hidden' });
+    await page.waitForTimeout(500);
+
+    // Preencher dados da nova peça garantindo a tipagem de Condição
+    await page.getByLabel(/Buscar Peça ou Cadastrar Nova/i).fill(pecaNovaCondicao);
+    await page.getByLabel(/Qtd/i).fill('12');
+    await page.getByLabel(/Custo/i).fill('25.50');
+    await page.getByLabel(/Venda/i).fill('60.00');
+    await page.getByLabel(/Condição/i).selectOption('RECONDICIONADO');
+    await page.getByRole('button', { name: 'ADICIONAR' }).click();
+
+    // Finalizar Entrada e aguardar resposta 201 Created (garante que a coluna condicao existe no banco de dados)
+    const saveEntryPromise = page.waitForResponse(
+      (r) => r.url().includes('/api/pecas-estoque/entry') && r.request().method() === 'POST' && r.status() === 201
+    );
+    await page.getByRole('button', { name: 'FINALIZAR ENTRADA' }).click();
+    const response = await saveEntryPromise;
+    const body = await response.json();
+    expect(body).toBeDefined();
+    expect(body.id_entrada).toBeGreaterThan(0);
   });
 
 });

@@ -157,7 +157,7 @@ export const PecasEstoquePage = () => {
           <div className="relative flex-1 w-full">
             <Input
               icon={Search}
-              placeholder="Buscar por nome, fabricante, modelo, descrição..."
+              placeholder="Buscar por nome, fabricante, modelo, localização (ex: Prateleira)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full"

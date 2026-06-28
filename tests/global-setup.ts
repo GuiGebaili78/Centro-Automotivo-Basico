@@ -5,7 +5,7 @@ async function globalSetup() {
   console.log('--- Configurando banco de dados de teste ---');
   
   const serverDir = path.resolve(__dirname, '../server');
-  const databaseUrlTest = 'postgresql://user:password@localhost:5434/automotivo_test_db';
+  const databaseUrlTest = 'postgresql://user:password@127.0.0.1:5434/automotivo_test_db';
 
   try {
     console.log('⏳ [1/2] Garantindo que o banco automotivo_test_db existe no Docker...');

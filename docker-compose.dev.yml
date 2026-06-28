@@ -4,8 +4,8 @@
 
 services:
   api:
-    # Sobrescreve o command de prod por hot-reload (tsx watch)
-    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
+    # Sobrescreve o command de prod por hot-reload (tsx watch) com sincronização do banco (db push)
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npx prisma db push && npm run dev"
     environment:
       NODE_ENV: development
       FRONTEND_URL: http://localhost:5173
