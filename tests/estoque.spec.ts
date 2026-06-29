@@ -54,13 +54,16 @@ test.describe.serial('Suíte E2E — Módulo de Estoque (Catálogo, Transação,
     await page.getByLabel(/Aplicação/i).fill('Geral');
     await page.getByLabel(/Aviso Est./i).fill('5');
     await page.getByRole('button', { name: 'ADICIONAR' }).click();
+    await page.waitForTimeout(500); // Aguarda limpeza completa de estados e timers do React
 
     // 1b. Cadastrar peça apenas com dados essenciais
     await page.getByLabel(/Buscar Peça ou Cadastrar Nova/i).fill(pecaEssencial.nome);
+    await page.waitForTimeout(300); // Aguarda debounce e blur
     await page.getByLabel(/Qtd/i).fill(pecaEssencial.qtd);
     await page.getByLabel(/Custo/i).fill(pecaEssencial.valorCusto);
     await page.getByLabel(/Venda/i).fill(pecaEssencial.valorVenda);
     await page.getByRole('button', { name: 'ADICIONAR' }).click();
+    await page.waitForTimeout(300);
 
     // Finalizar Entrada
     const saveEntryPromise = page.waitForResponse(

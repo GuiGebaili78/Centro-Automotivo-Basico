@@ -59,6 +59,7 @@ test.describe.serial('Suíte Completa de Clientes — Ciclo de Vida E2E', () => 
     c1.placa = generateRandomPlate();
     
     await page.goto('/novo-cadastro');
+    await page.waitForTimeout(500); // Aguarda autoFocus do React concluir
     
     // Fill client data
     await page.getByLabel('Nome Completo *').fill(c1.nome);
@@ -68,7 +69,9 @@ test.describe.serial('Suíte Completa de Clientes — Ciclo de Vida E2E', () => 
     await telInput.blur(); 
     
     // Fill vehicle data
-    await page.getByLabel('Placa').fill(c1.placa);
+    const placaInp = page.getByLabel('Placa');
+    await placaInp.fill(c1.placa);
+    await placaInp.blur();
     await page.getByLabel('Marca *').fill('HONDA');
     await page.getByLabel('Modelo *', { exact: true }).fill('CIVIC');
     await page.getByLabel('Cor').fill('PRETO');
@@ -111,6 +114,7 @@ test.describe.serial('Suíte Completa de Clientes — Ciclo de Vida E2E', () => 
     c2.peca = `Motor ${Math.floor(Math.random() * 10000)}`;
     
     await page.goto('/novo-cadastro');
+    await page.waitForTimeout(500);
     
     await page.getByLabel('Nome Completo *').fill(c2.nome);
     const telInput2 = page.getByLabel('Telefone Principal *');
@@ -144,6 +148,7 @@ test.describe.serial('Suíte Completa de Clientes — Ciclo de Vida E2E', () => 
   test('Cenário 3: Integridade (Bloqueios)', async ({ page }) => {
     await login(page);
     await page.goto('/novo-cadastro');
+    await page.waitForTimeout(500);
     
     // Duplicate CPF/Tel
     const nomeInp = page.getByLabel('Nome Completo *');
@@ -176,7 +181,7 @@ test.describe.serial('Suíte Completa de Clientes — Ciclo de Vida E2E', () => 
     
     // Duplicate Plate
     await page.reload();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     
     const nomeInp2 = page.getByLabel('Nome Completo *');
     await nomeInp2.fill('Outro Clone');
@@ -289,6 +294,7 @@ test.describe.serial('Suíte Completa de Clientes — Ciclo de Vida E2E', () => 
   test('Cenário 6: Autocomplete (UX e Redirecionamento)', async ({ page }) => {
     await login(page);
     await page.goto('/novo-cadastro');
+    await page.waitForTimeout(500);
     
     const nameInput = page.getByLabel('Nome Completo *');
     

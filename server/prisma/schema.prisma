@@ -242,13 +242,14 @@ model Produto {
   ativo                 Boolean   @default(true)
   dt_cadastro           DateTime  @default(now()) @db.Timestamp(6)
 
+  condicao     CondicaoPeca      @default(NOVO)
   id_categoria Int?
   categoria    CategoriaEstoque? @relation(fields: [id_categoria], references: [id_categoria])
 
   itens_os      ItensOs[]
   movimentacoes MovimentacaoEstoque[]
 
-  @@unique([nome, fabricante, modelo])
+  @@unique([nome, fabricante, modelo, condicao])
   @@map("produto")
 }
 
@@ -643,6 +644,7 @@ enum TipoMovimentacao {
 }
 
 enum CondicaoPeca {
+  ORIGINAL
   NOVO
   USADO
   RECONDICIONADO

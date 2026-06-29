@@ -29,6 +29,7 @@ export interface IItemEntrada {
     estoque_minimo: number;
     modelo?: string;
     id_categoria?: number | null;
+    condicao?: string;
     _update_master?: boolean;
   } | null;
 

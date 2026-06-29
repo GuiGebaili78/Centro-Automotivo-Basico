@@ -127,6 +127,7 @@ export const EntradaItensForm = ({
     const sale = Number(p.valor_venda || 0);
     setRowCost(cost.toFixed(2));
     setRowSale(sale.toFixed(2));
+    setRowCondicao(p.condicao || "NOVO");
 
     if (cost > 0) {
       const m = ((sale - cost) / cost) * 100;
@@ -150,18 +151,19 @@ export const EntradaItensForm = ({
         ? selectedStockPart.id_pecas_estoque
         : null,
       new_part_data: {
-        nome: newPartName || partSearch || selectedStockPart?.nome || "",
-        descricao: newPartDesc || newPartName || partSearch,
+        nome: partSearch || newPartName || selectedStockPart?.nome || "",
+        descricao: newPartDesc || partSearch || newPartName,
         fabricante: newPartFab,
         localizacao: newPartLoc,
         unidade_medida: newPartUnit,
         estoque_minimo: Number(rowMinStock) || 0,
         modelo: rowModelo,
         id_categoria: selectedCategoria,
+        condicao: rowCondicao,
         _update_master: editingTempId !== null && !isActuallyNew,
       },
       displayName: isActuallyNew
-        ? newPartName || partSearch
+        ? partSearch || newPartName
         : selectedStockPart?.nome || "",
       quantidade: Number(rowQtd),
       valor_custo: Number(rowCost),
@@ -333,11 +335,12 @@ export const EntradaItensForm = ({
                   }
                 }
               }}
-              onBlur={() => {
+              onBlur={(e) => {
+                const val = e.target.value;
                 setTimeout(() => {
-                  if (partSearch.trim().length > 0 && !selectedStockPart && !isNewPart) {
+                  if (val.trim().length > 0 && !selectedStockPart && !isNewPart) {
                     setIsNewPart(true);
-                    setNewPartName(partSearch);
+                    setNewPartName(val);
                     setPartResults([]);
                   }
                 }, 200);
@@ -352,7 +355,9 @@ export const EntradaItensForm = ({
                       className="w-full text-left p-3 hover:bg-neutral-50 flex flex-col gap-1 border-b border-neutral-100 last:border-0 transition-colors"
                     >
                       <div className="flex justify-between items-baseline">
-                        <span className="font-bold text-neutral-800 uppercase text-sm">{p.nome}</span>
+                        <span className="font-bold text-neutral-800 uppercase text-sm">
+                          {p.nome} {p.condicao ? `• (${p.condicao})` : ""}
+                        </span>
                         <span className="text-xs font-bold bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded uppercase ring-1 ring-neutral-200">
                           {p.estoque_atual} {p.unidade_medida || "UN"}
                         </span>
@@ -504,6 +509,7 @@ export const EntradaItensForm = ({
               value={rowCondicao}
               onChange={(e: any) => setRowCondicao(e.target.value)}
             >
+              <option value="ORIGINAL">Original</option>
               <option value="NOVO">Novo</option>
               <option value="USADO">Usado</option>
               <option value="RECONDICIONADO">Recondicionado</option>

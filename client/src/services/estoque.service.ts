@@ -23,6 +23,7 @@ export const EstoqueService = {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
+      _t: String(Date.now()),
     });
     if (search && search.trim()) params.set("q", search.trim());
     if (id_categoria) params.set("tipo", String(id_categoria));

@@ -129,6 +129,7 @@ export interface IPecasEstoque {
   aplicacao?: string | null;
   modelo?: string | null;
   id_categoria?: number | null;
+  condicao?: string | null;
   // Relações opcionais
   categoria?: { id_categoria: number; nome: string } | null;
   itens_entrada?: any[];

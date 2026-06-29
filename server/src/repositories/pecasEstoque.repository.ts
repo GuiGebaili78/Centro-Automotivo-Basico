@@ -51,6 +51,26 @@ export interface PaginatedResult<T> {
  * Nenhum consumidor fora deste arquivo precisa saber que a tabela mudou.
  */
 function mapProdutoToPecasEstoque(p: any): any {
+  let itens_entrada: any[] = [];
+  if (p.movimentacoes && p.movimentacoes.length > 0) {
+    const mov = p.movimentacoes[0];
+    if (mov && mov.tipo === "ENTRADA") {
+      itens_entrada = [
+        {
+          entrada: {
+            data_compra: mov.data_movimentacao,
+            nf_numero: mov.nota_fiscal?.numero || null,
+            fornecedor: mov.nota_fiscal?.fornecedor || null,
+            id_pessoa: mov.nota_fiscal?.id_fornecedor || null,
+          },
+          condicao: mov.condicao || p.condicao || "NOVO",
+          aplicacao: p.aplicacao_equivalencia || null,
+          ref_cod: p.ref_cod || null,
+        }
+      ];
+    }
+  }
+
   return {
     id_pecas_estoque: p.id_produto,
     nome: p.nome,
@@ -66,15 +86,13 @@ function mapProdutoToPecasEstoque(p: any): any {
     dt_cadastro: p.dt_cadastro,
     ref_cod: p.ref_cod || null,
     localizacao: p.localizacao || null,
-    // 'aplicacao' era campo direto; agora é 'aplicacao_equivalencia' no Produto
     aplicacao: p.aplicacao_equivalencia || null,
     modelo: p.modelo || null,
     id_categoria: p.id_categoria || null,
     categoria: p.categoria || null,
+    condicao: p.condicao || "NOVO",
     ativo: p.ativo,
-    // entrada_estoque/item_entrada foram removidas — retorna vazio para
-    // compatibilidade com código que lê itens_entrada?.[0]?.entrada
-    itens_entrada: [],
+    itens_entrada: itens_entrada,
     _count: p._count,
   };
 }
@@ -107,10 +125,19 @@ function mapMovimentacaoToLegacy(m: any): any {
  * Payload legado (IPecasEstoque) → campos do Produto (DB)
  */
 function mapLegacyPayloadToProduto(data: any): any {
+  let condicaoEnum: any = CondicaoPeca.NOVO;
+  if (data.condicao) {
+    const upper = data.condicao.toUpperCase();
+    if (upper === "ORIGINAL") condicaoEnum = (CondicaoPeca as any).ORIGINAL || "ORIGINAL";
+    else if (upper === "USADO") condicaoEnum = CondicaoPeca.USADO;
+    else if (upper === "RECONDICIONADO") condicaoEnum = CondicaoPeca.RECONDICIONADO;
+  }
+
   return {
     nome: data.nome,
     fabricante: data.fabricante ?? "",
     modelo: data.modelo ?? "",
+    condicao: condicaoEnum,
     descricao: data.descricao || data.nome || null,
     preco_custo_atual: data.valor_custo,
     preco_venda_atual: data.valor_venda,
@@ -143,7 +170,7 @@ export class PecasEstoqueRepository {
     } catch (error: any) {
       if (error.code === "P2002") {
         throw new Error(
-          "Peça já cadastrada no catálogo com este Nome, Fabricante e Modelo."
+          "Peça já cadastrada no catálogo com este Nome, Fabricante, Modelo e Condição."
         );
       }
       throw error;
@@ -178,7 +205,15 @@ export class PecasEstoqueRepository {
     const [data, total] = await Promise.all([
       prisma.produto.findMany({
         where: whereClause,
-        include: { categoria: true },
+        include: {
+          categoria: true,
+          movimentacoes: {
+            where: { tipo: 'ENTRADA' },
+            orderBy: { data_movimentacao: 'desc' },
+            take: 1,
+            include: { nota_fiscal: { include: { fornecedor: true } } },
+          },
+        },
         orderBy: { nome: "asc" },
         skip,
         take: limit,
@@ -205,19 +240,29 @@ export class PecasEstoqueRepository {
 
   async update(id_pecas_estoque: number, data: any, auditoria?: AuditoriaCtx) {
     return await prisma.$transaction(async (tx) => {
-      // 1. Verificar conflito de unicidade (constraint: nome + fabricante + modelo)
+      // 1. Verificar conflito de unicidade (constraint: nome + fabricante + modelo + condicao)
       if (data.nome !== undefined) {
+        let condicaoEnum: any = undefined;
+        if (data.condicao) {
+          const upper = data.condicao.toUpperCase();
+          if (upper === "ORIGINAL") condicaoEnum = (CondicaoPeca as any).ORIGINAL || "ORIGINAL";
+          else if (upper === "USADO") condicaoEnum = CondicaoPeca.USADO;
+          else if (upper === "RECONDICIONADO") condicaoEnum = CondicaoPeca.RECONDICIONADO;
+          else condicaoEnum = CondicaoPeca.NOVO;
+        }
+
         const conflito = await tx.produto.findFirst({
           where: {
             nome: data.nome,
             fabricante: data.fabricante ?? undefined,
             modelo: data.modelo ?? undefined,
+            condicao: condicaoEnum ?? undefined,
             id_produto: { not: id_pecas_estoque },
           },
         });
         if (conflito) {
           throw new Error(
-            "Já existe outra peça cadastrada com esta combinação de Nome, Fabricante e Modelo."
+            "Já existe outra peça cadastrada com esta combinação de Nome, Fabricante, Modelo e Condição."
           );
         }
       }
@@ -243,6 +288,13 @@ export class PecasEstoqueRepository {
       if (data.localizacao !== undefined)        updateData.localizacao = data.localizacao || null;
       if (data.aplicacao !== undefined)          updateData.aplicacao_equivalencia = data.aplicacao || null;
       if (data.id_categoria !== undefined)       updateData.id_categoria = data.id_categoria || null;
+      if (data.condicao !== undefined) {
+        const upper = data.condicao.toUpperCase();
+        if (upper === "ORIGINAL") updateData.condicao = (CondicaoPeca as any).ORIGINAL || "ORIGINAL";
+        else if (upper === "USADO") updateData.condicao = CondicaoPeca.USADO;
+        else if (upper === "RECONDICIONADO") updateData.condicao = CondicaoPeca.RECONDICIONADO;
+        else updateData.condicao = CondicaoPeca.NOVO;
+      }
       if (data.custo_unitario_padrao !== undefined) {
         updateData.custo_unitario_padrao = data.custo_unitario_padrao;
       }
@@ -302,7 +354,15 @@ export class PecasEstoqueRepository {
     const produtos = await prisma.produto.findMany({
       where: whereClause,
       take: 20,
-      include: { categoria: true },
+      include: {
+        categoria: true,
+        movimentacoes: {
+          where: { tipo: 'ENTRADA' },
+          orderBy: { data_movimentacao: 'desc' },
+          take: 1,
+          include: { nota_fiscal: { include: { fornecedor: true } } },
+        },
+      },
     });
 
     return produtos.map(mapProdutoToPecasEstoque);
@@ -583,11 +643,20 @@ export class PecasEstoqueRepository {
 
         // 2a. Criar produto novo se não existir
         if (!produtoId && item.new_part_data) {
+          let condicaoEnum: any = CondicaoPeca.NOVO;
+          if (item.condicao || item.new_part_data.condicao) {
+            const c = (item.condicao || item.new_part_data.condicao).toUpperCase();
+            if (c === "ORIGINAL") condicaoEnum = (CondicaoPeca as any).ORIGINAL || "ORIGINAL";
+            else if (c === "USADO") condicaoEnum = CondicaoPeca.USADO;
+            else if (c === "RECONDICIONADO") condicaoEnum = CondicaoPeca.RECONDICIONADO;
+          }
+
           const novoProduto = await tx.produto.create({
             data: {
               nome: item.new_part_data.nome,
               fabricante: item.new_part_data.fabricante ?? "",
               modelo: item.new_part_data.modelo ?? "",
+              condicao: condicaoEnum,
               descricao: item.new_part_data.descricao || item.new_part_data.nome,
               preco_custo_atual: item.valor_custo,
               preco_venda_atual: item.valor_venda,
@@ -622,11 +691,60 @@ export class PecasEstoqueRepository {
         }
 
         // 2c. Capturar saldo ANTES do incremento
-        const produtoAntes = await tx.produto.findUnique({
+        let produtoAntes = await tx.produto.findUnique({
           where: { id_produto: produtoId },
-          select: { saldo_atual: true },
         });
-        const saldoAntes = produtoAntes?.saldo_atual ?? 0;
+
+        if (!produtoAntes) {
+          throw new Error("Peça não encontrada no catálogo.");
+        }
+
+        let condicaoEnum: any = produtoAntes.condicao;
+        if (item.condicao) {
+          const upper = item.condicao.toUpperCase();
+          if (upper === "ORIGINAL") condicaoEnum = (CondicaoPeca as any).ORIGINAL || "ORIGINAL";
+          else if (upper === "USADO") condicaoEnum = CondicaoPeca.USADO;
+          else if (upper === "RECONDICIONADO") condicaoEnum = CondicaoPeca.RECONDICIONADO;
+          else condicaoEnum = CondicaoPeca.NOVO;
+        }
+
+        // Se a condição selecionada na entrada for diferente da condição da peça base,
+        // gerencia a separação por condição (busca existente ou cria nova peça para aquela condição)
+        if (produtoAntes.condicao !== condicaoEnum) {
+          let produtoCondicao = await tx.produto.findFirst({
+            where: {
+              nome: produtoAntes.nome,
+              fabricante: produtoAntes.fabricante,
+              modelo: produtoAntes.modelo,
+              condicao: condicaoEnum,
+            },
+          });
+
+          if (!produtoCondicao) {
+            produtoCondicao = await tx.produto.create({
+              data: {
+                nome: produtoAntes.nome,
+                fabricante: produtoAntes.fabricante,
+                modelo: produtoAntes.modelo,
+                condicao: condicaoEnum,
+                descricao: produtoAntes.descricao,
+                preco_custo_atual: item.valor_custo,
+                preco_venda_atual: item.valor_venda,
+                saldo_atual: 0,
+                estoque_minimo: produtoAntes.estoque_minimo,
+                unidade_medida: produtoAntes.unidade_medida,
+                custo_unitario_padrao: item.valor_custo,
+                localizacao: produtoAntes.localizacao,
+                aplicacao_equivalencia: produtoAntes.aplicacao_equivalencia,
+                id_categoria: produtoAntes.id_categoria,
+              },
+            });
+          }
+          produtoId = produtoCondicao.id_produto;
+          produtoAntes = produtoCondicao;
+        }
+
+        const saldoAntes = produtoAntes.saldo_atual;
 
         // 2d. Incrementar saldo e atualizar preços atomicamente
         const produtoAtualizado = await tx.produto.update({
@@ -639,13 +757,6 @@ export class PecasEstoqueRepository {
           },
           select: { saldo_atual: true },
         });
-
-        let condicaoEnum = CondicaoPeca.NOVO;
-        if (item.condicao) {
-          const upper = item.condicao.toUpperCase();
-          if (upper === "USADO") condicaoEnum = CondicaoPeca.USADO;
-          else if (upper === "RECONDICIONADO") condicaoEnum = CondicaoPeca.RECONDICIONADO;
-        }
 
         // 2e. Registrar movimentação de auditoria (IMUTÁVEL)
         const mov = await tx.movimentacaoEstoque.create({
@@ -736,10 +847,11 @@ export class PecasEstoqueRepository {
       for (const item of data.itens) {
         if (item.id_item_entrada === id) {
           const diff = item.quantidade - mov.quantidade;
-          let condicaoEnum = CondicaoPeca.NOVO;
+          let condicaoEnum: any = CondicaoPeca.NOVO;
           if (item.condicao) {
             const upper = item.condicao.toUpperCase();
-            if (upper === "USADO") condicaoEnum = CondicaoPeca.USADO;
+            if (upper === "ORIGINAL") condicaoEnum = (CondicaoPeca as any).ORIGINAL || "ORIGINAL";
+            else if (upper === "USADO") condicaoEnum = CondicaoPeca.USADO;
             else if (upper === "RECONDICIONADO") condicaoEnum = CondicaoPeca.RECONDICIONADO;
           }
 

@@ -44,7 +44,10 @@ export class PrecificacaoService {
     // Se todos os lotes foram esgotados (ex: estoque zerado ou negativo),
     // retorna o lote mais recente como fallback de precificação para a OS
     const ultimoLote = lotes[lotes.length - 1];
-    ultimoLote.saldo_disponivel_lote = 0;
-    return ultimoLote;
+    if (ultimoLote) {
+      ultimoLote.saldo_disponivel_lote = 0;
+      return ultimoLote;
+    }
+    return null;
   }
 }

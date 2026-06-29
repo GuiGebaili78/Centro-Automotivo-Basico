@@ -56,6 +56,7 @@ export const PecasEstoqueDetalhePage = () => {
     estoque_minimo: "",
     modelo: "",
     localizacao: "",
+    aplicacao: "",
     id_categoria: null as number | null,
   });
 
@@ -134,6 +135,7 @@ export const PecasEstoqueDetalhePage = () => {
         estoque_minimo: String(found.estoque_minimo || 0),
         modelo: found.modelo || "",
         localizacao: found.localizacao || "",
+        aplicacao: found.aplicacao || "",
         id_categoria: found.id_categoria || null,
       });
     } catch (error: any) {
@@ -189,6 +191,7 @@ export const PecasEstoqueDetalhePage = () => {
         estoque_minimo: Number(formData.estoque_minimo),
         modelo: formData.modelo,
         localizacao: formData.localizacao,
+        aplicacao: formData.aplicacao,
         id_categoria: formData.id_categoria,
       };
 
@@ -263,7 +266,7 @@ export const PecasEstoqueDetalhePage = () => {
   return (
     <PageLayout
       title={`Catálogo: ${peca.nome}`}
-      subtitle={`ID: ${peca.id_pecas_estoque} | Perfil Global da Peça`}
+      subtitle={`ID: ${peca.id_pecas_estoque} | Perfil Global da Peça | Condição: ${peca.condicao || 'NOVO'}`}
       actions={
         <div className="flex gap-2">
           <Button
@@ -326,7 +329,7 @@ export const PecasEstoqueDetalhePage = () => {
                   <option value="PAR">Par</option>
                 </Select>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <Input
                   label="Modelo"
                   value={formData.modelo}
@@ -343,6 +346,8 @@ export const PecasEstoqueDetalhePage = () => {
                   }
                   placeholder="Prateleira A..."
                 />
+              </div>
+              <div className="grid grid-cols-1 gap-4">
                 <div className="relative">
                   <CategoriaCombobox
                     categorias={categorias}
@@ -353,13 +358,13 @@ export const PecasEstoqueDetalhePage = () => {
                 </div>
               </div>
               <TextArea
-                label="Descrição / Notas"
-                value={formData.descricao}
+                label="Aplicação e Equivalência"
+                value={formData.aplicacao}
                 onChange={(e) =>
-                  setFormData({ ...formData, descricao: e.target.value })
+                  setFormData({ ...formData, aplicacao: e.target.value })
                 }
                 className="h-24 resize-none"
-                placeholder="Detalhes adicionais..."
+                placeholder="Ex: Palio, Uno, Celta..."
               />
             </div>
 
