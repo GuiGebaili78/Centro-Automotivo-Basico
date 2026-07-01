@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, Trash2, Edit2, Package, X, RotateCcw, Save, Edit } from "lucide-react";
 import { toast } from "react-toastify";
-import { Input, Button, Card, Select } from "../ui";
+import { Input, Button, Card, Select, AutocompleteInput } from "../ui";
 import { ActionButton } from "../ui/ActionButton";
 import { CategoriaCombobox } from "./CategoriaCombobox";
 import { CategoriaEstoqueManagerModal } from "./CategoriaEstoqueManagerModal";
@@ -305,9 +305,29 @@ export const EntradaItensForm = ({
         </h3>
 
         {selectedStockPart && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-lg text-xs font-medium flex items-center gap-3 shadow-sm">
-            <span className="font-bold uppercase tracking-wider bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] shrink-0">Modo Transação</span>
-            <span>Para alterar o nome, localização ou dados mestres desta peça, acesse o <strong>Perfil da Peça no Catálogo</strong>. Nesta tela, apenas os valores da nota fiscal podem ser ajustados.</span>
+          <div className="flex flex-col gap-2">
+            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-lg text-xs font-medium flex items-center gap-3 shadow-sm">
+              <span className="font-bold uppercase tracking-wider bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] shrink-0">Modo Transação</span>
+              <span>Para alterar o nome, localização ou dados mestres desta peça, acesse o <strong>Perfil da Peça no Catálogo</strong>. Nesta tela, apenas os valores da nota fiscal podem ser ajustados.</span>
+            </div>
+            <Button
+              variant="outline"
+              icon={Edit2}
+              onClick={() => {
+                 setIsNewPart(true);
+                 setNewPartName(selectedStockPart.nome);
+                 setRowModelo(selectedStockPart.modelo || "");
+                 setNewPartFab(selectedStockPart.fabricante || "");
+                 setNewPartLoc(selectedStockPart.localizacao || "");
+                 setNewPartUnit(selectedStockPart.unidade_medida || "UN");
+                 setPartSearch(selectedStockPart.nome);
+                 setSelectedCategoria(selectedStockPart.id_categoria || null);
+                 setSelectedStockPart(null);
+              }}
+              className="w-fit text-sm border-primary-200 text-primary-700 hover:bg-primary-50"
+            >
+              Usar como base para Nova Peça
+            </Button>
           </div>
         )}
 
@@ -407,7 +427,8 @@ export const EntradaItensForm = ({
           <div className="grid grid-cols-4 gap-2">
             {/* NOVO CAMPO: MODELO - Posicionado entre Busca e Fabricante */}
             <div>
-              <Input
+              <AutocompleteInput
+                suggestionField="modelo"
                 label="Modelo"
                 placeholder="Ex: Palio, Uno..."
                 value={rowModelo}
@@ -417,7 +438,8 @@ export const EntradaItensForm = ({
             </div>
             
             <div>
-              <Input
+              <AutocompleteInput
+                suggestionField="fabricante"
                 label="Fabricante"
                 placeholder="Marca"
                 value={newPartFab}
@@ -427,7 +449,8 @@ export const EntradaItensForm = ({
             </div>
 
             <div>
-              <Input
+              <AutocompleteInput
+                suggestionField="localizacao"
                 label="Localização"
                 placeholder="Ex: Prateleira A"
                 value={newPartLoc}
@@ -516,7 +539,8 @@ export const EntradaItensForm = ({
             </Select>
           </div>
           <div className="md:col-span-2">
-            <Input
+            <AutocompleteInput
+              suggestionField="aplicacao"
               label="Aplicação (Opc)"
               placeholder="Ex: Gol G5 1.0"
               value={rowAplicacao}

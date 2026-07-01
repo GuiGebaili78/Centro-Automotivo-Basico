@@ -14,6 +14,7 @@ pecasEstoqueRoutes.delete('/entry/:id', controller.deleteEntry.bind(controller))
 pecasEstoqueRoutes.post('/', controller.create.bind(controller));
 pecasEstoqueRoutes.get('/', controller.findAll.bind(controller));
 pecasEstoqueRoutes.get('/search', controller.search.bind(controller));
+pecasEstoqueRoutes.get('/sugestoes', controller.getSuggestions.bind(controller));
 
 // ── Rotas com :id (devem vir após rotas literais) ──
 pecasEstoqueRoutes.get('/:id/availability', controller.getAvailability.bind(controller));

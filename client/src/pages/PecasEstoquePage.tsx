@@ -10,6 +10,7 @@ import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { EstoqueService } from "../services/estoque.service";
 import type { IPecasEstoque } from "../types/backend";
 import { EstoqueTable } from "../components/estoque/EstoqueTable";
+import { CategoriaCombobox } from "../components/estoque/CategoriaCombobox";
 import {
   CategoriaEstoqueService,
   type ICategoriaEstoque,
@@ -136,22 +137,11 @@ export const PecasEstoquePage = () => {
         {/* BUSCA E FILTROS */}
         <div className="flex flex-col sm:flex-row gap-4 items-center">
           <div className="w-full sm:w-1/4">
-            <select
-              className="w-full h-[46px] px-3 py-2 border border-neutral-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-              value={selectedTipo}
-              onChange={(e) =>
-                setSelectedTipo(
-                  e.target.value === "" ? "" : Number(e.target.value)
-                )
-              }
-            >
-              <option value="">Todas as Categorias</option>
-              {categorias.map((c) => (
-                <option key={c.id_categoria} value={c.id_categoria}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
+            <CategoriaCombobox
+              categorias={categorias}
+              selectedId={selectedTipo === "" ? null : Number(selectedTipo)}
+              onChange={(val) => setSelectedTipo(val === null ? "" : val)}
+            />
           </div>
 
           <div className="relative flex-1 w-full">

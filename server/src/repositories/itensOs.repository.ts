@@ -93,6 +93,38 @@ export class ItensOsRepository {
         });
       }
 
+      // NOVO: Baixa imediata de estoque
+      if (isFromStock && !data.is_interno && created.id_produto) {
+        const produto = await tx.produto.findUnique({ where: { id_produto: created.id_produto } });
+        if (!produto) throw new Error("Produto não encontrado no estoque.");
+        if (produto.saldo_atual - created.quantidade < 0) {
+           throw new Error(`Estoque insuficiente. Saldo atual: ${produto.saldo_atual}. Solicitado: ${created.quantidade}.`);
+        }
+        
+        const produtoAtualizado = await tx.produto.update({
+          where: { id_produto: created.id_produto },
+          data: { saldo_atual: { decrement: created.quantidade } }
+        });
+
+        await tx.movimentacaoEstoque.create({
+          data: {
+             produto_id: created.id_produto,
+             id_usuario: null,
+             nome_usuario_snapshot: 'Sistema (OS)',
+             tipo: 'SAIDA', // TipoMovimentacao.SAIDA
+             quantidade: -created.quantidade,
+             saldo_anterior: produto.saldo_atual,
+             saldo_atual: produtoAtualizado.saldo_atual,
+             custo_unitario_historico: produto.preco_custo_atual,
+             preco_venda_historico: created.valor_venda,
+             condicao: produto.condicao,
+             origem: `OS #${created.id_os}`,
+             obs: `Baixa imediata na inserção da OS #${created.id_os}`,
+             id_os: created.id_os
+          }
+        });
+      }
+
       // Recalculate OS totals
       await osRepo.recalculateTotals(created.id_os, tx);
       
@@ -196,29 +228,60 @@ export class ItensOsRepository {
       throw new Error("A peça já foi paga ao fornecedor. Estorne o pagamento antes de removê-la da OS.");
     }
 
-    // Soft-delete unpaid payments associated with this item to prevent orphans
-    await prisma.pagamentoPeca.updateMany({
-      where: { id_item_os: id, pago_ao_fornecedor: false, deleted_at: null },
-      data: { deleted_at: new Date() }
-    });
+    return await prisma.$transaction(async (tx) => {
+      // Soft-delete unpaid payments associated with this item to prevent orphans
+      await tx.pagamentoPeca.updateMany({
+        where: { id_item_os: id, pago_ao_fornecedor: false, deleted_at: null },
+        data: { deleted_at: new Date() }
+      });
 
-    const updated = await prisma.itensOs.update({
-      where: { id_iten: id },
-      data: { deleted_at: new Date() },
-      include: { ordem_de_servico: true, produto: true, pagamentos_peca: true }
-    });
+      const updated = await tx.itensOs.update({
+        where: { id_iten: id },
+        data: { deleted_at: new Date() },
+        include: { ordem_de_servico: true, produto: true, pagamentos_peca: true }
+      });
 
-    await auditRepo.create({
-        tabela: 'itens_os',
-        registro_id: id,
-        acao: 'SOFT_DELETE',
-        valor_antigo: current
-    });
-    
-    // Recalculate OS totals
-    await osRepo.recalculateTotals(current.id_os);
+      await auditRepo.create({
+          tabela: 'itens_os',
+          registro_id: id,
+          acao: 'SOFT_DELETE',
+          valor_antigo: current
+      });
+      
+      // ESTORNO imediato
+      if (current.id_pecas_estoque && !current.is_interno) {
+         const produto = await tx.produto.findUnique({ where: { id_produto: current.id_pecas_estoque } });
+         if (produto) {
+            const produtoAtualizado = await tx.produto.update({
+               where: { id_produto: current.id_pecas_estoque },
+               data: { saldo_atual: { increment: current.quantidade } }
+            });
 
-    return mapItemOsToLegacy(updated);
+            await tx.movimentacaoEstoque.create({
+              data: {
+                 produto_id: current.id_pecas_estoque,
+                 id_usuario: null,
+                 nome_usuario_snapshot: 'Sistema (OS)',
+                 tipo: 'ESTORNO', // TipoMovimentacao.ESTORNO
+                 quantidade: current.quantidade,
+                 saldo_anterior: produto.saldo_atual,
+                 saldo_atual: produtoAtualizado.saldo_atual,
+                 custo_unitario_historico: produto.preco_custo_atual,
+                 preco_venda_historico: current.valor_venda,
+                 condicao: produto.condicao,
+                 origem: `Remoção do item #${current.id_iten} da OS #${current.id_os}`,
+                 obs: `Estorno por remoção da OS #${current.id_os}`,
+                 id_os: current.id_os
+              }
+            });
+         }
+      }
+
+      // Recalculate OS totals
+      await osRepo.recalculateTotals(current.id_os, tx);
+
+      return mapItemOsToLegacy(updated);
+    });
   }
 
   async search(query: string) {

@@ -337,7 +337,7 @@ export const VeiculoForm = memo(
               <AutocompleteInput
                 label="Marca *"
                 value={marca}
-                onChange={setMarca}
+                onChange={(e) => setMarca(e.target.value)}
                 fetchSuggestions={(q) => VeiculoService.buscarMarcas(q)}
                 required
               />
@@ -346,7 +346,7 @@ export const VeiculoForm = memo(
               <AutocompleteInput
                 label="Modelo *"
                 value={modelo}
-                onChange={setModelo}
+                onChange={(e) => setModelo(e.target.value)}
                 fetchSuggestions={(q) => VeiculoService.buscarModelos(q)}
                 required
               />
@@ -355,7 +355,7 @@ export const VeiculoForm = memo(
               <AutocompleteInput
                 label="Cor *"
                 value={cor}
-                onChange={setCor}
+                onChange={(e) => setCor(e.target.value)}
                 fetchSuggestions={(q) => VeiculoService.buscarCores(q)}
                 required
                 placeholder="Ex: PRATA, BRANCO..."

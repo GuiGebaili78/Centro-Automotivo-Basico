@@ -462,7 +462,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
               label="Descrição / Título"
               required
               value={formData.descricao}
-              onChange={(val) => setFormData({ ...formData, descricao: val })}
+              onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
               fetchSuggestions={(q) => FinanceiroService.buscarDescricao(q)}
               placeholder="Ex: COMPRA MATERIAL LIMPEZA"
             />
@@ -538,8 +538,8 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
                   <AutocompleteInput
                     label="Credor Avulso"
                     value={formData.credor}
-                    onChange={(val) =>
-                      setFormData({ ...formData, credor: val })
+                    onChange={(e) =>
+                      setFormData({ ...formData, credor: e.target.value })
                     }
                     fetchSuggestions={(q) => FinanceiroService.buscarCredor(q)}
                     placeholder="Ex: FORNECEDOR X"
@@ -685,7 +685,7 @@ export const ContaPagarModal: React.FC<ContaPagarModalProps> = ({
               <AutocompleteInput
                 label="Número da NF (Busca Paginada)"
                 value={formData.nf_numero}
-                onChange={(val) => setFormData({ ...formData, nf_numero: val })}
+                onChange={(e) => setFormData({ ...formData, nf_numero: e.target.value })}
                 fetchSuggestions={async (q) => {
                   const res = await FinanceiroService.getNfsPendentes({
                     search: q,

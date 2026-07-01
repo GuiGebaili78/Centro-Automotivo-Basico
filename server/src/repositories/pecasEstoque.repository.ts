@@ -200,6 +200,15 @@ export class PecasEstoqueRepository {
         { aplicacao_equivalencia: { contains: search, mode: "insensitive" } },
         { localizacao: { contains: search, mode: "insensitive" } },
       ];
+      
+      const upperSearch = search.trim().toUpperCase();
+      if (upperSearch === "NOVO" || upperSearch === "USADO" || upperSearch === "RECONDICIONADO" || upperSearch === "ORIGINAL" || upperSearch.startsWith("USAD") || upperSearch.startsWith("RECONDICIONAD")) {
+          let cEnum: any = CondicaoPeca.NOVO;
+          if (upperSearch.startsWith("USAD")) cEnum = CondicaoPeca.USADO;
+          else if (upperSearch.startsWith("RECONDICIONAD")) cEnum = CondicaoPeca.RECONDICIONADO;
+          else if (upperSearch.startsWith("ORIGINAL") || upperSearch === "ORIGINAL") cEnum = (CondicaoPeca as any).ORIGINAL || "ORIGINAL";
+          whereClause.OR.push({ condicao: { equals: cEnum } });
+      }
     }
 
     const [data, total] = await Promise.all([
@@ -349,6 +358,15 @@ export class PecasEstoqueRepository {
         { aplicacao_equivalencia: { contains: query, mode: "insensitive" } },
         { localizacao: { contains: query, mode: "insensitive" } },
       ];
+
+      const upperSearch = query.trim().toUpperCase();
+      if (upperSearch === "NOVO" || upperSearch === "USADO" || upperSearch === "RECONDICIONADO" || upperSearch === "ORIGINAL" || upperSearch.startsWith("USAD") || upperSearch.startsWith("RECONDICIONAD")) {
+          let cEnum: any = CondicaoPeca.NOVO;
+          if (upperSearch.startsWith("USAD")) cEnum = CondicaoPeca.USADO;
+          else if (upperSearch.startsWith("RECONDICIONAD")) cEnum = CondicaoPeca.RECONDICIONADO;
+          else if (upperSearch.startsWith("ORIGINAL") || upperSearch === "ORIGINAL") cEnum = (CondicaoPeca as any).ORIGINAL || "ORIGINAL";
+          whereClause.OR.push({ condicao: { equals: cEnum } });
+      }
     }
 
     const produtos = await prisma.produto.findMany({
@@ -366,6 +384,34 @@ export class PecasEstoqueRepository {
     });
 
     return produtos.map(mapProdutoToPecasEstoque);
+  }
+
+  async getSuggestions(campo: string, query?: string): Promise<string[]> {
+      const fieldMap: Record<string, string> = {
+          'fabricante': 'fabricante',
+          'modelo': 'modelo',
+          'localizacao': 'localizacao',
+          'aplicacao': 'aplicacao_equivalencia'
+      };
+      
+      const dbField = fieldMap[campo];
+      if (!dbField) {
+         throw new Error("Campo inválido para sugestão");
+      }
+      
+      const whereClause: any = { ativo: true, [dbField]: { not: null, not: "" } };
+      if (query && query.trim() !== "") {
+          whereClause[dbField] = { contains: query.trim(), mode: 'insensitive' };
+      }
+      
+      const suggestions = await prisma.produto.findMany({
+          where: whereClause,
+          distinct: [dbField as any],
+          select: { [dbField]: true },
+          take: 20
+      });
+      
+      return suggestions.map((s: any) => s[dbField]).filter((val: string) => val && val.trim() !== "");
   }
 
   async getAvailability(id: number) {

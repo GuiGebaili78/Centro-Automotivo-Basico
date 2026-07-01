@@ -8,7 +8,7 @@ interface CategoriaComboboxProps {
   categorias: ICategoriaEstoque[];
   selectedId: number | null;
   onChange: (id: number | null) => void;
-  onManageClick: () => void;
+  onManageClick?: () => void;
   disabled?: boolean;
 }
 
@@ -115,16 +115,18 @@ export const CategoriaCombobox = ({
           </Combobox>
         </div>
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={onManageClick}
-        disabled={disabled}
-        className="px-3 shrink-0 h-[42px] border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-        title="Gerenciar Categorias"
-      >
-        <Settings size={18} />
-      </Button>
+      {onManageClick && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onManageClick}
+          disabled={disabled}
+          className="px-3 shrink-0 h-[42px] border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+          title="Gerenciar Categorias"
+        >
+          <Settings size={18} />
+        </Button>
+      )}
     </div>
   );
 };

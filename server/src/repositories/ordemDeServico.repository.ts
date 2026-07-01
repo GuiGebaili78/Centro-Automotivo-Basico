@@ -425,20 +425,30 @@ export class OrdemDeServicoRepository {
       updatedData.dt_entrega = nowSP();
     }
 
-    const updated = await prisma.ordemDeServico.update({
-      where: { id_os: id },
-      data: updatedData,
-    });
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.ordemDeServico.update({
+        where: { id_os: id },
+        data: updatedData,
+      });
 
-    await auditRepo.create({
-        tabela: 'ordem_de_servico',
-        registro_id: id,
-        acao: 'UPDATE',
-        valor_antigo: current,
-        valor_novo: updated
-    });
+      await auditRepo.create({
+          tabela: 'ordem_de_servico',
+          registro_id: id,
+          acao: 'UPDATE',
+          valor_antigo: current,
+          valor_novo: updated
+      });
 
-    return mapOsToLegacy(updated);
+      // Se mudou para CANCELADA, estornar estoque
+      if (data.status === 'CANCELADA' && current.status !== 'CANCELADA') {
+          await this.adjustStockForOS(id, 'RETURN', tx);
+      } else if (current.status === 'CANCELADA' && data.status && data.status !== 'CANCELADA') {
+          // Se saiu de CANCELADA, deduzir novamente
+          await this.adjustStockForOS(id, 'DEDUCT', tx);
+      }
+
+      return mapOsToLegacy(updated);
+    });
   }
 
   async delete(id: number) {
@@ -446,19 +456,25 @@ export class OrdemDeServicoRepository {
     const current = await this.findById(id);
     if (!current) throw new Error('OS not found');
 
-    const updated = await prisma.ordemDeServico.update({
-      where: { id_os: id },
-      data: { deleted_at: new Date() }
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.ordemDeServico.update({
+        where: { id_os: id },
+        data: { deleted_at: new Date() }
+      });
+      
+      await auditRepo.create({
+          tabela: 'ordem_de_servico',
+          registro_id: id,
+          acao: 'SOFT_DELETE',
+          valor_antigo: current
+      });
+      
+      if (current.status !== 'CANCELADA') {
+          await this.adjustStockForOS(id, 'RETURN', tx);
+      }
+      
+      return mapOsToLegacy(updated);
     });
-    
-    await auditRepo.create({
-        tabela: 'ordem_de_servico',
-        registro_id: id,
-        acao: 'SOFT_DELETE',
-        valor_antigo: current
-    });
-    
-    return mapOsToLegacy(updated);
   }
 
   async recalculateTotals(id_os: number, tx: any = prisma) {
@@ -490,23 +506,65 @@ export class OrdemDeServicoRepository {
     return { valor_pecas, valor_mao_de_obra, valor_total_cliente };
   }
 
-  async adjustStockForOS(id_os: number, action: 'DEDUCT' | 'RETURN') {
-      const items = await prisma.itensOs.findMany({
-          where: { id_os, id_produto: { not: null }, deleted_at: null }
+  async adjustStockForOS(id_os: number, action: 'DEDUCT' | 'RETURN', tx: any = prisma) {
+      const items = await tx.itensOs.findMany({
+          where: { id_os, id_produto: { not: null }, deleted_at: null, is_interno: false }
       });
 
       for (const item of items) {
           if (!item.id_produto) continue;
 
+          const produto = await tx.produto.findUnique({ where: { id_produto: item.id_produto } });
+          if (!produto) continue;
+
           if (action === 'DEDUCT') {
-              await prisma.produto.update({
+              if (produto.saldo_atual - item.quantidade < 0) {
+                 throw new Error(`Estoque insuficiente para reagendar/abrir OS. Produto: ${produto.nome}. Saldo atual: ${produto.saldo_atual}. Solicitado: ${item.quantidade}.`);
+              }
+              const produtoAtualizado = await tx.produto.update({
                   where: { id_produto: item.id_produto },
                   data: { saldo_atual: { decrement: item.quantidade } }
               });
+
+              await tx.movimentacaoEstoque.create({
+                data: {
+                   produto_id: item.id_produto,
+                   id_usuario: null,
+                   nome_usuario_snapshot: 'Sistema (OS)',
+                   tipo: 'SAIDA', // TipoMovimentacao.SAIDA
+                   quantidade: -item.quantidade,
+                   saldo_anterior: produto.saldo_atual,
+                   saldo_atual: produtoAtualizado.saldo_atual,
+                   custo_unitario_historico: produto.preco_custo_atual,
+                   preco_venda_historico: item.valor_venda,
+                   condicao: produto.condicao,
+                   origem: `Reabertura OS #${id_os}`,
+                   obs: `Baixa por mudança de status da OS #${id_os}`,
+                   id_os: id_os
+                }
+              });
           } else {
-              await prisma.produto.update({
+              const produtoAtualizado = await tx.produto.update({
                   where: { id_produto: item.id_produto },
                   data: { saldo_atual: { increment: item.quantidade } }
+              });
+
+              await tx.movimentacaoEstoque.create({
+                data: {
+                   produto_id: item.id_produto,
+                   id_usuario: null,
+                   nome_usuario_snapshot: 'Sistema (OS)',
+                   tipo: 'ESTORNO', // TipoMovimentacao.ESTORNO
+                   quantidade: item.quantidade,
+                   saldo_anterior: produto.saldo_atual,
+                   saldo_atual: produtoAtualizado.saldo_atual,
+                   custo_unitario_historico: produto.preco_custo_atual,
+                   preco_venda_historico: item.valor_venda,
+                   condicao: produto.condicao,
+                   origem: `Cancelamento OS #${id_os}`,
+                   obs: `Estorno por exclusão ou cancelamento da OS #${id_os}`,
+                   id_os: id_os
+                }
               });
           }
       }

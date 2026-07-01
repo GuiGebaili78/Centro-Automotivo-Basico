@@ -184,6 +184,18 @@ export class PecasEstoqueController {
     }
   }
 
+  async getSuggestions(req: Request, res: Response) {
+    try {
+      const campo = req.query.campo as string;
+      const query = req.query.q as string;
+      if (!campo) return res.status(400).json({ error: "Parâmetro 'campo' é obrigatório." });
+      const suggestions = await repository.getSuggestions(campo, query);
+      res.json(suggestions);
+    } catch (error) {
+      handleError(res, error, "getSuggestions");
+    }
+  }
+
   async getAvailability(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);

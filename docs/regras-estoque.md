@@ -18,7 +18,7 @@ Este documento estabelece as diretrizes arquiteturais e de negócio para o módu
 
 ## 4. Proteção de Histórico e Ciclo de Vida
 * **Exclusão Lógica (Soft Delete)**: É terminantemente proibida a exclusão física (`DELETE`) de itens do Catálogo ou de movimentações do Kardex. Peças fora de linha recebem a flag `ativo: false` para não quebrarem o histórico de Ordens de Serviço faturadas.
-* **Reserva de OS**: Ao inserir uma peça numa Ordem de Serviço aberta, a quantidade entra em estado de "Reserva" (compõe o saldo virtual). A "Baixa" real (desconto do saldo físico) só ocorre mediante a aprovação/faturamento da OS.
+* **Baixa Imediata e Transacional na OS**: Ao inserir uma peça do Estoque numa Ordem de Serviço, a quantidade é deduzida IMEDIATAMENTE do saldo físico e o Kardex registra uma `SAIDA`. Se a OS for CANCELADA ou o item for excluído da OS, o sistema reverte a quantidade no saldo e registra um `ESTORNO` no Kardex, garantindo rastreabilidade e prevenindo "estoque fantasma".
 * **Rastreabilidade Integrada**: No painel de Notas Fiscais/Entradas, a origem e o destino devem exibir textualmente o "Nome da Peça e o Modelo", eliminando a exibição genérica de "em estoque físico".
 
 ## 5. Clean Architecture, Lógica FIFO e Sincronização de Banco (Post-Mortem & Arquitetura)

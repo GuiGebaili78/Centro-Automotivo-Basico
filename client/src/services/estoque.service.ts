@@ -62,6 +62,13 @@ export const EstoqueService = {
     return response.data;
   },
 
+  getSuggestions: async (campo: string, query?: string): Promise<string[]> => {
+    const params = new URLSearchParams({ campo });
+    if (query) params.set("q", query);
+    const response = await api.get<string[]>(`/pecas-estoque/sugestoes?${params.toString()}`);
+    return response.data;
+  },
+
   // ── Histórico de Movimentações ──
 
   /**

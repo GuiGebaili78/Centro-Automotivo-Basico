@@ -188,7 +188,11 @@ export const EntradaEstoquePage = () => {
       // Exibe a mensagem exata do backend (HTTP 400) ou fallback
       const errMsg =
         e.response?.data?.error || e.message || "Erro ao processar entrada.";
-      toast.error(errMsg);
+      if (e.response?.status === 400) {
+        toast.warning(errMsg);
+      } else {
+        toast.error(errMsg);
+      }
     }
   };
 

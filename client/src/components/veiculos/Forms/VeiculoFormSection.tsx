@@ -133,7 +133,7 @@ export const VeiculoFormSection = memo(
                 id="input-marca"
                 label="Marca *"
                 value={marca}
-                onChange={setMarca}
+                onChange={(e) => setMarca(e.target.value)}
                 fetchSuggestions={(q) => VeiculoService.buscarMarcas(q)}
                 required={!!placa}
                 className={hasAttemptedSubmit && !marca && (placa || modelo || cor) ? 'border-red-500' : ''}
@@ -146,7 +146,7 @@ export const VeiculoFormSection = memo(
                 id="input-modelo"
                 label="Modelo *"
                 value={modelo}
-                onChange={setModelo}
+                onChange={(e) => setModelo(e.target.value)}
                 fetchSuggestions={(q) => VeiculoService.buscarModelos(q)}
                 required={!!placa}
                 className={hasAttemptedSubmit && !modelo && (placa || marca || cor) ? 'border-red-500' : ''}
@@ -159,7 +159,7 @@ export const VeiculoFormSection = memo(
                 id="input-cor"
                 label="Cor *"
                 value={cor}
-                onChange={setCor}
+                onChange={(e) => setCor(e.target.value)}
                 fetchSuggestions={(q) => VeiculoService.buscarCores(q)}
                 required={!!placa}
                 placeholder="Ex: PRATA, BRANCO..."

@@ -44,6 +44,7 @@ export const OsItemForm = ({
     id_fornecedor: "",
     is_interno: false,
   });
+  const [loading, setLoading] = useState(false);
 
   const newItem = externalState || internalItem;
   const setNewItem = onExternalStateChange || setInternalItem;
@@ -120,19 +121,24 @@ export const OsItemForm = ({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const success = await onAdd(newItem);
-    if (success) {
-      setNewItem({
-        id_pecas_estoque: "",
-        quantidade: "1",
-        valor_venda: "",
-        descricao: "",
-        codigo_referencia: "",
-        id_fornecedor: "",
-        is_interno: false,
-      });
-      setSelectedStockInfo(null);
-      requestAnimationFrame(() => partInputRef.current?.focus());
+    setLoading(true);
+    try {
+      const success = await onAdd(newItem);
+      if (success) {
+        setNewItem({
+          id_pecas_estoque: "",
+          quantidade: "1",
+          valor_venda: "",
+          descricao: "",
+          codigo_referencia: "",
+          id_fornecedor: "",
+          is_interno: false,
+        });
+        setSelectedStockInfo(null);
+        requestAnimationFrame(() => partInputRef.current?.focus());
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -308,6 +314,7 @@ export const OsItemForm = ({
             <Button
               type="submit"
               variant="primary"
+              isLoading={loading}
               className="w-full py-2.5 h-[42px] text-sm font-black uppercase shadow-lg flex items-center justify-center gap-2"
             >
               <Plus size={20} /> Adicionar
